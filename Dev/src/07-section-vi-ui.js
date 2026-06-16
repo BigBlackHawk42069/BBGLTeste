@@ -386,7 +386,9 @@
             if (h && h.today) {
                 const todayE = h.today.eSpent ? (h.today.eSpent.total || 0) : 0;
                 const hasTrainLog = h.today.series && h.today.series.some(s => s.type === 'gym');
-                totalExp += computeDailyLevelExp(todayE, hasTrainLog);
+                const { hjDaySet } = DataController.getHappyJumpData();
+                const todayDate = Formatter.dateLogical();
+                totalExp += computeDailyLevelExp(todayE, hasTrainLog, hjDaySet.has(todayDate));
             }
         }
         

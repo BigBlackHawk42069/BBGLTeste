@@ -64,13 +64,11 @@
     const GAME = {
         WEEKLY_GOAL: 1000,
         POINTS_GREEN: 200,
-        POINTS_GOLD: 300,
+        POINTS_GOLD: 200,
         POINTS_DIAMOND: 500,
         POINTS_HJ_GREEN: 500,
         POINTS_HJ_GOLD: 500,
-        POINTS_HJ_DIAMOND: 500,
         GOLD_WEEK_JUMPS: 3,
-        DIAMOND_WEEK_JUMPS: 4,
         HJ_WINDOW_SECONDS: 300,
         STAT_MAP: {
             5300: 'strength',

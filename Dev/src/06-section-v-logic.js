@@ -129,8 +129,7 @@
             });
             const {
                 hjWeek,
-                hjDaySet,
-                dHjDaySet
+                hjDaySet
             } = this.getHappyJumpData();
             const stickerMap = new Map();
             const featuredSet = new Set();
@@ -150,7 +149,7 @@
                     days.forEach(day => {
                         const e = day.eSpent ? (day.eSpent.total || 0) : 0;
                         const hasTrainLog = day.series && day.series.some(s => s.type === 'gym');
-                        careerLevelExp += computeDailyLevelExp(e, hasTrainLog);
+                        careerLevelExp += computeDailyLevelExp(e, hasTrainLog, hjDaySet.has(day.date));
                     });
                 }
                 const stickerworthyDays = days.filter(d => d.eSpent && d.eSpent.total >= 1000);
@@ -159,7 +158,7 @@
                     isCompleted,
                     isGold,
                     totDiamond
-                } = computeWeekCompletion(days, hjDaySet, hjWeek[wk] || 0, dHjDaySet);
+                } = computeWeekCompletion(days, hjDaySet, hjWeek[wk] || 0);
                 if (!runtime.demoMode) {
                     careerLevelExp += weeklyBonusExp(isCompleted, isGold, totDiamond >= GAME.WEEKLY_GOAL);
                 }
@@ -1165,6 +1164,7 @@
     }
 
     function computeAchievements(s) {
+        const { hjDaySet, hjWeek: hjWeekData } = DataController.getHappyJumpData();
         const allDays = [...(s.history || [])];
         if (s.today && s.today.date) {
             const filtered = allDays.filter(d => d.date !== s.today.date);
@@ -1367,7 +1367,7 @@
             currentWk = getWeekKey(todayStr);
         Object.keys(weekDayMap).sort().forEach(wk => {
             if (wk < currentWk) {
-                const wc = computeWeekCompletion(weekDayMap[wk]);
+                const wc = computeWeekCompletion(weekDayMap[wk], hjDaySet, hjWeekData[wk] || 0);
                 if (wc.isGold) goldWeeks++;
                 else if (wc.isCompleted) greenWeeks++;
                 if (wc.totDiamond >= GAME.WEEKLY_GOAL) diamondWeeks++;

@@ -1,15 +1,15 @@
 ﻿// ==UserScript==
 // @name         Big Black Gym Log Teste
 // @namespace    http://tampermonkey.net/
-// @version      0.9.75
+// @version      0.9.58
 // @description  A high-fidelity, gamified stat tracker built to integrate seamlessly with Torn's native UI.
 // @author       BigBlackHawk [3550896]
 // @match        https://www.torn.com/*
 // @grant        GM_xmlhttpRequest
 // @connect      raw.githubusercontent.com
 // @run-at       document-start
-// @updateURL    https://raw.githubusercontent.com/BigBlackHawk42069/BigBlackGymLog/refs/heads/DevBranch/Dev/BBGLDev.js
-// @downloadURL  https://raw.githubusercontent.com/BigBlackHawk42069/BigBlackGymLog/refs/heads/DevBranch/Dev/BBGLDev.js
+// @updateURL    https://raw.githubusercontent.com/BigBlackHawk42069/BBGLTeste/refs/heads/main/BigBlackGymLog.js
+// @downloadURL  https://raw.githubusercontent.com/BigBlackHawk42069/BBGLTeste/refs/heads/main/BigBlackGymLog.js
 // ==/UserScript==
 
 (function() {
@@ -130,13 +130,11 @@
     const GAME = {
         WEEKLY_GOAL: 1000,
         POINTS_GREEN: 200,
-        POINTS_GOLD: 300,
+        POINTS_GOLD: 200,
         POINTS_DIAMOND: 500,
         POINTS_HJ_GREEN: 500,
         POINTS_HJ_GOLD: 500,
-        POINTS_HJ_DIAMOND: 500,
         GOLD_WEEK_JUMPS: 3,
-        DIAMOND_WEEK_JUMPS: 4,
         HJ_WINDOW_SECONDS: 300,
         STAT_MAP: {
             5300: 'strength',
@@ -779,38 +777,23 @@
         let totGreen = 0,
             totGold = 0,
             totDiamond = 0;
-            
-        const jumpGold = hjCount === GAME.GOLD_WEEK_JUMPS;
-        const jumpDiamond = hjCount >= GAME.DIAMOND_WEEK_JUMPS;
+
+        const jumpGold = hjCount >= GAME.GOLD_WEEK_JUMPS;
 
         days.forEach(d => {
             const e = d.eSpent ? d.eSpent.total : 0;
             const isHJ = hjDaySet ? hjDaySet.has(d.date) : false;
 
             if (isHJ) {
-                let tier = 'GREEN';
-                if (e >= 2000) tier = 'DIAMOND';
-                else if (e >= 1500) tier = 'GOLD';
-
-                if (jumpDiamond) tier = 'DIAMOND';
-                else if (jumpGold && tier === 'GREEN') tier = 'GOLD';
-
-                if (tier === 'DIAMOND') totDiamond += GAME.POINTS_HJ_DIAMOND;
-                else if (tier === 'GOLD') totGold += GAME.POINTS_HJ_GOLD;
-                else totGreen += GAME.POINTS_HJ_GREEN;
+                if (e >= 2000) { totDiamond += GAME.POINTS_DIAMOND; return; }
+                if (jumpGold || e >= 1500) { totGold += GAME.POINTS_HJ_GOLD; return; }
+                totGreen += GAME.POINTS_HJ_GREEN;
                 return;
             }
 
-            let base = 0;
-            if (e >= 2000) base = GAME.POINTS_DIAMOND;
-            else if (e >= 1500) base = GAME.POINTS_GOLD;
-            else if (e >= 1000) base = GAME.POINTS_GREEN;
-            
-            if (base === 0) return;
-            
-            if (base === GAME.POINTS_DIAMOND) totDiamond += base;
-            else if (base === GAME.POINTS_GOLD) totGold += base;
-            else totGreen += base;
+            if (e >= 2000) totDiamond += GAME.POINTS_DIAMOND;
+            else if (e >= 1500) totGold += GAME.POINTS_GOLD;
+            else if (e >= 1000) totGreen += GAME.POINTS_GREEN;
         });
         
         const total = totGreen + totGold + totDiamond;
@@ -826,10 +809,10 @@
     }
 
     // ─── LEVELING MATH ENGINE ────────────────────────────────────────────────
-    // Power 2.25 curve | Floor: 200 EXP | P0 Peak: 1900 EXP
+    // Power 2.25 curve | Floor: 200 EXP | P0 Peak: 1903 EXP (~72,000 budget)
     // Atrophy multipliers: +15% and +30%
     const LEVEL_FLOOR = 200;
-    const LEVEL_P0_MAX = 1900;
+    const LEVEL_P0_MAX = 1903;
     const LEVEL_ATRO_MULT = [1, 1.15, 1.30];
 
     function computeLevelExpCost(level, atrophy) {
@@ -867,19 +850,24 @@
     }
 
     // Real-time daily EXP for the leveling bar (NOT the weekly progress bar).
-    // Continuous piecewise rate: 0.2 EXP/E up to Gold (1500E), then 0.6 EXP/E beyond.
-    // Reproduces all old milestone totals exactly (200 @ Green, 300 @ Gold, 600 @ Diamond).
-    function computeDailyLevelExp(eSpent, hasTrainLog) {
+    // Piecewise rate: 0.2 EXP/E up to 1500E, then 0.4 EXP/E beyond (2x, not 3x).
+    // Happy Jump days get a flat 500 EXP base; extra E above 1000 adds at normal rates.
+    function computeDailyLevelExp(eSpent, hasTrainLog, isHJ = false) {
         if (!hasTrainLog) return 0;
+        if (isHJ) return Math.round(
+            500
+            + Math.min(Math.max(eSpent - 1000, 0), 500) * 0.2
+            + Math.max(eSpent - 1500, 0) * 0.4
+        );
         const base  = Math.min(eSpent, 1500) * 0.2;
-        const bonus = Math.max(eSpent - 1500, 0) * 0.6;
+        const bonus = Math.max(eSpent - 1500, 0) * 0.4;
         return Math.round(base + bonus);
     }
 
     function weeklyBonusExp(isCompleted, isGold, isDiamond) {
-        if (isDiamond) return 600;
-        if (isGold)    return 300;
-        if (isCompleted) return 200;
+        if (isDiamond)   return 500;
+        if (isGold)      return 500;
+        if (isCompleted) return 250;
         return 0;
     }
     // ─────────────────────────────────────────────────────────────────────────
@@ -7809,8 +7797,7 @@
             });
             const {
                 hjWeek,
-                hjDaySet,
-                dHjDaySet
+                hjDaySet
             } = this.getHappyJumpData();
             const stickerMap = new Map();
             const featuredSet = new Set();
@@ -7830,7 +7817,7 @@
                     days.forEach(day => {
                         const e = day.eSpent ? (day.eSpent.total || 0) : 0;
                         const hasTrainLog = day.series && day.series.some(s => s.type === 'gym');
-                        careerLevelExp += computeDailyLevelExp(e, hasTrainLog);
+                        careerLevelExp += computeDailyLevelExp(e, hasTrainLog, hjDaySet.has(day.date));
                     });
                 }
                 const stickerworthyDays = days.filter(d => d.eSpent && d.eSpent.total >= 1000);
@@ -7839,7 +7826,7 @@
                     isCompleted,
                     isGold,
                     totDiamond
-                } = computeWeekCompletion(days, hjDaySet, hjWeek[wk] || 0, dHjDaySet);
+                } = computeWeekCompletion(days, hjDaySet, hjWeek[wk] || 0);
                 if (!runtime.demoMode) {
                     careerLevelExp += weeklyBonusExp(isCompleted, isGold, totDiamond >= GAME.WEEKLY_GOAL);
                 }
@@ -8845,6 +8832,7 @@
     }
 
     function computeAchievements(s) {
+        const { hjDaySet, hjWeek: hjWeekData } = DataController.getHappyJumpData();
         const allDays = [...(s.history || [])];
         if (s.today && s.today.date) {
             const filtered = allDays.filter(d => d.date !== s.today.date);
@@ -9047,7 +9035,7 @@
             currentWk = getWeekKey(todayStr);
         Object.keys(weekDayMap).sort().forEach(wk => {
             if (wk < currentWk) {
-                const wc = computeWeekCompletion(weekDayMap[wk]);
+                const wc = computeWeekCompletion(weekDayMap[wk], hjDaySet, hjWeekData[wk] || 0);
                 if (wc.isGold) goldWeeks++;
                 else if (wc.isCompleted) greenWeeks++;
                 if (wc.totDiamond >= GAME.WEEKLY_GOAL) diamondWeeks++;
@@ -11291,7 +11279,9 @@
             if (h && h.today) {
                 const todayE = h.today.eSpent ? (h.today.eSpent.total || 0) : 0;
                 const hasTrainLog = h.today.series && h.today.series.some(s => s.type === 'gym');
-                totalExp += computeDailyLevelExp(todayE, hasTrainLog);
+                const { hjDaySet } = DataController.getHappyJumpData();
+                const todayDate = Formatter.dateLogical();
+                totalExp += computeDailyLevelExp(todayE, hasTrainLog, hjDaySet.has(todayDate));
             }
         }
         
