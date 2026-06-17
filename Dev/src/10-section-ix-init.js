@@ -24,7 +24,7 @@
                     specId: id
                 });
                 runtime.trainDebouncers[id] = null;
-            }, 2500);
+            }, 1500);
         }
     }
 

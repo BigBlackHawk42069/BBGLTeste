@@ -3067,7 +3067,7 @@
                         font-size: 10px;
                         margin-bottom: 0;
                         font-family: 'Fjalla One', 'Arial Narrow', sans-serif;
-                        padding-top: 1px;
+                        padding-top: 0;
                         border-top: none;
                         flex: 0 0 auto;
                     }
@@ -3582,10 +3582,6 @@
                         box-shadow: 0 0 5px rgba(255, 255, 255, .3), inset 0 2px 5px rgba(0, 0, 0, .8);
                     }
 
-                    .bbgl-weekly-track.is-viewing .bbgl-track-label {
-                        opacity: 1;
-                    }
-
                     .bbgl-weekly-track.track-solidified {
                         background: repeating-linear-gradient(90deg, transparent 0, transparent 1px, rgba(0, 0, 0, .15) 1px, rgba(0, 0, 0, .15) 2px), linear-gradient(180deg, #333 0%, #555 30%, #999 60%, #555 70%, #222 100%);
                         box-shadow: inset 0 0 2px rgba(255, 255, 255, .2), 0 1px 2px rgba(0, 0, 0, .8);
@@ -3725,7 +3721,7 @@
                         transform: translateX(-50%);
                         width: var(--dmnd-s);
                         height: var(--dmnd-s);
-                        clip-path: inset(0 0 calc(var(--dmnd-b) * -1) 0);
+                        clip-path: inset(0 0 calc(var(--dmnd-b) * -1 + 2px) 0);
                         background: url('https://raw.githubusercontent.com/BigBlackHawk42069/asdfaskijdnfawef/refs/heads/main/ScrptImgs/Calendar/lvl-dmnd.png') center / contain no-repeat;
                         z-index: 1;
                         pointer-events: none;
@@ -3837,34 +3833,88 @@
                         font-size: clamp(7px, calc(7px + 5px * var(--bbgl-page-t)), 12px);
                         margin-bottom: clamp(7px, calc(7px + 2px * var(--bbgl-page-t)), 9px);
                     }
-                    /* ─────────────────────────────────────────────────────── */
+                    /* ─── Gym Page Level Bar ────────────────────────────── */
+                    #bbgl-gym-level-container {
+                        position: relative;
+                        width: 100%;
+                        margin-top: 16px;
+                        margin-bottom: -6px;
+                        display: flex;
+                        flex-direction: column;
+                        align-items: center;
+                        container-type: inline-size;
+                        --dmnd-s: clamp(76px, 12cqi, 90px);
+                        --dmnd-b: calc(var(--dmnd-s) * -0.25);
+                    }
 
-                    .bbgl-track-label {
+                    #bbgl-gym-level-container::before {
+                        content: '';
+                        position: absolute;
+                        bottom: var(--dmnd-b);
+                        left: 50%;
+                        transform-origin: 50% calc(100% + var(--dmnd-b));
+                        transform: translateX(-50%);
+                        width: var(--dmnd-s);
+                        height: var(--dmnd-s);
+                        clip-path: inset(0 0 calc(var(--dmnd-b) * -1 + 2px) 0);
+                        background: url('https://raw.githubusercontent.com/BigBlackHawk42069/asdfaskijdnfawef/refs/heads/main/ScrptImgs/Calendar/lvl-dmnd.png') center / contain no-repeat;
+                        z-index: 1;
+                        pointer-events: none;
+                    }
+
+                    #bbgl-gym-level-num {
+                        font-family: 'Fjalla One', 'Arial Narrow', sans-serif;
+                        font-size: clamp(9px, 1.5cqi, 12px);
+                        font-weight: 700;
+                        color: #b3ffb3;
+                        text-shadow: 0 0 2px #33cc00, 0 0 6px #199900, 0 0 12px #199900;
+                        letter-spacing: 0.5px;
+                        line-height: 1;
+                        white-space: nowrap;
+                        margin-bottom: 7px;
+                        position: relative;
+                        z-index: 3;
+                    }
+
+                    #bbgl-gym-level-track {
+                        position: relative;
+                        z-index: 2;
+                        width: 100%;
+                        height: 8px;
+                        flex-shrink: 0;
+                        border-radius: 0;
+                        overflow: hidden;
+                        background: linear-gradient(180deg, rgba(140, 80, 220, 0.25) 0%, rgba(90, 30, 160, 0.4) 30%, rgba(50, 15, 100, 0.5) 50%, rgba(80, 20, 140, 0.4) 70%, rgba(30, 5, 60, 0.8) 100%);
+                        box-shadow: inset 0 1px 1px rgba(255, 255, 255, 0.2), inset 0 -1px 2px rgba(255, 255, 255, 0.15), inset 0 -2px 4px rgba(0, 0, 0, 0.7);
+                        backdrop-filter: blur(2px);
+                    }
+
+                    #bbgl-gym-level-fill {
                         position: absolute;
                         top: 0;
-                        bottom: 0;
                         left: 0;
-                        right: 0;
-                        justify-content: center;
-                        display: flex;
-                        align-items: center;
-                        font-size: 10.5px;
-                        font-family: 'Fjalla One', 'Arial Narrow', sans-serif;
-                        font-weight: 700;
-                        color: #fff;
-                        text-shadow: 0 0 3px rgba(0, 0, 0, 0.8), 0 1px 2px rgba(0, 0, 0, 1);
-                        letter-spacing: 0.5px;
-                        opacity: 0;
-                        pointer-events: none;
-                        transition: opacity .2s;
-                        white-space: nowrap;
-                        z-index: 60;
+                        height: 100%;
+                        width: 0%;
+                        background: linear-gradient(180deg, #512296 0%, #7b2fd4 35%, #d9a0ff 45%, #d9a0ff 55%, #7b2fd4 65%, #2d0a5e 100%);
+                        border-top-right-radius: 10px;
+                        border-bottom-right-radius: 10px;
+                        transition: width .8s cubic-bezier(.25, 1, .5, 1);
+                        will-change: width;
                     }
 
-                    body:not(.is-touch-device) .bbgl-weekly-track:hover .bbgl-track-label,
-                    .bbgl-weekly-track.is-scrub-hovered .bbgl-track-label {
-                        opacity: 1;
+                    #bbgl-gym-level-fill.level-full {
+                        border-top-right-radius: 0;
+                        border-bottom-right-radius: 0;
                     }
+
+                    .bbgl-level-up-flash #bbgl-gym-level-num {
+                        animation: bbgl-lvl-flash-text 0.8s ease-out;
+                    }
+
+                    .bbgl-level-up-flash #bbgl-gym-level-fill {
+                        animation: bbgl-lvl-flash-bar 0.8s ease-out;
+                    }
+                    /* ─────────────────────────────────────────────────────── */
 
                     .bbgl-ach-row.is-scrub-hovered {
                         background: rgba(255, 255, 255, .04);

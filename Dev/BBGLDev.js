@@ -3958,7 +3958,7 @@
                         font-size: 10px;
                         margin-bottom: 0;
                         font-family: 'Fjalla One', 'Arial Narrow', sans-serif;
-                        padding-top: 1px;
+                        padding-top: 0;
                         border-top: none;
                         flex: 0 0 auto;
                     }
@@ -4473,10 +4473,6 @@
                         box-shadow: 0 0 5px rgba(255, 255, 255, .3), inset 0 2px 5px rgba(0, 0, 0, .8);
                     }
 
-                    .bbgl-weekly-track.is-viewing .bbgl-track-label {
-                        opacity: 1;
-                    }
-
                     .bbgl-weekly-track.track-solidified {
                         background: repeating-linear-gradient(90deg, transparent 0, transparent 1px, rgba(0, 0, 0, .15) 1px, rgba(0, 0, 0, .15) 2px), linear-gradient(180deg, #333 0%, #555 30%, #999 60%, #555 70%, #222 100%);
                         box-shadow: inset 0 0 2px rgba(255, 255, 255, .2), 0 1px 2px rgba(0, 0, 0, .8);
@@ -4616,7 +4612,7 @@
                         transform: translateX(-50%);
                         width: var(--dmnd-s);
                         height: var(--dmnd-s);
-                        clip-path: inset(0 0 calc(var(--dmnd-b) * -1) 0);
+                        clip-path: inset(0 0 calc(var(--dmnd-b) * -1 + 2px) 0);
                         background: url('https://raw.githubusercontent.com/BigBlackHawk42069/asdfaskijdnfawef/refs/heads/main/ScrptImgs/Calendar/lvl-dmnd.png') center / contain no-repeat;
                         z-index: 1;
                         pointer-events: none;
@@ -4728,34 +4724,88 @@
                         font-size: clamp(7px, calc(7px + 5px * var(--bbgl-page-t)), 12px);
                         margin-bottom: clamp(7px, calc(7px + 2px * var(--bbgl-page-t)), 9px);
                     }
-                    /* ─────────────────────────────────────────────────────── */
+                    /* ─── Gym Page Level Bar ────────────────────────────── */
+                    #bbgl-gym-level-container {
+                        position: relative;
+                        width: 100%;
+                        margin-top: 16px;
+                        margin-bottom: -6px;
+                        display: flex;
+                        flex-direction: column;
+                        align-items: center;
+                        container-type: inline-size;
+                        --dmnd-s: clamp(76px, 12cqi, 90px);
+                        --dmnd-b: calc(var(--dmnd-s) * -0.25);
+                    }
 
-                    .bbgl-track-label {
+                    #bbgl-gym-level-container::before {
+                        content: '';
+                        position: absolute;
+                        bottom: var(--dmnd-b);
+                        left: 50%;
+                        transform-origin: 50% calc(100% + var(--dmnd-b));
+                        transform: translateX(-50%);
+                        width: var(--dmnd-s);
+                        height: var(--dmnd-s);
+                        clip-path: inset(0 0 calc(var(--dmnd-b) * -1 + 2px) 0);
+                        background: url('https://raw.githubusercontent.com/BigBlackHawk42069/asdfaskijdnfawef/refs/heads/main/ScrptImgs/Calendar/lvl-dmnd.png') center / contain no-repeat;
+                        z-index: 1;
+                        pointer-events: none;
+                    }
+
+                    #bbgl-gym-level-num {
+                        font-family: 'Fjalla One', 'Arial Narrow', sans-serif;
+                        font-size: clamp(9px, 1.5cqi, 12px);
+                        font-weight: 700;
+                        color: #b3ffb3;
+                        text-shadow: 0 0 2px #33cc00, 0 0 6px #199900, 0 0 12px #199900;
+                        letter-spacing: 0.5px;
+                        line-height: 1;
+                        white-space: nowrap;
+                        margin-bottom: 7px;
+                        position: relative;
+                        z-index: 3;
+                    }
+
+                    #bbgl-gym-level-track {
+                        position: relative;
+                        z-index: 2;
+                        width: 100%;
+                        height: 8px;
+                        flex-shrink: 0;
+                        border-radius: 0;
+                        overflow: hidden;
+                        background: linear-gradient(180deg, rgba(140, 80, 220, 0.25) 0%, rgba(90, 30, 160, 0.4) 30%, rgba(50, 15, 100, 0.5) 50%, rgba(80, 20, 140, 0.4) 70%, rgba(30, 5, 60, 0.8) 100%);
+                        box-shadow: inset 0 1px 1px rgba(255, 255, 255, 0.2), inset 0 -1px 2px rgba(255, 255, 255, 0.15), inset 0 -2px 4px rgba(0, 0, 0, 0.7);
+                        backdrop-filter: blur(2px);
+                    }
+
+                    #bbgl-gym-level-fill {
                         position: absolute;
                         top: 0;
-                        bottom: 0;
                         left: 0;
-                        right: 0;
-                        justify-content: center;
-                        display: flex;
-                        align-items: center;
-                        font-size: 10.5px;
-                        font-family: 'Fjalla One', 'Arial Narrow', sans-serif;
-                        font-weight: 700;
-                        color: #fff;
-                        text-shadow: 0 0 3px rgba(0, 0, 0, 0.8), 0 1px 2px rgba(0, 0, 0, 1);
-                        letter-spacing: 0.5px;
-                        opacity: 0;
-                        pointer-events: none;
-                        transition: opacity .2s;
-                        white-space: nowrap;
-                        z-index: 60;
+                        height: 100%;
+                        width: 0%;
+                        background: linear-gradient(180deg, #512296 0%, #7b2fd4 35%, #d9a0ff 45%, #d9a0ff 55%, #7b2fd4 65%, #2d0a5e 100%);
+                        border-top-right-radius: 10px;
+                        border-bottom-right-radius: 10px;
+                        transition: width .8s cubic-bezier(.25, 1, .5, 1);
+                        will-change: width;
                     }
 
-                    body:not(.is-touch-device) .bbgl-weekly-track:hover .bbgl-track-label,
-                    .bbgl-weekly-track.is-scrub-hovered .bbgl-track-label {
-                        opacity: 1;
+                    #bbgl-gym-level-fill.level-full {
+                        border-top-right-radius: 0;
+                        border-bottom-right-radius: 0;
                     }
+
+                    .bbgl-level-up-flash #bbgl-gym-level-num {
+                        animation: bbgl-lvl-flash-text 0.8s ease-out;
+                    }
+
+                    .bbgl-level-up-flash #bbgl-gym-level-fill {
+                        animation: bbgl-lvl-flash-bar 0.8s ease-out;
+                    }
+                    /* ─────────────────────────────────────────────────────── */
 
                     .bbgl-ach-row.is-scrub-hovered {
                         background: rgba(255, 255, 255, .04);
@@ -7209,12 +7259,12 @@
         Perf.end('syncWithFeedback');
     }
 
-    // Automatically checks for new training data every 2 hours in the background.
+    // Automatically checks for new training data every 30 minutes in the background.
     function scheduleHeartbeat() {
         if (runtime.bgSyncId) clearTimeout(runtime.bgSyncId);
         const lastFull = localStorage.getItem(KEYS.LAST_SYNC);
         const elapsed = lastFull ? (Date.now() - parseInt(lastFull)) : Infinity;
-        const delay = elapsed >= 7200000 ? 0 : (7200000 - elapsed);
+        const delay = elapsed >= 1800000 ? 0 : (1800000 - elapsed);
         runtime.bgSyncId = setTimeout(async function bgSyncTick() {
             runtime.bgSyncId = null;
             await universalFetch('FULL_SYNC');
@@ -11253,26 +11303,13 @@
             }
             tr.appendChild(d);
         }
-        // The numeric X/1000 points readout is suppressed for pre-install weeks, but displays
-        // for the install week onward.
-        const installWk = runtime.demoMode ? null : getInstallWeekKey();
-        if (!installWk || _wk >= installWk) {
-            const tl = document.createElement('div');
-            tl.className = 'bbgl-track-label';
-            tl.textContent = `${tot}/${GAME.WEEKLY_GOAL}`;
-            tr.appendChild(tl);
-        }
         anchor.appendChild(tr);
         cont.appendChild(anchor);
         if (viewState.activeViewLabel === sl.label && calendarState.selectedLabel !== sl.label) openHistory(sl, sl.label);
     }
 
-    function updateLevelBar() {
-        const numEl = document.getElementById('bbgl-level-num');
-        const fillEl = document.getElementById('bbgl-level-fill');
-        const container = document.getElementById('bbgl-level-container');
-        if (!numEl || !fillEl || !container) return;
-        
+    // career EXP + today's in-progress EXP — the live total both level bars display.
+    function getLiveLevelExp() {
         let totalExp = runtime.careerLevelExp || 0;
         if (!runtime.demoMode) {
             const h = getActiveHistory();
@@ -11280,17 +11317,44 @@
                 const todayE = h.today.eSpent ? (h.today.eSpent.total || 0) : 0;
                 const hasTrainLog = h.today.series && h.today.series.some(s => s.type === 'gym');
                 const { hjDaySet } = DataController.getHappyJumpData();
-                const todayDate = Formatter.dateLogical();
-                totalExp += computeDailyLevelExp(todayE, hasTrainLog, hjDaySet.has(todayDate));
+                totalExp += computeDailyLevelExp(todayE, hasTrainLog, hjDaySet.has(Formatter.dateLogical()));
             }
         }
-        
+        return totalExp;
+    }
+
+    // Every level bar instance (panel + gym page), whichever are currently in the DOM.
+    function getLevelBars() {
+        return [
+            ['bbgl-level-num', 'bbgl-level-fill', 'bbgl-level-container'],
+            ['bbgl-gym-level-num', 'bbgl-gym-level-fill', 'bbgl-gym-level-container']
+        ].map(([n, f, c]) => ({
+            num: document.getElementById(n),
+            fill: document.getElementById(f),
+            container: document.getElementById(c)
+        })).filter(b => b.num && b.fill && b.container);
+    }
+
+    function renderLevelBar(bar, expVal) {
+        const { level, expInLevel, expToNext } = calculateLevelProgress(expVal);
+        const pct = expToNext > 0 ? Math.min(100, (expInLevel / expToNext) * 100) : (level >= 100 ? 100 : 0);
+        bar.num.textContent = 'Lv ' + level;
+        bar.fill.style.width = pct.toFixed(2) + '%';
+        bar.fill.classList.toggle('level-full', pct >= 99.9);
+    }
+
+    function updateLevelBar() {
+        const bars = getLevelBars();
+        if (!bars.length) return;
+        const totalExp = getLiveLevelExp();
+
         // TEMPORARY TEST FUNCTION
         if (!runtime._levelDebugInit) {
             runtime._levelDebugInit = true;
-            numEl.style.cursor = 'pointer';
-            numEl.style.pointerEvents = 'auto'; // Fix for container pointer-events: none
-            numEl.addEventListener('click', () => {
+            const dbg = bars[0].num;
+            dbg.style.cursor = 'pointer';
+            dbg.style.pointerEvents = 'auto'; // Fix for container pointer-events: none
+            dbg.addEventListener('click', () => {
                 const levelsToAdd = Math.floor(Math.random() * 10) + 1;
                 let simExp = runtime._lastLevelExp || totalExp;
                 for (let i = 0; i < levelsToAdd; i++) {
@@ -11304,7 +11368,7 @@
 
         if (runtime._lastLevelExp === undefined) {
             runtime._lastLevelExp = totalExp;
-            applyLevelState(totalExp);
+            bars.forEach(b => renderLevelBar(b, totalExp));
             return;
         }
 
@@ -11313,15 +11377,6 @@
             if (!runtime._isAnimatingLevel) {
                 runLevelAnimationQueue();
             }
-        }
-
-        function applyLevelState(expVal) {
-            const { level, expInLevel, expToNext } = calculateLevelProgress(expVal);
-            numEl.textContent = 'Lv ' + level;
-            let pct = expToNext > 0 ? Math.min(100, (expInLevel / expToNext) * 100) : (level >= 100 ? 100 : 0);
-            fillEl.style.width = pct.toFixed(2) + '%';
-            if (pct >= 99.9) fillEl.classList.add('level-full');
-            else fillEl.classList.remove('level-full');
         }
 
         async function runLevelAnimationQueue() {
@@ -11333,49 +11388,52 @@
                 const targetProg = calculateLevelProgress(runtime._targetLevelExp);
 
                 if (currentProg.level < targetProg.level) {
-                    let expNeededToFill = currentProg.expToNext - currentProg.expInLevel;
-                    
-                    let currentPct = parseFloat(fillEl.style.width) || 0;
-                    let travelPct = 100 - currentPct;
-                    let durationMs = Math.max(150, (travelPct / 100) * BASE_SPEED_MS);
-                    
-                    fillEl.style.transitionDuration = durationMs + 'ms';
-                    fillEl.style.width = '100%';
-                    fillEl.classList.add('level-full');
-                    
+                    const expNeededToFill = currentProg.expToNext - currentProg.expInLevel;
+                    const currentPct = parseFloat(bars[0].fill.style.width) || 0;
+                    const durationMs = Math.max(150, ((100 - currentPct) / 100) * BASE_SPEED_MS);
+
+                    bars.forEach(b => {
+                        b.fill.style.transitionDuration = durationMs + 'ms';
+                        b.fill.style.width = '100%';
+                        b.fill.classList.add('level-full');
+                    });
+
                     await new Promise(r => setTimeout(r, durationMs + 50));
-                    container.classList.add('bbgl-level-up-flash');
-                    
+                    bars.forEach(b => b.container.classList.add('bbgl-level-up-flash'));
+
                     await new Promise(r => setTimeout(r, 200));
-                    numEl.textContent = 'Lv ' + (currentProg.level + 1);
-                    
+                    const nextLvlText = 'Lv ' + (currentProg.level + 1);
+                    bars.forEach(b => { b.num.textContent = nextLvlText; });
+
                     await new Promise(r => setTimeout(r, 650));
-                    container.classList.remove('bbgl-level-up-flash');
-                    
-                    fillEl.style.transition = 'none';
-                    fillEl.style.width = '0%';
-                    fillEl.classList.remove('level-full');
-                    void fillEl.offsetWidth; // force reflow
-                    fillEl.style.transition = '';
-                    
+                    bars.forEach(b => {
+                        b.container.classList.remove('bbgl-level-up-flash');
+                        b.fill.style.transition = 'none';
+                        b.fill.style.width = '0%';
+                        b.fill.classList.remove('level-full');
+                        void b.fill.offsetWidth; // force reflow
+                        b.fill.style.transition = '';
+                    });
+
                     runtime._lastLevelExp += expNeededToFill;
                 } else {
                     runtime._lastLevelExp = runtime._targetLevelExp;
-                    
-                    let currentPct = parseFloat(fillEl.style.width) || 0;
+
+                    const currentPct = parseFloat(bars[0].fill.style.width) || 0;
                     const { level, expInLevel, expToNext } = calculateLevelProgress(runtime._lastLevelExp);
-                    let targetPct = expToNext > 0 ? Math.min(100, (expInLevel / expToNext) * 100) : (level >= 100 ? 100 : 0);
-                    let travelPct = Math.abs(targetPct - currentPct);
-                    let durationMs = Math.max(150, (travelPct / 100) * BASE_SPEED_MS);
-                    
-                    fillEl.style.transitionDuration = durationMs + 'ms';
-                    applyLevelState(runtime._lastLevelExp);
-                    
+                    const targetPct = expToNext > 0 ? Math.min(100, (expInLevel / expToNext) * 100) : (level >= 100 ? 100 : 0);
+                    const durationMs = Math.max(150, (Math.abs(targetPct - currentPct) / 100) * BASE_SPEED_MS);
+
+                    bars.forEach(b => {
+                        b.fill.style.transitionDuration = durationMs + 'ms';
+                        renderLevelBar(b, runtime._lastLevelExp);
+                    });
+
                     await new Promise(r => setTimeout(r, durationMs + 50));
                 }
             }
-            
-            fillEl.style.transitionDuration = '';
+
+            bars.forEach(b => { b.fill.style.transitionDuration = ''; });
             runtime._lastLevelExp = runtime._targetLevelExp;
             runtime._isAnimatingLevel = false;
         }
@@ -11577,6 +11635,7 @@
     }
 
     function handleDomMutation() {
+        injectGymLevelBar();
         if (!dom.bestGym || !dom.bestGym.isConnected) injectBestGymToggle();
         const loc = userConfig.buttonLocation,
             showFooter = loc === 'notes' || loc === 'both',
@@ -12007,6 +12066,39 @@
             if (active) c.classList.add('bbgl-sb-notif');
             else c.classList.remove('bbgl-sb-notif');
         });
+    }
+
+    function injectGymLevelBar() {
+        const gymRoot = document.getElementById('gymroot');
+        if (!gymRoot) return;
+        if (document.getElementById('bbgl-gym-level-container')) return;
+
+        for (const p of gymRoot.querySelectorAll('p')) {
+            if (p.textContent.trim() === 'What would you like to train today?') {
+                (p.parentElement?.parentElement ?? p).remove();
+                break;
+            }
+        }
+
+        const container = document.createElement('div');
+        container.id = 'bbgl-gym-level-container';
+
+        const num = document.createElement('div');
+        num.id = 'bbgl-gym-level-num';
+
+        const track = document.createElement('div');
+        track.id = 'bbgl-gym-level-track';
+
+        const fill = document.createElement('div');
+        fill.id = 'bbgl-gym-level-fill';
+
+        track.appendChild(fill);
+        container.appendChild(num);
+        container.appendChild(track);
+        gymRoot.prepend(container);
+
+        DataController.getStickerMap();
+        renderLevelBar({ num, fill }, getLiveLevelExp());
     }
 
     function injectFooterButton(notesBtnEl) {
@@ -14416,7 +14508,7 @@
                     specId: id
                 });
                 runtime.trainDebouncers[id] = null;
-            }, 2500);
+            }, 1500);
         }
     }
 

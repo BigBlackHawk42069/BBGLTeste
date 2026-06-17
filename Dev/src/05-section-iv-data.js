@@ -479,12 +479,12 @@
         Perf.end('syncWithFeedback');
     }
 
-    // Automatically checks for new training data every 2 hours in the background.
+    // Automatically checks for new training data every 30 minutes in the background.
     function scheduleHeartbeat() {
         if (runtime.bgSyncId) clearTimeout(runtime.bgSyncId);
         const lastFull = localStorage.getItem(KEYS.LAST_SYNC);
         const elapsed = lastFull ? (Date.now() - parseInt(lastFull)) : Infinity;
-        const delay = elapsed >= 7200000 ? 0 : (7200000 - elapsed);
+        const delay = elapsed >= 1800000 ? 0 : (1800000 - elapsed);
         runtime.bgSyncId = setTimeout(async function bgSyncTick() {
             runtime.bgSyncId = null;
             await universalFetch('FULL_SYNC');

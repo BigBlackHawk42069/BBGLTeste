@@ -360,26 +360,13 @@
             }
             tr.appendChild(d);
         }
-        // The numeric X/1000 points readout is suppressed for pre-install weeks, but displays
-        // for the install week onward.
-        const installWk = runtime.demoMode ? null : getInstallWeekKey();
-        if (!installWk || _wk >= installWk) {
-            const tl = document.createElement('div');
-            tl.className = 'bbgl-track-label';
-            tl.textContent = `${tot}/${GAME.WEEKLY_GOAL}`;
-            tr.appendChild(tl);
-        }
         anchor.appendChild(tr);
         cont.appendChild(anchor);
         if (viewState.activeViewLabel === sl.label && calendarState.selectedLabel !== sl.label) openHistory(sl, sl.label);
     }
 
-    function updateLevelBar() {
-        const numEl = document.getElementById('bbgl-level-num');
-        const fillEl = document.getElementById('bbgl-level-fill');
-        const container = document.getElementById('bbgl-level-container');
-        if (!numEl || !fillEl || !container) return;
-        
+    // career EXP + today's in-progress EXP — the live total both level bars display.
+    function getLiveLevelExp() {
         let totalExp = runtime.careerLevelExp || 0;
         if (!runtime.demoMode) {
             const h = getActiveHistory();
@@ -387,17 +374,44 @@
                 const todayE = h.today.eSpent ? (h.today.eSpent.total || 0) : 0;
                 const hasTrainLog = h.today.series && h.today.series.some(s => s.type === 'gym');
                 const { hjDaySet } = DataController.getHappyJumpData();
-                const todayDate = Formatter.dateLogical();
-                totalExp += computeDailyLevelExp(todayE, hasTrainLog, hjDaySet.has(todayDate));
+                totalExp += computeDailyLevelExp(todayE, hasTrainLog, hjDaySet.has(Formatter.dateLogical()));
             }
         }
-        
+        return totalExp;
+    }
+
+    // Every level bar instance (panel + gym page), whichever are currently in the DOM.
+    function getLevelBars() {
+        return [
+            ['bbgl-level-num', 'bbgl-level-fill', 'bbgl-level-container'],
+            ['bbgl-gym-level-num', 'bbgl-gym-level-fill', 'bbgl-gym-level-container']
+        ].map(([n, f, c]) => ({
+            num: document.getElementById(n),
+            fill: document.getElementById(f),
+            container: document.getElementById(c)
+        })).filter(b => b.num && b.fill && b.container);
+    }
+
+    function renderLevelBar(bar, expVal) {
+        const { level, expInLevel, expToNext } = calculateLevelProgress(expVal);
+        const pct = expToNext > 0 ? Math.min(100, (expInLevel / expToNext) * 100) : (level >= 100 ? 100 : 0);
+        bar.num.textContent = 'Lv ' + level;
+        bar.fill.style.width = pct.toFixed(2) + '%';
+        bar.fill.classList.toggle('level-full', pct >= 99.9);
+    }
+
+    function updateLevelBar() {
+        const bars = getLevelBars();
+        if (!bars.length) return;
+        const totalExp = getLiveLevelExp();
+
         // TEMPORARY TEST FUNCTION
         if (!runtime._levelDebugInit) {
             runtime._levelDebugInit = true;
-            numEl.style.cursor = 'pointer';
-            numEl.style.pointerEvents = 'auto'; // Fix for container pointer-events: none
-            numEl.addEventListener('click', () => {
+            const dbg = bars[0].num;
+            dbg.style.cursor = 'pointer';
+            dbg.style.pointerEvents = 'auto'; // Fix for container pointer-events: none
+            dbg.addEventListener('click', () => {
                 const levelsToAdd = Math.floor(Math.random() * 10) + 1;
                 let simExp = runtime._lastLevelExp || totalExp;
                 for (let i = 0; i < levelsToAdd; i++) {
@@ -411,7 +425,7 @@
 
         if (runtime._lastLevelExp === undefined) {
             runtime._lastLevelExp = totalExp;
-            applyLevelState(totalExp);
+            bars.forEach(b => renderLevelBar(b, totalExp));
             return;
         }
 
@@ -420,15 +434,6 @@
             if (!runtime._isAnimatingLevel) {
                 runLevelAnimationQueue();
             }
-        }
-
-        function applyLevelState(expVal) {
-            const { level, expInLevel, expToNext } = calculateLevelProgress(expVal);
-            numEl.textContent = 'Lv ' + level;
-            let pct = expToNext > 0 ? Math.min(100, (expInLevel / expToNext) * 100) : (level >= 100 ? 100 : 0);
-            fillEl.style.width = pct.toFixed(2) + '%';
-            if (pct >= 99.9) fillEl.classList.add('level-full');
-            else fillEl.classList.remove('level-full');
         }
 
         async function runLevelAnimationQueue() {
@@ -440,49 +445,52 @@
                 const targetProg = calculateLevelProgress(runtime._targetLevelExp);
 
                 if (currentProg.level < targetProg.level) {
-                    let expNeededToFill = currentProg.expToNext - currentProg.expInLevel;
-                    
-                    let currentPct = parseFloat(fillEl.style.width) || 0;
-                    let travelPct = 100 - currentPct;
-                    let durationMs = Math.max(150, (travelPct / 100) * BASE_SPEED_MS);
-                    
-                    fillEl.style.transitionDuration = durationMs + 'ms';
-                    fillEl.style.width = '100%';
-                    fillEl.classList.add('level-full');
-                    
+                    const expNeededToFill = currentProg.expToNext - currentProg.expInLevel;
+                    const currentPct = parseFloat(bars[0].fill.style.width) || 0;
+                    const durationMs = Math.max(150, ((100 - currentPct) / 100) * BASE_SPEED_MS);
+
+                    bars.forEach(b => {
+                        b.fill.style.transitionDuration = durationMs + 'ms';
+                        b.fill.style.width = '100%';
+                        b.fill.classList.add('level-full');
+                    });
+
                     await new Promise(r => setTimeout(r, durationMs + 50));
-                    container.classList.add('bbgl-level-up-flash');
-                    
+                    bars.forEach(b => b.container.classList.add('bbgl-level-up-flash'));
+
                     await new Promise(r => setTimeout(r, 200));
-                    numEl.textContent = 'Lv ' + (currentProg.level + 1);
-                    
+                    const nextLvlText = 'Lv ' + (currentProg.level + 1);
+                    bars.forEach(b => { b.num.textContent = nextLvlText; });
+
                     await new Promise(r => setTimeout(r, 650));
-                    container.classList.remove('bbgl-level-up-flash');
-                    
-                    fillEl.style.transition = 'none';
-                    fillEl.style.width = '0%';
-                    fillEl.classList.remove('level-full');
-                    void fillEl.offsetWidth; // force reflow
-                    fillEl.style.transition = '';
-                    
+                    bars.forEach(b => {
+                        b.container.classList.remove('bbgl-level-up-flash');
+                        b.fill.style.transition = 'none';
+                        b.fill.style.width = '0%';
+                        b.fill.classList.remove('level-full');
+                        void b.fill.offsetWidth; // force reflow
+                        b.fill.style.transition = '';
+                    });
+
                     runtime._lastLevelExp += expNeededToFill;
                 } else {
                     runtime._lastLevelExp = runtime._targetLevelExp;
-                    
-                    let currentPct = parseFloat(fillEl.style.width) || 0;
+
+                    const currentPct = parseFloat(bars[0].fill.style.width) || 0;
                     const { level, expInLevel, expToNext } = calculateLevelProgress(runtime._lastLevelExp);
-                    let targetPct = expToNext > 0 ? Math.min(100, (expInLevel / expToNext) * 100) : (level >= 100 ? 100 : 0);
-                    let travelPct = Math.abs(targetPct - currentPct);
-                    let durationMs = Math.max(150, (travelPct / 100) * BASE_SPEED_MS);
-                    
-                    fillEl.style.transitionDuration = durationMs + 'ms';
-                    applyLevelState(runtime._lastLevelExp);
-                    
+                    const targetPct = expToNext > 0 ? Math.min(100, (expInLevel / expToNext) * 100) : (level >= 100 ? 100 : 0);
+                    const durationMs = Math.max(150, (Math.abs(targetPct - currentPct) / 100) * BASE_SPEED_MS);
+
+                    bars.forEach(b => {
+                        b.fill.style.transitionDuration = durationMs + 'ms';
+                        renderLevelBar(b, runtime._lastLevelExp);
+                    });
+
                     await new Promise(r => setTimeout(r, durationMs + 50));
                 }
             }
-            
-            fillEl.style.transitionDuration = '';
+
+            bars.forEach(b => { b.fill.style.transitionDuration = ''; });
             runtime._lastLevelExp = runtime._targetLevelExp;
             runtime._isAnimatingLevel = false;
         }
@@ -684,6 +692,7 @@
     }
 
     function handleDomMutation() {
+        injectGymLevelBar();
         if (!dom.bestGym || !dom.bestGym.isConnected) injectBestGymToggle();
         const loc = userConfig.buttonLocation,
             showFooter = loc === 'notes' || loc === 'both',
@@ -1114,6 +1123,39 @@
             if (active) c.classList.add('bbgl-sb-notif');
             else c.classList.remove('bbgl-sb-notif');
         });
+    }
+
+    function injectGymLevelBar() {
+        const gymRoot = document.getElementById('gymroot');
+        if (!gymRoot) return;
+        if (document.getElementById('bbgl-gym-level-container')) return;
+
+        for (const p of gymRoot.querySelectorAll('p')) {
+            if (p.textContent.trim() === 'What would you like to train today?') {
+                (p.parentElement?.parentElement ?? p).remove();
+                break;
+            }
+        }
+
+        const container = document.createElement('div');
+        container.id = 'bbgl-gym-level-container';
+
+        const num = document.createElement('div');
+        num.id = 'bbgl-gym-level-num';
+
+        const track = document.createElement('div');
+        track.id = 'bbgl-gym-level-track';
+
+        const fill = document.createElement('div');
+        fill.id = 'bbgl-gym-level-fill';
+
+        track.appendChild(fill);
+        container.appendChild(num);
+        container.appendChild(track);
+        gymRoot.prepend(container);
+
+        DataController.getStickerMap();
+        renderLevelBar({ num, fill }, getLiveLevelExp());
     }
 
     function injectFooterButton(notesBtnEl) {
