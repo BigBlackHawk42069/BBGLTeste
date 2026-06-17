@@ -3067,7 +3067,7 @@
                         font-size: 10px;
                         margin-bottom: 0;
                         font-family: 'Fjalla One', 'Arial Narrow', sans-serif;
-                        padding-top: 0;
+                        padding-top: 1px;
                         border-top: none;
                         flex: 0 0 auto;
                     }
