@@ -4807,6 +4807,116 @@
                     }
                     /* ─────────────────────────────────────────────────────── */
 
+                    /* ─── Overview Page (Opulent Overview) ──────────────────── */
+                    /* Built on .bbgl-ach-section-page0 so the header + per-stat rows inherit the
+                       tuned grid/sizing. Only the inline level bar and the 2-up career rows are
+                       bespoke. Kept to six rows to fit the fixed achievements height budget. */
+
+                    /* Row 1: inline, diamond-free level bar (Lv + track on one line). */
+                    .bbgl-ach-ov-levelrow {
+                        width: 100%;
+                        box-sizing: border-box;
+                        padding: 1px 2px clamp(3px, .6cqi, 6px);
+                        container-type: inline-size;
+                    }
+
+                    .bbgl-ach-ov-levelrow #bbgl-ach-level-container {
+                        position: relative;
+                        width: 100%;
+                        display: flex;
+                        flex-direction: row;
+                        align-items: center;
+                        column-gap: clamp(6px, 1.4cqi, 10px);
+                    }
+
+                    .bbgl-ach-ov-levelrow #bbgl-ach-level-num {
+                        font-family: 'Fjalla One', 'Arial Narrow', sans-serif;
+                        font-size: clamp(9px, 1.9cqi, 12px);
+                        font-weight: 700;
+                        color: #b3ffb3;
+                        text-shadow: 0 0 2px #33cc00, 0 0 6px #199900, 0 0 12px #199900;
+                        letter-spacing: 0.5px;
+                        line-height: 1;
+                        white-space: nowrap;
+                        flex-shrink: 0;
+                        position: relative;
+                        z-index: 3;
+                    }
+
+                    .bbgl-ach-ov-levelrow #bbgl-ach-level-track {
+                        position: relative;
+                        z-index: 2;
+                        flex: 1 1 auto;
+                        height: clamp(7px, 1.4cqi, 10px);
+                        border-radius: 0;
+                        overflow: hidden;
+                        background: linear-gradient(180deg, rgba(140, 80, 220, 0.25) 0%, rgba(90, 30, 160, 0.4) 30%, rgba(50, 15, 100, 0.5) 50%, rgba(80, 20, 140, 0.4) 70%, rgba(30, 5, 60, 0.8) 100%);
+                        box-shadow: inset 0 1px 1px rgba(255, 255, 255, 0.2), inset 0 -1px 2px rgba(255, 255, 255, 0.15), inset 0 -2px 4px rgba(0, 0, 0, 0.7);
+                        backdrop-filter: blur(2px);
+                    }
+
+                    .bbgl-ach-ov-levelrow #bbgl-ach-level-fill {
+                        position: absolute;
+                        top: 0;
+                        left: 0;
+                        height: 100%;
+                        width: 0%;
+                        background: linear-gradient(180deg, #512296 0%, #7b2fd4 35%, #d9a0ff 45%, #d9a0ff 55%, #7b2fd4 65%, #2d0a5e 100%);
+                        border-top-right-radius: 10px;
+                        border-bottom-right-radius: 10px;
+                        transition: width .8s cubic-bezier(.25, 1, .5, 1);
+                        will-change: width;
+                    }
+
+                    .bbgl-ach-ov-levelrow #bbgl-ach-level-fill.level-full {
+                        border-top-right-radius: 0;
+                        border-bottom-right-radius: 0;
+                    }
+
+                    .bbgl-level-up-flash #bbgl-ach-level-num {
+                        animation: bbgl-lvl-flash-text 0.8s ease-out;
+                    }
+
+                    .bbgl-level-up-flash #bbgl-ach-level-fill {
+                        animation: bbgl-lvl-flash-bar 0.8s ease-out;
+                    }
+
+                    /* Rows 5-6: career snapshot — two label/value pairs per row. */
+                    .bbgl-ach-section-overview .bbgl-ach-ov-meta {
+                        display: grid;
+                        grid-template-columns: auto minmax(0, 1fr) auto minmax(0, 1fr);
+                        align-items: center;
+                        column-gap: clamp(4px, 1cqi, 10px);
+                        padding: clamp(2px, .4cqi, 4px) 2px;
+                        border-bottom: 1px solid rgba(255, 255, 255, .04);
+                    }
+
+                    .bbgl-ach-section-overview .bbgl-ach-ov-meta:last-child {
+                        border-bottom: none;
+                    }
+
+                    .bbgl-ach-ov-mk {
+                        font-family: var(--bbgl-ach-font);
+                        color: #888;
+                        font-weight: 500;
+                        font-size: clamp(8px, 1.5cqi, 10px);
+                        text-transform: uppercase;
+                        letter-spacing: .04em;
+                        white-space: nowrap;
+                    }
+
+                    .bbgl-ach-ov-mv {
+                        font-family: var(--bbgl-ach-val-font);
+                        color: #ccc;
+                        font-variant-numeric: tabular-nums;
+                        font-size: clamp(8px, 1.5cqi, 11px);
+                        text-align: right;
+                        white-space: nowrap;
+                        overflow: hidden;
+                        text-overflow: ellipsis;
+                    }
+                    /* ─────────────────────────────────────────────────────── */
+
                     .bbgl-ach-row.is-scrub-hovered {
                         background: rgba(255, 255, 255, .04);
                     }
@@ -8897,7 +9007,9 @@
         let greenDays = 0,
             goldDays = 0,
             diamondDays = 0,
-            trainingDays = 0;
+            trainingDays = 0,
+            lifetimeEnergy = 0,
+            lifetimeGains = 0;
         let maxEDay = {
                 value: 0,
                 date: null
@@ -8959,6 +9071,8 @@
         allDays.forEach(day => {
             const e = (day.eSpent && day.eSpent.total) || 0,
                 g = (day.gains && day.gains.total) || 0;
+            lifetimeEnergy += e;
+            lifetimeGains += g;
             if (e >= GOLD) {
                 goldDays++;
                 trainingDays++;
@@ -9329,10 +9443,23 @@
             mxMnG = maxOf(monthG, 'month');
         DataController.getStickerMap();
         const stickersUnlocked = DataController._cache.unlockedCount || 0;
+        const lastDay = allDays[allDays.length - 1];
+        const curBD = (lastDay && lastDay.endBreakdown) ? lastDay.endBreakdown : null;
+        const currentStats = curBD ? {
+            str: curBD.str || 0,
+            def: curBD.def || 0,
+            spd: curBD.spd || 0,
+            dex: curBD.dex || 0,
+            total: (curBD.str || 0) + (curBD.def || 0) + (curBD.spd || 0) + (curBD.dex || 0)
+        } : null;
         return {
             baseline: (s.meta && s.meta.baselineBreakdown) ? {
                 ...s.meta.baselineBreakdown
             } : null,
+            currentStats,
+            lifetimeEnergy,
+            lifetimeGains,
+            logStartDate: (s.meta && s.meta.logStartDate) || null,
             greenDays,
             goldDays,
             diamondDays,
@@ -9403,6 +9530,13 @@
         if (!container || !runtime._achCache) return;
         container.innerHTML = buildAchievementsPage(runtime._achPage, runtime._achCache);
         updateAchPageIndicator();
+        // The overview page (0) carries its own level bar; initialize its fill now that it's
+        // in the DOM. getLevelBars() will pick it up for any subsequent level-up animations.
+        if (runtime._achPage === 0) {
+            const num = document.getElementById('bbgl-ach-level-num'),
+                fill = document.getElementById('bbgl-ach-level-fill');
+            if (num && fill) renderLevelBar({ num, fill }, getLiveLevelExp());
+        }
     }
 
     function renderAchievements() {
@@ -9419,7 +9553,7 @@
         const ind = document.getElementById('bbgl-ach-pageindicator');
         if (!ind) return;
         ind.innerHTML = '';
-        for (let i = 0; i < 4; i++) {
+        for (let i = 0; i < 5; i++) {
             const d = document.createElement('div');
             d.className = 'pg-dot' + (i === runtime._achPage ? ' active' : '');
             d.onclick = () => {
@@ -9444,7 +9578,7 @@
         const container = document.getElementById('bbgl-ach-pages');
         if (!container || !runtime._achCache) return;
         const newPage = runtime._achPage + dir;
-        if (newPage < 0 || newPage > 3) return;
+        if (newPage < 0 || newPage > 4) return;
         const apply = () => {
             runtime._achPage = newPage;
             viewState.achPage = newPage;
@@ -9802,6 +9936,51 @@
         return `<div class="bbgl-ach-section bbgl-ach-section-hh"><div class="bbgl-ach-section-title" data-ach-section="happy-hopping" data-clip-section="${achEsc(clipAll)}" data-clip-title="Happy Hopping" data-tooltip="Click any stat or row to copy its data, or click this title to copy the entire section to your clipboard.">HAPPY HOPPING</div>${rowsHTML}${helpersHTML}</div>`;
     }
 
+    // First page of the achievements deck: a state snapshot (not records). The achievements
+    // area is a fixed flex region under the calendar with a hard ~6-row budget in every panel
+    // mode, so this is built on page0's proven grid (inherits all the tuned sizing) and capped
+    // at six rows: an inline level bar, a stats header, current + gained per-stat rows, and two
+    // career rows that pack two metrics each. The level bar uses its own IDs (bbgl-ach-level-*)
+    // so getLevelBars()/updateLevelBar() drive it like the panel & gym bars; it is intentionally
+    // diamond-free (no ::before) and laid out inline (Lv + track on one row) to save height.
+    function achBuildPageOverview(d) {
+        const STATS = ['str', 'def', 'spd', 'dex'];
+        const STAT_LABEL = { str: 'Strength', def: 'Defense', spd: 'Speed', dex: 'Dexterity' };
+        const cur = d.currentStats;
+        const base = d.baseline;
+        const NULL = '<span class="ach-null">—</span>';
+
+        // ── Row 1: inline level bar (Lv + track on a single line) ──
+        const levelRow = `<div class="bbgl-ach-ov-levelrow"><div id="bbgl-ach-level-container"><span id="bbgl-ach-level-num">Lv 1</span><div id="bbgl-ach-level-track"><div id="bbgl-ach-level-fill"></div></div></div></div>`;
+
+        // ── Row 2: header (title + per-stat columns), mirroring page0 ──
+        const headerStats = STATS.map(sk => `<div class="ach-stat-header ach-stat-${sk}">${STAT_LABEL[sk]}</div>`).join('');
+        const header = `<div class="bbgl-ach-grid-header"><div class="ach-grid-label-area"><span class="bbgl-ach-section-title">OPULENT OVERVIEW</span></div>${headerStats}</div>`;
+
+        // ── Rows 3-4: current stats + gained-since-baseline (per stat) ──
+        const valRow = (label, cellFn, tip) => {
+            const cells = STATS.map(sk => `<div class="bbgl-ach-stat-cell" data-stat="${sk}"><span class="ach-value ach-stat-${sk}">${cellFn(sk)}</span></div>`).join('');
+            return `<div class="bbgl-ach-row bbgl-ach-row-multi"${tip ? ` data-tooltip="${achEsc(tip)}"` : ''}><div class="ach-grid-label-area"><div class="ach-k">${achEsc(label)}</div></div>${cells}</div>`;
+        };
+        const curCell = sk => cur ? Formatter.dual(cur[sk] || 0) : NULL;
+        const gainCell = sk => {
+            if (!cur || !base) return NULL;
+            const g = Math.max(0, (cur[sk] || 0) - (base[sk] || 0));
+            return g > 0 ? '+' + Formatter.dual(g) : NULL;
+        };
+        const currentRow = valRow('Current', curCell, 'Your current battle stats.');
+        const gainedRow = valRow('Gained', gainCell, 'Stats gained since tracking began.');
+
+        // ── Rows 5-6: career snapshot, two metrics per row to respect the height budget ──
+        const sinceDate = d.logStartDate ? Formatter.datePretty(Formatter.dateLogical(d.logStartDate * 1000)) : '—';
+        const totalNow = cur ? cur.total : 0;
+        const metaPair = (l1, v1, l2, v2, tip) => `<div class="bbgl-ach-row bbgl-ach-ov-meta"${tip ? ` data-tooltip="${achEsc(tip)}"` : ''}><span class="bbgl-ach-ov-mk">${achEsc(l1)}</span><span class="bbgl-ach-ov-mv">${v1}</span><span class="bbgl-ach-ov-mk">${achEsc(l2)}</span><span class="bbgl-ach-ov-mv">${v2}</span></div>`;
+        const meta1 = metaPair('Total', cur ? achEsc(achFmtGain(totalNow)) : '—', 'Since', achEsc(sinceDate), 'Current total stats, and the date your tracking began.');
+        const meta2 = metaPair('Days', achEsc(Formatter.number(d.trainingDays || 0)) + '/' + achEsc(Formatter.number(d.calDays || 0)), 'Gained', '+' + achEsc(achFmtGain(d.lifetimeGains || 0)), 'Days trained out of days tracked, and total stats gained all-time.');
+
+        return `<div class="bbgl-ach-section bbgl-ach-section-page0 bbgl-ach-section-overview">${levelRow}${header}${currentRow}${gainedRow}${meta1}${meta2}</div>`;
+    }
+
     function buildAchievementsPage(pageIdx, d) {
         const mk = (label, value, opts = {}) => {
             const base = {
@@ -9858,10 +10037,12 @@
         };
         const achUnit = (n, sing, plur) => n ? n + '<span class="ach-unit"> ' + (n === 1 ? sing : plur) + '</span>' : '\u2014';
         if (pageIdx === 0) {
-            return achBuildPage0(d);
+            return achBuildPageOverview(d);
         } else if (pageIdx === 1) {
-            return achBuildPage1(d);
+            return achBuildPage0(d);
         } else if (pageIdx === 2) {
+            return achBuildPage1(d);
+        } else if (pageIdx === 3) {
             return achBuildPage2(d);
         } else {
             const consistRows = [mk('Best Training Streak', d.longestStreak, {
@@ -10100,6 +10281,9 @@
     }
 
     function handleAchCopy(el) {
+        // The Opulent Overview page has no click-to-copy wiring yet; bail so its rows/titles
+        // (which share .bbgl-ach-row / -section-title classes) don't copy a bare header.
+        if (el.closest && el.closest('.bbgl-ach-section-overview')) return;
         const H = '\uD83D\uDC51BBGL Achievements',
             cache = runtime._achCache;
         let txt = '',
@@ -11327,7 +11511,8 @@
     function getLevelBars() {
         return [
             ['bbgl-level-num', 'bbgl-level-fill', 'bbgl-level-container'],
-            ['bbgl-gym-level-num', 'bbgl-gym-level-fill', 'bbgl-gym-level-container']
+            ['bbgl-gym-level-num', 'bbgl-gym-level-fill', 'bbgl-gym-level-container'],
+            ['bbgl-ach-level-num', 'bbgl-ach-level-fill', 'bbgl-ach-level-container']
         ].map(([n, f, c]) => ({
             num: document.getElementById(n),
             fill: document.getElementById(f),

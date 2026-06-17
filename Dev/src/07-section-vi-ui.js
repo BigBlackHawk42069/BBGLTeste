@@ -384,7 +384,8 @@
     function getLevelBars() {
         return [
             ['bbgl-level-num', 'bbgl-level-fill', 'bbgl-level-container'],
-            ['bbgl-gym-level-num', 'bbgl-gym-level-fill', 'bbgl-gym-level-container']
+            ['bbgl-gym-level-num', 'bbgl-gym-level-fill', 'bbgl-gym-level-container'],
+            ['bbgl-ach-level-num', 'bbgl-ach-level-fill', 'bbgl-ach-level-container']
         ].map(([n, f, c]) => ({
             num: document.getElementById(n),
             fill: document.getElementById(f),
