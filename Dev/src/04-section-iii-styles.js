@@ -3921,75 +3921,6 @@
                        tuned grid/sizing. Only the inline level bar and the 2-up career rows are
                        bespoke. Kept to six rows to fit the fixed achievements height budget. */
 
-                    /* Row 1: inline, diamond-free level bar (Lv + track on one line). */
-                    .bbgl-ach-ov-levelrow {
-                        width: 100%;
-                        box-sizing: border-box;
-                        padding: 1px 2px clamp(3px, .6cqi, 6px);
-                        container-type: inline-size;
-                    }
-
-                    .bbgl-ach-ov-levelrow #bbgl-ach-level-container {
-                        position: relative;
-                        width: 100%;
-                        display: flex;
-                        flex-direction: row;
-                        align-items: center;
-                        column-gap: clamp(6px, 1.4cqi, 10px);
-                    }
-
-                    .bbgl-ach-ov-levelrow #bbgl-ach-level-num {
-                        font-family: 'Fjalla One', 'Arial Narrow', sans-serif;
-                        font-size: clamp(9px, 1.9cqi, 12px);
-                        font-weight: 700;
-                        color: #b3ffb3;
-                        text-shadow: 0 0 2px #33cc00, 0 0 6px #199900, 0 0 12px #199900;
-                        letter-spacing: 0.5px;
-                        line-height: 1;
-                        white-space: nowrap;
-                        flex-shrink: 0;
-                        position: relative;
-                        z-index: 3;
-                    }
-
-                    .bbgl-ach-ov-levelrow #bbgl-ach-level-track {
-                        position: relative;
-                        z-index: 2;
-                        flex: 1 1 auto;
-                        height: clamp(7px, 1.4cqi, 10px);
-                        border-radius: 0;
-                        overflow: hidden;
-                        background: linear-gradient(180deg, rgba(140, 80, 220, 0.25) 0%, rgba(90, 30, 160, 0.4) 30%, rgba(50, 15, 100, 0.5) 50%, rgba(80, 20, 140, 0.4) 70%, rgba(30, 5, 60, 0.8) 100%);
-                        box-shadow: inset 0 1px 1px rgba(255, 255, 255, 0.2), inset 0 -1px 2px rgba(255, 255, 255, 0.15), inset 0 -2px 4px rgba(0, 0, 0, 0.7);
-                        backdrop-filter: blur(2px);
-                    }
-
-                    .bbgl-ach-ov-levelrow #bbgl-ach-level-fill {
-                        position: absolute;
-                        top: 0;
-                        left: 0;
-                        height: 100%;
-                        width: 0%;
-                        background: linear-gradient(180deg, #512296 0%, #7b2fd4 35%, #d9a0ff 45%, #d9a0ff 55%, #7b2fd4 65%, #2d0a5e 100%);
-                        border-top-right-radius: 10px;
-                        border-bottom-right-radius: 10px;
-                        transition: width .8s cubic-bezier(.25, 1, .5, 1);
-                        will-change: width;
-                    }
-
-                    .bbgl-ach-ov-levelrow #bbgl-ach-level-fill.level-full {
-                        border-top-right-radius: 0;
-                        border-bottom-right-radius: 0;
-                    }
-
-                    .bbgl-level-up-flash #bbgl-ach-level-num {
-                        animation: bbgl-lvl-flash-text 0.8s ease-out;
-                    }
-
-                    .bbgl-level-up-flash #bbgl-ach-level-fill {
-                        animation: bbgl-lvl-flash-bar 0.8s ease-out;
-                    }
-
                     /* Rows 5-6: career snapshot — two label/value pairs per row. */
                     .bbgl-ach-section-overview .bbgl-ach-ov-meta {
                         display: grid;
@@ -5098,23 +5029,23 @@
                         font-weight: 550;
                     }
 
-                    .bbgl-ach-row .ach-value.ach-stat-str {
+                    .bbgl-ach-row .ach-sub.ach-stat-str {
                         color: #3264c6;
                     }
 
-                    .bbgl-ach-row .ach-value.ach-stat-def {
+                    .bbgl-ach-row .ach-sub.ach-stat-def {
                         color: #dc3912;
                     }
 
-                    .bbgl-ach-row .ach-value.ach-stat-spd {
+                    .bbgl-ach-row .ach-sub.ach-stat-spd {
                         color: #ff9900;
                     }
 
-                    .bbgl-ach-row .ach-value.ach-stat-dex {
+                    .bbgl-ach-row .ach-sub.ach-stat-dex {
                         color: #109618;
                     }
 
-                    .bbgl-ach-row .ach-value.ach-stat-tot {
+                    .bbgl-ach-row .ach-sub.ach-stat-tot {
                         color: #9d039d;
                     }
 

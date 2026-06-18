@@ -1233,6 +1233,7 @@
         };
         const happyItemTotals = {};
         HAPPY_LOGS.forEach(id => { happyItemTotals[id] = { count: 0, happy: 0 }; });
+        const statEnhByStat = { str: { count: 0, gain: 0 }, def: { count: 0, gain: 0 }, spd: { count: 0, gain: 0 }, dex: { count: 0, gain: 0 } };
         const weekE = {},
             weekG = {},
             monthE = {},
@@ -1319,6 +1320,10 @@
             (day.series || []).forEach(e => {
                 if (e.type === 'item' && e.happy && happyItemTotals[e.logId]) {
                     happyItemTotals[e.logId].happy += e.happy;
+                }
+                if (e.type === 'item' && e.statKey && statEnhByStat[e.statKey]) {
+                    statEnhByStat[e.statKey].count++;
+                    statEnhByStat[e.statKey].gain = Math.round((statEnhByStat[e.statKey].gain + (e.statGain || 0)) * 100) / 100;
                 }
             });
         });
@@ -1693,7 +1698,8 @@
             longestDiamondStreakStart,
             longestDiamondStreakEnd,
             longestDiamondStreakGains,
-            happyItemTotals
+            happyItemTotals,
+            statEnhByStat
         };
     }
 
@@ -1702,13 +1708,6 @@
         if (!container || !runtime._achCache) return;
         container.innerHTML = buildAchievementsPage(runtime._achPage, runtime._achCache);
         updateAchPageIndicator();
-        // The overview page (0) carries its own level bar; initialize its fill now that it's
-        // in the DOM. getLevelBars() will pick it up for any subsequent level-up animations.
-        if (runtime._achPage === 0) {
-            const num = document.getElementById('bbgl-ach-level-num'),
-                fill = document.getElementById('bbgl-ach-level-fill');
-            if (num && fill) renderLevelBar({ num, fill }, getLiveLevelExp());
-        }
     }
 
     function renderAchievements() {
@@ -1811,11 +1810,13 @@
     }
 
     function achRowHTML(r) {
-        const valCls = r.statClass ? ' ' + achEsc(r.statClass) : '';
+        const isFxClass = r.statClass && r.statClass.startsWith('ach-fx-');
+        const subCls = (!isFxClass && r.statClass) ? ' ' + achEsc(r.statClass) : '';
+        const valCls = (isFxClass && r.statClass) ? ' ' + achEsc(r.statClass) : '';
         const valNum = r.dualHtml ? r.dualHtml : ((r.display === '—' || r.display === '\u2014') ? `<span class="ach-null">—</span>` : achEsc(r.display));
         const tip = r.tip ? ` data-tooltip="${achEsc(r.tip)}"` : '';
         const dateEl = r.clipDate ? `<div class="ach-date">${achEsc(r.clipDate)}</div>` : '';
-        const subEl = r.sub ? `<span class="ach-sub">${achEsc(r.sub)}</span>` : '';
+        const subEl = r.sub ? `<span class="ach-sub${subCls}">${achEsc(r.sub)}</span>` : '';
         return `<div class="bbgl-ach-row"${tip} data-ach-key="${achEsc(r.key || '')}" data-clip="${achEsc(r.label + ': ' + r.rawVal)}" data-clip-date="${achEsc(r.clipDate || '')}"><div class="ach-row-main"><div class="ach-k-stack"><span class="ach-k">${achEsc(r.label)}:</span>${dateEl}</div><div class="ach-v-wrap">${subEl}<span class="ach-value${valCls}">${valNum}</span></div></div></div>`;
     }
 
@@ -2108,49 +2109,35 @@
         return `<div class="bbgl-ach-section bbgl-ach-section-hh"><div class="bbgl-ach-section-title" data-ach-section="happy-hopping" data-clip-section="${achEsc(clipAll)}" data-clip-title="Happy Hopping" data-tooltip="Click any stat or row to copy its data, or click this title to copy the entire section to your clipboard.">HAPPY HOPPING</div>${rowsHTML}${helpersHTML}</div>`;
     }
 
-    // First page of the achievements deck: a state snapshot (not records). The achievements
-    // area is a fixed flex region under the calendar with a hard ~6-row budget in every panel
-    // mode, so this is built on page0's proven grid (inherits all the tuned sizing) and capped
-    // at six rows: an inline level bar, a stats header, current + gained per-stat rows, and two
-    // career rows that pack two metrics each. The level bar uses its own IDs (bbgl-ach-level-*)
-    // so getLevelBars()/updateLevelBar() drive it like the panel & gym bars; it is intentionally
-    // diamond-free (no ::before) and laid out inline (Lv + track on one row) to save height.
     function achBuildPageOverview(d) {
         const STATS = ['str', 'def', 'spd', 'dex'];
         const STAT_LABEL = { str: 'Strength', def: 'Defense', spd: 'Speed', dex: 'Dexterity' };
-        const cur = d.currentStats;
-        const base = d.baseline;
         const NULL = '<span class="ach-null">—</span>';
+        const enh = d.statEnhByStat || {};
 
-        // ── Row 1: inline level bar (Lv + track on a single line) ──
-        const levelRow = `<div class="bbgl-ach-ov-levelrow"><div id="bbgl-ach-level-container"><span id="bbgl-ach-level-num">Lv 1</span><div id="bbgl-ach-level-track"><div id="bbgl-ach-level-fill"></div></div></div></div>`;
-
-        // ── Row 2: header (title + per-stat columns), mirroring page0 ──
+        // ── Row 1: header (title + per-stat columns) ──
         const headerStats = STATS.map(sk => `<div class="ach-stat-header ach-stat-${sk}">${STAT_LABEL[sk]}</div>`).join('');
         const header = `<div class="bbgl-ach-grid-header"><div class="ach-grid-label-area"><span class="bbgl-ach-section-title">OPULENT OVERVIEW</span></div>${headerStats}</div>`;
 
-        // ── Rows 3-4: current stats + gained-since-baseline (per stat) ──
+        // ── Rows 3-4: stat enhancer info (uses + gains per stat) ──
         const valRow = (label, cellFn, tip) => {
-            const cells = STATS.map(sk => `<div class="bbgl-ach-stat-cell" data-stat="${sk}"><span class="ach-value ach-stat-${sk}">${cellFn(sk)}</span></div>`).join('');
+            const cells = STATS.map(sk => `<div class="bbgl-ach-stat-cell" data-stat="${sk}"><span class="ach-value">${cellFn(sk)}</span></div>`).join('');
             return `<div class="bbgl-ach-row bbgl-ach-row-multi"${tip ? ` data-tooltip="${achEsc(tip)}"` : ''}><div class="ach-grid-label-area"><div class="ach-k">${achEsc(label)}</div></div>${cells}</div>`;
         };
-        const curCell = sk => cur ? Formatter.dual(cur[sk] || 0) : NULL;
-        const gainCell = sk => {
-            if (!cur || !base) return NULL;
-            const g = Math.max(0, (cur[sk] || 0) - (base[sk] || 0));
-            return g > 0 ? '+' + Formatter.dual(g) : NULL;
-        };
-        const currentRow = valRow('Current', curCell, 'Your current battle stats.');
-        const gainedRow = valRow('Gained', gainCell, 'Stats gained since tracking began.');
+        const fmtCount = (n, sing, plur) => n ? n + `<span class="ach-unit"> ${n === 1 ? sing : plur}</span>` : NULL;
+        const enhUsesCell = sk => fmtCount((enh[sk] && enh[sk].count) || 0, 'Use', 'Uses');
+        const enhGainsCell = sk => (enh[sk] && enh[sk].gain > 0) ? Formatter.dual(enh[sk].gain) : NULL;
+        const enhUsesRow = valRow('Enh Uses', enhUsesCell, 'Total stat enhancer uses per stat.');
+        const enhGainsRow = valRow('Enh Gains', enhGainsCell, 'Total stats gained from stat enhancers per stat.');
 
         // ── Rows 5-6: career snapshot, two metrics per row to respect the height budget ──
         const sinceDate = d.logStartDate ? Formatter.datePretty(Formatter.dateLogical(d.logStartDate * 1000)) : '—';
-        const totalNow = cur ? cur.total : 0;
+        const totalNow = d.currentStats ? d.currentStats.total : 0;
         const metaPair = (l1, v1, l2, v2, tip) => `<div class="bbgl-ach-row bbgl-ach-ov-meta"${tip ? ` data-tooltip="${achEsc(tip)}"` : ''}><span class="bbgl-ach-ov-mk">${achEsc(l1)}</span><span class="bbgl-ach-ov-mv">${v1}</span><span class="bbgl-ach-ov-mk">${achEsc(l2)}</span><span class="bbgl-ach-ov-mv">${v2}</span></div>`;
-        const meta1 = metaPair('Total', cur ? achEsc(achFmtGain(totalNow)) : '—', 'Since', achEsc(sinceDate), 'Current total stats, and the date your tracking began.');
+        const meta1 = metaPair('Total', d.currentStats ? achEsc(achFmtGain(totalNow)) : '—', 'Since', achEsc(sinceDate), 'Current total stats, and the date your tracking began.');
         const meta2 = metaPair('Days', achEsc(Formatter.number(d.trainingDays || 0)) + '/' + achEsc(Formatter.number(d.calDays || 0)), 'Gained', '+' + achEsc(achFmtGain(d.lifetimeGains || 0)), 'Days trained out of days tracked, and total stats gained all-time.');
 
-        return `<div class="bbgl-ach-section bbgl-ach-section-page0 bbgl-ach-section-overview">${levelRow}${header}${currentRow}${gainedRow}${meta1}${meta2}</div>`;
+        return `<div class="bbgl-ach-section bbgl-ach-section-page0 bbgl-ach-section-overview">${header}${enhUsesRow}${enhGainsRow}${meta1}${meta2}</div>`;
     }
 
     function buildAchievementsPage(pageIdx, d) {

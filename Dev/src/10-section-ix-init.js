@@ -24,7 +24,7 @@
                     specId: id
                 });
                 runtime.trainDebouncers[id] = null;
-            }, 1500);
+            }, 1000);
         }
     }
 
@@ -1665,6 +1665,7 @@
         });
         window.addEventListener('bbgl:dataUpdated', () => {
             renderPanelContent();
+            updateLevelBar();
             renderBackfillButton();
         });
         let _domRaf = null;
