@@ -9861,7 +9861,7 @@
                 const helperRow = (h) => {
                     const tip = `${achEsc(h.label)} | Happy Gained`;
                     const clipVal = `${h.label}: ${h.count} (${Formatter.number(h.happy)} Happy)`;
-                    return `<div class="bbgl-ach-row" data-tooltip="${achEsc(tip)}" data-ach-key="happy-helper-${h.id}" data-clip="${achEsc(clipVal)}"><div class="ach-row-main"><div class="ach-k-stack"><span class="ach-k"><span class="ach-title-long">${achEsc(h.label)}</span><span class="ach-title-short">${achEsc(h.short)}</span>:</span></div><div class="ach-v-wrap"><span class="ach-value">${Formatter.number(h.count)}</span><span class="ach-value ach-happy-col"><span class="ach-happy-word">+${achEsc(achFmtGain(h.happy))}</span> <span class="ach-happy-word">Happy</span></span></div></div></div>`;
+                    return `<div class="bbgl-ach-row" data-tooltip="${achEsc(tip)}" data-ach-key="happy-helper-${h.id}" data-clip="${achEsc(clipVal)}"><div class="ach-row-main"><div class="ach-k-stack"><span class="ach-k"><span class="ach-title-long">${achEsc(h.label)}</span><span class="ach-title-short">${achEsc(h.short)}</span>:</span></div><div class="ach-v-wrap"><span class="ach-value">${Formatter.number(h.count)}</span><span class="ach-value ach-happy-col">+${achEsc(achFmtGain(h.happy))} <span class="ach-happy-word">Happy</span></span></div></div></div>`;
                 };
 
                 const colCount = 2;
@@ -9903,17 +9903,15 @@
                 const rec = enh[sk] || { count: 0, gain: 0 };
                 countHtml = rec.count > 0 ? achEsc(Formatter.number(rec.count)) : NULL;
                 // Stat label always shows; number is — when no data
-                const gainNumStr = rec.gain > 0 ? `+${achEsc(achFmtGain(rec.gain))}` : null;
-                const gainNumHtml = gainNumStr ? `<span class="ach-stat-${sk}">${gainNumStr}</span>` : NULL;
-                gainedHtml = `${gainNumHtml} <span class="ach-stat-${sk}">${STAT_ABBR[sk]}</span>`;
+                const gainNum = rec.gain > 0 ? `+${achEsc(achFmtGain(rec.gain))}` : NULL;
+                gainedHtml = `${gainNum} <span class="ach-stat-${sk}">${STAT_ABBR[sk]}</span>`;
                 clipVal = `${label}: ${rec.count} (+${achFmtGain(rec.gain)} ${STAT_ABBR[sk]})`;
                 tip = `${achEsc(label)} | ${STAT_ABBR[sk]} Gained`;
             } else {
                 const rec = enrg[id] || { count: 0, energy: 0 };
                 countHtml = rec.count > 0 ? achEsc(Formatter.number(rec.count)) : NULL;
-                const gainNumStr = rec.energy > 0 ? `+${achEsc(Formatter.number(rec.energy))}` : null;
-                const gainNumHtml = gainNumStr ? `<span class="ach-enh-e-label">${gainNumStr}</span>` : NULL;
-                gainedHtml = `${gainNumHtml} <span class="ach-enh-e-label">Energy</span>`;
+                const gainNum = rec.energy > 0 ? `+${achEsc(Formatter.number(rec.energy))}` : NULL;
+                gainedHtml = `${gainNum} <span class="ach-enh-e-label">E</span>`;
                 clipVal = `${label}: ${rec.count} (+${Formatter.number(rec.energy)} Energy)`;
                 tip = `${achEsc(label)} | Energy Gained`;
             }
