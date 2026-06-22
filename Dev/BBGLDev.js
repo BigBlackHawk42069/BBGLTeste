@@ -400,7 +400,8 @@
         calMonth: null,
         activeViewLabel: null,
         currentStickerPage: 0,
-        achPage: 0
+        achPage: 0,
+        achEnhPeriodMode: false
     };
     let calendarState = {
         year: new Date().getUTCFullYear(),
@@ -614,7 +615,7 @@
                 this.currentTarget = null;
             }
         },
-        show(html, rect) {
+        show(html, rect, forceSide) {
             if (!this.el) this.init();
             this.el.innerHTML = html;
             this.el.appendChild(this.arrow);
@@ -629,7 +630,8 @@
             let side = 'top';
             const fitsTop = (rect.top - ttRect.height - pad >= 0),
                 fitsBot = (rect.bottom + ttRect.height + pad <= view.h);
-            if (fitsTop) side = 'top';
+            if (forceSide) side = forceSide;
+            else if (fitsTop) side = 'top';
             else if (fitsBot) side = 'bottom';
             else side = 'left';
             let x = 0,
@@ -667,8 +669,9 @@
             this.currentTarget = t;
             const h = t.getAttribute('data-tooltip-html'),
                 txt = t.getAttribute('data-tooltip');
-            if (h) this.show(h, t.getBoundingClientRect());
-            else if (txt) this.show('<div style="text-align:center; color:#ddd;">' + txt + '</div>', t.getBoundingClientRect());
+            const side = t.getAttribute('data-tooltip-side') || undefined;
+            if (h) this.show(h, t.getBoundingClientRect(), side);
+            else if (txt) this.show('<div style="text-align:center; color:#ddd;">' + txt + '</div>', t.getBoundingClientRect(), side);
             else this.hide();
         }
     };
@@ -4809,6 +4812,55 @@
 
                     /* ─── Endocrine Enhancers Page ──────────────────────── */
 
+                    .bbgl-ach-section-energy .bbgl-ach-section-title {
+                        border-bottom: none;
+                    }
+
+                    .bbgl-enh-mode-switch {
+                        position: absolute;
+                        right: 2px;
+                        top: 50%;
+                        transform: translateY(-50%);
+                        display: flex;
+                        align-items: center;
+                        gap: 0;
+                        z-index: 3;
+                    }
+
+                    .bbgl-enh-sw-opt {
+                        font-family: var(--bbgl-ach-font);
+                        font-size: 8px;
+                        font-weight: 700;
+                        letter-spacing: .06em;
+                        text-transform: uppercase;
+                        color: #bbb;
+                        padding: 1px 5px;
+                        cursor: pointer;
+                        user-select: none;
+                        border: 1px solid #6a6a6a;
+                        line-height: 1.4;
+                        transition: background .15s;
+                        white-space: nowrap;
+                    }
+
+                    .bbgl-enh-sw-opt:first-child { border-radius: 3px 0 0 3px; border-right: none; }
+                    .bbgl-enh-sw-opt:last-child  { border-radius: 0 3px 3px 0; }
+
+                    .bbgl-enh-sw-opt.active,
+                    body:not(.is-touch-device) .bbgl-enh-sw-opt:not(.active):hover {
+                        background: rgba(255, 255, 255, 0.13);
+                    }
+
+                    body:not(.is-touch-device) .bbgl-ach-section-energy .bbgl-ach-title-row:has(.bbgl-enh-sw-opt:hover) .bbgl-ach-section-title {
+                        color: #9a9a9a;
+                    }
+
+                    #bbgl-panel.bbgl-expanded:not(.bbgl-mode-page) .bbgl-enh-sw-opt,
+                    #bbgl-panel.bbgl-mode-page .bbgl-enh-sw-opt {
+                        font-size: clamp(10px, 1.6cqi, 12px);
+                        padding: 2px 7px;
+                    }
+
                     .bbgl-ach-section-energy .bbgl-ach-row {
                         padding: clamp(2px, .4cqi, 4px) 2px;
                         border-bottom: 1px solid rgba(255, 255, 255, .05);
@@ -5708,6 +5760,22 @@
                     .ach-v-wrap,
                     .bbgl-ach-row .ach-value {
                         overflow: visible;
+                    }
+
+                    .bbgl-ach-title-row {
+                        position: relative;
+                        width: 100%;
+                        box-sizing: border-box;
+                        display: flex;
+                        align-items: center;
+                        border-bottom: 1px solid rgba(255, 255, 255, .12);
+                        padding: 2px;
+                    }
+
+                    .bbgl-ach-title-row .bbgl-ach-section-title {
+                        width: auto;
+                        border-bottom: none;
+                        padding: 0;
                     }
 
                     .bbgl-ach-section-title {
@@ -9613,7 +9681,7 @@
             }),
             colsHTML = cols.map(chunk => `<div class="bbgl-ach-col">${chunk.map(achRowHTML).join('')}</div>`).join(''),
             clipAll = achRowsClip(rows);
-        return `<div class="bbgl-ach-section"><div class="bbgl-ach-section-title" data-ach-section="${achEsc(sectionKey)}" data-clip-section="${achEsc(clipAll)}" data-clip-title="${achEsc(title)}" data-tooltip="Click any stat or row to copy its data, or click this title to copy the entire section to your clipboard.">${achEsc(title)}</div><div class="bbgl-ach-cols"${COLS !== 4 ? ` style="grid-template-columns:repeat(${COLS},minmax(0,1fr));"` : ''}>${colsHTML}</div></div>`;
+        return `<div class="bbgl-ach-section"><div class="bbgl-ach-title-row"><span class="bbgl-ach-section-title" data-ach-section="${achEsc(sectionKey)}" data-clip-section="${achEsc(clipAll)}" data-clip-title="${achEsc(title)}" data-tooltip="Click any stat or row to copy its data, or click this title to copy the entire section to your clipboard.">${achEsc(title)}</span></div><div class="bbgl-ach-cols"${COLS !== 4 ? ` style="grid-template-columns:repeat(${COLS},minmax(0,1fr));"` : ''}>${colsHTML}</div></div>`;
     }
 
     function achBuildDualSection(titleA, rowsA, titleB, rowsB, sectionKeyA = '', sectionKeyB = '') {
@@ -9880,7 +9948,37 @@
             }
         }
 
-        return `<div class="bbgl-ach-section bbgl-ach-section-hh"><div class="bbgl-ach-section-title" data-ach-section="happy-hopping" data-clip-section="${achEsc(clipAll)}" data-clip-title="Happy Hopping" data-tooltip="Click any stat or row to copy its data, or click this title to copy the entire section to your clipboard.">HAPPY HOPPING</div>${rowsHTML}${helpersHTML}</div>`;
+        return `<div class="bbgl-ach-section bbgl-ach-section-hh"><div class="bbgl-ach-title-row"><span class="bbgl-ach-section-title" data-ach-section="happy-hopping" data-clip-section="${achEsc(clipAll)}" data-clip-title="Happy Hopping" data-tooltip="Click any stat or row to copy its data, or click this title to copy the entire section to your clipboard.">HAPPY HOPPING</span></div>${rowsHTML}${helpersHTML}</div>`;
+    }
+
+    function computeEnhancersForPeriod(sl) {
+        const energyItemTotals = {};
+        ENERGY_LOGS.forEach(id => { energyItemTotals[id] = { count: 0, energy: 0 }; });
+        const statEnhByStat = {
+            str: { count: 0, gain: 0 }, def: { count: 0, gain: 0 },
+            spd: { count: 0, gain: 0 }, dex: { count: 0, gain: 0 }
+        };
+        const days = (sl._dailyList && sl._dailyList.length > 0)
+            ? sl._dailyList
+            : (sl.date ? [DataController.getDateMap()[sl.date]] : []);
+        days.forEach(day => {
+            if (!day) return;
+            if (day.items) {
+                ENERGY_LOGS.forEach(id => {
+                    const qty = day.items[id] || 0;
+                    if (qty > 0) energyItemTotals[id].count += qty;
+                });
+            }
+            (day.series || []).forEach(e => {
+                if (e.type === 'item' && e.energy && energyItemTotals[e.logId])
+                    energyItemTotals[e.logId].energy += e.energy;
+                if (e.type === 'item' && e.statKey && statEnhByStat[e.statKey]) {
+                    statEnhByStat[e.statKey].count++;
+                    statEnhByStat[e.statKey].gain = Math.round((statEnhByStat[e.statKey].gain + (e.statGain || 0)) * 100) / 100;
+                }
+            });
+        });
+        return { energyItemTotals, statEnhByStat };
     }
 
     function achBuildPageOverview(d) {
@@ -9923,21 +10021,22 @@
         const leftHTML = LEFT_COL.map(buildRow).join('');
         const rightHTML = RIGHT_COL.map(buildRow).join('');
 
-        const clipAll = 'Endocrine Enhancers\n' +
-            [...LEFT_COL, ...RIGHT_COL].map(id => {
-                const meta = ITEM_LOG_META[id];
-                const label = meta.achLabel || meta.label;
-                const sk = STAT_ENH_MAP[id];
-                if (sk) {
-                    const rec = enh[sk] || { count: 0, gain: 0 };
-                    return `${label}: ${rec.count} (+${achFmtGain(rec.gain)} ${STAT_ABBR[sk]})`;
-                }
-                const rec = enrg[id] || { count: 0, energy: 0 };
-                return `${label}: ${rec.count} (+${Formatter.number(rec.energy)} Energy)`;
-            }).join('\n');
+        const clipAll = [...LEFT_COL, ...RIGHT_COL].map(id => {
+            const meta = ITEM_LOG_META[id];
+            const label = meta.achLabel || meta.label;
+            const sk = STAT_ENH_MAP[id];
+            if (sk) {
+                const rec = enh[sk] || { count: 0, gain: 0 };
+                return `${label}: ${rec.count} (+${achFmtGain(rec.gain)} ${STAT_ABBR[sk]})`;
+            }
+            const rec = enrg[id] || { count: 0, energy: 0 };
+            return `${label}: ${rec.count} (+${Formatter.number(rec.energy)} Energy)`;
+        }).join('\n');
 
         const cols = `<div class="bbgl-ach-col">${leftHTML}</div><div class="bbgl-ach-col">${rightHTML}</div>`;
-        return `<div class="bbgl-ach-section bbgl-ach-section-energy"><div class="bbgl-ach-section-title" data-ach-section="endocrine-enhancers" data-clip-section="${achEsc(clipAll)}" data-clip-title="Endocrine Enhancers" data-tooltip="Click any row to copy its data, or click this title to copy the entire section to your clipboard.">ENDOCRINE ENHANCERS</div><div class="bbgl-ach-cols" style="grid-template-columns:repeat(2,minmax(0,1fr));">${cols}</div></div>`;
+        const isPeriod = !!viewState.achEnhPeriodMode;
+        const switchHTML = `<div class="bbgl-enh-mode-switch" data-tooltip-html="<b>Changes the data scope displayed on this page.</b><br><i><b>All-Time</b> shows totals across your entire log history. <b>Selected</b> shows data for the selected period on the calendar.</i>" data-tooltip-side="left"><span class="bbgl-enh-sw-opt${isPeriod ? '' : ' active'}" data-mode="alltime">All-Time</span><span class="bbgl-enh-sw-opt${isPeriod ? ' active' : ''}" data-mode="selected">Selected</span></div>`;
+        return `<div class="bbgl-ach-section bbgl-ach-section-energy"><div class="bbgl-ach-title-row"><span class="bbgl-ach-section-title" data-ach-section="endocrine-enhancers" data-clip-section="${achEsc(clipAll)}" data-clip-title="Endocrine Enhancers" data-tooltip="Click any row to copy its data, or click this title to copy the entire section to your clipboard.">ENDOCRINE ENHANCERS</span>${switchHTML}</div><div class="bbgl-ach-cols" style="grid-template-columns:repeat(2,minmax(0,1fr));">${cols}</div></div>`;
     }
 
     function buildAchievementsPage(pageIdx, d) {
@@ -9996,7 +10095,10 @@
         };
         const achUnit = (n, sing, plur) => n ? n + '<span class="ach-unit"> ' + (n === 1 ? sing : plur) + '</span>' : '\u2014';
         if (pageIdx === 0) {
-            return achBuildPageOverview(d);
+            const overviewD = viewState.achEnhPeriodMode
+                ? computeEnhancersForPeriod(calendarState.selectedData || DataController.getSlice('DAY', Formatter.dateLogical()))
+                : d;
+            return achBuildPageOverview(overviewD);
         } else if (pageIdx === 1) {
             return achBuildPage0(d);
         } else if (pageIdx === 2) {
@@ -10245,7 +10347,12 @@
             const title = el.closest('.bbgl-ach-section-title');
             if (title) {
                 const clip = title.getAttribute('data-clip-section');
-                if (clip) { navigator.clipboard.writeText(clip).then(() => flashCopied(el.closest('.bbgl-ach-section-energy'))); }
+                const clipTitle = title.getAttribute('data-clip-title') || 'Endocrine Enhancers';
+                if (clip) {
+                    const txt = '👑BBGL Achievements\n\n— ' + clipTitle + ' —\n' + clip;
+                    const cols = el.closest('.bbgl-ach-section-energy').querySelector('.bbgl-ach-cols');
+                    navigator.clipboard.writeText(txt).then(() => flashCopied(cols || el.closest('.bbgl-ach-section-energy')));
+                }
                 return;
             }
             if (row) {
@@ -14735,6 +14842,11 @@
             if (de) de.innerText = Formatter.datePretty(l) || l;
             runtime.isViewAnimating = false;
         } else {
+            if (viewState.achEnhPeriodMode && tp.classList.contains('viewing-achievements')) {
+                achRefreshPageDom();
+                runtime.isViewAnimating = false;
+                return;
+            }
             const el = dom.ledgerView;
             if (userConfig.animations) {
                 el.classList.add('bbgl-crt-out');
@@ -15395,6 +15507,7 @@
         viewState.isTall = false;
         viewState.subView = 'ledger';
         viewState.activeViewLabel = null;
+        viewState.achEnhPeriodMode = false;
         viewState.graphStats = undefined;
         viewState.graphMode = undefined;
         runtime.currentStickerPage = 0;
@@ -16106,6 +16219,16 @@
                 passive: true
             });
             achContainer.addEventListener('click', (e) => {
+                const swOpt = e.target.closest('.bbgl-enh-sw-opt');
+                if (swOpt) {
+                    const toSelected = swOpt.dataset.mode === 'selected';
+                    if (toSelected !== !!viewState.achEnhPeriodMode) {
+                        viewState.achEnhPeriodMode = toSelected;
+                        saveViewState();
+                        achRefreshPageDom();
+                    }
+                    return;
+                }
                 const colHeader = e.target.closest('.bbgl-ach-col-copy');
                 if (colHeader) {
                     handleAchCopy(colHeader);

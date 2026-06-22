@@ -334,7 +334,8 @@
         calMonth: null,
         activeViewLabel: null,
         currentStickerPage: 0,
-        achPage: 0
+        achPage: 0,
+        achEnhPeriodMode: false
     };
     let calendarState = {
         year: new Date().getUTCFullYear(),

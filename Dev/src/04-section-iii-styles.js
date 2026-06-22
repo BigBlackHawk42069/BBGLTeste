@@ -3918,6 +3918,55 @@
 
                     /* ─── Endocrine Enhancers Page ──────────────────────── */
 
+                    .bbgl-ach-section-energy .bbgl-ach-section-title {
+                        border-bottom: none;
+                    }
+
+                    .bbgl-enh-mode-switch {
+                        position: absolute;
+                        right: 2px;
+                        top: 50%;
+                        transform: translateY(-50%);
+                        display: flex;
+                        align-items: center;
+                        gap: 0;
+                        z-index: 3;
+                    }
+
+                    .bbgl-enh-sw-opt {
+                        font-family: var(--bbgl-ach-font);
+                        font-size: 8px;
+                        font-weight: 700;
+                        letter-spacing: .06em;
+                        text-transform: uppercase;
+                        color: #bbb;
+                        padding: 1px 5px;
+                        cursor: pointer;
+                        user-select: none;
+                        border: 1px solid #6a6a6a;
+                        line-height: 1.4;
+                        transition: background .15s;
+                        white-space: nowrap;
+                    }
+
+                    .bbgl-enh-sw-opt:first-child { border-radius: 3px 0 0 3px; border-right: none; }
+                    .bbgl-enh-sw-opt:last-child  { border-radius: 0 3px 3px 0; }
+
+                    .bbgl-enh-sw-opt.active,
+                    body:not(.is-touch-device) .bbgl-enh-sw-opt:not(.active):hover {
+                        background: rgba(255, 255, 255, 0.13);
+                    }
+
+                    body:not(.is-touch-device) .bbgl-ach-section-energy .bbgl-ach-title-row:has(.bbgl-enh-sw-opt:hover) .bbgl-ach-section-title {
+                        color: #9a9a9a;
+                    }
+
+                    #bbgl-panel.bbgl-expanded:not(.bbgl-mode-page) .bbgl-enh-sw-opt,
+                    #bbgl-panel.bbgl-mode-page .bbgl-enh-sw-opt {
+                        font-size: clamp(10px, 1.6cqi, 12px);
+                        padding: 2px 7px;
+                    }
+
                     .bbgl-ach-section-energy .bbgl-ach-row {
                         padding: clamp(2px, .4cqi, 4px) 2px;
                         border-bottom: 1px solid rgba(255, 255, 255, .05);
@@ -4817,6 +4866,22 @@
                     .ach-v-wrap,
                     .bbgl-ach-row .ach-value {
                         overflow: visible;
+                    }
+
+                    .bbgl-ach-title-row {
+                        position: relative;
+                        width: 100%;
+                        box-sizing: border-box;
+                        display: flex;
+                        align-items: center;
+                        border-bottom: 1px solid rgba(255, 255, 255, .12);
+                        padding: 2px;
+                    }
+
+                    .bbgl-ach-title-row .bbgl-ach-section-title {
+                        width: auto;
+                        border-bottom: none;
+                        padding: 0;
                     }
 
                     .bbgl-ach-section-title {

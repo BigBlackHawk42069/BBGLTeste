@@ -97,6 +97,11 @@
             if (de) de.innerText = Formatter.datePretty(l) || l;
             runtime.isViewAnimating = false;
         } else {
+            if (viewState.achEnhPeriodMode && tp.classList.contains('viewing-achievements')) {
+                achRefreshPageDom();
+                runtime.isViewAnimating = false;
+                return;
+            }
             const el = dom.ledgerView;
             if (userConfig.animations) {
                 el.classList.add('bbgl-crt-out');
@@ -757,6 +762,7 @@
         viewState.isTall = false;
         viewState.subView = 'ledger';
         viewState.activeViewLabel = null;
+        viewState.achEnhPeriodMode = false;
         viewState.graphStats = undefined;
         viewState.graphMode = undefined;
         runtime.currentStickerPage = 0;
@@ -1468,6 +1474,16 @@
                 passive: true
             });
             achContainer.addEventListener('click', (e) => {
+                const swOpt = e.target.closest('.bbgl-enh-sw-opt');
+                if (swOpt) {
+                    const toSelected = swOpt.dataset.mode === 'selected';
+                    if (toSelected !== !!viewState.achEnhPeriodMode) {
+                        viewState.achEnhPeriodMode = toSelected;
+                        saveViewState();
+                        achRefreshPageDom();
+                    }
+                    return;
+                }
                 const colHeader = e.target.closest('.bbgl-ach-col-copy');
                 if (colHeader) {
                     handleAchCopy(colHeader);

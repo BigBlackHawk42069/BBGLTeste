@@ -116,7 +116,7 @@
                 this.currentTarget = null;
             }
         },
-        show(html, rect) {
+        show(html, rect, forceSide) {
             if (!this.el) this.init();
             this.el.innerHTML = html;
             this.el.appendChild(this.arrow);
@@ -131,7 +131,8 @@
             let side = 'top';
             const fitsTop = (rect.top - ttRect.height - pad >= 0),
                 fitsBot = (rect.bottom + ttRect.height + pad <= view.h);
-            if (fitsTop) side = 'top';
+            if (forceSide) side = forceSide;
+            else if (fitsTop) side = 'top';
             else if (fitsBot) side = 'bottom';
             else side = 'left';
             let x = 0,
@@ -169,8 +170,9 @@
             this.currentTarget = t;
             const h = t.getAttribute('data-tooltip-html'),
                 txt = t.getAttribute('data-tooltip');
-            if (h) this.show(h, t.getBoundingClientRect());
-            else if (txt) this.show('<div style="text-align:center; color:#ddd;">' + txt + '</div>', t.getBoundingClientRect());
+            const side = t.getAttribute('data-tooltip-side') || undefined;
+            if (h) this.show(h, t.getBoundingClientRect(), side);
+            else if (txt) this.show('<div style="text-align:center; color:#ddd;">' + txt + '</div>', t.getBoundingClientRect(), side);
             else this.hide();
         }
     };
