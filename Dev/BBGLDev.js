@@ -12,7 +12,7 @@
 // @downloadURL  https://raw.githubusercontent.com/BigBlackHawk42069/BBGLTeste/refs/heads/main/BigBlackGymLog.js
 // ==/UserScript==
 
-(function() {
+(function () {
     'use strict';
     if (window.__BBGL_LOADED__) return;
     window.__BBGL_LOADED__ = true;
@@ -70,7 +70,7 @@
             if (!this._enabled()) return;
             try {
                 performance.mark('bbgl:' + n);
-            } catch (e) {}
+            } catch (e) { }
         },
         start(n) {
             this.mark(n + ':start');
@@ -80,7 +80,7 @@
             try {
                 performance.mark('bbgl:' + n + ':end');
                 performance.measure('bbgl:' + n, 'bbgl:' + n + ':start', 'bbgl:' + n + ':end');
-            } catch (e) {}
+            } catch (e) { }
         },
         async wrapAsync(n, fn) {
             this.start(n);
@@ -153,13 +153,13 @@
     // Quantity-only codes carry no flag. ITEM_LOGS is derived so the API normalizer, the request
     // groups, the export totals, and the ledger counters all agree.
     const ITEM_LOG_META = {
-        8981: { label: 'Green Egg Used', group: 'energy', short: 'Egg' },
-        2290: { label: 'Xanax Taken', group: 'energy', short: 'Xans' },
-        2230: { label: 'LSD Taken', group: 'energy', short: 'LSD' },
-        2040: { label: 'Energy Can Used', group: 'energy', energy: true, short: 'Cans' },
-        2190: { label: 'Hotel Coupon Used', group: 'energy', short: 'FHC' },
-        4900: { label: 'Points Refill Used', group: 'energy', short: 'Refill' },
-        2120: { label: 'Parachute Used', group: 'stat', stat: true },
+        8981: { label: 'Green Egg Used', group: 'energy', energy: true, short: 'Egg', achLabel: 'Green Eggs Used' },
+        2290: { label: 'Xanax Taken', group: 'energy', energy: true, short: 'Xans' },
+        2230: { label: 'LSD Taken', group: 'energy', energy: true, short: 'LSD' },
+        2040: { label: 'Energy Can Used', group: 'energy', energy: true, short: 'Cans', achLabel: 'Energy Cans Used' },
+        2190: { label: 'Hotel Coupon Used', group: 'energy', energy: true, short: 'FHC', achLabel: 'FHCs Used' },
+        4900: { label: 'Points Refill Used', group: 'energy', energy: true, short: 'Refill', achLabel: 'Refills Used' },
+        2120: { label: 'Parachute Used', group: 'stat', stat: true, achLabel: 'Parachutes Used' },
         2130: { label: 'Skateboard Used', group: 'stat', stat: true },
         2140: { label: 'Boxing Gloves Used', group: 'stat', stat: true },
         2150: { label: 'Dumbbells Used', group: 'stat', stat: true },
@@ -486,7 +486,7 @@
             ALLOWED_CONFIG_KEYS.forEach(k => {
                 if (parsed[k] !== undefined) userConfig[k] = parsed[k];
             });
-        } catch (e) {}
+        } catch (e) { }
     }
     if (localStorage.getItem(KEYS.DEMO) === '1') runtime.demoMode = true;
     if (sessionStorage.getItem(KEYS.DEV_MODE) === 'true') runtime.devMode = true;
@@ -795,7 +795,7 @@
             else if (e >= 1500) totGold += GAME.POINTS_GOLD;
             else if (e >= 1000) totGreen += GAME.POINTS_GREEN;
         });
-        
+
         const total = totGreen + totGold + totDiamond;
         const goldOrBetter = totGold + totDiamond;
         return {
@@ -859,14 +859,14 @@
             + Math.min(Math.max(eSpent - 1000, 0), 500) * 0.2
             + Math.max(eSpent - 1500, 0) * 0.4
         );
-        const base  = Math.min(eSpent, 1500) * 0.2;
+        const base = Math.min(eSpent, 1500) * 0.2;
         const bonus = Math.max(eSpent - 1500, 0) * 0.4;
         return Math.round(base + bonus);
     }
 
     function weeklyBonusExp(isCompleted, isGold, isDiamond) {
-        if (isDiamond)   return 500;
-        if (isGold)      return 500;
+        if (isDiamond) return 500;
+        if (isGold) return 500;
         if (isCompleted) return 250;
         return 0;
     }
@@ -4807,44 +4807,39 @@
                     }
                     /* ─────────────────────────────────────────────────────── */
 
-                    /* ─── Overview Page (Opulent Overview) ──────────────────── */
-                    /* Built on .bbgl-ach-section-page0 so the header + per-stat rows inherit the
-                       tuned grid/sizing. Only the inline level bar and the 2-up career rows are
-                       bespoke. Kept to six rows to fit the fixed achievements height budget. */
+                    /* ─── Endocrine Enhancers Page ──────────────────────── */
 
-                    /* Rows 5-6: career snapshot — two label/value pairs per row. */
-                    .bbgl-ach-section-overview .bbgl-ach-ov-meta {
-                        display: grid;
-                        grid-template-columns: auto minmax(0, 1fr) auto minmax(0, 1fr);
-                        align-items: center;
-                        column-gap: clamp(4px, 1cqi, 10px);
+                    .bbgl-ach-section-energy .bbgl-ach-row {
                         padding: clamp(2px, .4cqi, 4px) 2px;
-                        border-bottom: 1px solid rgba(255, 255, 255, .04);
+                        border-bottom: 1px solid rgba(255, 255, 255, .05);
+                        font-size: clamp(11px, 2.05cqi, 13px) !important;
                     }
 
-                    .bbgl-ach-section-overview .bbgl-ach-ov-meta:last-child {
+                    #bbgl-panel:not(.bbgl-expanded):not(.bbgl-mode-page) .bbgl-ach-section-energy .bbgl-ach-row {
+                        font-size: clamp(9px, 1.7cqi, 11px) !important;
+                    }
+
+                    #bbgl-panel.bbgl-expanded:not(.bbgl-mode-page) .bbgl-ach-section-energy .bbgl-ach-row {
+                        font-size: clamp(12px, 2.3cqi, 15px) !important;
+                    }
+
+                    .bbgl-ach-section-energy .bbgl-ach-row:last-of-type {
                         border-bottom: none;
                     }
 
-                    .bbgl-ach-ov-mk {
-                        font-family: var(--bbgl-ach-font);
-                        color: #888;
-                        font-weight: 500;
-                        font-size: clamp(8px, 1.5cqi, 10px);
-                        text-transform: uppercase;
-                        letter-spacing: .04em;
-                        white-space: nowrap;
+                    .ach-enh-e-label {
+                        color: #69f0ae;
+                        font-weight: 600;
                     }
 
-                    .bbgl-ach-ov-mv {
-                        font-family: var(--bbgl-ach-val-font);
-                        color: #ccc;
-                        font-variant-numeric: tabular-nums;
-                        font-size: clamp(8px, 1.5cqi, 11px);
-                        text-align: right;
-                        white-space: nowrap;
-                        overflow: hidden;
-                        text-overflow: ellipsis;
+                    .ach-enh-gained .ach-stat-str { color: #3264c6; }
+                    .ach-enh-gained .ach-stat-def { color: #dc3912; }
+                    .ach-enh-gained .ach-stat-spd { color: #ff9900; }
+                    .ach-enh-gained .ach-stat-dex { color: #109618; }
+
+                    .ach-happy-word {
+                        color: #f5c518;
+                        font-weight: 600;
                     }
                     /* ─────────────────────────────────────────────────────── */
 
@@ -5958,6 +5953,16 @@
                         display: inline-flex;
                     }
 
+                    .bbgl-ach-row .ach-value.ach-enh-gained {
+                        display: none;
+                    }
+
+                    #bbgl-panel.bbgl-expanded .bbgl-ach-row .ach-value.ach-enh-gained,
+                    #bbgl-panel.bbgl-mode-page .bbgl-ach-row .ach-value.ach-enh-gained {
+                        display: inline-flex;
+                        min-width: 5.5em;
+                    }
+
                     #bbgl-panel.bbgl-expanded .ach-unit,
                     #bbgl-panel.bbgl-mode-page .ach-unit {
                         display: inline;
@@ -6871,7 +6876,7 @@
             if (!this._db) {
                 try {
                     await this.initDB();
-                } catch (e) {}
+                } catch (e) { }
             }
             return this._db;
         },
@@ -7199,19 +7204,19 @@
             });
         } else {
             reqs = [{
-                    type: 'battlestats',
-                    url: `https://api.torn.com/user/?selections=battlestats&key=${userConfig.apiKey}&timestamp=${ts}`
-                },
-                {
-                    type: 'log',
-                    floorKey: 'trainEnergy',
-                    url: `https://api.torn.com/user/?selections=log&log=${TRAIN_ENERGY_PARAM}&key=${userConfig.apiKey}${fromFor('trainEnergy')}&timestamp=${ts}`
-                },
-                {
-                    type: 'log',
-                    floorKey: 'statHappy',
-                    url: `https://api.torn.com/user/?selections=log&log=${STAT_HAPPY_PARAM}&key=${userConfig.apiKey}${fromFor('statHappy')}&timestamp=${ts}`
-                }
+                type: 'battlestats',
+                url: `https://api.torn.com/user/?selections=battlestats&key=${userConfig.apiKey}&timestamp=${ts}`
+            },
+            {
+                type: 'log',
+                floorKey: 'trainEnergy',
+                url: `https://api.torn.com/user/?selections=log&log=${TRAIN_ENERGY_PARAM}&key=${userConfig.apiKey}${fromFor('trainEnergy')}&timestamp=${ts}`
+            },
+            {
+                type: 'log',
+                floorKey: 'statHappy',
+                url: `https://api.torn.com/user/?selections=log&log=${STAT_HAPPY_PARAM}&key=${userConfig.apiKey}${fromFor('statHappy')}&timestamp=${ts}`
+            }
             ];
         }
 
@@ -8942,9 +8947,9 @@
             lifetimeEnergy = 0,
             lifetimeGains = 0;
         let maxEDay = {
-                value: 0,
-                date: null
-            },
+            value: 0,
+            date: null
+        },
             maxGainsDay = {
                 value: 0,
                 date: null
@@ -8960,11 +8965,11 @@
                 stat: null
             };
         const bestTrainByStat = {
-                str: null,
-                def: null,
-                spd: null,
-                dex: null
-            },
+            str: null,
+            def: null,
+            spd: null,
+            dex: null
+        },
             bestDayByStat = {
                 str: null,
                 def: null,
@@ -8992,6 +8997,8 @@
         };
         const happyItemTotals = {};
         HAPPY_LOGS.forEach(id => { happyItemTotals[id] = { count: 0, happy: 0 }; });
+        const energyItemTotals = {};
+        ENERGY_LOGS.forEach(id => { energyItemTotals[id] = { count: 0, energy: 0 }; });
         const statEnhByStat = { str: { count: 0, gain: 0 }, def: { count: 0, gain: 0 }, spd: { count: 0, gain: 0 }, dex: { count: 0, gain: 0 } };
         const weekE = {},
             weekG = {},
@@ -9075,10 +9082,17 @@
                     const qty = day.items[id] || 0;
                     if (qty > 0) happyItemTotals[id].count += qty;
                 });
+                ENERGY_LOGS.forEach(id => {
+                    const qty = day.items[id] || 0;
+                    if (qty > 0) energyItemTotals[id].count += qty;
+                });
             }
             (day.series || []).forEach(e => {
                 if (e.type === 'item' && e.happy && happyItemTotals[e.logId]) {
                     happyItemTotals[e.logId].happy += e.happy;
+                }
+                if (e.type === 'item' && e.energy && energyItemTotals[e.logId]) {
+                    energyItemTotals[e.logId].energy += e.energy;
                 }
                 if (e.type === 'item' && e.statKey && statEnhByStat[e.statKey]) {
                     statEnhByStat[e.statKey].count++;
@@ -9458,6 +9472,7 @@
             longestDiamondStreakEnd,
             longestDiamondStreakGains,
             happyItemTotals,
+            energyItemTotals,
             statEnhByStat
         };
     }
@@ -9828,7 +9843,7 @@
         const hjBest = bestRow('Best Happy Jump', 'Best Jump', d.bestHappyJump && d.bestHappyJump.total, 'best-hj', 'The single Happy Jump that yielded the highest combined stat gain.');
         const rowsHTML = `<div class="bbgl-ach-hh-group" data-ach-key="happy-jumps-group">${hjCount}${hjBest}</div>`;
         let clipAll = `Happy Jumps Performed: ${d.happyJumps || 0}\nBest Happy Jump: ${d.bestHappyJump && d.bestHappyJump.total ? (() => { const rec = d.bestHappyJump.total; const trained = STATS.filter(sk => (rec.stats[sk] || 0) > 0); const parts = trained.map(sk => STAT_ABBR[sk] + ': +' + achFmtGain(rec.stats[sk])); parts.push('Total: +' + achFmtGain(rec.value)); return parts.join(' | '); })() : '—'}`;
-        
+
         let helpersHTML = '';
         if (d.happyItemTotals) {
             const helpers = HAPPY_LOGS.map(id => {
@@ -9841,14 +9856,14 @@
                     happy: rec.happy
                 };
             }).filter(h => h.count > 0).sort((a, b) => b.count - a.count || b.happy - a.happy);
-            
+
             if (helpers.length > 0) {
                 const helperRow = (h) => {
                     const tip = `${achEsc(h.label)} | Happy Gained`;
                     const clipVal = `${h.label}: ${h.count} (${Formatter.number(h.happy)} Happy)`;
-                    return `<div class="bbgl-ach-row" data-tooltip="${achEsc(tip)}" data-ach-key="happy-helper-${h.id}" data-clip="${achEsc(clipVal)}"><div class="ach-row-main"><div class="ach-k-stack"><span class="ach-k"><span class="ach-title-long">${achEsc(h.label)}</span><span class="ach-title-short">${achEsc(h.short)}</span>:</span></div><div class="ach-v-wrap"><span class="ach-value">${Formatter.number(h.count)}</span><span class="ach-value ach-happy-col">+${achEsc(achFmtGain(h.happy))} Happy</span></div></div></div>`;
+                    return `<div class="bbgl-ach-row" data-tooltip="${achEsc(tip)}" data-ach-key="happy-helper-${h.id}" data-clip="${achEsc(clipVal)}"><div class="ach-row-main"><div class="ach-k-stack"><span class="ach-k"><span class="ach-title-long">${achEsc(h.label)}</span><span class="ach-title-short">${achEsc(h.short)}</span>:</span></div><div class="ach-v-wrap"><span class="ach-value">${Formatter.number(h.count)}</span><span class="ach-value ach-happy-col"><span class="ach-happy-word">+${achEsc(achFmtGain(h.happy))}</span> <span class="ach-happy-word">Happy</span></span></div></div></div>`;
                 };
-                
+
                 const colCount = 2;
                 const rpc = Math.ceil(helpers.length / colCount);
                 const cols = [];
@@ -9864,39 +9879,67 @@
                 helpersHTML = `<div class="bbgl-ach-subsection-title" style="margin-top:2px" data-ach-section="happy-helpers" data-clip-section="${achEsc(clipHelpers)}" data-clip-title="Happy Helpers" data-tooltip="Click any stat or row to copy its data, or click this title to copy the entire section to your clipboard.">HAPPY HELPERS</div><div class="bbgl-ach-cols" style="grid-template-columns:repeat(${colCount},minmax(0,1fr)); padding-top:1px; padding-bottom:0;">${cols.join('')}</div>`;
             }
         }
-        
+
         return `<div class="bbgl-ach-section bbgl-ach-section-hh"><div class="bbgl-ach-section-title" data-ach-section="happy-hopping" data-clip-section="${achEsc(clipAll)}" data-clip-title="Happy Hopping" data-tooltip="Click any stat or row to copy its data, or click this title to copy the entire section to your clipboard.">HAPPY HOPPING</div>${rowsHTML}${helpersHTML}</div>`;
     }
 
     function achBuildPageOverview(d) {
-        const STATS = ['str', 'def', 'spd', 'dex'];
-        const STAT_LABEL = { str: 'Strength', def: 'Defense', spd: 'Speed', dex: 'Dexterity' };
         const NULL = '<span class="ach-null">—</span>';
         const enh = d.statEnhByStat || {};
+        const enrg = d.energyItemTotals || {};
+        const STAT_ABBR = { str: 'Str', def: 'Def', spd: 'Spd', dex: 'Dex' };
 
-        // ── Row 1: header (title + per-stat columns) ──
-        const headerStats = STATS.map(sk => `<div class="ach-stat-header ach-stat-${sk}">${STAT_LABEL[sk]}</div>`).join('');
-        const header = `<div class="bbgl-ach-grid-header"><div class="ach-grid-label-area"><span class="bbgl-ach-section-title">OPULENT OVERVIEW</span></div>${headerStats}</div>`;
+        const STAT_ENH_MAP = { 2150: 'str', 2130: 'spd', 2140: 'def', 2120: 'dex' };
+        const LEFT_COL = [2150, 2130, 2290, 2040, 4900];
+        const RIGHT_COL = [2140, 2120, 2230, 2190, 8981];
 
-        // ── Rows 3-4: stat enhancer info (uses + gains per stat) ──
-        const valRow = (label, cellFn, tip) => {
-            const cells = STATS.map(sk => `<div class="bbgl-ach-stat-cell" data-stat="${sk}"><span class="ach-value">${cellFn(sk)}</span></div>`).join('');
-            return `<div class="bbgl-ach-row bbgl-ach-row-multi"${tip ? ` data-tooltip="${achEsc(tip)}"` : ''}><div class="ach-grid-label-area"><div class="ach-k">${achEsc(label)}</div></div>${cells}</div>`;
+        const buildRow = (id) => {
+            const meta = ITEM_LOG_META[id];
+            const label = meta.achLabel || meta.label;
+            const sk = STAT_ENH_MAP[id];
+            let countHtml, gainedHtml, clipVal, tip;
+
+            if (sk) {
+                const rec = enh[sk] || { count: 0, gain: 0 };
+                countHtml = rec.count > 0 ? achEsc(Formatter.number(rec.count)) : NULL;
+                // Stat label always shows; number is — when no data
+                const gainNumStr = rec.gain > 0 ? `+${achEsc(achFmtGain(rec.gain))}` : null;
+                const gainNumHtml = gainNumStr ? `<span class="ach-stat-${sk}">${gainNumStr}</span>` : NULL;
+                gainedHtml = `${gainNumHtml} <span class="ach-stat-${sk}">${STAT_ABBR[sk]}</span>`;
+                clipVal = `${label}: ${rec.count} (+${achFmtGain(rec.gain)} ${STAT_ABBR[sk]})`;
+                tip = `${achEsc(label)} | ${STAT_ABBR[sk]} Gained`;
+            } else {
+                const rec = enrg[id] || { count: 0, energy: 0 };
+                countHtml = rec.count > 0 ? achEsc(Formatter.number(rec.count)) : NULL;
+                const gainNumStr = rec.energy > 0 ? `+${achEsc(Formatter.number(rec.energy))}` : null;
+                const gainNumHtml = gainNumStr ? `<span class="ach-enh-e-label">${gainNumStr}</span>` : NULL;
+                gainedHtml = `${gainNumHtml} <span class="ach-enh-e-label">Energy</span>`;
+                clipVal = `${label}: ${rec.count} (+${Formatter.number(rec.energy)} Energy)`;
+                tip = `${achEsc(label)} | Energy Gained`;
+            }
+
+            const key = `enh-${id}`;
+            return `<div class="bbgl-ach-row bbgl-ach-enh-row" data-tooltip="${achEsc(tip)}" data-ach-key="${key}" data-clip="${achEsc(clipVal)}"><div class="ach-row-main"><div class="ach-k-stack"><span class="ach-k"><span class="ach-title-long">${achEsc(label)}:</span><span class="ach-title-short">${achEsc(label)}:</span></span></div><div class="ach-v-wrap"><span class="ach-value">${countHtml}</span><span class="ach-value ach-enh-gained">${gainedHtml}</span></div></div></div>`;
         };
-        const fmtCount = (n, sing, plur) => n ? n + `<span class="ach-unit"> ${n === 1 ? sing : plur}</span>` : NULL;
-        const enhUsesCell = sk => fmtCount((enh[sk] && enh[sk].count) || 0, 'Use', 'Uses');
-        const enhGainsCell = sk => (enh[sk] && enh[sk].gain > 0) ? Formatter.dual(enh[sk].gain) : NULL;
-        const enhUsesRow = valRow('Enh Uses', enhUsesCell, 'Total stat enhancer uses per stat.');
-        const enhGainsRow = valRow('Enh Gains', enhGainsCell, 'Total stats gained from stat enhancers per stat.');
 
-        // ── Rows 5-6: career snapshot, two metrics per row to respect the height budget ──
-        const sinceDate = d.logStartDate ? Formatter.datePretty(Formatter.dateLogical(d.logStartDate * 1000)) : '—';
-        const totalNow = d.currentStats ? d.currentStats.total : 0;
-        const metaPair = (l1, v1, l2, v2, tip) => `<div class="bbgl-ach-row bbgl-ach-ov-meta"${tip ? ` data-tooltip="${achEsc(tip)}"` : ''}><span class="bbgl-ach-ov-mk">${achEsc(l1)}</span><span class="bbgl-ach-ov-mv">${v1}</span><span class="bbgl-ach-ov-mk">${achEsc(l2)}</span><span class="bbgl-ach-ov-mv">${v2}</span></div>`;
-        const meta1 = metaPair('Total', d.currentStats ? achEsc(achFmtGain(totalNow)) : '—', 'Since', achEsc(sinceDate), 'Current total stats, and the date your tracking began.');
-        const meta2 = metaPair('Days', achEsc(Formatter.number(d.trainingDays || 0)) + '/' + achEsc(Formatter.number(d.calDays || 0)), 'Gained', '+' + achEsc(achFmtGain(d.lifetimeGains || 0)), 'Days trained out of days tracked, and total stats gained all-time.');
+        const leftHTML = LEFT_COL.map(buildRow).join('');
+        const rightHTML = RIGHT_COL.map(buildRow).join('');
 
-        return `<div class="bbgl-ach-section bbgl-ach-section-page0 bbgl-ach-section-overview">${header}${enhUsesRow}${enhGainsRow}${meta1}${meta2}</div>`;
+        const clipAll = 'Endocrine Enhancers\n' +
+            [...LEFT_COL, ...RIGHT_COL].map(id => {
+                const meta = ITEM_LOG_META[id];
+                const label = meta.achLabel || meta.label;
+                const sk = STAT_ENH_MAP[id];
+                if (sk) {
+                    const rec = enh[sk] || { count: 0, gain: 0 };
+                    return `${label}: ${rec.count} (+${achFmtGain(rec.gain)} ${STAT_ABBR[sk]})`;
+                }
+                const rec = enrg[id] || { count: 0, energy: 0 };
+                return `${label}: ${rec.count} (+${Formatter.number(rec.energy)} Energy)`;
+            }).join('\n');
+
+        const cols = `<div class="bbgl-ach-col">${leftHTML}</div><div class="bbgl-ach-col">${rightHTML}</div>`;
+        return `<div class="bbgl-ach-section bbgl-ach-section-energy"><div class="bbgl-ach-section-title" data-ach-section="endocrine-enhancers" data-clip-section="${achEsc(clipAll)}" data-clip-title="Endocrine Enhancers" data-tooltip="Click any row to copy its data, or click this title to copy the entire section to your clipboard.">ENDOCRINE ENHANCERS</div><div class="bbgl-ach-cols" style="grid-template-columns:repeat(2,minmax(0,1fr));">${cols}</div></div>`;
     }
 
     function buildAchievementsPage(pageIdx, d) {
@@ -10058,7 +10101,7 @@
             def: 'Defense',
             spd: 'Speed',
             dex: 'Dexterity'
-        } [s] || s;
+        }[s] || s;
     }
 
     function achFmtGainsLine(g) {
@@ -10199,9 +10242,20 @@
     }
 
     function handleAchCopy(el) {
-        // The Opulent Overview page has no click-to-copy wiring yet; bail so its rows/titles
-        // (which share .bbgl-ach-row / -section-title classes) don't copy a bare header.
-        if (el.closest && el.closest('.bbgl-ach-section-overview')) return;
+        if (el.closest && el.closest('.bbgl-ach-section-energy')) {
+            const row = el.closest('.bbgl-ach-enh-row');
+            const title = el.closest('.bbgl-ach-section-title');
+            if (title) {
+                const clip = title.getAttribute('data-clip-section');
+                if (clip) { navigator.clipboard.writeText(clip).then(() => flashCopied(el.closest('.bbgl-ach-section-energy'))); }
+                return;
+            }
+            if (row) {
+                const clip = row.getAttribute('data-clip');
+                if (clip) { navigator.clipboard.writeText(clip).then(() => flashCopied(row)); }
+            }
+            return;
+        }
         const H = '\uD83D\uDC51BBGL Achievements',
             cache = runtime._achCache;
         let txt = '',
@@ -10413,7 +10467,7 @@
                     'green-streak': ['Longest Green Streak (1,000 E+)', r.longestGoalStreak, r.longestGoalStreakGains, r.longestGoalStreakStart, r.longestGoalStreakEnd],
                     'gold-streak': ['Longest Gold Streak (1,500 E+)', r.longestGoldStreak, r.longestGoldStreakGains, r.longestGoldStreakStart, r.longestGoldStreakEnd],
                     'diamond-streak': ['Longest Diamond Streak (2,000 E+)', r.longestDiamondStreak, r.longestDiamondStreakGains, r.longestDiamondStreakStart, r.longestDiamondStreakEnd]
-                } [key];
+                }[key];
                 const label = SK[0],
                     len = SK[1] || 0,
                     gains = SK[2],
@@ -10697,15 +10751,15 @@
                 type: 'text/plain'
             });
             if (navigator.canShare && navigator.canShare({
-                    files: [f]
-                }) && window.innerWidth <= 800) {
+                files: [f]
+            }) && window.innerWidth <= 800) {
                 await navigator.share({
                     title: filename,
                     files: [f]
                 });
                 return;
             }
-        } catch (e) {}
+        } catch (e) { }
         const blob = new Blob([content], {
             type: 'application/json'
         });
@@ -10770,7 +10824,7 @@
                     if (typeof stickers === 'string') {
                         try {
                             stickers = JSON.parse(stickers);
-                        } catch (e) {}
+                        } catch (e) { }
                     }
                     if (!stickers) stickers = {};
                     j.storage.meta.stickers = stickers;
@@ -10805,7 +10859,7 @@
                             localStorage.setItem(KEYS.CHANGELOG_NOTIF, '1');
                             syncChangelogNotif(true);
                         }
-                    } catch (e) {}
+                    } catch (e) { }
                     DataController.invalidate();
                     calendarState.selectedData = null;
                     calendarState.selectedLabel = null;
@@ -10941,7 +10995,7 @@
                     f = f.return;
                     depth++;
                 }
-            } catch (e) {}
+            } catch (e) { }
             return null;
         },
         scanGyms() {
@@ -11314,7 +11368,7 @@
         let pctDiamond = Math.min(100, totDiamond / 10);
         let pctGold = Math.min(100 - pctDiamond, totGold / 10);
         let pctGreen = Math.min(100 - pctDiamond - pctGold, totGreen / 10);
-        
+
         let sum = pctGreen + pctGold + pctDiamond;
         if (goal && sum < 100) {
             const deficit = 100 - sum;
@@ -11353,7 +11407,7 @@
 
         let actualDLeft = dLeft;
         let gRight = pctGreen;
-        
+
         let greenTouchesNext = false;
         let goldTouchesPrev = false;
         if (pctDiamond > 0) {
@@ -11865,12 +11919,12 @@
         });
     }
     const SB_DESKTOP = {
-            target: '#nav-gym[class*="area-desktop"]',
-            container: 'area-desktop___vZLI8',
-            link: 'desktopLink___SG2RU',
-            row: 'area-row___iBD8N',
-            id: 'nav-gym-log-desktop'
-        },
+        target: '#nav-gym[class*="area-desktop"]',
+        container: 'area-desktop___vZLI8',
+        link: 'desktopLink___SG2RU',
+        row: 'area-row___iBD8N',
+        id: 'nav-gym-log-desktop'
+    },
         SB_MOBILE = {
             target: '#nav-gym[class*="area-mobile"]',
             container: 'area-mobile___sx8BQ',
@@ -11966,7 +12020,7 @@
             if (!next.has(w)) {
                 try {
                     runtime.layoutResizeObserver.unobserve(w);
-                } catch (_) {}
+                } catch (_) { }
                 prev.delete(w);
             }
         });
@@ -12089,7 +12143,7 @@
                 _syncLayoutResizeTargets();
                 handleLayout();
                 clearTimeout(runtime._layoutResyncTimer);
-                runtime._layoutResyncTimer = setTimeout(function() {
+                runtime._layoutResyncTimer = setTimeout(function () {
                     runtime._layoutResyncTimer = null;
                     _syncLayoutResizeTargets();
                 }, 350);
@@ -12472,7 +12526,7 @@
         });
     }
     const DOC_LOADING_HTML = `<div style="padding:20px; text-align:center; color:#888;">Loading...</div>`;
-    const DOC_ERROR_HTML   = `<div style="padding:20px; text-align:center; color:#888;">Could not load document. Check your connection.</div>`;
+    const DOC_ERROR_HTML = `<div style="padding:20px; text-align:center; color:#888;">Could not load document. Check your connection.</div>`;
 
     const PRIVACY_TEXT = {
         ACK_INTRO: `<div style="padding:0 0 8px 0; color:#bbb; font-size:12px;">By using this script, you acknowledge and agree to the following:</div>`,
@@ -12481,10 +12535,10 @@
 
     function buildPrivacyModalHTML(reviewMode) {
         const ackRows = PRIVACY_TEXT.ACK_ITEMS.map((txt, i) => {
-                const ctrl = reviewMode ? `<span class="bbgl-ack-check">${ICONS.CHECK}</span>` : `<input type="checkbox" id="bbgl-ack-${i + 1}">`,
-                    label = reviewMode ? `<span>${txt}</span>` : `<label for="bbgl-ack-${i + 1}">${txt}</label>`;
-                return `<div class="bbgl-ack-row">${ctrl}${label}</div>`;
-            }).join(''),
+            const ctrl = reviewMode ? `<span class="bbgl-ack-check">${ICONS.CHECK}</span>` : `<input type="checkbox" id="bbgl-ack-${i + 1}">`,
+                label = reviewMode ? `<span>${txt}</span>` : `<label for="bbgl-ack-${i + 1}">${txt}</label>`;
+            return `<div class="bbgl-ack-row">${ctrl}${label}</div>`;
+        }).join(''),
             discSection = buildSection('Privacy Disclosure', `<div class="bbgl-modal-scrollbox"><div id="bbgl-privacy-disc">${DOC_LOADING_HTML}</div></div>`, 'margin-bottom:5px;'),
             ackSection = buildSection('User Acknowledgement', `<div class="bbgl-modal-scrollbox">${PRIVACY_TEXT.ACK_INTRO}${ackRows}</div>`, 'margin-bottom:8px;'),
             footer = reviewMode ? '' : `<div style="display:flex; margin:0 10px 4px 10px;">${buildButton('bbgl-privacy-demo-btn', 'DEMO', 'purple', 'flex:2; border-radius:4px 0 0 4px; margin:0;')}<span class="bbgl-agree-wrap" style="flex:1; display:flex;" data-tooltip="${TOOLTIPS.AGREE_GATE}">${buildButton('bbgl-privacy-agree-btn', 'AGREE', 'green', 'flex:1; border-radius:0 4px 4px 0; margin:0;')}</span></div>`;
@@ -12588,7 +12642,7 @@
         refreshStartState();
         // Agreement is intentionally not persisted: starting the scan creates its own timers, which
         // are the record. The disclaimer is shown fresh on every manual start.
-        startBtn.onclick = function() {
+        startBtn.onclick = function () {
             if (startBtn.classList.contains('bbgl-btn-disabled')) return;
             this.blur();
             closeBackfillModal();
@@ -12632,12 +12686,12 @@
             };
             boxes.forEach(b => b.onchange = refreshAgreeState);
             refreshAgreeState();
-            modal.querySelector('#bbgl-privacy-demo-btn').onclick = function() {
+            modal.querySelector('#bbgl-privacy-demo-btn').onclick = function () {
                 this.blur();
                 enterDemo('privacy');
                 closePrivacyModal();
             };
-            agreeBtn.onclick = function() {
+            agreeBtn.onclick = function () {
                 if (agreeBtn.classList.contains('bbgl-btn-disabled')) return;
                 this.blur();
                 userConfig.privacyAgreed = new Date().toISOString();
@@ -12743,12 +12797,12 @@
         try {
             const raw = await fetchDoc('welcome');
             const parts = raw.split('<!--RETURNING-->');
-            introHTML     = parts[0] || DOC_ERROR_HTML;
+            introHTML = parts[0] || DOC_ERROR_HTML;
             returningHTML = parts[1] || DOC_ERROR_HTML;
-        } catch (e) {}
-        const introEl     = wv.querySelector('#bbgl-welcome-intro-text');
+        } catch (e) { }
+        const introEl = wv.querySelector('#bbgl-welcome-intro-text');
         const returningEl = wv.querySelector('#bbgl-welcome-returning-text');
-        if (introEl)     introEl.innerHTML = introHTML;
+        if (introEl) introEl.innerHTML = introHTML;
         if (returningEl) returningEl.innerHTML = returningHTML;
     }
 
@@ -12866,9 +12920,9 @@
                 tl = DataController.getTimeline(),
                 h = getActiveHistory();
             let sr = {
-                    ...ZERO_BREAKDOWN,
-                    total: 0
-                },
+                ...ZERO_BREAKDOWN,
+                total: 0
+            },
                 startTs = 0;
             if (vt === 'DAY') {
                 const _p = sl.date.split('-');
@@ -12920,8 +12974,8 @@
             };
             const _snapAt = (cutoffMs, d, baseVals, baseRates) => {
                 let vals = {
-                        ...baseVals
-                    },
+                    ...baseVals
+                },
                     rates = {
                         ...baseRates
                     };
@@ -12999,8 +13053,8 @@
                     };
                 };
                 let lr = {
-                        ...sr
-                    },
+                    ...sr
+                },
                     now = Date.now();
                 const BKT = 15 * 60 * 1000;
                 const sBkts = [];
@@ -13773,11 +13827,11 @@
                 return;
             }
             const dat = GraphController._transformData({
-                    selectedData: calendarState.selectedData,
-                    selectedLabel: calendarState.selectedLabel,
-                    year: calendarState.year,
-                    graphMode: graphState.mode
-                }),
+                selectedData: calendarState.selectedData,
+                selectedLabel: calendarState.selectedLabel,
+                year: calendarState.year,
+                graphMode: graphState.mode
+            }),
                 tr = dat.trends,
                 lbls = dat.labels,
                 vt = dat.viewType,
@@ -13887,9 +13941,9 @@
                 g.appendChild(t);
             }
             const gx = (v) => {
-                    const r = xp.max - xp.min;
-                    return r === 0 ? 0 : ((v - xp.min) / r) * cw;
-                },
+                const r = xp.max - xp.min;
+                return r === 0 ? 0 : ((v - xp.min) / r) * cw;
+            },
                 gy = (v) => chPlot - ((v - fMin) / fr) * chPlot;
             (function _drawTicks() {
                 const _addTick = (tx) => {
@@ -14463,8 +14517,8 @@
         if (runtime.viewerLoopId) cancelAnimationFrame(runtime.viewerLoopId);
         requestAnimationFrame(animateViewer);
         const spdUp = () => {
-                runtime.viewerSpeed = 3;
-            },
+            runtime.viewerSpeed = 3;
+        },
             spdDn = () => {
                 runtime.viewerSpeed = 0.3;
             };
@@ -14610,7 +14664,7 @@
                     specId: id
                 });
                 runtime.trainDebouncers[id] = null;
-            }, 1500);
+            }, 1000);
         }
     }
 
@@ -15124,13 +15178,13 @@
             runtime.viewerLoopId = null;
         }
         const gel = (m) => {
-                if (m === 'settings') return sp;
-                if (m === 'welcome') return wv;
-                if (m === 'graph') return dom.graphContainer;
-                if (m === 'stickers') return dom.stickerContainer;
-                if (m === 'achievements') return dom.achievementsContainer;
-                return dom.ledgerView;
-            },
+            if (m === 'settings') return sp;
+            if (m === 'welcome') return wv;
+            if (m === 'graph') return dom.graphContainer;
+            if (m === 'stickers') return dom.stickerContainer;
+            if (m === 'achievements') return dom.achievementsContainer;
+            return dom.ledgerView;
+        },
             cel = gel(cm),
             nel = gel(tgt);
         const app = () => {
@@ -15184,12 +15238,12 @@
                         iweekSel.onchange = () => onChangeWeekStart(iweekSel.value);
                     }
                     const ipb = wv.querySelector('#init-privacy-btn');
-                    if (ipb) ipb.onclick = function() {
+                    if (ipb) ipb.onclick = function () {
                         this.blur();
                         openPrivacyModal();
                     };
                     const isb = wv.querySelector('#init-start-btn');
-                    if (isb && iak) isb.onclick = async function() {
+                    if (isb && iak) isb.onclick = async function () {
                         this.blur();
                         const v = iak.value.trim();
                         if (!/^[a-zA-Z0-9]{16}$/.test(v)) {
@@ -15226,13 +15280,13 @@
                         }
                     };
                     const cb = wv.querySelector('#init-create-api-btn');
-                    if (cb) cb.onclick = function() {
+                    if (cb) cb.onclick = function () {
                         this.blur();
                         window.open('https://www.torn.com/preferences.php#tab=api?step=addNewKey&user=battlestats,log&=,,,,&logIds=56,52,54,50,23,6&title=Big%20Black%20Gym%20Log', '_blank');
                     };
                     const rib = wv.querySelector('#init-returning-import-btn'),
                         rif = wv.querySelector('#init-import-file');
-                    if (rib && rif) rib.onclick = function() {
+                    if (rib && rif) rib.onclick = function () {
                         this.blur();
                         rif.click();
                     };
@@ -15572,7 +15626,7 @@
         if (ds && ds.lastResult === 'partial') {
             // Cooldown elapsed: stay in the resume state until the log is fully backfilled.
             btn.textContent = 'Partial Scan Complete! Resume?';
-            btn.onclick = function() {
+            btn.onclick = function () {
                 this.blur();
                 backfillLogs(this);
             };
@@ -15580,7 +15634,7 @@
         }
 
         btn.innerHTML = '<span class="view-std">BB Backfill</span><span class="view-exp">Big Black Backfill</span>';
-        btn.onclick = function() {
+        btn.onclick = function () {
             this.blur();
             openBackfillModal();
         };
@@ -15856,7 +15910,7 @@
             }
         };
         const ub = get('updt-settings-btn');
-        if (ub && ai) ub.onclick = async function() {
+        if (ub && ai) ub.onclick = async function () {
             this.blur();
             const v = ai.value.trim();
             if (!/^[a-zA-Z0-9]{16}$/.test(v)) {
@@ -15891,7 +15945,7 @@
             }
         };
         const cab = get('clear-api-btn');
-        if (cab && ai) cab.onclick = function() {
+        if (cab && ai) cab.onclick = function () {
             this.blur();
             userConfig.apiKey = '';
             saveConfig();
@@ -15907,23 +15961,23 @@
             }, 2000);
         };
         const crb = get('create-api-btn');
-        if (crb) crb.onclick = function() {
+        if (crb) crb.onclick = function () {
             this.blur();
             window.open('https://www.torn.com/preferences.php#tab=api?step=addNewKey&user=battlestats,log&=,,,,&logIds=56,52,54,50,23,6&title=Big%20Black%20Gym%20Log', '_blank');
         };
         const rb = get('refresh-log-btn');
-        if (rb) rb.onclick = function() {
+        if (rb) rb.onclick = function () {
             this.blur();
             if (checkRefreshCooldown(this)) return;
             syncWithFeedback('FULL_SYNC');
         };
         const eb = get('export-btn');
-        if (eb) eb.onclick = function() {
+        if (eb) eb.onclick = function () {
             this.blur();
             exportData();
         };
         const ib = get('import-btn');
-        if (ib) ib.onclick = function() {
+        if (ib) ib.onclick = function () {
             this.blur();
             get('import-file').click();
         };
@@ -15933,28 +15987,28 @@
         // so renderBackfillButton owns wiring its onclick for the current state.
         renderBackfillButton();
         const clb = get('clear-btn');
-        if (clb) clb.onclick = function() {
+        if (clb) clb.onclick = function () {
             this.blur();
             clearData();
         };
         const wb = get('show-welcome-btn');
-        if (wb) wb.onclick = function() {
+        if (wb) wb.onclick = function () {
             this.blur();
             runtime.welcomeReturn = 'settings';
             switchView('welcome');
         };
         const cl = get('settings-changelog-btn');
-        if (cl) cl.onclick = function() {
+        if (cl) cl.onclick = function () {
             this.blur();
             openChangelogModal();
         };
         const pl = get('settings-privacy-btn');
-        if (pl) pl.onclick = function() {
+        if (pl) pl.onclick = function () {
             this.blur();
             openPrivacyModal();
         };
         const sdemo = get('settings-demo-btn');
-        if (sdemo) sdemo.onclick = function() {
+        if (sdemo) sdemo.onclick = function () {
             this.blur();
             if (runtime.demoMode) {
                 const deb = document.getElementById('bbgl-demo-exit');
@@ -15964,17 +16018,17 @@
             }
         };
         const fgb = get('feature-guide-btn');
-        if (fgb) fgb.onclick = function() {
+        if (fgb) fgb.onclick = function () {
             this.blur();
             openFeatureGuideModal();
         };
         const sbb = get('settings-backfill-btn');
-        if (sbb) sbb.onclick = function() {
+        if (sbb) sbb.onclick = function () {
             this.blur();
             openBackfillModal();
         };
         const drb = get('dev-reset-btn');
-        if (drb) drb.onclick = function() {
+        if (drb) drb.onclick = function () {
             this.blur();
             devFactoryReset();
         };
@@ -16282,13 +16336,13 @@
         // fast-paths out when nothing has changed, so steady state stays lightweight.
         const _bbglRecheckNav = () => {
             [150, 600, 1500].forEach(ms => setTimeout(() => {
-                try { handleDomMutation(); } catch (e) {}
+                try { handleDomMutation(); } catch (e) { }
             }, ms));
         };
         ['pushState', 'replaceState'].forEach(name => {
             const orig = history[name];
             if (typeof orig !== 'function' || orig._bbglWrapped) return;
-            const wrapped = function() {
+            const wrapped = function () {
                 const r = orig.apply(this, arguments);
                 _bbglRecheckNav();
                 return r;
@@ -16532,7 +16586,7 @@
         }, {
             passive: false
         });
-        document.addEventListener('click', function(e) {
+        document.addEventListener('click', function (e) {
             if (e.target.closest('#bbgl-gym-tab')) {
                 e.preventDefault();
                 e.stopPropagation();
@@ -16618,14 +16672,14 @@
                 if (!hit) return;
                 if (hit.id === 'nav-gym') handleNavGym();
                 else if (hit.id === 'notes_panel_button') handleNotesBtn(hit);
-            } catch (e) {}
+            } catch (e) { }
         }
-        Node.prototype.insertBefore = function(n, r) {
+        Node.prototype.insertBefore = function (n, r) {
             const res = _oI.call(this, n, r);
             check(n);
             return res;
         };
-        Node.prototype.appendChild = function(n) {
+        Node.prototype.appendChild = function (n) {
             const res = _oA.call(this, n);
             check(n);
             return res;

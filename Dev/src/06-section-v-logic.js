@@ -1233,6 +1233,8 @@
         };
         const happyItemTotals = {};
         HAPPY_LOGS.forEach(id => { happyItemTotals[id] = { count: 0, happy: 0 }; });
+        const energyItemTotals = {};
+        ENERGY_LOGS.forEach(id => { energyItemTotals[id] = { count: 0, energy: 0 }; });
         const statEnhByStat = { str: { count: 0, gain: 0 }, def: { count: 0, gain: 0 }, spd: { count: 0, gain: 0 }, dex: { count: 0, gain: 0 } };
         const weekE = {},
             weekG = {},
@@ -1316,10 +1318,17 @@
                     const qty = day.items[id] || 0;
                     if (qty > 0) happyItemTotals[id].count += qty;
                 });
+                ENERGY_LOGS.forEach(id => {
+                    const qty = day.items[id] || 0;
+                    if (qty > 0) energyItemTotals[id].count += qty;
+                });
             }
             (day.series || []).forEach(e => {
                 if (e.type === 'item' && e.happy && happyItemTotals[e.logId]) {
                     happyItemTotals[e.logId].happy += e.happy;
+                }
+                if (e.type === 'item' && e.energy && energyItemTotals[e.logId]) {
+                    energyItemTotals[e.logId].energy += e.energy;
                 }
                 if (e.type === 'item' && e.statKey && statEnhByStat[e.statKey]) {
                     statEnhByStat[e.statKey].count++;
@@ -1699,6 +1708,7 @@
             longestDiamondStreakEnd,
             longestDiamondStreakGains,
             happyItemTotals,
+            energyItemTotals,
             statEnhByStat
         };
     }
@@ -2087,7 +2097,7 @@
                 const helperRow = (h) => {
                     const tip = `${achEsc(h.label)} | Happy Gained`;
                     const clipVal = `${h.label}: ${h.count} (${Formatter.number(h.happy)} Happy)`;
-                    return `<div class="bbgl-ach-row" data-tooltip="${achEsc(tip)}" data-ach-key="happy-helper-${h.id}" data-clip="${achEsc(clipVal)}"><div class="ach-row-main"><div class="ach-k-stack"><span class="ach-k"><span class="ach-title-long">${achEsc(h.label)}</span><span class="ach-title-short">${achEsc(h.short)}</span>:</span></div><div class="ach-v-wrap"><span class="ach-value">${Formatter.number(h.count)}</span><span class="ach-value ach-happy-col">+${achEsc(achFmtGain(h.happy))} Happy</span></div></div></div>`;
+                    return `<div class="bbgl-ach-row" data-tooltip="${achEsc(tip)}" data-ach-key="happy-helper-${h.id}" data-clip="${achEsc(clipVal)}"><div class="ach-row-main"><div class="ach-k-stack"><span class="ach-k"><span class="ach-title-long">${achEsc(h.label)}</span><span class="ach-title-short">${achEsc(h.short)}</span>:</span></div><div class="ach-v-wrap"><span class="ach-value">${Formatter.number(h.count)}</span><span class="ach-value ach-happy-col"><span class="ach-happy-word">+${achEsc(achFmtGain(h.happy))}</span> <span class="ach-happy-word">Happy</span></span></div></div></div>`;
                 };
                 
                 const colCount = 2;
@@ -2110,34 +2120,62 @@
     }
 
     function achBuildPageOverview(d) {
-        const STATS = ['str', 'def', 'spd', 'dex'];
-        const STAT_LABEL = { str: 'Strength', def: 'Defense', spd: 'Speed', dex: 'Dexterity' };
         const NULL = '<span class="ach-null">—</span>';
         const enh = d.statEnhByStat || {};
+        const enrg = d.energyItemTotals || {};
+        const STAT_ABBR = { str: 'Str', def: 'Def', spd: 'Spd', dex: 'Dex' };
 
-        // ── Row 1: header (title + per-stat columns) ──
-        const headerStats = STATS.map(sk => `<div class="ach-stat-header ach-stat-${sk}">${STAT_LABEL[sk]}</div>`).join('');
-        const header = `<div class="bbgl-ach-grid-header"><div class="ach-grid-label-area"><span class="bbgl-ach-section-title">OPULENT OVERVIEW</span></div>${headerStats}</div>`;
+        const STAT_ENH_MAP = { 2150: 'str', 2130: 'spd', 2140: 'def', 2120: 'dex' };
+        const LEFT_COL  = [2150, 2130, 2290, 2040, 4900];
+        const RIGHT_COL = [2140, 2120, 2230, 2190, 8981];
 
-        // ── Rows 3-4: stat enhancer info (uses + gains per stat) ──
-        const valRow = (label, cellFn, tip) => {
-            const cells = STATS.map(sk => `<div class="bbgl-ach-stat-cell" data-stat="${sk}"><span class="ach-value">${cellFn(sk)}</span></div>`).join('');
-            return `<div class="bbgl-ach-row bbgl-ach-row-multi"${tip ? ` data-tooltip="${achEsc(tip)}"` : ''}><div class="ach-grid-label-area"><div class="ach-k">${achEsc(label)}</div></div>${cells}</div>`;
+        const buildRow = (id) => {
+            const meta = ITEM_LOG_META[id];
+            const label = meta.achLabel || meta.label;
+            const sk = STAT_ENH_MAP[id];
+            let countHtml, gainedHtml, clipVal, tip;
+
+            if (sk) {
+                const rec = enh[sk] || { count: 0, gain: 0 };
+                countHtml = rec.count > 0 ? achEsc(Formatter.number(rec.count)) : NULL;
+                // Stat label always shows; number is — when no data
+                const gainNumStr = rec.gain > 0 ? `+${achEsc(achFmtGain(rec.gain))}` : null;
+                const gainNumHtml = gainNumStr ? `<span class="ach-stat-${sk}">${gainNumStr}</span>` : NULL;
+                gainedHtml = `${gainNumHtml} <span class="ach-stat-${sk}">${STAT_ABBR[sk]}</span>`;
+                clipVal = `${label}: ${rec.count} (+${achFmtGain(rec.gain)} ${STAT_ABBR[sk]})`;
+                tip = `${achEsc(label)} | ${STAT_ABBR[sk]} Gained`;
+            } else {
+                const rec = enrg[id] || { count: 0, energy: 0 };
+                countHtml = rec.count > 0 ? achEsc(Formatter.number(rec.count)) : NULL;
+                const gainNumStr = rec.energy > 0 ? `+${achEsc(Formatter.number(rec.energy))}` : null;
+                const gainNumHtml = gainNumStr ? `<span class="ach-enh-e-label">${gainNumStr}</span>` : NULL;
+                gainedHtml = `${gainNumHtml} <span class="ach-enh-e-label">Energy</span>`;
+                clipVal = `${label}: ${rec.count} (+${Formatter.number(rec.energy)} Energy)`;
+                tip = `${achEsc(label)} | Energy Gained`;
+            }
+
+            const key = `enh-${id}`;
+            return `<div class="bbgl-ach-row bbgl-ach-enh-row" data-tooltip="${achEsc(tip)}" data-ach-key="${key}" data-clip="${achEsc(clipVal)}"><div class="ach-row-main"><div class="ach-k-stack"><span class="ach-k"><span class="ach-title-long">${achEsc(label)}:</span><span class="ach-title-short">${achEsc(label)}:</span></span></div><div class="ach-v-wrap"><span class="ach-value">${countHtml}</span><span class="ach-value ach-enh-gained">${gainedHtml}</span></div></div></div>`;
         };
-        const fmtCount = (n, sing, plur) => n ? n + `<span class="ach-unit"> ${n === 1 ? sing : plur}</span>` : NULL;
-        const enhUsesCell = sk => fmtCount((enh[sk] && enh[sk].count) || 0, 'Use', 'Uses');
-        const enhGainsCell = sk => (enh[sk] && enh[sk].gain > 0) ? Formatter.dual(enh[sk].gain) : NULL;
-        const enhUsesRow = valRow('Enh Uses', enhUsesCell, 'Total stat enhancer uses per stat.');
-        const enhGainsRow = valRow('Enh Gains', enhGainsCell, 'Total stats gained from stat enhancers per stat.');
 
-        // ── Rows 5-6: career snapshot, two metrics per row to respect the height budget ──
-        const sinceDate = d.logStartDate ? Formatter.datePretty(Formatter.dateLogical(d.logStartDate * 1000)) : '—';
-        const totalNow = d.currentStats ? d.currentStats.total : 0;
-        const metaPair = (l1, v1, l2, v2, tip) => `<div class="bbgl-ach-row bbgl-ach-ov-meta"${tip ? ` data-tooltip="${achEsc(tip)}"` : ''}><span class="bbgl-ach-ov-mk">${achEsc(l1)}</span><span class="bbgl-ach-ov-mv">${v1}</span><span class="bbgl-ach-ov-mk">${achEsc(l2)}</span><span class="bbgl-ach-ov-mv">${v2}</span></div>`;
-        const meta1 = metaPair('Total', d.currentStats ? achEsc(achFmtGain(totalNow)) : '—', 'Since', achEsc(sinceDate), 'Current total stats, and the date your tracking began.');
-        const meta2 = metaPair('Days', achEsc(Formatter.number(d.trainingDays || 0)) + '/' + achEsc(Formatter.number(d.calDays || 0)), 'Gained', '+' + achEsc(achFmtGain(d.lifetimeGains || 0)), 'Days trained out of days tracked, and total stats gained all-time.');
+        const leftHTML  = LEFT_COL.map(buildRow).join('');
+        const rightHTML = RIGHT_COL.map(buildRow).join('');
 
-        return `<div class="bbgl-ach-section bbgl-ach-section-page0 bbgl-ach-section-overview">${header}${enhUsesRow}${enhGainsRow}${meta1}${meta2}</div>`;
+        const clipAll = 'Endocrine Enhancers\n' +
+            [...LEFT_COL, ...RIGHT_COL].map(id => {
+                const meta = ITEM_LOG_META[id];
+                const label = meta.achLabel || meta.label;
+                const sk = STAT_ENH_MAP[id];
+                if (sk) {
+                    const rec = enh[sk] || { count: 0, gain: 0 };
+                    return `${label}: ${rec.count} (+${achFmtGain(rec.gain)} ${STAT_ABBR[sk]})`;
+                }
+                const rec = enrg[id] || { count: 0, energy: 0 };
+                return `${label}: ${rec.count} (+${Formatter.number(rec.energy)} Energy)`;
+            }).join('\n');
+
+        const cols = `<div class="bbgl-ach-col">${leftHTML}</div><div class="bbgl-ach-col">${rightHTML}</div>`;
+        return `<div class="bbgl-ach-section bbgl-ach-section-energy"><div class="bbgl-ach-section-title" data-ach-section="endocrine-enhancers" data-clip-section="${achEsc(clipAll)}" data-clip-title="Endocrine Enhancers" data-tooltip="Click any row to copy its data, or click this title to copy the entire section to your clipboard.">ENDOCRINE ENHANCERS</div><div class="bbgl-ach-cols" style="grid-template-columns:repeat(2,minmax(0,1fr));">${cols}</div></div>`;
     }
 
     function buildAchievementsPage(pageIdx, d) {
@@ -2440,9 +2478,20 @@
     }
 
     function handleAchCopy(el) {
-        // The Opulent Overview page has no click-to-copy wiring yet; bail so its rows/titles
-        // (which share .bbgl-ach-row / -section-title classes) don't copy a bare header.
-        if (el.closest && el.closest('.bbgl-ach-section-overview')) return;
+        if (el.closest && el.closest('.bbgl-ach-section-energy')) {
+            const row = el.closest('.bbgl-ach-enh-row');
+            const title = el.closest('.bbgl-ach-section-title');
+            if (title) {
+                const clip = title.getAttribute('data-clip-section');
+                if (clip) { navigator.clipboard.writeText(clip).then(() => flashCopied(el.closest('.bbgl-ach-section-energy'))); }
+                return;
+            }
+            if (row) {
+                const clip = row.getAttribute('data-clip');
+                if (clip) { navigator.clipboard.writeText(clip).then(() => flashCopied(row)); }
+            }
+            return;
+        }
         const H = '\uD83D\uDC51BBGL Achievements',
             cache = runtime._achCache;
         let txt = '',

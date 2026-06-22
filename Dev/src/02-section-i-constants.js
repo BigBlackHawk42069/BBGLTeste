@@ -87,13 +87,13 @@
     // Quantity-only codes carry no flag. ITEM_LOGS is derived so the API normalizer, the request
     // groups, the export totals, and the ledger counters all agree.
     const ITEM_LOG_META = {
-        8981: { label: 'Green Egg Used', group: 'energy', short: 'Egg' },
-        2290: { label: 'Xanax Taken', group: 'energy', short: 'Xans' },
-        2230: { label: 'LSD Taken', group: 'energy', short: 'LSD' },
-        2040: { label: 'Energy Can Used', group: 'energy', energy: true, short: 'Cans' },
-        2190: { label: 'Hotel Coupon Used', group: 'energy', short: 'FHC' },
-        4900: { label: 'Points Refill Used', group: 'energy', short: 'Refill' },
-        2120: { label: 'Parachute Used', group: 'stat', stat: true },
+        8981: { label: 'Green Egg Used', group: 'energy', energy: true, short: 'Egg', achLabel: 'Green Eggs Used' },
+        2290: { label: 'Xanax Taken', group: 'energy', energy: true, short: 'Xans' },
+        2230: { label: 'LSD Taken', group: 'energy', energy: true, short: 'LSD' },
+        2040: { label: 'Energy Can Used', group: 'energy', energy: true, short: 'Cans', achLabel: 'Energy Cans Used' },
+        2190: { label: 'Hotel Coupon Used', group: 'energy', energy: true, short: 'FHC', achLabel: 'FHCs Used' },
+        4900: { label: 'Points Refill Used', group: 'energy', energy: true, short: 'Refill', achLabel: 'Refills Used' },
+        2120: { label: 'Parachute Used', group: 'stat', stat: true, achLabel: 'Parachutes Used' },
         2130: { label: 'Skateboard Used', group: 'stat', stat: true },
         2140: { label: 'Boxing Gloves Used', group: 'stat', stat: true },
         2150: { label: 'Dumbbells Used', group: 'stat', stat: true },

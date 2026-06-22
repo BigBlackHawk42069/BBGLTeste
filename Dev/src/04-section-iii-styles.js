@@ -3916,44 +3916,39 @@
                     }
                     /* ─────────────────────────────────────────────────────── */
 
-                    /* ─── Overview Page (Opulent Overview) ──────────────────── */
-                    /* Built on .bbgl-ach-section-page0 so the header + per-stat rows inherit the
-                       tuned grid/sizing. Only the inline level bar and the 2-up career rows are
-                       bespoke. Kept to six rows to fit the fixed achievements height budget. */
+                    /* ─── Endocrine Enhancers Page ──────────────────────── */
 
-                    /* Rows 5-6: career snapshot — two label/value pairs per row. */
-                    .bbgl-ach-section-overview .bbgl-ach-ov-meta {
-                        display: grid;
-                        grid-template-columns: auto minmax(0, 1fr) auto minmax(0, 1fr);
-                        align-items: center;
-                        column-gap: clamp(4px, 1cqi, 10px);
+                    .bbgl-ach-section-energy .bbgl-ach-row {
                         padding: clamp(2px, .4cqi, 4px) 2px;
-                        border-bottom: 1px solid rgba(255, 255, 255, .04);
+                        border-bottom: 1px solid rgba(255, 255, 255, .05);
+                        font-size: clamp(11px, 2.05cqi, 13px) !important;
                     }
 
-                    .bbgl-ach-section-overview .bbgl-ach-ov-meta:last-child {
+                    #bbgl-panel:not(.bbgl-expanded):not(.bbgl-mode-page) .bbgl-ach-section-energy .bbgl-ach-row {
+                        font-size: clamp(9px, 1.7cqi, 11px) !important;
+                    }
+
+                    #bbgl-panel.bbgl-expanded:not(.bbgl-mode-page) .bbgl-ach-section-energy .bbgl-ach-row {
+                        font-size: clamp(12px, 2.3cqi, 15px) !important;
+                    }
+
+                    .bbgl-ach-section-energy .bbgl-ach-row:last-of-type {
                         border-bottom: none;
                     }
 
-                    .bbgl-ach-ov-mk {
-                        font-family: var(--bbgl-ach-font);
-                        color: #888;
-                        font-weight: 500;
-                        font-size: clamp(8px, 1.5cqi, 10px);
-                        text-transform: uppercase;
-                        letter-spacing: .04em;
-                        white-space: nowrap;
+                    .ach-enh-e-label {
+                        color: #69f0ae;
+                        font-weight: 600;
                     }
 
-                    .bbgl-ach-ov-mv {
-                        font-family: var(--bbgl-ach-val-font);
-                        color: #ccc;
-                        font-variant-numeric: tabular-nums;
-                        font-size: clamp(8px, 1.5cqi, 11px);
-                        text-align: right;
-                        white-space: nowrap;
-                        overflow: hidden;
-                        text-overflow: ellipsis;
+                    .ach-enh-gained .ach-stat-str { color: #3264c6; }
+                    .ach-enh-gained .ach-stat-def { color: #dc3912; }
+                    .ach-enh-gained .ach-stat-spd { color: #ff9900; }
+                    .ach-enh-gained .ach-stat-dex { color: #109618; }
+
+                    .ach-happy-word {
+                        color: #f5c518;
+                        font-weight: 600;
                     }
                     /* ─────────────────────────────────────────────────────── */
 
@@ -5065,6 +5060,16 @@
                     #bbgl-panel.bbgl-expanded .bbgl-ach-row .ach-value.ach-happy-col,
                     #bbgl-panel.bbgl-mode-page .bbgl-ach-row .ach-value.ach-happy-col {
                         display: inline-flex;
+                    }
+
+                    .bbgl-ach-row .ach-value.ach-enh-gained {
+                        display: none;
+                    }
+
+                    #bbgl-panel.bbgl-expanded .bbgl-ach-row .ach-value.ach-enh-gained,
+                    #bbgl-panel.bbgl-mode-page .bbgl-ach-row .ach-value.ach-enh-gained {
+                        display: inline-flex;
+                        min-width: 5.5em;
                     }
 
                     #bbgl-panel.bbgl-expanded .ach-unit,
