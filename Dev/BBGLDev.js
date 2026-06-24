@@ -4513,6 +4513,12 @@
                         box-shadow: 0 0 5px rgba(255, 255, 255, .3), inset 0 2px 5px rgba(0, 0, 0, .8);
                     }
 
+                    #bbgl-panel:not(.bbgl-expanded):not(.bbgl-mode-page) body:not(.is-touch-device) .bbgl-weekly-track:hover,
+                    #bbgl-panel:not(.bbgl-expanded):not(.bbgl-mode-page) .bbgl-weekly-track.is-scrub-hovered,
+                    #bbgl-panel:not(.bbgl-expanded):not(.bbgl-mode-page) .bbgl-weekly-track.is-viewing {
+                        height: 12px;
+                    }
+
                     .bbgl-weekly-track.track-solidified {
                         background: repeating-linear-gradient(90deg, transparent 0, transparent 1px, rgba(0, 0, 0, .15) 1px, rgba(0, 0, 0, .15) 2px), linear-gradient(180deg, #333 0%, #555 30%, #999 60%, #555 70%, #222 100%);
                         box-shadow: inset 0 0 2px rgba(255, 255, 255, .2), 0 1px 2px rgba(0, 0, 0, .8);
@@ -4624,6 +4630,11 @@
                     .seg-polished-diamond {
                         background: linear-gradient(110deg, rgba(255, 80, 180, .9) 0%, rgba(80, 255, 180, .9) 33%, rgba(80, 180, 255, .9) 66%, rgba(200, 80, 255, .9) 100%), linear-gradient(180deg, #111 0%, #777 35%, #fff 45%, #fff 55%, #777 65%, #111 100%);
                         background-blend-mode: overlay, normal;
+                    }
+
+                    .seg-silver {
+                        background: linear-gradient(180deg, #222 0%, #555 35%, #aaa 45%, #aaa 55%, #555 65%, #1a1a1a 100%);
+                        box-shadow: inset 0 1px 2px rgba(0, 0, 0, .4);
                     }
 
                     /* ─── Level EXP Bar ─────────────────────────────────── */
@@ -8421,7 +8432,8 @@ const DataController = {
         if (!s.meta.logStartDate) {
             if (s.history.length > 0 || (s.today && s.today.lastLogTimestamp > 0)) {
                 const oldestTs = s.history.length > 0 ? Formatter.parse(s.history[0].date).getTime() / 1000 : s.today.lastLogTimestamp;
-                s.meta.logStartDate = oldestTs;
+                const agreedTs = Math.floor(Date.parse(userConfig.privacyAgreed) / 1000);
+                s.meta.logStartDate = agreedTs > 0 ? Math.min(oldestTs, agreedTs) : oldestTs;
             }
         }
         if (s.meta.logStartDate) {
@@ -11627,16 +11639,32 @@ const BestGymController = {
             hjWeek
         } = DataController.getHappyJumpData();
         const _wk = getWeekKey(sl._dailyList[0].date);
-        const {
-            totGreen,
-            totGold,
-            totDiamond
-        } = computeWeekCompletion(sl._dailyList, hjDaySet, hjWeek[_wk] || 0);
         const anchor = document.createElement('div');
         anchor.className = 'bbgl-weekly-anchor';
         const tr = document.createElement('div');
         tr.className = 'bbgl-weekly-track';
         tr.dataset.label = sl.label;
+        tr.onclick = (e) => { e.stopPropagation(); openHistory(sl, sl.label); };
+        tr.setAttribute('data-tooltip-html', generateRichTooltip(sl));
+        if (calendarState.selectedLabel === sl.label) tr.classList.add('is-viewing');
+        const installWeekKey = runtime.demoMode ? null : getInstallWeekKey();
+        if (installWeekKey && _wk < installWeekKey) {
+            const d = document.createElement('div');
+            d.className = 'bbgl-seg seg-silver';
+            d.style.position = 'absolute';
+            d.style.left = '0';
+            d.style.width = '100%';
+            tr.appendChild(d);
+            anchor.appendChild(tr);
+            cont.appendChild(anchor);
+            if (viewState.activeViewLabel === sl.label && calendarState.selectedLabel !== sl.label) openHistory(sl, sl.label);
+            return;
+        }
+        const {
+            totGreen,
+            totGold,
+            totDiamond
+        } = computeWeekCompletion(sl._dailyList, hjDaySet, hjWeek[_wk] || 0);
         const tot = totGreen + totGold + totDiamond;
         const goal = tot >= GAME.WEEKLY_GOAL;
         if (goal && userConfig.animations) tr.classList.add('track-polished');
@@ -11644,12 +11672,6 @@ const BestGymController = {
         const closed = sl._dailyList[sl._dailyList.length - 1].date < todayStr;
         const solid = closed && !goal;
         if (solid) tr.classList.add('track-solidified');
-        if (calendarState.selectedLabel === sl.label) tr.classList.add('is-viewing');
-        tr.onclick = (e) => {
-            e.stopPropagation();
-            openHistory(sl, sl.label);
-        };
-        tr.setAttribute('data-tooltip-html', generateRichTooltip(sl));
         let pctDiamond = Math.min(100, totDiamond / 10);
         let pctGold = Math.min(100 - pctDiamond, totGold / 10);
         let pctGreen = Math.min(100 - pctDiamond - pctGold, totGreen / 10);

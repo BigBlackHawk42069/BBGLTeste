@@ -286,16 +286,32 @@
             hjWeek
         } = DataController.getHappyJumpData();
         const _wk = getWeekKey(sl._dailyList[0].date);
-        const {
-            totGreen,
-            totGold,
-            totDiamond
-        } = computeWeekCompletion(sl._dailyList, hjDaySet, hjWeek[_wk] || 0);
         const anchor = document.createElement('div');
         anchor.className = 'bbgl-weekly-anchor';
         const tr = document.createElement('div');
         tr.className = 'bbgl-weekly-track';
         tr.dataset.label = sl.label;
+        tr.onclick = (e) => { e.stopPropagation(); openHistory(sl, sl.label); };
+        tr.setAttribute('data-tooltip-html', generateRichTooltip(sl));
+        if (calendarState.selectedLabel === sl.label) tr.classList.add('is-viewing');
+        const installWeekKey = runtime.demoMode ? null : getInstallWeekKey();
+        if (installWeekKey && _wk < installWeekKey) {
+            const d = document.createElement('div');
+            d.className = 'bbgl-seg seg-silver';
+            d.style.position = 'absolute';
+            d.style.left = '0';
+            d.style.width = '100%';
+            tr.appendChild(d);
+            anchor.appendChild(tr);
+            cont.appendChild(anchor);
+            if (viewState.activeViewLabel === sl.label && calendarState.selectedLabel !== sl.label) openHistory(sl, sl.label);
+            return;
+        }
+        const {
+            totGreen,
+            totGold,
+            totDiamond
+        } = computeWeekCompletion(sl._dailyList, hjDaySet, hjWeek[_wk] || 0);
         const tot = totGreen + totGold + totDiamond;
         const goal = tot >= GAME.WEEKLY_GOAL;
         if (goal && userConfig.animations) tr.classList.add('track-polished');
@@ -303,12 +319,6 @@
         const closed = sl._dailyList[sl._dailyList.length - 1].date < todayStr;
         const solid = closed && !goal;
         if (solid) tr.classList.add('track-solidified');
-        if (calendarState.selectedLabel === sl.label) tr.classList.add('is-viewing');
-        tr.onclick = (e) => {
-            e.stopPropagation();
-            openHistory(sl, sl.label);
-        };
-        tr.setAttribute('data-tooltip-html', generateRichTooltip(sl));
         let pctDiamond = Math.min(100, totDiamond / 10);
         let pctGold = Math.min(100 - pctDiamond, totGold / 10);
         let pctGreen = Math.min(100 - pctDiamond - pctGold, totGreen / 10);

@@ -512,7 +512,8 @@ const DataController = {
         if (!s.meta.logStartDate) {
             if (s.history.length > 0 || (s.today && s.today.lastLogTimestamp > 0)) {
                 const oldestTs = s.history.length > 0 ? Formatter.parse(s.history[0].date).getTime() / 1000 : s.today.lastLogTimestamp;
-                s.meta.logStartDate = oldestTs;
+                const agreedTs = Math.floor(Date.parse(userConfig.privacyAgreed) / 1000);
+                s.meta.logStartDate = agreedTs > 0 ? Math.min(oldestTs, agreedTs) : oldestTs;
             }
         }
         if (s.meta.logStartDate) {
