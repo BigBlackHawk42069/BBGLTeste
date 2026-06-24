@@ -12,7 +12,7 @@
 // @downloadURL  https://raw.githubusercontent.com/BigBlackHawk42069/BBGLTeste/refs/heads/main/BigBlackGymLog.js
 // ==/UserScript==
 
-(function () {
+(function() {
     'use strict';
     if (window.__BBGL_LOADED__) return;
     window.__BBGL_LOADED__ = true;
@@ -70,7 +70,7 @@
             if (!this._enabled()) return;
             try {
                 performance.mark('bbgl:' + n);
-            } catch (e) { }
+            } catch (e) {}
         },
         start(n) {
             this.mark(n + ':start');
@@ -80,7 +80,7 @@
             try {
                 performance.mark('bbgl:' + n + ':end');
                 performance.measure('bbgl:' + n, 'bbgl:' + n + ':start', 'bbgl:' + n + ':end');
-            } catch (e) { }
+            } catch (e) {}
         },
         async wrapAsync(n, fn) {
             this.start(n);
@@ -110,7 +110,9 @@
         SB_NOTIF: 'bbgl_sb_notif_seen',
         DEV_MODE: 'bbgl_dev_mode',
         CHANGELOG_VER: 'bbgl_changelog_seen_ver',
-        CHANGELOG_NOTIF: 'bbgl_changelog_notif'
+        CHANGELOG_NOTIF: 'bbgl_changelog_notif',
+        WARS_SYNC: 'bbgl_wars_last_sync_v1',
+        WARS_DATA: 'bbgl_wars_data_v1'
     };
     // [TEMP — delete before full release]
     const REQUIRED_CONFIG_VERSION = 1;
@@ -144,12 +146,13 @@
         }
     };
     // Item-use activity-log codes we track alongside gym training. Single source of truth for the
-    // log id -> display label/group/metric mapping. `group` (energy|stat|happy) buckets each code for
+    // log id -> display label/group/metric mapping. `group` (energy|stat|happy|od) buckets each code for
     // the grouped export totals and the happy-jump page. The per-item metric flag says what extra
     // datum to capture beyond a plain count:
-    //   energy:true -> data.energy_increased (energy cans)
-    //   happy:true  -> data.happy_increased  (happy items)
-    //   stat:true   -> data.<stat>_increased (stat enhancers; stat auto-detected)
+    //   energy:true     -> data.energy_increased (energy cans, xanax, lsd)
+    //   happy:true      -> data.happy_increased  (happy items)
+    //   stat:true       -> data.<stat>_increased (stat enhancers; stat auto-detected)
+    //   energyLost:true -> data.energy_decreased (ODs; stored as positive, treated as loss)
     // Quantity-only codes carry no flag. ITEM_LOGS is derived so the API normalizer, the request
     // groups, the export totals, and the ledger counters all agree.
     const ITEM_LOG_META = {
@@ -166,9 +169,11 @@
         2020: { label: 'Candy Used', group: 'happy', happy: true },
         2180: { label: 'Erotic DVD Used', group: 'happy', happy: true },
         2210: { label: 'Ecstasy Taken', group: 'happy', happy: true },
-        8983: { label: 'Yellow Egg Used', group: 'happy', happy: true }
+        8983: { label: 'Yellow Egg Used', group: 'happy', happy: true },
+        2291: { label: 'Xanax OD', group: 'od', energyLost: true, short: 'Xan OD' },
+        2231: { label: 'LSD OD', group: 'od', energyLost: true, short: 'LSD OD' }
     };
-    const ITEM_GROUP_LABELS = { energy: 'Energy Items', stat: 'Stat Items', happy: 'Happy Items' };
+    const ITEM_GROUP_LABELS = { energy: 'Energy Items', stat: 'Stat Items', happy: 'Happy Items', od: 'OD Items' };
     const ITEM_LOGS = Object.keys(ITEM_LOG_META).map(Number);
     const itemLogsByGroup = g => ITEM_LOGS.filter(id => ITEM_LOG_META[id].group === g);
     // Gym training log ids, one per stat.
@@ -176,13 +181,14 @@
     // Per-group code lists for the live request architecture. battlestats is always fetched on its
     // own call (it can't share a request with `log`), and any one `log=` call may carry at most 10
     // log types — so items are split across the train-click call (energy) and the heartbeat /
-    // reconciliation calls (stat + happy). Backfill ignores these and paginates one type at a time.
+    // reconciliation calls (stat + happy + od). Backfill ignores these and paginates one type at a time.
     const ENERGY_LOGS = itemLogsByGroup('energy'); // 6
     const STAT_LOGS = itemLogsByGroup('stat');     // 4
     const HAPPY_LOGS = itemLogsByGroup('happy');   // 4
-    const TRAIN_ENERGY_PARAM = [...TRAIN_LOGS, ...ENERGY_LOGS].join(','); // reconcile call (10)
-    const STAT_HAPPY_PARAM = [...STAT_LOGS, ...HAPPY_LOGS].join(',');     // reconcile call (8)
-    const ENERGY_PARAM = ENERGY_LOGS.join(',');                          // train-click rider (6)
+    const OD_LOGS = itemLogsByGroup('od');         // 2
+    const TRAIN_ENERGY_PARAM = [...TRAIN_LOGS, ...ENERGY_LOGS].join(',');          // reconcile call (10)
+    const STAT_HAPPY_PARAM = [...STAT_LOGS, ...HAPPY_LOGS, ...OD_LOGS].join(','); // reconcile call (10)
+    const ENERGY_PARAM = ENERGY_LOGS.join(',');                                    // train-click rider (6)
     // Backfill batches its backward scan into these two grouped `log=` calls (<=10 types each),
     // reusing the live reconcile groups so the scan spends one request per group per page instead
     // of one per log code. BACKFILL_GROUP_OF maps every individual code back to its group so the
@@ -194,8 +200,10 @@
     const BACKFILL_GROUP_KEYS = Object.keys(BACKFILL_GROUPS);
     const BACKFILL_GROUP_OF = {};
     [...TRAIN_LOGS, ...ENERGY_LOGS].forEach(c => { BACKFILL_GROUP_OF[String(c)] = 'trainEnergy'; });
-    [...STAT_LOGS, ...HAPPY_LOGS].forEach(c => { BACKFILL_GROUP_OF[String(c)] = 'statHappy'; });
+    [...STAT_LOGS, ...HAPPY_LOGS, ...OD_LOGS].forEach(c => { BACKFILL_GROUP_OF[String(c)] = 'statHappy'; });
     const XANAX_LOG = 2290,
+        XANAX_OD_LOG = 2291,
+        LSD_OD_LOG = 2231,
         ECAN_LOG = 2040;
     // Overlap buffer (seconds) subtracted from a group's last-success time to form its `from=` bound.
     // Comfortably exceeds the 2h heartbeat so a single missed beat still re-covers the gap; dedup
@@ -487,7 +495,7 @@
             ALLOWED_CONFIG_KEYS.forEach(k => {
                 if (parsed[k] !== undefined) userConfig[k] = parsed[k];
             });
-        } catch (e) { }
+        } catch (e) {}
     }
     if (localStorage.getItem(KEYS.DEMO) === '1') runtime.demoMode = true;
     if (sessionStorage.getItem(KEYS.DEV_MODE) === 'true') runtime.devMode = true;
@@ -537,11 +545,16 @@
             if (exp) return this.number(Math.floor(n), 0);
             return this.abbr(n, 1);
         },
+        gain(v) {
+            const a = Math.abs(v);
+            if (a < 1e6) return this.number(v);
+            return this.abbr(v, (m, abs) => m >= 1e9 ? 4 : m === 1e6 ? 3 : 2);
+        },
         achGain(v) {
             const a = Math.abs(v);
             if (a < 100) return this.number(v, 1);
             if (a < 1000) return this.number(v, 0);
-            return this.abbr(v, (m, abs) => m === 1e9 ? 4 : m === 1e6 ? 3 : (abs >= 1e4 ? 2 : 1), true, false);
+            return this.abbr(v, (m, abs) => m >= 1e9 ? 4 : m === 1e6 ? 3 : (abs >= 1e4 ? 2 : 1), true, false);
         },
         ratePct(v) {
             if (Math.abs(v) < 1000) return this.number(v, 0);
@@ -798,7 +811,7 @@
             else if (e >= 1500) totGold += GAME.POINTS_GOLD;
             else if (e >= 1000) totGreen += GAME.POINTS_GREEN;
         });
-
+        
         const total = totGreen + totGold + totDiamond;
         const goldOrBetter = totGold + totDiamond;
         return {
@@ -862,14 +875,14 @@
             + Math.min(Math.max(eSpent - 1000, 0), 500) * 0.2
             + Math.max(eSpent - 1500, 0) * 0.4
         );
-        const base = Math.min(eSpent, 1500) * 0.2;
+        const base  = Math.min(eSpent, 1500) * 0.2;
         const bonus = Math.max(eSpent - 1500, 0) * 0.4;
         return Math.round(base + bonus);
     }
 
     function weeklyBonusExp(isCompleted, isGold, isDiamond) {
-        if (isDiamond) return 500;
-        if (isGold) return 500;
+        if (isDiamond)   return 500;
+        if (isGold)      return 500;
         if (isCompleted) return 250;
         return 0;
     }
@@ -4039,6 +4052,30 @@
                         pointer-events: none;
                     }
 
+                    /* Foundational text-only calendar markers (War Start / War End / OD). */
+                    .bbgl-cal-markers {
+                        position: absolute;
+                        left: 1px;
+                        right: 1px;
+                        bottom: 1px;
+                        display: flex;
+                        flex-direction: column;
+                        align-items: center;
+                        gap: 1px;
+                        pointer-events: none;
+                        z-index: 3;
+                    }
+
+                    .bbgl-cal-marker {
+                        font-size: clamp(5px, 1.3cqi, 8px);
+                        line-height: 1;
+                        font-weight: 700;
+                        letter-spacing: .02em;
+                        color: #ef5350;
+                        text-shadow: 0 1px 2px rgba(0, 0, 0, .9);
+                        white-space: nowrap;
+                    }
+
                     .bbgl-day-cell.is-plate {
                         z-index: 2;
                         border-bottom: 1px solid rgba(0, 0, 0, .4);
@@ -4888,6 +4925,16 @@
                     .ach-enh-gained .ach-stat-def { color: #dc3912; }
                     .ach-enh-gained .ach-stat-spd { color: #ff9900; }
                     .ach-enh-gained .ach-stat-dex { color: #109618; }
+                    .bbgl-ach-row.bbgl-ach-od-row .ach-k,
+                    .bbgl-ach-row.bbgl-ach-od-row .ach-value { color: #aaa; }
+                    .bbgl-ach-row.bbgl-ach-od-row .ach-value.ach-enh-od .ach-enh-e-label { color: #c06060; }
+
+                    /* OD sub-rows: indent the label past the subgroup connector line. The
+                       energy-section row padding shorthand (above) outranks the generic
+                       .bbgl-subgroup-row padding-left, so restore the indent at higher specificity. */
+                    .bbgl-ach-section-energy .bbgl-ach-row.bbgl-ach-od-row {
+                        padding-left: 24px;
+                    }
 
                     .ach-happy-word {
                         color: #f5c518;
@@ -6031,6 +6078,17 @@
                         min-width: 5.5em;
                     }
 
+                    /* OD sub-rows are detail-only: hidden in the compact panel, shown in
+                       expanded panel and page mode. */
+                    .bbgl-ach-od-row {
+                        display: none;
+                    }
+
+                    #bbgl-panel.bbgl-expanded .bbgl-ach-od-row,
+                    #bbgl-panel.bbgl-mode-page .bbgl-ach-od-row {
+                        display: flex;
+                    }
+
                     #bbgl-panel.bbgl-expanded .ach-unit,
                     #bbgl-panel.bbgl-mode-page .ach-unit {
                         display: inline;
@@ -6944,7 +7002,7 @@
             if (!this._db) {
                 try {
                     await this.initDB();
-                } catch (e) { }
+                } catch (e) {}
             }
             return this._db;
         },
@@ -7233,9 +7291,26 @@
         };
     }
 
+    async function fetchWars(manual) {
+        const TWELVE_HOURS = 12 * 60 * 60 * 1000;
+        const lastSync = parseInt(localStorage.getItem(KEYS.WARS_SYNC) || '0');
+        if (!manual && (Date.now() - lastSync) < TWELVE_HOURS) return;
+        try {
+            incrementApiCount(1);
+            const res = await fetch(`https://api.torn.com/faction/?selections=rankedwars&key=${userConfig.apiKey}`);
+            if (!res.ok) return;
+            const data = await res.json();
+            if (data.error) return;
+            localStorage.setItem(KEYS.WARS_DATA, JSON.stringify(data.rankedwars || {}));
+            localStorage.setItem(KEYS.WARS_SYNC, Date.now().toString());
+        } catch (e) {
+            Log.error('Wars fetch failed', e);
+        }
+    }
+
     // This is the ONLY function that connects to the internet with your API key.
     // It strictly contacts api.torn.com to fetch your Gym training logs (Log IDs 5300-5303), a
-    // fixed short list of item-use logs (Xanax, energy cans, etc. — see ITEM_LOG_META), and current stats.
+    // fixed short list of item-use logs (Xanax, energy cans, ODs, etc. — see ITEM_LOG_META), and current stats.
     async function universalFetch(mission, options = {}) {
         if (runtime.demoMode) return {
             success: false,
@@ -7272,19 +7347,19 @@
             });
         } else {
             reqs = [{
-                type: 'battlestats',
-                url: `https://api.torn.com/user/?selections=battlestats&key=${userConfig.apiKey}&timestamp=${ts}`
-            },
-            {
-                type: 'log',
-                floorKey: 'trainEnergy',
-                url: `https://api.torn.com/user/?selections=log&log=${TRAIN_ENERGY_PARAM}&key=${userConfig.apiKey}${fromFor('trainEnergy')}&timestamp=${ts}`
-            },
-            {
-                type: 'log',
-                floorKey: 'statHappy',
-                url: `https://api.torn.com/user/?selections=log&log=${STAT_HAPPY_PARAM}&key=${userConfig.apiKey}${fromFor('statHappy')}&timestamp=${ts}`
-            }
+                    type: 'battlestats',
+                    url: `https://api.torn.com/user/?selections=battlestats&key=${userConfig.apiKey}&timestamp=${ts}`
+                },
+                {
+                    type: 'log',
+                    floorKey: 'trainEnergy',
+                    url: `https://api.torn.com/user/?selections=log&log=${TRAIN_ENERGY_PARAM}&key=${userConfig.apiKey}${fromFor('trainEnergy')}&timestamp=${ts}`
+                },
+                {
+                    type: 'log',
+                    floorKey: 'statHappy',
+                    url: `https://api.torn.com/user/?selections=log&log=${STAT_HAPPY_PARAM}&key=${userConfig.apiKey}${fromFor('statHappy')}&timestamp=${ts}`
+                }
             ];
         }
 
@@ -7353,6 +7428,7 @@
         const result = await universalFetch(mission, options);
 
         if (result.ok) {
+            if (mission !== 'TRAIN_SINGLE') fetchWars(true);
             scheduleHeartbeat();
             if (btn) {
                 btn.innerText = "Refreshed!";
@@ -7382,6 +7458,7 @@
         runtime.bgSyncId = setTimeout(async function bgSyncTick() {
             runtime.bgSyncId = null;
             await universalFetch('FULL_SYNC');
+            fetchWars(false);
             scheduleHeartbeat();
         }, delay);
     }
@@ -7588,7 +7665,7 @@
     }
 
     // Deep Log Scan: uses your API key to page back through your full training history on Torn's
-    // servers. Only reads gym training logs and a short list of item logs (energy cans, Xanax, etc.)
+    // servers. Only reads gym training logs and a short list of item logs (energy cans, Xanax, ODs, etc.)
     // — never reads your messages, money, or any other personal information.
     async function backfillLogs(btn) {
         if (runtime.demoMode) return;
@@ -7830,851 +7907,820 @@
         }
     }
 
-    /**
-     *  [SECTION V] THE EXERCISE (Data Logic)
-     *  ========================================================================
-     *  Reps. Sets. Rest. Repeat. Shower.
-     *  Raw inputs go in and warm, gooey data comes out.
-     */
+/**
+ *  [SECTION V] THE EXERCISE (Data Logic)
+ *  ========================================================================
+ *  Reps. Sets. Rest. Repeat. Shower.
+ *  Raw inputs go in and warm, gooey data comes out.
+ */
 
-    const STAT_KEYS = ['str', 'def', 'spd', 'dex'];
+const STAT_KEYS = ['str', 'def', 'spd', 'dex'];
 
-    function sumStats(o) {
-        return (o.str || 0) + (o.def || 0) + (o.spd || 0) + (o.dex || 0);
-    }
-    const DataController = {
-        _cache: {
-            timeline: null,
-            slices: {},
-            dateMap: null,
-            rateArr: null,
-            stickerMap: null,
-            unlockedCount: null,
-            featuredDays: null,
-            hjData: null
-        },
-        invalidate() {
-            this._cache.timeline = null;
-            this._cache.slices = {};
-            this._cache.dateMap = null;
-            this._cache.rateArr = null;
-            this._cache.stickerMap = null;
-            this._cache.unlockedCount = null;
-            this._cache.featuredDays = null;
-            this._cache.hjData = null;
-            runtime.stickerData = [];
-            runtime._achCache = null;
-        },
-        // Lighter invalidation for changes that only touch the current day's stats (e.g. a
-        // battlestats snap from the idle poll). Only the caches that embed today's values go
-        // stale; the sticker map, rate cache, happy-jump data, and achievements are derived
-        // purely from PAST days (getStickerMap skips `date >= today`, _buildRateCache uses
-        // history only, computeAchievements/hjData are unaffected by an absolute-stat snap that
-        // leaves the day's series/gains/eSpent untouched), so they stay valid. A day rollover or
-        // any change to historical days must still call the full invalidate().
-        invalidateToday() {
-            this._cache.timeline = null;
-            this._cache.dateMap = null;
-            this._cache.slices = {};
-        },
-        // Fast hydration from a pre-built { meta, history, today } (DBManager.loadHistory()).
-        // Replaces the old syncCache-on-boot path: no series flatten, no _rebuildFromSeries,
-        // no session serialization.
-        hydrate(loaded) {
-            _historyCache = loaded || null;
-            this.invalidate();
-        },
-        syncCache(stored) {
-            Perf.start('syncCache');
-            if (stored) {
-                const clean = sanitizeStorageRecord(stored);
-                const rebuilt = this._rebuildFromSeries(clean.series || [], (clean.meta && clean.meta.baselineBreakdown) || ZERO_BREAKDOWN);
-                _historyCache = {
-                    meta: clean.meta || {},
-                    history: rebuilt.history,
-                    today: rebuilt.today
-                };
-            } else {
-                _historyCache = null;
-            }
-            this.invalidate();
-            Perf.end('syncCache');
-        },
-        isStickerCleared(id) {
-            if (runtime.demoMode) return id === 1;
-            return getStickerState(id)[1] === '+';
-        },
-        markStickerCleared(id) {
-            if (runtime.demoMode) return;
-            persistStickerCleared(id);
-        },
-        getHappyJumpData() {
-            if (this._cache.hjData) return this._cache.hjData;
-            const hjWeek = {},
-                hjDaySet = new Set();
-            const allSeries = [];
-            this.getTimeline().forEach(day => {
-                (day.series || []).forEach(e => {
-                    if (e.ts && e.cost) allSeries.push(e);
-                });
-            });
-            allSeries.sort((a, b) => a.ts - b.ts);
-            if (allSeries.length > 0) {
-                let cStart = allSeries[0].ts,
-                    cCost = allSeries[0].cost;
-                const register = () => {
-                    if (cCost >= 1000) {
-                        const d = Formatter.dateLogical(cStart * 1000);
-                        const wk = getWeekKey(d);
-                        hjWeek[wk] = (hjWeek[wk] || 0) + 1;
-                        hjDaySet.add(d);
-                    }
-                };
-                for (let i = 1; i < allSeries.length; i++) {
-                    const entry = allSeries[i];
-                    if (entry.ts - cStart <= GAME.HJ_WINDOW_SECONDS) {
-                        cCost += entry.cost;
-                    } else {
-                        register();
-                        cStart = entry.ts;
-                        cCost = entry.cost;
-                    }
-                }
-                register();
-            }
-            this._cache.hjData = {
-                hjWeek,
-                hjDaySet
+function sumStats(o) {
+    return (o.str || 0) + (o.def || 0) + (o.spd || 0) + (o.dex || 0);
+}
+const DataController = {
+    _cache: {
+        timeline: null,
+        slices: {},
+        dateMap: null,
+        rateArr: null,
+        stickerMap: null,
+        unlockedCount: null,
+        featuredDays: null,
+        hjData: null
+    },
+    invalidate() {
+        this._cache.timeline = null;
+        this._cache.slices = {};
+        this._cache.dateMap = null;
+        this._cache.rateArr = null;
+        this._cache.stickerMap = null;
+        this._cache.unlockedCount = null;
+        this._cache.featuredDays = null;
+        this._cache.hjData = null;
+        runtime.stickerData = [];
+        runtime._achCache = null;
+    },
+    // Lighter invalidation for changes that only touch the current day's stats (e.g. a
+    // battlestats snap from the idle poll). Only the caches that embed today's values go
+    // stale; the sticker map, rate cache, happy-jump data, and achievements are derived
+    // purely from PAST days (getStickerMap skips `date >= today`, _buildRateCache uses
+    // history only, computeAchievements/hjData are unaffected by an absolute-stat snap that
+    // leaves the day's series/gains/eSpent untouched), so they stay valid. A day rollover or
+    // any change to historical days must still call the full invalidate().
+    invalidateToday() {
+        this._cache.timeline = null;
+        this._cache.dateMap = null;
+        this._cache.slices = {};
+    },
+    // Fast hydration from a pre-built { meta, history, today } (DBManager.loadHistory()).
+    // Replaces the old syncCache-on-boot path: no series flatten, no _rebuildFromSeries,
+    // no session serialization.
+    hydrate(loaded) {
+        _historyCache = loaded || null;
+        this.invalidate();
+    },
+    syncCache(stored) {
+        Perf.start('syncCache');
+        if (stored) {
+            const clean = sanitizeStorageRecord(stored);
+            const rebuilt = this._rebuildFromSeries(clean.series || [], (clean.meta && clean.meta.baselineBreakdown) || ZERO_BREAKDOWN);
+            _historyCache = {
+                meta: clean.meta || {},
+                history: rebuilt.history,
+                today: rebuilt.today
             };
-            return this._cache.hjData;
-        },
-        getStickerMap() {
-            if (this._cache.stickerMap) return this._cache.stickerMap;
-            const today = Formatter.dateLogical();
-            const todayWeekKey = getWeekKey(today);
-            const weekMap = {};
-            this.getTimeline().forEach(day => {
-                if (day.date >= today) return;
-                const wk = getWeekKey(day.date);
-                if (!weekMap[wk]) weekMap[wk] = [];
-                weekMap[wk].push(day);
+        } else {
+            _historyCache = null;
+        }
+        this.invalidate();
+        Perf.end('syncCache');
+    },
+    isStickerCleared(id) {
+        if (runtime.demoMode) return id === 1;
+        return getStickerState(id)[1] === '+';
+    },
+    markStickerCleared(id) {
+        if (runtime.demoMode) return;
+        persistStickerCleared(id);
+    },
+    getHappyJumpData() {
+        if (this._cache.hjData) return this._cache.hjData;
+        const hjWeek = {},
+            hjDaySet = new Set();
+        const allSeries = [];
+        this.getTimeline().forEach(day => {
+            (day.series || []).forEach(e => {
+                if (e.ts && e.cost) allSeries.push(e);
             });
+        });
+        allSeries.sort((a, b) => a.ts - b.ts);
+        if (allSeries.length > 0) {
+            let cStart = allSeries[0].ts,
+                cCost = allSeries[0].cost;
+            const register = () => {
+                if (cCost >= 1000) {
+                    const d = Formatter.dateLogical(cStart * 1000);
+                    const wk = getWeekKey(d);
+                    hjWeek[wk] = (hjWeek[wk] || 0) + 1;
+                    hjDaySet.add(d);
+                }
+            };
+            for (let i = 1; i < allSeries.length; i++) {
+                const entry = allSeries[i];
+                if (entry.ts - cStart <= GAME.HJ_WINDOW_SECONDS) {
+                    cCost += entry.cost;
+                } else {
+                    register();
+                    cStart = entry.ts;
+                    cCost = entry.cost;
+                }
+            }
+            register();
+        }
+        this._cache.hjData = {
+            hjWeek,
+            hjDaySet
+        };
+        return this._cache.hjData;
+    },
+    getStickerMap() {
+        if (this._cache.stickerMap) return this._cache.stickerMap;
+        const today = Formatter.dateLogical();
+        const todayWeekKey = getWeekKey(today);
+        const weekMap = {};
+        this.getTimeline().forEach(day => {
+            if (day.date >= today) return;
+            const wk = getWeekKey(day.date);
+            if (!weekMap[wk]) weekMap[wk] = [];
+            weekMap[wk].push(day);
+        });
+        const {
+            hjWeek,
+            hjDaySet
+        } = this.getHappyJumpData();
+        const stickerMap = new Map();
+        const featuredSet = new Set();
+        let unlockedCount = 1;
+        let rouletteCounter = 0;
+        let careerLevelExp = 0;
+        // Reward gating: stickers (and their unlock progression) only count from the install
+        // week onward. Pre-install weeks still render their bar/day counts elsewhere, but earn
+        // no stickers here. Demo mode is exempt (keeps its 1-sticker showcase behavior).
+        const installWeekKey = runtime.demoMode ? null : getInstallWeekKey();
+        Object.keys(weekMap).sort().forEach(wk => {
+            if (wk >= todayWeekKey) return;
+            if (installWeekKey && wk < installWeekKey) return;
+            const days = weekMap[wk].sort((a, b) => a.date.localeCompare(b.date));
+            // Daily level EXP: all days regardless of sticker eligibility.
+            if (!runtime.demoMode) {
+                days.forEach(day => {
+                    const e = day.eSpent ? (day.eSpent.total || 0) : 0;
+                    const hasTrainLog = day.series && day.series.some(s => s.type === 'gym');
+                    careerLevelExp += computeDailyLevelExp(e, hasTrainLog, hjDaySet.has(day.date));
+                });
+            }
+            const stickerworthyDays = days.filter(d => d.eSpent && d.eSpent.total >= 1000);
+            if (!stickerworthyDays.length) return;
             const {
-                hjWeek,
-                hjDaySet
-            } = this.getHappyJumpData();
-            const stickerMap = new Map();
-            const featuredSet = new Set();
-            let unlockedCount = 1;
-            let rouletteCounter = 0;
-            let careerLevelExp = 0;
-            // Reward gating: stickers (and their unlock progression) only count from the install
-            // week onward. Pre-install weeks still render their bar/day counts elsewhere, but earn
-            // no stickers here. Demo mode is exempt (keeps its 1-sticker showcase behavior).
-            const installWeekKey = runtime.demoMode ? null : getInstallWeekKey();
-            Object.keys(weekMap).sort().forEach(wk => {
-                if (wk >= todayWeekKey) return;
-                if (installWeekKey && wk < installWeekKey) return;
-                const days = weekMap[wk].sort((a, b) => a.date.localeCompare(b.date));
-                // Daily level EXP: all days regardless of sticker eligibility.
-                if (!runtime.demoMode) {
-                    days.forEach(day => {
-                        const e = day.eSpent ? (day.eSpent.total || 0) : 0;
-                        const hasTrainLog = day.series && day.series.some(s => s.type === 'gym');
-                        careerLevelExp += computeDailyLevelExp(e, hasTrainLog, hjDaySet.has(day.date));
-                    });
-                }
-                const stickerworthyDays = days.filter(d => d.eSpent && d.eSpent.total >= 1000);
-                if (!stickerworthyDays.length) return;
-                const {
-                    isCompleted,
-                    isGold,
-                    totDiamond
-                } = computeWeekCompletion(days, hjDaySet, hjWeek[wk] || 0);
-                if (!runtime.demoMode) {
-                    careerLevelExp += weeklyBonusExp(isCompleted, isGold, totDiamond >= GAME.WEEKLY_GOAL);
-                }
-                const numFeatured = isGold ? 2 : (isCompleted ? 1 : 0);
-                const splitIdx = Math.max(0, stickerworthyDays.length - numFeatured);
-                const rouletteDays = stickerworthyDays.slice(0, splitIdx);
-                const featuredDays = stickerworthyDays.slice(splitIdx);
-                const rouletteStep = (unlockedCount <= 20 && unlockedCount !== 11) ? 11 : 9;
-                rouletteDays.forEach(day => {
+                isCompleted,
+                isGold,
+                totDiamond
+            } = computeWeekCompletion(days, hjDaySet, hjWeek[wk] || 0);
+            if (!runtime.demoMode) {
+                careerLevelExp += weeklyBonusExp(isCompleted, isGold, totDiamond >= GAME.WEEKLY_GOAL);
+            }
+            const numFeatured = isGold ? 2 : (isCompleted ? 1 : 0);
+            const splitIdx = Math.max(0, stickerworthyDays.length - numFeatured);
+            const rouletteDays = stickerworthyDays.slice(0, splitIdx);
+            const featuredDays = stickerworthyDays.slice(splitIdx);
+            const rouletteStep = (unlockedCount <= 20 && unlockedCount !== 11) ? 11 : 9;
+            rouletteDays.forEach(day => {
+                const rawIdx = (rouletteCounter * rouletteStep) % unlockedCount;
+                const idx = runtime.demoMode ? 0 : rawIdx;
+                stickerMap.set(day.date, CUSTOM_STICKERS[idx]);
+                rouletteCounter++;
+            });
+            featuredDays.forEach((day, i) => {
+                const newIdx = unlockedCount + i;
+                if (newIdx < CUSTOM_STICKERS.length) {
+                    const idx = runtime.demoMode ? 0 : newIdx;
+                    stickerMap.set(day.date, CUSTOM_STICKERS[idx]);
+                    featuredSet.add(day.date);
+                } else {
                     const rawIdx = (rouletteCounter * rouletteStep) % unlockedCount;
                     const idx = runtime.demoMode ? 0 : rawIdx;
                     stickerMap.set(day.date, CUSTOM_STICKERS[idx]);
                     rouletteCounter++;
-                });
-                featuredDays.forEach((day, i) => {
-                    const newIdx = unlockedCount + i;
-                    if (newIdx < CUSTOM_STICKERS.length) {
-                        const idx = runtime.demoMode ? 0 : newIdx;
-                        stickerMap.set(day.date, CUSTOM_STICKERS[idx]);
-                        featuredSet.add(day.date);
-                    } else {
-                        const rawIdx = (rouletteCounter * rouletteStep) % unlockedCount;
-                        const idx = runtime.demoMode ? 0 : rawIdx;
-                        stickerMap.set(day.date, CUSTOM_STICKERS[idx]);
-                        rouletteCounter++;
-                    }
-                });
-                unlockedCount = Math.min(unlockedCount + numFeatured, CUSTOM_STICKERS.length);
+                }
             });
-            if (runtime.demoMode) unlockedCount = 1;
-            this._cache.stickerMap = stickerMap;
-            this._cache.featuredDays = featuredSet;
-            this._cache.unlockedCount = unlockedCount;
-            runtime.careerLevelExp = careerLevelExp;
-            if (!runtime.demoMode) {
-                const existingStates = (_historyCache && _historyCache.meta && _historyCache.meta.stickers) ? _historyCache.meta.stickers : {};
-                const freshStates = {};
-                for (let i = 1; i <= CUSTOM_STICKERS.length; i++) {
-                    const key = String(i);
-                    const wasClear = (existingStates[key] || '--')[1] === '+';
-                    freshStates[key] = (i <= unlockedCount ? '+' : '-') + (wasClear ? '+' : '-');
-                }
-                if (_historyCache) {
-                    if (!_historyCache.meta) _historyCache.meta = {};
-                    _historyCache.meta.stickers = freshStates;
-                }
+            unlockedCount = Math.min(unlockedCount + numFeatured, CUSTOM_STICKERS.length);
+        });
+        if (runtime.demoMode) unlockedCount = 1;
+        this._cache.stickerMap = stickerMap;
+        this._cache.featuredDays = featuredSet;
+        this._cache.unlockedCount = unlockedCount;
+        runtime.careerLevelExp = careerLevelExp;
+        if (!runtime.demoMode) {
+            const existingStates = (_historyCache && _historyCache.meta && _historyCache.meta.stickers) ? _historyCache.meta.stickers : {};
+            const freshStates = {};
+            for (let i = 1; i <= CUSTOM_STICKERS.length; i++) {
+                const key = String(i);
+                const wasClear = (existingStates[key] || '--')[1] === '+';
+                freshStates[key] = (i <= unlockedCount ? '+' : '-') + (wasClear ? '+' : '-');
             }
-            return stickerMap;
-        },
-        getTimeline() {
-            if (this._cache.timeline) return this._cache.timeline;
-            const s = getActiveHistory();
-            let t = [...(s.history || [])];
-            if (s.today && (s.today.date || s.today.startTotal > 0)) {
-                t = t.filter(d => d.date !== s.today.date);
-                t.push(s.today);
+            if (_historyCache) {
+                if (!_historyCache.meta) _historyCache.meta = {};
+                _historyCache.meta.stickers = freshStates;
             }
-            t.sort((a, b) => a.date.localeCompare(b.date));
-            if (s.meta && s.meta.logStartDate) {
-                const floor = Formatter.dateLogical(s.meta.logStartDate * 1000);
-                t = t.filter(d => d.date >= floor);
-            }
-            this._cache.timeline = t;
-            return t;
-        },
-        getDateMap() {
-            if (this._cache.dateMap) return this._cache.dateMap;
-            const t = this.getTimeline(),
-                m = {};
-            t.forEach(d => {
-                m[d.date] = d;
-            });
-            this._cache.dateMap = m;
-            return m;
-        },
-        // Calendar-day span of a slice's period, clamped to today (drives the ledger drug avg/day and
-        // the refill ratio denominator). DAY=1; WEEK from its 7-day bounds; MONTH/YEAR derived from
-        // the data's own dates; ALL from the timeline origin. Always >= 1.
-        periodCalendarDays(sl) {
-            if (!sl || sl.resolution === 'DAY') return 1;
-            const DAY = 86400000,
-                today = Formatter.dateLogical();
-            const span = (startStr, endStr) => {
-                const end = endStr > today ? today : endStr;
-                if (!startStr || !end) return 1;
-                return Math.max(1, Math.round((Formatter.parse(end).getTime() - Formatter.parse(startStr).getTime()) / DAY) + 1);
-            };
-            const dl = sl._dailyList || [];
-            if (sl.resolution === 'WEEK') {
-                const s = sl._weekStart || (dl[0] && dl[0].date),
-                    e = sl._weekEnd || (dl.length ? dl[dl.length - 1].date : null);
-                return s && e ? span(s, e) : (dl.length || 1);
-            }
-            if (!dl.length) return 1;
-            if (sl.resolution === 'MONTH') {
-                const p = dl[0].date.slice(0, 7),
-                    y = +p.slice(0, 4),
-                    mo = +p.slice(5, 7);
-                const dim = new Date(y, mo, 0).getDate();
-                return span(`${p}-01`, `${p}-${String(dim).padStart(2, '0')}`);
-            }
-            if (sl.resolution === 'YEAR') {
-                const y = dl[0].date.slice(0, 4);
-                return span(`${y}-01-01`, `${y}-12-31`);
-            }
-            // ALL / other: full span from the earliest timeline day to today.
-            const tl = this.getTimeline();
-            return tl.length ? span(tl[0].date, today) : (dl.length || 1);
-        },
-        _buildRateCache() {
-            const h = getActiveHistory();
-            const allDays = [...(h.history || [])].sort((a, b) => a.date.localeCompare(b.date));
-            const running = {
-                str: null,
-                def: null,
-                spd: null,
-                dex: null
-            };
-            const arr = [];
-            // Origin rates: derived from the first per-entry rate on or after the
-            // timeline floor (first fully-visible day). Replaces the old persisted
-            // meta.originRates which locked in at genesis time and went stale when
-            // backfill extended history backward.
-            const derived = {};
-            let floorDate = null;
-            if (h.meta && h.meta.logStartDate) {
-                floorDate = Formatter.dateLogical(h.meta.logStartDate * 1000);
-            }
-            allDays.forEach(day => {
-                if (day.series && day.series.length > 0) {
-                    day.series.forEach(e => {
-                        if (e.cost > 0) {
-                            running[e.stat] = e.rate;
-                            if (!derived[e.stat] && (!floorDate || day.date >= floorDate)) {
-                                derived[e.stat] = e.rate;
-                            }
-                        }
-                    });
-                } else {
-                    STAT_KEYS.forEach(k => {
-                        const cost = (day.eSpent && day.eSpent[k]) || 0;
-                        const gain = day.gains ? (day.gains[k] || 0) : 0;
-                        if (cost > 0) {
-                            running[k] = (gain / cost) * 150;
-                            if (!derived[k] && (!floorDate || day.date >= floorDate)) {
-                                derived[k] = (gain / cost) * 150;
-                            }
-                        }
-                    });
-                }
-                arr.push({
-                    date: day.date,
-                    rates: {
-                        ...running
-                    }
-                });
-            });
-            this._cache.rateArr = arr;
-            this._cache.originRates = derived;
-        },
-        getHistoricalRate(dateStr, stat) {
-            if (!this._cache.rateArr) this._buildRateCache();
-            const arr = this._cache.rateArr,
-                or = this._cache.originRates;
-            let lo = 0,
-                hi = arr.length - 1,
-                best = -1;
-            while (lo <= hi) {
-                const mid = (lo + hi) >> 1;
-                if (arr[mid].date <= dateStr) {
-                    best = mid;
-                    lo = mid + 1;
-                } else hi = mid - 1;
-            }
-            if (best === -1) return (or[stat] || 0);
-            const rate = arr[best].rates[stat];
-            return rate !== null ? rate : (or[stat] || 0);
-        },
-        getOriginRate(stat) {
-            if (!this._cache.rateArr) this._buildRateCache();
-            return (this._cache.originRates && this._cache.originRates[stat]) || 0;
-        },
-        getSlice(mode, target, year = null) {
-            let k = `${mode}_${target}`;
-            if (mode === 'CUSTOM') k = `CUSTOM_${target.map(d => d.date).join('_')}`;
-            if (mode === 'MONTH') k = `MONTH_${year}_${target}`;
-            if (this._cache.slices[k]) return this._cache.slices[k];
-            let raw = null,
-                res = mode,
-                list = [];
-            if (mode === 'DAY') raw = this.getDateMap()[target];
-            else if (mode === 'MONTH') {
-                const idx = CONSTANTS.MONTHS.indexOf(target);
-                if (idx > -1) {
-                    const p = `${year}-${String(idx + 1).padStart(2, '0')}`;
-                    list = this.getTimeline().filter(d => d.date.startsWith(p));
-                }
-            } else if (mode === 'YEAR') list = this.getTimeline().filter(d => d.date.startsWith(target));
-            else if (mode === 'ALL') {
-                list = this.getTimeline();
-                res = 'ALL';
-            } else if (mode === 'CUSTOM') {
-                list = target;
-                res = 'WEEK';
-            }
-            const sl = this._hydrate(raw, list, target, res);
-            this._cache.slices[k] = sl;
-            return sl;
-        },
-        _getLastEntryRate(day, stat, totalGain, totalCost) {
+        }
+        return stickerMap;
+    },
+    getTimeline() {
+        if (this._cache.timeline) return this._cache.timeline;
+        const s = getActiveHistory();
+        let t = [...(s.history || [])];
+        if (s.today && (s.today.date || s.today.startTotal > 0)) {
+            t = t.filter(d => d.date !== s.today.date);
+            t.push(s.today);
+        }
+        t.sort((a, b) => a.date.localeCompare(b.date));
+        if (s.meta && s.meta.logStartDate) {
+            const floor = Formatter.dateLogical(s.meta.logStartDate * 1000);
+            t = t.filter(d => d.date >= floor);
+        }
+        this._cache.timeline = t;
+        return t;
+    },
+    getDateMap() {
+        if (this._cache.dateMap) return this._cache.dateMap;
+        const t = this.getTimeline(),
+            m = {};
+        t.forEach(d => {
+            m[d.date] = d;
+        });
+        this._cache.dateMap = m;
+        return m;
+    },
+    // Calendar-day span of a slice's period, clamped to today (drives the ledger drug avg/day and
+    // the refill ratio denominator). DAY=1; WEEK from its 7-day bounds; MONTH/YEAR derived from
+    // the data's own dates; ALL from the timeline origin. Always >= 1.
+    periodCalendarDays(sl) {
+        if (!sl || sl.resolution === 'DAY') return 1;
+        const DAY = 86400000,
+            today = Formatter.dateLogical();
+        const span = (startStr, endStr) => {
+            const end = endStr > today ? today : endStr;
+            if (!startStr || !end) return 1;
+            return Math.max(1, Math.round((Formatter.parse(end).getTime() - Formatter.parse(startStr).getTime()) / DAY) + 1);
+        };
+        const dl = sl._dailyList || [];
+        if (sl.resolution === 'WEEK') {
+            const s = sl._weekStart || (dl[0] && dl[0].date),
+                e = sl._weekEnd || (dl.length ? dl[dl.length - 1].date : null);
+            return s && e ? span(s, e) : (dl.length || 1);
+        }
+        if (!dl.length) return 1;
+        if (sl.resolution === 'MONTH') {
+            const p = dl[0].date.slice(0, 7),
+                y = +p.slice(0, 4),
+                mo = +p.slice(5, 7);
+            const dim = new Date(y, mo, 0).getDate();
+            return span(`${p}-01`, `${p}-${String(dim).padStart(2, '0')}`);
+        }
+        if (sl.resolution === 'YEAR') {
+            const y = dl[0].date.slice(0, 4);
+            return span(`${y}-01-01`, `${y}-12-31`);
+        }
+        // ALL / other: full span from the earliest timeline day to today.
+        const tl = this.getTimeline();
+        return tl.length ? span(tl[0].date, today) : (dl.length || 1);
+    },
+    _buildRateCache() {
+        const h = getActiveHistory();
+        const allDays = [...(h.history || [])].sort((a, b) => a.date.localeCompare(b.date));
+        const running = {
+            str: null,
+            def: null,
+            spd: null,
+            dex: null
+        };
+        const arr = [];
+        // Origin rates: derived from the first per-entry rate on or after the
+        // timeline floor (first fully-visible day). Replaces the old persisted
+        // meta.originRates which locked in at genesis time and went stale when
+        // backfill extended history backward.
+        const derived = {};
+        let floorDate = null;
+        if (h.meta && h.meta.logStartDate) {
+            floorDate = Formatter.dateLogical(h.meta.logStartDate * 1000);
+        }
+        allDays.forEach(day => {
             if (day.series && day.series.length > 0) {
-                for (let i = day.series.length - 1; i >= 0; i--) {
-                    const entry = day.series[i];
-                    if (entry.stat === stat && entry.cost > 0) {
-                        return entry.rate != null ? entry.rate : r2((entry.gain / entry.cost) * 150);
-                    }
-                }
-            }
-            return r2((totalGain / totalCost) * 150);
-        },
-        _hydrate(sDay, dList, lbl, res) {
-            const r = {
-                label: lbl,
-                resolution: res,
-                date: (sDay ? sDay.date : (dList[0] ? dList[0].date : lbl)),
-                stats: {},
-                meta: {
-                    tier: 0,
-                    isGap: false,
-                    totalEnergy: 0
-                },
-                _dailyList: dList || []
-            };
-            const ge = (d, k) => (!d || !d.eSpent) ? 0 : (d.eSpent[k] || 0);
-            const gg = (d, k) => d && d.gains ? (d.gains[k] || 0) : 0;
-            const gend = (d, k) => d && (d.endBreakdown || d.end) ? (d.endBreakdown || d.end)[k] || 0 : 0;
-            const gst = (d, k) => d && (d.startBreakdown || d.start) ? (d.startBreakdown || d.start)[k] || 0 : 0;
-            const keys = [...STAT_KEYS, 'total'];
-            if (sDay) {
-                keys.forEach(k => {
-                    const e = ge(sDay, k),
-                        g = gg(sDay, k);
-                    let s = gst(sDay, k),
-                        end = gend(sDay, k);
-                    if (k === 'total') {
-                        if (!s) s = STAT_KEYS.reduce((a, x) => a + gst(sDay, x), 0);
-                        if (!end) end = STAT_KEYS.reduce((a, x) => a + gend(sDay, x), 0);
-                    }
-                    r.stats[k] = {
-                        start: s,
-                        gain: g,
-                        end: end,
-                        cost: e,
-                        rate: e > 0 ? this._getLastEntryRate(sDay, k, g, e) : (k !== 'total' ? this.getHistoricalRate(sDay.date, k) : 0)
-                    };
-                });
-                r.meta.totalEnergy = r.stats.total.cost;
-            } else if (dList.length > 0) {
-                const srt = [...dList].sort((a, b) => a.date.localeCompare(b.date)),
-                    f = srt[0],
-                    l = srt[srt.length - 1];
-                keys.forEach(k => {
-                    let tc = 0,
-                        tg = 0;
-                    srt.forEach(d => {
-                        tc += ge(d, k);
-                        tg += gg(d, k);
-                    });
-                    let s = gst(f, k),
-                        end = gend(l, k);
-                    if (k === 'total') {
-                        if (!s) s = STAT_KEYS.reduce((a, x) => a + gst(f, x), 0);
-                        if (!end) end = STAT_KEYS.reduce((a, x) => a + gend(l, x), 0);
-                    }
-                    r.stats[k] = {
-                        start: s,
-                        gain: tg,
-                        end: end,
-                        cost: tc,
-                        rate: tc > 0 ? r2((tg / tc) * 150) : 0
-                    };
-                });
-                r.meta.totalEnergy = r.stats.total.cost;
-            } else {
-                r.meta.isGap = true;
-                const pastEnd = {
-                    ...([...this.getTimeline()].reverse().find(d => d.date < r.date)?.endBreakdown || getActiveHistory().meta.baselineBreakdown || {})
-                };
-                pastEnd.total = STAT_KEYS.reduce((a, x) => a + (pastEnd[x] || 0), 0);
-                keys.forEach(k => {
-                    r.stats[k] = {
-                        start: pastEnd[k] || 0,
-                        gain: 0,
-                        end: pastEnd[k] || 0,
-                        cost: 0,
-                        rate: k !== 'total' ? this.getHistoricalRate(r.date, k) : 0
-                    };
-                });
-            }
-            // Gain is the authoritative delta between the absolute start/end snapshots, NOT the
-            // sum of per-entry log gains. Summing logs under-reports whenever a training row is
-            // missing from the API data (e.g. dense bursts the deep scan couldn't fully capture),
-            // which breaks the "gain = total - starting" identity in the summaries. The `after`
-            // snapshots are ground truth and telescope exactly, so derive gain from them here.
-            // (Rates above intentionally still use the summed gains; the graph plots from raw
-            // series, so neither is affected by this override.)
-            keys.forEach(k => {
-                if (r.stats[k]) r.stats[k].gain = Math.max(0, r2(r.stats[k].end - r.stats[k].start));
-            });
-            const e = r.meta.totalEnergy;
-            let hjDaySet;
-            if (this.getHappyJumpData) {
-                const hjData = this.getHappyJumpData();
-                hjDaySet = hjData.hjDaySet;
-            } else {
-                hjDaySet = new Set();
-            }
-            const isHJ = r.date && hjDaySet.has(r.date);
-            if (e >= 2000) r.meta.tier = 3;
-            else if (e >= 1500) r.meta.tier = 2;
-            else if (e >= 1000 || isHJ) r.meta.tier = 1;
-            else r.meta.tier = 0;
-            // Item-use totals for the period (powers the ledger counters). Merge per-day `items`
-            // counts and sum the cans' extra energy; dayCount drives the Xanax avg/day readout.
-            const itemDays = sDay ? [sDay] : (dList || []);
-            const items = {};
-            let itemEnergy = 0;
-            itemDays.forEach(d => {
-                if (d && d.items) Object.keys(d.items).forEach(id => {
-                    items[id] = (items[id] || 0) + d.items[id];
-                });
-                if (d) itemEnergy += (d.itemEnergy || 0);
-            });
-            r.items = items;
-            r.xanax = items[XANAX_LOG] || 0;
-            r.ecans = items[ECAN_LOG] || 0;
-            r.ecanEnergy = itemEnergy;
-            r.dayCount = sDay ? 1 : (dList ? dList.length : 0);
-            return r;
-        },
-        async processDataPayload(apiLogs, apiBattlestats) {
-            Perf.start('processDataPayload');
-            let s = getActiveHistory();
-            const fullApiLogs = normalizeApiLogs(apiLogs);
-            let cleanLogs = fullApiLogs;
-            if (!s.meta.logStartDate) {
-                if (s.history.length > 0 || (s.today && s.today.lastLogTimestamp > 0)) {
-                    const oldestTs = s.history.length > 0 ? Formatter.parse(s.history[0].date).getTime() / 1000 : s.today.lastLogTimestamp;
-                    s.meta.logStartDate = oldestTs;
-                }
-            }
-            if (s.meta.logStartDate) {
-                cleanLogs = cleanLogs.filter(l => l.ts >= s.meta.logStartDate);
-
-                // Idle / battlestats-only fast path: there are no new gym logs to reconcile, so
-                // there is nothing to merge into history. Update today's stats in place and
-                // persist ONLY the affected day(s) instead of reading, rebuilding, and rewriting
-                // the entire history. Requires an already-hydrated cache (always true after boot,
-                // since hydration runs before any sync) — otherwise fall through to the full path.
-                if (cleanLogs.length === 0 && _historyCache) {
-                    const changedToday = apiBattlestats ? this._snapToBattlestats(apiBattlestats, s) : false;
-                    const logicalToday = Formatter.dateLogical();
-                    if (s.today.date !== logicalToday) {
-                        // Day rollover touches historical days -> full invalidate.
-                        const changedDays = [];
-                        // A day with logged entries OR real aggregate gains becomes a history day.
-                        // An empty/battlestats-only day remains a gap and is not promoted.
-                        if ((s.today.series && s.today.series.length > 0) || (s.today.gains && s.today.gains.total > 0)) {
-                            s.history.push(s.today);
-                            changedDays.push(s.today);
+                day.series.forEach(e => {
+                    if (e.cost > 0) {
+                        running[e.stat] = e.rate;
+                        if (!derived[e.stat] && (!floorDate || day.date >= floorDate)) {
+                            derived[e.stat] = e.rate;
                         }
-                        s.today = initializeDayObject(logicalToday, s.today.endBreakdown);
+                    }
+                });
+            } else {
+                STAT_KEYS.forEach(k => {
+                    const cost = (day.eSpent && day.eSpent[k]) || 0;
+                    const gain = day.gains ? (day.gains[k] || 0) : 0;
+                    if (cost > 0) {
+                        running[k] = (gain / cost) * 150;
+                        if (!derived[k] && (!floorDate || day.date >= floorDate)) {
+                            derived[k] = (gain / cost) * 150;
+                        }
+                    }
+                });
+            }
+            arr.push({
+                date: day.date,
+                rates: {
+                    ...running
+                }
+            });
+        });
+        this._cache.rateArr = arr;
+        this._cache.originRates = derived;
+    },
+    getHistoricalRate(dateStr, stat) {
+        if (!this._cache.rateArr) this._buildRateCache();
+        const arr = this._cache.rateArr,
+            or = this._cache.originRates;
+        let lo = 0,
+            hi = arr.length - 1,
+            best = -1;
+        while (lo <= hi) {
+            const mid = (lo + hi) >> 1;
+            if (arr[mid].date <= dateStr) {
+                best = mid;
+                lo = mid + 1;
+            } else hi = mid - 1;
+        }
+        if (best === -1) return (or[stat] || 0);
+        const rate = arr[best].rates[stat];
+        return rate !== null ? rate : (or[stat] || 0);
+    },
+    getOriginRate(stat) {
+        if (!this._cache.rateArr) this._buildRateCache();
+        return (this._cache.originRates && this._cache.originRates[stat]) || 0;
+    },
+    getSlice(mode, target, year = null) {
+        let k = `${mode}_${target}`;
+        if (mode === 'CUSTOM') k = `CUSTOM_${target.map(d => d.date).join('_')}`;
+        if (mode === 'MONTH') k = `MONTH_${year}_${target}`;
+        if (this._cache.slices[k]) return this._cache.slices[k];
+        let raw = null,
+            res = mode,
+            list = [];
+        if (mode === 'DAY') raw = this.getDateMap()[target];
+        else if (mode === 'MONTH') {
+            const idx = CONSTANTS.MONTHS.indexOf(target);
+            if (idx > -1) {
+                const p = `${year}-${String(idx + 1).padStart(2, '0')}`;
+                list = this.getTimeline().filter(d => d.date.startsWith(p));
+            }
+        } else if (mode === 'YEAR') list = this.getTimeline().filter(d => d.date.startsWith(target));
+        else if (mode === 'ALL') {
+            list = this.getTimeline();
+            res = 'ALL';
+        } else if (mode === 'CUSTOM') {
+            list = target;
+            res = 'WEEK';
+        }
+        const sl = this._hydrate(raw, list, target, res);
+        this._cache.slices[k] = sl;
+        return sl;
+    },
+    _getLastEntryRate(day, stat, totalGain, totalCost) {
+        if (day.series && day.series.length > 0) {
+            for (let i = day.series.length - 1; i >= 0; i--) {
+                const entry = day.series[i];
+                if (entry.stat === stat && entry.cost > 0) {
+                    return entry.rate != null ? entry.rate : r2((entry.gain / entry.cost) * 150);
+                }
+            }
+        }
+        return r2((totalGain / totalCost) * 150);
+    },
+    _hydrate(sDay, dList, lbl, res) {
+        const r = {
+            label: lbl,
+            resolution: res,
+            date: (sDay ? sDay.date : (dList[0] ? dList[0].date : lbl)),
+            stats: {},
+            meta: {
+                tier: 0,
+                isGap: false,
+                totalEnergy: 0
+            },
+            _dailyList: dList || []
+        };
+        const ge = (d, k) => (!d || !d.eSpent) ? 0 : (d.eSpent[k] || 0);
+        const gg = (d, k) => d && d.gains ? (d.gains[k] || 0) : 0;
+        const gend = (d, k) => d && (d.endBreakdown || d.end) ? (d.endBreakdown || d.end)[k] || 0 : 0;
+        const gst = (d, k) => d && (d.startBreakdown || d.start) ? (d.startBreakdown || d.start)[k] || 0 : 0;
+        const keys = [...STAT_KEYS, 'total'];
+        if (sDay) {
+            keys.forEach(k => {
+                const e = ge(sDay, k),
+                    g = gg(sDay, k);
+                let s = gst(sDay, k),
+                    end = gend(sDay, k);
+                if (k === 'total') {
+                    if (!s) s = STAT_KEYS.reduce((a, x) => a + gst(sDay, x), 0);
+                    if (!end) end = STAT_KEYS.reduce((a, x) => a + gend(sDay, x), 0);
+                }
+                r.stats[k] = {
+                    start: s,
+                    gain: g,
+                    end: end,
+                    cost: e,
+                    rate: e > 0 ? this._getLastEntryRate(sDay, k, g, e) : (k !== 'total' ? this.getHistoricalRate(sDay.date, k) : 0)
+                };
+            });
+            r.meta.totalEnergy = r.stats.total.cost;
+        } else if (dList.length > 0) {
+            const srt = [...dList].sort((a, b) => a.date.localeCompare(b.date)),
+                f = srt[0],
+                l = srt[srt.length - 1];
+            keys.forEach(k => {
+                let tc = 0,
+                    tg = 0;
+                srt.forEach(d => {
+                    tc += ge(d, k);
+                    tg += gg(d, k);
+                });
+                let s = gst(f, k),
+                    end = gend(l, k);
+                if (k === 'total') {
+                    if (!s) s = STAT_KEYS.reduce((a, x) => a + gst(f, x), 0);
+                    if (!end) end = STAT_KEYS.reduce((a, x) => a + gend(l, x), 0);
+                }
+                r.stats[k] = {
+                    start: s,
+                    gain: tg,
+                    end: end,
+                    cost: tc,
+                    rate: tc > 0 ? r2((tg / tc) * 150) : 0
+                };
+            });
+            r.meta.totalEnergy = r.stats.total.cost;
+        } else {
+            r.meta.isGap = true;
+            const pastEnd = {
+                ...([...this.getTimeline()].reverse().find(d => d.date < r.date)?.endBreakdown || getActiveHistory().meta.baselineBreakdown || {})
+            };
+            pastEnd.total = STAT_KEYS.reduce((a, x) => a + (pastEnd[x] || 0), 0);
+            keys.forEach(k => {
+                r.stats[k] = {
+                    start: pastEnd[k] || 0,
+                    gain: 0,
+                    end: pastEnd[k] || 0,
+                    cost: 0,
+                    rate: k !== 'total' ? this.getHistoricalRate(r.date, k) : 0
+                };
+            });
+        }
+        // Gain is the authoritative delta between the absolute start/end snapshots, NOT the
+        // sum of per-entry log gains. Summing logs under-reports whenever a training row is
+        // missing from the API data (e.g. dense bursts the deep scan couldn't fully capture),
+        // which breaks the "gain = total - starting" identity in the summaries. The `after`
+        // snapshots are ground truth and telescope exactly, so derive gain from them here.
+        // (Rates above intentionally still use the summed gains; the graph plots from raw
+        // series, so neither is affected by this override.)
+        keys.forEach(k => {
+            if (r.stats[k]) r.stats[k].gain = Math.max(0, r2(r.stats[k].end - r.stats[k].start));
+        });
+        const e = r.meta.totalEnergy;
+        let hjDaySet;
+        if (this.getHappyJumpData) {
+            const hjData = this.getHappyJumpData();
+            hjDaySet = hjData.hjDaySet;
+        } else {
+            hjDaySet = new Set();
+        }
+        const isHJ = r.date && hjDaySet.has(r.date);
+        if (e >= 2000) r.meta.tier = 3;
+        else if (e >= 1500) r.meta.tier = 2;
+        else if (e >= 1000 || isHJ) r.meta.tier = 1;
+        else r.meta.tier = 0;
+        // Item-use totals for the period (powers the ledger counters). Merge per-day `items`
+        // counts and sum the cans' extra energy; dayCount drives the Xanax avg/day readout.
+        const itemDays = sDay ? [sDay] : (dList || []);
+        const items = {};
+        let itemEnergy = 0;
+        let odEnergyLost = 0;
+        itemDays.forEach(d => {
+            if (d && d.items) Object.keys(d.items).forEach(id => {
+                items[id] = (items[id] || 0) + d.items[id];
+            });
+            if (d) itemEnergy += (d.itemEnergy || 0);
+            if (d) odEnergyLost += (d.itemEnergyLost || 0);
+        });
+        r.items = items;
+        r.xanax = items[XANAX_LOG] || 0;
+        r.xanaxODs = items[XANAX_OD_LOG] || 0;
+        r.lsdODs = items[LSD_OD_LOG] || 0;
+        r.odEnergyLost = odEnergyLost;
+        r.ecans = items[ECAN_LOG] || 0;
+        r.ecanEnergy = itemEnergy;
+        r.dayCount = sDay ? 1 : (dList ? dList.length : 0);
+        return r;
+    },
+    async processDataPayload(apiLogs, apiBattlestats) {
+        Perf.start('processDataPayload');
+        let s = getActiveHistory();
+        const fullApiLogs = normalizeApiLogs(apiLogs);
+        let cleanLogs = fullApiLogs;
+        if (!s.meta.logStartDate) {
+            if (s.history.length > 0 || (s.today && s.today.lastLogTimestamp > 0)) {
+                const oldestTs = s.history.length > 0 ? Formatter.parse(s.history[0].date).getTime() / 1000 : s.today.lastLogTimestamp;
+                s.meta.logStartDate = oldestTs;
+            }
+        }
+        if (s.meta.logStartDate) {
+            cleanLogs = cleanLogs.filter(l => l.ts >= s.meta.logStartDate);
+
+            // Idle / battlestats-only fast path: there are no new gym logs to reconcile, so
+            // there is nothing to merge into history. Update today's stats in place and
+            // persist ONLY the affected day(s) instead of reading, rebuilding, and rewriting
+            // the entire history. Requires an already-hydrated cache (always true after boot,
+            // since hydration runs before any sync) — otherwise fall through to the full path.
+            if (cleanLogs.length === 0 && _historyCache) {
+                const changedToday = apiBattlestats ? this._snapToBattlestats(apiBattlestats, s) : false;
+                const logicalToday = Formatter.dateLogical();
+                if (s.today.date !== logicalToday) {
+                    // Day rollover touches historical days -> full invalidate.
+                    const changedDays = [];
+                    // A day with logged entries OR real aggregate gains becomes a history day.
+                    // An empty/battlestats-only day remains a gap and is not promoted.
+                    if ((s.today.series && s.today.series.length > 0) || (s.today.gains && s.today.gains.total > 0)) {
+                        s.history.push(s.today);
                         changedDays.push(s.today);
-                        _historyCache = s;
-                        this.invalidate();
-                        await DBManager.saveDays(s.meta, changedDays);
-                    } else if (changedToday) {
-                        _historyCache = s;
-                        this.invalidateToday();
-                        await DBManager.saveDays(s.meta, [s.today]);
                     }
-                    window.dispatchEvent(new CustomEvent('bbgl:dataUpdated'));
-                    Perf.end('processDataPayload');
-                    return 'SUCCESS';
-                }
-
-                // New gym logs to reconcile. Only entries inside the API window [minApiTs, maxApiTs]
-                // can change history, which touches only days at/after that window's first logical
-                // day. Recompute and persist just those days (incremental) rather than the whole,
-                // possibly multi-decade, history. Falls back to the proven full rebuild if the
-                // incremental path throws.
-                let inc = null;
-                try {
-                    inc = this._reconcileIncremental(s, cleanLogs);
-                } catch (e) {
-                    Log.warn('Incremental reconcile failed; falling back to full rebuild', e);
-                    inc = null;
-                }
-
-                if (inc) {
-                    _historyCache = inc.result;
-                    s = getActiveHistory();
-                    // Logs are already merged; this only snaps current battlestats into today.
-                    this._runDailyGrind([], apiBattlestats, s);
-                    const changedDays = inc.changedDays.slice();
-                    const logicalToday = Formatter.dateLogical();
-                    let rolled = false;
-                    if (s.today.date !== logicalToday) {
-                        if ((s.today.series && s.today.series.length > 0) || (s.today.gains && s.today.gains.total > 0)) s.history.push(s.today);
-                        s.today = initializeDayObject(logicalToday, s.today.endBreakdown);
-                        rolled = true;
-                    }
+                    s.today = initializeDayObject(logicalToday, s.today.endBreakdown);
+                    changedDays.push(s.today);
                     _historyCache = s;
                     this.invalidate();
-                    if (rolled) {
-                        // A rollover changes the day set; persist everything to stay consistent.
-                        const all = [...(s.history || [])];
-                        if (s.today) all.push(s.today);
-                        await DBManager.saveDays(s.meta, all);
-                    } else {
-                        if (!changedDays.includes(s.today)) changedDays.push(s.today);
-                        await DBManager.saveDays(s.meta, changedDays);
-                    }
-                    window.dispatchEvent(new CustomEvent('bbgl:dataUpdated'));
-                    Perf.end('processDataPayload');
-                    return 'SUCCESS';
+                    await DBManager.saveDays(s.meta, changedDays);
+                } else if (changedToday) {
+                    _historyCache = s;
+                    this.invalidateToday();
+                    await DBManager.saveDays(s.meta, [s.today]);
                 }
+                window.dispatchEvent(new CustomEvent('bbgl:dataUpdated'));
+                Perf.end('processDataPayload');
+                return 'SUCCESS';
+            }
 
-                // Fallback: the original full rebuild from the entire stored series. Persisted by
-                // saveSmartHistory() in the shared tail below.
-                try {
-                    _historyCache = await this._reconcileFull(s, cleanLogs);
-                } catch (e) {
-                    Log.warn('Reconciliation error', e);
-                }
+            // New gym logs to reconcile. Only entries inside the API window [minApiTs, maxApiTs]
+            // can change history, which touches only days at/after that window's first logical
+            // day. Recompute and persist just those days (incremental) rather than the whole,
+            // possibly multi-decade, history. Falls back to the proven full rebuild if the
+            // incremental path throws.
+            let inc = null;
+            try {
+                inc = this._reconcileIncremental(s, cleanLogs);
+            } catch (e) {
+                Log.warn('Incremental reconcile failed; falling back to full rebuild', e);
+                inc = null;
+            }
+
+            if (inc) {
+                _historyCache = inc.result;
                 s = getActiveHistory();
-            }
-            if (!s.meta.logStartDate) {
-                // Forward-only init: baseline = current battlestats, origin = install time.
-                // No historical reconstruction — history only comes from explicit Backfill.
-                if (apiBattlestats) {
-                    s.meta.baselineBreakdown = {
-                        str: apiBattlestats.strength || 0,
-                        def: apiBattlestats.defense || 0,
-                        spd: apiBattlestats.speed || 0,
-                        dex: apiBattlestats.dexterity || 0
-                    };
+                // Logs are already merged; this only snaps current battlestats into today.
+                this._runDailyGrind([], apiBattlestats, s);
+                const changedDays = inc.changedDays.slice();
+                const logicalToday = Formatter.dateLogical();
+                let rolled = false;
+                if (s.today.date !== logicalToday) {
+                    if ((s.today.series && s.today.series.length > 0) || (s.today.gains && s.today.gains.total > 0)) s.history.push(s.today);
+                    s.today = initializeDayObject(logicalToday, s.today.endBreakdown);
+                    rolled = true;
                 }
-                s.meta.logStartDate = Math.floor(Date.parse(userConfig.privacyAgreed) / 1000);
-                s.today = initializeDayObject(Formatter.dateLogical(), { ...s.meta.baselineBreakdown });
-            }
-            this._runDailyGrind(cleanLogs, apiBattlestats, s);
-            const logicalToday = Formatter.dateLogical();
-            if (s.today.date !== logicalToday) {
-                if ((s.today.series && s.today.series.length > 0) || (s.today.gains && s.today.gains.total > 0)) s.history.push(s.today);
-                s.today = initializeDayObject(logicalToday, s.today.endBreakdown);
-            }
-            this.saveSmartHistory(s);
-            window.dispatchEvent(new CustomEvent('bbgl:dataUpdated'));
-            Perf.end('processDataPayload');
-            return 'SUCCESS';
-        },
-        saveSmartHistory(d) {
-            const allDays = [...(d.history || [])];
-            if (d.today) allDays.push(d.today);
-            // Persist the in-memory day objects directly — no flatten-to-series + rebuild
-            // round-trip, and a single write (saveDays) rather than the previous whole-history
-            // blob rewrite. saveDays puts each day record without clearing the store; normal
-            // syncs never remove days (only import/clear do, via setStorage/clearStorage), so
-            // untouched days remain intact.
-            DBManager.saveDays(d.meta, allDays);
-            _historyCache = d;
-            this.invalidate();
-        },
-        flattenAllSeries() {
-            const s = getActiveHistory();
-            const all = [];
-            const days = [...(s.history || [])];
-            if (s.today) days.push(s.today);
-            days.forEach(day => {
-                if (day.series && day.series.length > 0) {
-                    day.series.forEach(e => all.push(e));
+                _historyCache = s;
+                this.invalidate();
+                if (rolled) {
+                    // A rollover changes the day set; persist everything to stay consistent.
+                    const all = [...(s.history || [])];
+                    if (s.today) all.push(s.today);
+                    await DBManager.saveDays(s.meta, all);
                 } else {
-                    const base = Formatter.parse(day.date);
-                    const ts = Math.floor(base.getTime() / 1000) + 43200;
-                    STAT_KEYS.forEach(stat => {
-                        const gain = (day.gains && day.gains[stat]) || 0;
-                        const cost = (day.eSpent && day.eSpent[stat]) || 0;
-                        const after = (day.endBreakdown && day.endBreakdown[stat]) || 0;
-                        if (gain > 0 || cost > 0) all.push({
-                            ts,
-                            stat,
-                            gain,
-                            cost,
-                            after,
-                            rate: cost > 0 ? r2((gain / cost) * 150) : 0,
-                            synthetic: true
-                        });
-                    });
+                    if (!changedDays.includes(s.today)) changedDays.push(s.today);
+                    await DBManager.saveDays(s.meta, changedDays);
                 }
-            });
-            return all.sort((a, b) => a.ts - b.ts);
-        },
-
-        _runDailyGrind(logs, bs, s) {
-            const allDays = [...(s.history || []), s.today];
-            const globalLastTs = allDays.reduce((max, day) => Math.max(max, day.lastLogTimestamp || 0), 0);
-            const lastTs = Math.max(globalLastTs, s.meta.logStartDate || 0);
-            const validLogs = logs.filter(l => l.ts > lastTs);
-            validLogs.forEach(l => this._applyLogToState(l, s));
-            if (bs) this._snapToBattlestats(bs, s);
-        },
-        _applyLogToState(l, s) {
-            const logDate = Formatter.dateLogical(l.ts * 1000);
-            if (s.today.date !== logDate) {
-                if (s.today.series && s.today.series.length > 0) s.history.push(s.today);
-                s.today = initializeDayObject(logDate, s.today.endBreakdown);
+                window.dispatchEvent(new CustomEvent('bbgl:dataUpdated'));
+                Perf.end('processDataPayload');
+                return 'SUCCESS';
             }
-            if (l.type === 'item') {
-                if (!s.today.items) s.today.items = {};
-                if (!s.today.itemLogIds) s.today.itemLogIds = [];
-                // Dedup on the natural (ts, logId) key rather than Torn's log id: the id is dropped
-                // on export, so this is the only key that survives an export/import round-trip (and
-                // two uses of the same item in the same second is not possible in-game).
-                const itemKey = `${l.ts}_${l.logId}`;
-                if (!s.today.itemLogIds.includes(itemKey)) {
-                    s.today.itemLogIds.push(itemKey);
-                    s.today.items[l.logId] = (s.today.items[l.logId] || 0) + 1;
-                    if (l.energy) s.today.itemEnergy = (s.today.itemEnergy || 0) + l.energy;
-                    if (l.happy) s.today.itemHappy = (s.today.itemHappy || 0) + l.happy;
-                }
-                const entry = {
-                    type: 'item',
-                    id: l.id,
-                    ts: l.ts,
-                    logId: l.logId
+
+            // Fallback: the original full rebuild from the entire stored series. Persisted by
+            // saveSmartHistory() in the shared tail below.
+            try {
+                _historyCache = await this._reconcileFull(s, cleanLogs);
+            } catch (e) {
+                Log.warn('Reconciliation error', e);
+            }
+            s = getActiveHistory();
+        }
+        if (!s.meta.logStartDate) {
+            // Forward-only init: baseline = current battlestats, origin = install time.
+            // No historical reconstruction — history only comes from explicit Backfill.
+            if (apiBattlestats) {
+                s.meta.baselineBreakdown = {
+                    str: apiBattlestats.strength || 0,
+                    def: apiBattlestats.defense || 0,
+                    spd: apiBattlestats.speed || 0,
+                    dex: apiBattlestats.dexterity || 0
                 };
-                if (l.energy) entry.energy = l.energy;
-                if (l.happy) entry.happy = l.happy;
-                if (l.statKey) {
-                    entry.statKey = l.statKey;
-                    entry.statGain = l.statGain;
-                }
-                s.today.series.push(entry);
+            }
+            s.meta.logStartDate = Math.floor(Date.parse(userConfig.privacyAgreed) / 1000);
+            s.today = initializeDayObject(Formatter.dateLogical(), { ...s.meta.baselineBreakdown });
+        }
+        this._runDailyGrind(cleanLogs, apiBattlestats, s);
+        const logicalToday = Formatter.dateLogical();
+        if (s.today.date !== logicalToday) {
+            if ((s.today.series && s.today.series.length > 0) || (s.today.gains && s.today.gains.total > 0)) s.history.push(s.today);
+            s.today = initializeDayObject(logicalToday, s.today.endBreakdown);
+        }
+        this.saveSmartHistory(s);
+        window.dispatchEvent(new CustomEvent('bbgl:dataUpdated'));
+        Perf.end('processDataPayload');
+        return 'SUCCESS';
+    },
+    saveSmartHistory(d) {
+        const allDays = [...(d.history || [])];
+        if (d.today) allDays.push(d.today);
+        // Persist the in-memory day objects directly — no flatten-to-series + rebuild
+        // round-trip, and a single write (saveDays) rather than the previous whole-history
+        // blob rewrite. saveDays puts each day record without clearing the store; normal
+        // syncs never remove days (only import/clear do, via setStorage/clearStorage), so
+        // untouched days remain intact.
+        DBManager.saveDays(d.meta, allDays);
+        _historyCache = d;
+        this.invalidate();
+    },
+    flattenAllSeries() {
+        const s = getActiveHistory();
+        const all = [];
+        const days = [...(s.history || [])];
+        if (s.today) days.push(s.today);
+        days.forEach(day => {
+            if (day.series && day.series.length > 0) {
+                day.series.forEach(e => all.push(e));
             } else {
-                s.today.gains[l.stat] += l.gain;
-                s.today.gains.total += l.gain;
-                s.today.eSpent[l.stat] += l.cost;
-                s.today.eSpent.total += l.cost;
-                s.today.endBreakdown[l.stat] = l.after;
-                if (l.ts > s.today.lastLogTimestamp) s.today.lastLogTimestamp = l.ts;
-                s.today.series.push({
-                    type: 'gym',
-                    id: l.id,
-                    ts: l.ts,
-                    stat: l.stat,
-                    gain: l.gain,
-                    cost: l.cost,
-                    after: l.after,
-                    rate: l.cost > 0 ? r2((l.gain / l.cost) * 150) : 0
+                const base = Formatter.parse(day.date);
+                const ts = Math.floor(base.getTime() / 1000) + 43200;
+                STAT_KEYS.forEach(stat => {
+                    const gain = (day.gains && day.gains[stat]) || 0;
+                    const cost = (day.eSpent && day.eSpent[stat]) || 0;
+                    const after = (day.endBreakdown && day.endBreakdown[stat]) || 0;
+                    if (gain > 0 || cost > 0) all.push({
+                        ts,
+                        stat,
+                        gain,
+                        cost,
+                        after,
+                        rate: cost > 0 ? r2((gain / cost) * 150) : 0,
+                        synthetic: true
+                    });
                 });
-                s.today.endTotal = sumStats(s.today.endBreakdown);
             }
-        },
-        _snapToBattlestats(bs, s) {
-            let upd = false;
-            BS_STAT_ROWS.forEach(i => {
-                const apiVal = bs[i.api];
-                if (apiVal === undefined) return;
-                const localVal = s.today.endBreakdown[i.abbr] || 0;
-                const lg = s.today.gains[i.abbr] || 0;
-                if (localVal !== apiVal) {
-                    s.today.endBreakdown[i.abbr] = apiVal;
-                    s.today.startBreakdown[i.abbr] = apiVal - lg;
-                    upd = true;
-                }
-            });
-            if (upd) {
-                s.today.endTotal = sumStats(s.today.endBreakdown);
-                s.today.startTotal = sumStats(s.today.startBreakdown);
-            }
-            return upd;
-        },
-        _rebuildFromSeries(seriesArr, baselineBreakdown) {
-            Perf.start('_rebuildFromSeries');
-            const days = {};
-            let running = {
-                ...baselineBreakdown
-            };
-            seriesArr.forEach(e => {
-                const dateKey = Formatter.dateLogical(e.ts * 1000);
-                if (!days[dateKey]) days[dateKey] = initializeDayObject(dateKey, {
-                    ...running
-                });
-                if (e.type === 'item') {
-                    if (!days[dateKey].items) days[dateKey].items = {};
-                    if (!days[dateKey].itemLogIds) days[dateKey].itemLogIds = [];
-                    const itemKey = `${e.ts}_${e.logId}`;
-                    if (!days[dateKey].itemLogIds.includes(itemKey)) {
-                        days[dateKey].itemLogIds.push(itemKey);
-                        days[dateKey].items[e.logId] = (days[dateKey].items[e.logId] || 0) + 1;
-                        if (e.energy) days[dateKey].itemEnergy = (days[dateKey].itemEnergy || 0) + e.energy;
-                        if (e.happy) days[dateKey].itemHappy = (days[dateKey].itemHappy || 0) + e.happy;
-                    }
-                    if (!e.synthetic) days[dateKey].series.push(e);
-                } else {
-                    days[dateKey].gains[e.stat] += e.gain;
-                    days[dateKey].gains.total += e.gain;
-                    days[dateKey].eSpent[e.stat] += e.cost;
-                    days[dateKey].eSpent.total += e.cost;
-                    days[dateKey].endBreakdown[e.stat] = e.after;
-                    if (e.ts > days[dateKey].lastLogTimestamp) days[dateKey].lastLogTimestamp = e.ts;
-                    if (!e.synthetic) days[dateKey].series.push(e);
-                    running[e.stat] = e.after;
-                }
-            });
-            Object.values(days).forEach(day => {
-                day.endTotal = sumStats(day.endBreakdown);
-                day.startTotal = sumStats(day.startBreakdown);
-            });
-            const logicalToday = Formatter.dateLogical(),
-                sortedKeys = Object.keys(days).sort(),
-                todayObj = days[logicalToday] || initializeDayObject(logicalToday, {
-                    ...running
-                }),
-                history = sortedKeys.filter(k => k !== logicalToday).map(k => days[k]);
-            Perf.end('_rebuildFromSeries');
-            return {
-                history,
-                today: todayObj
-            };
-        },
+        });
+        return all.sort((a, b) => a.ts - b.ts);
+    },
 
-        // Full reconciliation: reads the entire stored series, merges the API logs (dedup window),
-        // and rebuilds EVERY day. This is the original, proven path — used now only as the
-        // production fallback (if the incremental path throws) and as the dev-mode parity oracle.
-        // Returns { meta, history, today } WITHOUT mutating _historyCache or persisting.
-        async _reconcileFull(s, cleanLogs) {
-            const stored = await DBManager.getStorage();
-            if (!stored) return { meta: s.meta, history: s.history, today: s.today };
-            if (stored.series && cleanLogs.length > 0) {
-                const minApiTs = cleanLogs[0].ts;
-                const maxApiTs = cleanLogs[cleanLogs.length - 1].ts;
-                const apiEntries = cleanLogs.map(l => {
-                    if (l.type === 'item') return { ...l };
-                    return {
-                        type: 'gym',
-                        id: l.id,
-                        ts: l.ts,
-                        stat: l.stat,
-                        gain: r2(l.gain),
-                        cost: l.cost,
-                        after: r2(l.after)
-                    };
-                });
-                const getSetKey = e => e.type === 'item' ? `item_${e.id}` : `${e.ts}_${e.stat}_${e.after}`;
-                const apiTsStatSet = new Set(apiEntries.map(getSetKey));
-                const kept = stored.series.filter(e => e.ts < minApiTs || e.ts > maxApiTs || !apiTsStatSet.has(getSetKey(e)));
-                stored.series = [...kept, ...apiEntries].sort((a, b) => a.ts - b.ts);
+    _runDailyGrind(logs, bs, s) {
+        const allDays = [...(s.history || []), s.today];
+        const globalLastTs = allDays.reduce((max, day) => Math.max(max, day.lastLogTimestamp || 0), 0);
+        const lastTs = Math.max(globalLastTs, s.meta.logStartDate || 0);
+        const validLogs = logs.filter(l => l.ts > lastTs);
+        validLogs.forEach(l => this._applyLogToState(l, s));
+        if (bs) this._snapToBattlestats(bs, s);
+    },
+    _applyLogToState(l, s) {
+        const logDate = Formatter.dateLogical(l.ts * 1000);
+        if (s.today.date !== logDate) {
+            if (s.today.series && s.today.series.length > 0) s.history.push(s.today);
+            s.today = initializeDayObject(logDate, s.today.endBreakdown);
+        }
+        if (l.type === 'item') {
+            if (!s.today.items) s.today.items = {};
+            if (!s.today.itemLogIds) s.today.itemLogIds = [];
+            // Dedup on the natural (ts, logId) key rather than Torn's log id: the id is dropped
+            // on export, so this is the only key that survives an export/import round-trip (and
+            // two uses of the same item in the same second is not possible in-game).
+            const itemKey = `${l.ts}_${l.logId}`;
+            if (!s.today.itemLogIds.includes(itemKey)) {
+                s.today.itemLogIds.push(itemKey);
+                s.today.items[l.logId] = (s.today.items[l.logId] || 0) + 1;
+                // itemEnergy is surfaced as ecanEnergy (the "Cans (+N)" readout) so it must track
+                // ONLY energy-can energy — not Xanax/LSD/refill/coupon/egg energy.
+                if (l.logId === ECAN_LOG && l.energy) s.today.itemEnergy = (s.today.itemEnergy || 0) + l.energy;
+                if (l.energyLost != null) s.today.itemEnergyLost = (s.today.itemEnergyLost || 0) + l.energyLost;
+                if (l.happy) s.today.itemHappy = (s.today.itemHappy || 0) + l.happy;
             }
-            stored.meta = {
-                ...stored.meta,
-                logStartDate: s.meta.logStartDate,
-                syncFloor: s.meta.syncFloor || stored.meta.syncFloor,
-                stickers: stored.meta.stickers || s.meta.stickers || {}
+            const entry = {
+                type: 'item',
+                id: l.id,
+                ts: l.ts,
+                logId: l.logId
             };
-            const rebuilt = this._rebuildFromSeries(stored.series || [], stored.meta.baselineBreakdown || ZERO_BREAKDOWN);
-            return {
-                meta: stored.meta,
-                history: rebuilt.history,
-                today: rebuilt.today
-            };
-        },
+            if (l.energy) entry.energy = l.energy;
+            if (l.energyLost != null) entry.energyLost = l.energyLost;
+            if (l.happy) entry.happy = l.happy;
+            if (l.statKey) {
+                entry.statKey = l.statKey;
+                entry.statGain = l.statGain;
+            }
+            s.today.series.push(entry);
+        } else {
+            s.today.gains[l.stat] += l.gain;
+            s.today.gains.total += l.gain;
+            s.today.eSpent[l.stat] += l.cost;
+            s.today.eSpent.total += l.cost;
+            s.today.endBreakdown[l.stat] = l.after;
+            if (l.ts > s.today.lastLogTimestamp) s.today.lastLogTimestamp = l.ts;
+            s.today.series.push({
+                type: 'gym',
+                id: l.id,
+                ts: l.ts,
+                stat: l.stat,
+                gain: l.gain,
+                cost: l.cost,
+                after: l.after,
+                rate: l.cost > 0 ? r2((l.gain / l.cost) * 150) : 0
+            });
+            s.today.endTotal = sumStats(s.today.endBreakdown);
+        }
+    },
+    _snapToBattlestats(bs, s) {
+        let upd = false;
+        BS_STAT_ROWS.forEach(i => {
+            const apiVal = bs[i.api];
+            if (apiVal === undefined) return;
+            const localVal = s.today.endBreakdown[i.abbr] || 0;
+            const lg = s.today.gains[i.abbr] || 0;
+            if (localVal !== apiVal) {
+                s.today.endBreakdown[i.abbr] = apiVal;
+                s.today.startBreakdown[i.abbr] = apiVal - lg;
+                upd = true;
+            }
+        });
+        if (upd) {
+            s.today.endTotal = sumStats(s.today.endBreakdown);
+            s.today.startTotal = sumStats(s.today.startBreakdown);
+        }
+        return upd;
+    },
+    _rebuildFromSeries(seriesArr, baselineBreakdown) {
+        Perf.start('_rebuildFromSeries');
+        const days = {};
+        let running = {
+            ...baselineBreakdown
+        };
+        seriesArr.forEach(e => {
+            const dateKey = Formatter.dateLogical(e.ts * 1000);
+            if (!days[dateKey]) days[dateKey] = initializeDayObject(dateKey, {
+                ...running
+            });
+            if (e.type === 'item') {
+                if (!days[dateKey].items) days[dateKey].items = {};
+                if (!days[dateKey].itemLogIds) days[dateKey].itemLogIds = [];
+                const itemKey = `${e.ts}_${e.logId}`;
+                if (!days[dateKey].itemLogIds.includes(itemKey)) {
+                    days[dateKey].itemLogIds.push(itemKey);
+                    days[dateKey].items[e.logId] = (days[dateKey].items[e.logId] || 0) + 1;
+                    if (e.logId === ECAN_LOG && e.energy) days[dateKey].itemEnergy = (days[dateKey].itemEnergy || 0) + e.energy;
+                    if (e.energyLost != null) days[dateKey].itemEnergyLost = (days[dateKey].itemEnergyLost || 0) + e.energyLost;
+                    if (e.happy) days[dateKey].itemHappy = (days[dateKey].itemHappy || 0) + e.happy;
+                }
+                if (!e.synthetic) days[dateKey].series.push(e);
+            } else {
+                days[dateKey].gains[e.stat] += e.gain;
+                days[dateKey].gains.total += e.gain;
+                days[dateKey].eSpent[e.stat] += e.cost;
+                days[dateKey].eSpent.total += e.cost;
+                days[dateKey].endBreakdown[e.stat] = e.after;
+                if (e.ts > days[dateKey].lastLogTimestamp) days[dateKey].lastLogTimestamp = e.ts;
+                if (!e.synthetic) days[dateKey].series.push(e);
+                running[e.stat] = e.after;
+            }
+        });
+        Object.values(days).forEach(day => {
+            day.endTotal = sumStats(day.endBreakdown);
+            day.startTotal = sumStats(day.startBreakdown);
+        });
+        const logicalToday = Formatter.dateLogical(),
+            sortedKeys = Object.keys(days).sort(),
+            todayObj = days[logicalToday] || initializeDayObject(logicalToday, {
+                ...running
+            }),
+            history = sortedKeys.filter(k => k !== logicalToday).map(k => days[k]);
+        Perf.end('_rebuildFromSeries');
+        return {
+            history,
+            today: todayObj
+        };
+    },
 
-        // Incremental reconciliation: only entries within the API window [minApiTs, maxApiTs] can
-        // change, which touches only days at/after the window's first logical day. Days before that
-        // ("prefix") are provably untouched and kept as-is; only the affected tail is rebuilt,
-        // seeded by the prefix's last end breakdown so it chains on EXACTLY as a global rebuild
-        // would. Operates purely on the in-memory cache (no DB read). Returns the reconciled
-        // { result, changedDays } so the caller can persist only the changed days.
-        _reconcileIncremental(s, cleanLogs) {
+    // Full reconciliation: reads the entire stored series, merges the API logs (dedup window),
+    // and rebuilds EVERY day. This is the original, proven path — used now only as the
+    // production fallback (if the incremental path throws) and as the dev-mode parity oracle.
+    // Returns { meta, history, today } WITHOUT mutating _historyCache or persisting.
+    async _reconcileFull(s, cleanLogs) {
+        const stored = await DBManager.getStorage();
+        if (!stored) return { meta: s.meta, history: s.history, today: s.today };
+        if (stored.series && cleanLogs.length > 0) {
             const minApiTs = cleanLogs[0].ts;
             const maxApiTs = cleanLogs[cleanLogs.length - 1].ts;
-            // Built without `rate` to match the full path exactly; rate is re-derived on load.
             const apiEntries = cleanLogs.map(l => {
                 if (l.type === 'item') return { ...l };
                 return {
@@ -8689,1684 +8735,1931 @@
             });
             const getSetKey = e => e.type === 'item' ? `item_${e.id}` : `${e.ts}_${e.stat}_${e.after}`;
             const apiTsStatSet = new Set(apiEntries.map(getSetKey));
-            const earliestDay = Formatter.dateLogical(minApiTs * 1000);
-
-            const allDays = [...(s.history || [])];
-            if (s.today) allDays.push(s.today);
-            const prefix = [],
-                affected = [];
-            allDays.forEach(d => {
-                (d.date < earliestDay ? prefix : affected).push(d);
-            });
-
-            const keptAffected = [];
-            affected.forEach(d => {
-                if (Array.isArray(d.series)) {
-                    d.series.forEach(e => {
-                        if (e.ts < minApiTs || e.ts > maxApiTs || !apiTsStatSet.has(getSetKey(e))) keptAffected.push(e);
-                    });
-                }
-            });
-            const mergedAffected = [...keptAffected, ...apiEntries].sort((a, b) => a.ts - b.ts);
-
-            const seed = prefix.length ? prefix[prefix.length - 1].endBreakdown : ((s.meta && s.meta.baselineBreakdown) || ZERO_BREAKDOWN);
-            const rebuilt = this._rebuildFromSeries(mergedAffected, seed);
-
-            return {
-                result: {
-                    meta: { ...s.meta },
-                    history: [...prefix, ...rebuilt.history],
-                    today: rebuilt.today
-                },
-                changedDays: [...rebuilt.history, rebuilt.today]
-            };
+            const kept = stored.series.filter(e => e.ts < minApiTs || e.ts > maxApiTs || !apiTsStatSet.has(getSetKey(e)));
+            stored.series = [...kept, ...apiEntries].sort((a, b) => a.ts - b.ts);
         }
-    };
-
-
-    function generateDemoData() {
-        let _seed = 0x9e3779b9;
-
-        function rand() {
-            _seed += 0x6d2b79f5;
-            let t = _seed;
-            t = Math.imul(t ^ (t >>> 15), t | 1);
-            t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
-            return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
-        }
-
-        function randInt(lo, hi) {
-            return lo + Math.floor(rand() * (hi - lo + 1));
-        }
-        const today = Formatter.dateLogical();
-        const todayMs = Formatter.parse(today).getTime();
-        const DAY_MS = 86400000;
-        const NUM_DAYS = 365;
-        const Simulation = {
-            A: 3.480061091e-7,
-            B: 250,
-            C: 3.091619094e-6,
-            D: 6.82775184551527e-5,
-            E: -0.0301431777,
+        stored.meta = {
+            ...stored.meta,
+            logStartDate: s.meta.logStartDate,
+            syncFloor: s.meta.syncFloor || stored.meta.syncFloor,
+            stickers: stored.meta.stickers || s.meta.stickers || {}
         };
-        const DEMO_GYM_DOTS = 9.0;
-        const DEMO_HAPPY = 4950;
-        const DEMO_MODIFIERS = 2.5;
-        const DEMO_E_PER_TRAIN = 5;
-        const DEMO_FORMULA_E_BASE = 10;
-
-        function simulationGain(statTotal) {
-            const happyFactor = DEMO_HAPPY + Simulation.B;
-            const base = (Simulation.A * Math.log(happyFactor) + Simulation.C) * statTotal + Simulation.D * happyFactor + Simulation.E;
-            const perStandardTrain = base * DEMO_GYM_DOTS * DEMO_MODIFIERS;
-            const perTrain = perStandardTrain * (DEMO_E_PER_TRAIN / DEMO_FORMULA_E_BASE);
-            return Math.max(0, perTrain);
-        }
-        const statKeys = ['str', 'def', 'spd', 'dex'];
-        const dates = [];
-        for (let i = NUM_DAYS - 1; i >= 0; i--) {
-            const ms = todayMs - i * DAY_MS;
-            const d = new Date(ms);
-            dates.push(Formatter.dateISO(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate()));
-        }
-        const baseline = {};
-        statKeys.forEach(k => {
-            baseline[k] = 15000 + randInt(0, 10000);
-        });
-        const weekStartOffset = userConfig.weekStartMode === 'mon' ? 1 : 0;
-        const todayDate = new Date(todayMs);
-        const todayDow = todayDate.getUTCDay();
-        const daysFromWeekStart = (todayDow - weekStartOffset + 7) % 7;
-        const weekDay0Str = dates[NUM_DAYS - 1 - daysFromWeekStart] || null;
-        const weekDay1Str = daysFromWeekStart >= 1 ? dates[NUM_DAYS - daysFromWeekStart] : null;
-        const running = {
-            ...baseline
-        };
-        const history = [];
-        let mixedWeek = 0;
-        dates.forEach((dateStr, idx) => {
-            const roll = rand();
-            if (roll < 0.10) return;
-            if (mixedWeek === 0 && rand() < 0.08) mixedWeek = 7;
-            let eTotalRaw;
-            if (mixedWeek > 0) {
-                mixedWeek--;
-                const subRoll = rand();
-                if (subRoll < 0.25) {
-                    eTotalRaw = randInt(200, 260) * 10;
-                } else if (subRoll < 0.55) {
-                    eTotalRaw = randInt(150, 190) * 10;
-                } else if (subRoll < 0.85) {
-                    eTotalRaw = randInt(100, 149) * 10;
-                } else {
-                    eTotalRaw = randInt(50, 99) * 10;
-                }
-            } else if (roll < 0.15) {
-                eTotalRaw = randInt(70, 99) * 10;
-            } else {
-                eTotalRaw = randInt(100, 160) * 10;
-            }
-            if (dateStr === weekDay0Str) eTotalRaw = Math.max(eTotalRaw, 2500);
-            else if (dateStr === weekDay1Str && eTotalRaw < 2000) eTotalRaw = Math.min(Math.max(eTotalRaw, 1000), 1499);
-            else if (rand() < 0.05) eTotalRaw = Math.max(eTotalRaw, 2500);
-            const hjRoll = rand();
-            const isDiamondHJDay = hjRoll < 0.05;
-            const isHJDay = isDiamondHJDay || hjRoll < 0.18;
-            if (isDiamondHJDay && eTotalRaw < 1800) eTotalRaw = randInt(180, 220) * 10;
-            else if (isHJDay && eTotalRaw < 1000) eTotalRaw = randInt(100, 170) * 10;
-            const hjWindowStart = isHJDay ? randInt(36000, 36000 + 28800 - GAME.HJ_WINDOW_SECONDS) : null;
-            const eTotal = eTotalRaw;
-            const numStats = randInt(1, 4);
-            const chosenStats = [...statKeys].sort(() => rand() - 0.5).slice(0, numStats);
-            const ePerStat = {};
-            let eRemain = eTotal;
-            chosenStats.forEach((k, i) => {
-                const share = i === chosenStats.length - 1 ? eRemain : Math.round((rand() * 0.4 + 0.1) * eTotal / numStats) * 10 || 10;
-                ePerStat[k] = Math.max(10, Math.min(share, eRemain));
-                eRemain -= ePerStat[k];
-            });
-            if (eRemain > 0 && chosenStats.length) ePerStat[chosenStats[0]] += eRemain;
-            const startBreakdown = {
-                ...running
-            };
-            const eSpent = {
-                total: eTotal,
-                ...ZERO_BREAKDOWN
-            };
-            const gains = {
-                total: 0,
-                ...ZERO_BREAKDOWN
-            };
-            const series = [];
-            const dayStartSec = Math.floor(Formatter.parse(dateStr).getTime() / 1000);
-            chosenStats.forEach(k => {
-                const cost = ePerStat[k] || 0;
-                if (!cost) return;
-                const trainsForStat = Math.floor(cost / DEMO_E_PER_TRAIN);
-                let statGainAccum = 0;
-                for (let t = 0; t < trainsForStat; t++) {
-                    const raw = simulationGain(running[k]);
-                    const jittered = raw * (0.97 + rand() * 0.06);
-                    running[k] += jittered;
-                    statGainAccum += jittered;
-                    const ts = hjWindowStart !== null ? dayStartSec + hjWindowStart + Math.floor(rand() * GAME.HJ_WINDOW_SECONDS) : dayStartSec + 36000 + Math.floor((t + rand()) * (28800 / Math.max(1, trainsForStat)));
-                    series.push({
-                        ts,
-                        stat: k,
-                        gain: Math.round(jittered),
-                        cost: DEMO_E_PER_TRAIN,
-                        after: Math.round(running[k]),
-                        rate: r2((Math.round(jittered) / DEMO_E_PER_TRAIN) * 150),
-                        synthetic: true,
-                    });
-                }
-                eSpent[k] = cost;
-                const roundedStatGain = Math.round(statGainAccum);
-                gains[k] = roundedStatGain;
-                gains.total += roundedStatGain;
-            });
-            eSpent.total = (eSpent.str + eSpent.def + eSpent.spd + eSpent.dex);
-            const endBreakdown = {
-                ...running
-            };
-            const day = initializeDayObject(dateStr, startBreakdown);
-            day.gains = gains;
-            day.eSpent = eSpent;
-            day.endBreakdown = endBreakdown;
-            day.endTotal = endBreakdown.str + endBreakdown.def + endBreakdown.spd + endBreakdown.dex;
-            day.series = series;
-            day.lastLogTimestamp = series.length ? series[series.length - 1].ts : 0;
-            history.push(day);
-        });
-        const lastHistDay = history.length ? history[history.length - 1] : null;
-        const todayStart = lastHistDay ? {
-            ...lastHistDay.endBreakdown
-        } : {
-            ...running
-        };
-        const todayObj = initializeDayObject(today, todayStart);
-        const oldestDate = history.length ? history[0].date : today;
-        const logStartDate = Math.floor(Formatter.parse(oldestDate).getTime() / 1000);
-        const lastRates = {};
-        statKeys.forEach(k => {
-            const perFiveE = simulationGain(running[k]);
-            lastRates[k] = perFiveE * (DEMO_FORMULA_E_BASE / DEMO_E_PER_TRAIN);
-        });
-        const meta = {
-            baselineBreakdown: {
-                ...baseline
-            },
-            logStartDate
-        };
+        const rebuilt = this._rebuildFromSeries(stored.series || [], stored.meta.baselineBreakdown || ZERO_BREAKDOWN);
         return {
-            meta,
-            history,
-            today: todayObj
+            meta: stored.meta,
+            history: rebuilt.history,
+            today: rebuilt.today
         };
-    }
+    },
 
-    function getActiveHistory() {
-        if (runtime.demoMode) {
-            if (!runtime.demoHistory) runtime.demoHistory = generateDemoData();
-            return runtime.demoHistory;
-        }
-        if (_historyCache) return _historyCache;
-        return {
-            meta: {
-                baselineBreakdown: {
-                    ...ZERO_BREAKDOWN
-                },
-                backfill: defaultBackfill()
-            },
-            history: [],
-            today: initializeDayObject(Formatter.dateLogical(), {
-                ...ZERO_BREAKDOWN
-            })
-        };
-    }
-
-    function normalizeApiLogs(rawLogs) {
-        if (!rawLogs || Object.keys(rawLogs).length === 0) return [];
-        return Object.keys(rawLogs).map(k => {
-            const l = rawLogs[k];
-            const meta = ITEM_LOG_META[l.log];
-            if (meta) {
-                const e = { type: 'item', id: k, ts: l.timestamp, logId: l.log };
-                const d = l.data || {};
-                if (meta.energy) e.energy = parseInt(d.energy_increased || 0);
-                if (meta.happy) e.happy = parseInt(d.happy_increased || 0);
-                if (meta.stat) {
-                    // Stat enhancers carry their gain under <stat>_increased; detect which stat.
-                    const sn = ['strength', 'defense', 'speed', 'dexterity'].find(s => d[`${s}_increased`] != null);
-                    if (sn) {
-                        e.statKey = (sn === 'strength') ? 'str' : (sn === 'defense') ? 'def' : (sn === 'speed') ? 'spd' : 'dex';
-                        e.statGain = r2(parseFloat(d[`${sn}_increased`] || 0));
-                    }
-                }
-                return e;
-            }
-            const sn = GAME.STAT_MAP[l.log];
-            if (!sn) return null;
-            const ab = (sn === 'strength') ? 'str' : (sn === 'defense') ? 'def' : (sn === 'speed') ? 'spd' : 'dex';
-            const gain = r2(parseFloat(l.data[`${sn}_increased`] || 0));
-            const cost = parseInt(l.data.energy_used || 0);
+    // Incremental reconciliation: only entries within the API window [minApiTs, maxApiTs] can
+    // change, which touches only days at/after the window's first logical day. Days before that
+    // ("prefix") are provably untouched and kept as-is; only the affected tail is rebuilt,
+    // seeded by the prefix's last end breakdown so it chains on EXACTLY as a global rebuild
+    // would. Operates purely on the in-memory cache (no DB read). Returns the reconciled
+    // { result, changedDays } so the caller can persist only the changed days.
+    _reconcileIncremental(s, cleanLogs) {
+        const minApiTs = cleanLogs[0].ts;
+        const maxApiTs = cleanLogs[cleanLogs.length - 1].ts;
+        // Built without `rate` to match the full path exactly; rate is re-derived on load.
+        const apiEntries = cleanLogs.map(l => {
+            if (l.type === 'item') return { ...l };
             return {
                 type: 'gym',
-                id: k,
-                ts: l.timestamp,
-                stat: ab,
-                key: sn,
-                gain,
-                after: r2(parseFloat(l.data[`${sn}_after`] || 0)),
-                cost,
-                rate: cost > 0 ? r2((gain / cost) * 150) : 0
+                id: l.id,
+                ts: l.ts,
+                stat: l.stat,
+                gain: r2(l.gain),
+                cost: l.cost,
+                after: r2(l.after)
             };
-        }).filter(x => x !== null).sort((a, b) => a.ts - b.ts);
-    }
+        });
+        const getSetKey = e => e.type === 'item' ? `item_${e.id}` : `${e.ts}_${e.stat}_${e.after}`;
+        const apiTsStatSet = new Set(apiEntries.map(getSetKey));
+        const earliestDay = Formatter.dateLogical(minApiTs * 1000);
 
-    function initializeDayObject(dateStr, baseBreakdown) {
-        const b = {
-            ...baseBreakdown
-        };
-        return {
-            date: dateStr,
-            startTotal: b.str + b.def + b.spd + b.dex,
-            endTotal: b.str + b.def + b.spd + b.dex,
-            startBreakdown: {
-                ...b
-            },
-            endBreakdown: {
-                ...b
-            },
-            gains: {
-                total: 0,
-                ...ZERO_BREAKDOWN
-            },
-            eSpent: {
-                total: 0,
-                ...ZERO_BREAKDOWN
-            },
-            items: {},
-            itemLogIds: [],
-            itemEnergy: 0,
-            itemHappy: 0,
-            lastLogTimestamp: 0,
-            series: []
-        };
-    }
-
-    function computeAchievements(s) {
-        const { hjDaySet, hjWeek: hjWeekData } = DataController.getHappyJumpData();
         const allDays = [...(s.history || [])];
-        if (s.today && s.today.date) {
-            const filtered = allDays.filter(d => d.date !== s.today.date);
-            filtered.push(s.today);
-            allDays.splice(0, allDays.length, ...filtered);
+        if (s.today) allDays.push(s.today);
+        const prefix = [],
+            affected = [];
+        allDays.forEach(d => {
+            (d.date < earliestDay ? prefix : affected).push(d);
+        });
+
+        const keptAffected = [];
+        affected.forEach(d => {
+            if (Array.isArray(d.series)) {
+                d.series.forEach(e => {
+                    if (e.ts < minApiTs || e.ts > maxApiTs || !apiTsStatSet.has(getSetKey(e))) keptAffected.push(e);
+                });
+            }
+        });
+        const mergedAffected = [...keptAffected, ...apiEntries].sort((a, b) => a.ts - b.ts);
+
+        const seed = prefix.length ? prefix[prefix.length - 1].endBreakdown : ((s.meta && s.meta.baselineBreakdown) || ZERO_BREAKDOWN);
+        const rebuilt = this._rebuildFromSeries(mergedAffected, seed);
+
+        return {
+            result: {
+                meta: { ...s.meta },
+                history: [...prefix, ...rebuilt.history],
+                today: rebuilt.today
+            },
+            changedDays: [...rebuilt.history, rebuilt.today]
+        };
+    }
+};
+
+
+function generateDemoData() {
+    let _seed = 0x9e3779b9;
+
+    function rand() {
+        _seed += 0x6d2b79f5;
+        let t = _seed;
+        t = Math.imul(t ^ (t >>> 15), t | 1);
+        t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+        return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+    }
+
+    function randInt(lo, hi) {
+        return lo + Math.floor(rand() * (hi - lo + 1));
+    }
+    const today = Formatter.dateLogical();
+    const todayMs = Formatter.parse(today).getTime();
+    const DAY_MS = 86400000;
+    const NUM_DAYS = 365;
+    const Simulation = {
+        A: 3.480061091e-7,
+        B: 250,
+        C: 3.091619094e-6,
+        D: 6.82775184551527e-5,
+        E: -0.0301431777,
+    };
+    const DEMO_GYM_DOTS = 9.0;
+    const DEMO_HAPPY = 4950;
+    const DEMO_MODIFIERS = 2.5;
+    const DEMO_E_PER_TRAIN = 5;
+    const DEMO_FORMULA_E_BASE = 10;
+
+    function simulationGain(statTotal) {
+        const happyFactor = DEMO_HAPPY + Simulation.B;
+        const base = (Simulation.A * Math.log(happyFactor) + Simulation.C) * statTotal + Simulation.D * happyFactor + Simulation.E;
+        const perStandardTrain = base * DEMO_GYM_DOTS * DEMO_MODIFIERS;
+        const perTrain = perStandardTrain * (DEMO_E_PER_TRAIN / DEMO_FORMULA_E_BASE);
+        return Math.max(0, perTrain);
+    }
+    const statKeys = ['str', 'def', 'spd', 'dex'];
+    const dates = [];
+    for (let i = NUM_DAYS - 1; i >= 0; i--) {
+        const ms = todayMs - i * DAY_MS;
+        const d = new Date(ms);
+        dates.push(Formatter.dateISO(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate()));
+    }
+    const baseline = {};
+    statKeys.forEach(k => {
+        baseline[k] = 15000 + randInt(0, 10000);
+    });
+    const weekStartOffset = userConfig.weekStartMode === 'mon' ? 1 : 0;
+    const todayDate = new Date(todayMs);
+    const todayDow = todayDate.getUTCDay();
+    const daysFromWeekStart = (todayDow - weekStartOffset + 7) % 7;
+    const weekDay0Str = dates[NUM_DAYS - 1 - daysFromWeekStart] || null;
+    const weekDay1Str = daysFromWeekStart >= 1 ? dates[NUM_DAYS - daysFromWeekStart] : null;
+    const running = {
+        ...baseline
+    };
+    const history = [];
+    let mixedWeek = 0;
+    dates.forEach((dateStr, idx) => {
+        const roll = rand();
+        if (roll < 0.10) return;
+        if (mixedWeek === 0 && rand() < 0.08) mixedWeek = 7;
+        let eTotalRaw;
+        if (mixedWeek > 0) {
+            mixedWeek--;
+            const subRoll = rand();
+            if (subRoll < 0.25) {
+                eTotalRaw = randInt(200, 260) * 10;
+            } else if (subRoll < 0.55) {
+                eTotalRaw = randInt(150, 190) * 10;
+            } else if (subRoll < 0.85) {
+                eTotalRaw = randInt(100, 149) * 10;
+            } else {
+                eTotalRaw = randInt(50, 99) * 10;
+            }
+        } else if (roll < 0.15) {
+            eTotalRaw = randInt(70, 99) * 10;
+        } else {
+            eTotalRaw = randInt(100, 160) * 10;
         }
-        allDays.sort((a, b) => a.date.localeCompare(b.date));
-        if (!allDays.length) return null;
-        const GREEN = 1000,
-            GOLD = 1500,
-            DIAMOND = 2000;
-        let greenDays = 0,
-            goldDays = 0,
-            diamondDays = 0,
-            trainingDays = 0,
-            lifetimeEnergy = 0,
-            lifetimeGains = 0;
-        let maxEDay = {
+        if (dateStr === weekDay0Str) eTotalRaw = Math.max(eTotalRaw, 2500);
+        else if (dateStr === weekDay1Str && eTotalRaw < 2000) eTotalRaw = Math.min(Math.max(eTotalRaw, 1000), 1499);
+        else if (rand() < 0.05) eTotalRaw = Math.max(eTotalRaw, 2500);
+        const hjRoll = rand();
+        const isDiamondHJDay = hjRoll < 0.05;
+        const isHJDay = isDiamondHJDay || hjRoll < 0.18;
+        if (isDiamondHJDay && eTotalRaw < 1800) eTotalRaw = randInt(180, 220) * 10;
+        else if (isHJDay && eTotalRaw < 1000) eTotalRaw = randInt(100, 170) * 10;
+        const hjWindowStart = isHJDay ? randInt(36000, 36000 + 28800 - GAME.HJ_WINDOW_SECONDS) : null;
+        const eTotal = eTotalRaw;
+        const numStats = randInt(1, 4);
+        const chosenStats = [...statKeys].sort(() => rand() - 0.5).slice(0, numStats);
+        const ePerStat = {};
+        let eRemain = eTotal;
+        chosenStats.forEach((k, i) => {
+            const share = i === chosenStats.length - 1 ? eRemain : Math.round((rand() * 0.4 + 0.1) * eTotal / numStats) * 10 || 10;
+            ePerStat[k] = Math.max(10, Math.min(share, eRemain));
+            eRemain -= ePerStat[k];
+        });
+        if (eRemain > 0 && chosenStats.length) ePerStat[chosenStats[0]] += eRemain;
+        const startBreakdown = {
+            ...running
+        };
+        const eSpent = {
+            total: eTotal,
+            ...ZERO_BREAKDOWN
+        };
+        const gains = {
+            total: 0,
+            ...ZERO_BREAKDOWN
+        };
+        const series = [];
+        const dayStartSec = Math.floor(Formatter.parse(dateStr).getTime() / 1000);
+        chosenStats.forEach(k => {
+            const cost = ePerStat[k] || 0;
+            if (!cost) return;
+            const trainsForStat = Math.floor(cost / DEMO_E_PER_TRAIN);
+            let statGainAccum = 0;
+            for (let t = 0; t < trainsForStat; t++) {
+                const raw = simulationGain(running[k]);
+                const jittered = raw * (0.97 + rand() * 0.06);
+                running[k] += jittered;
+                statGainAccum += jittered;
+                const ts = hjWindowStart !== null ? dayStartSec + hjWindowStart + Math.floor(rand() * GAME.HJ_WINDOW_SECONDS) : dayStartSec + 36000 + Math.floor((t + rand()) * (28800 / Math.max(1, trainsForStat)));
+                series.push({
+                    ts,
+                    stat: k,
+                    gain: Math.round(jittered),
+                    cost: DEMO_E_PER_TRAIN,
+                    after: Math.round(running[k]),
+                    rate: r2((Math.round(jittered) / DEMO_E_PER_TRAIN) * 150),
+                    synthetic: true,
+                });
+            }
+            eSpent[k] = cost;
+            const roundedStatGain = Math.round(statGainAccum);
+            gains[k] = roundedStatGain;
+            gains.total += roundedStatGain;
+        });
+        eSpent.total = (eSpent.str + eSpent.def + eSpent.spd + eSpent.dex);
+        const endBreakdown = {
+            ...running
+        };
+        const day = initializeDayObject(dateStr, startBreakdown);
+        day.gains = gains;
+        day.eSpent = eSpent;
+        day.endBreakdown = endBreakdown;
+        day.endTotal = endBreakdown.str + endBreakdown.def + endBreakdown.spd + endBreakdown.dex;
+        day.series = series;
+        day.lastLogTimestamp = series.length ? series[series.length - 1].ts : 0;
+        history.push(day);
+    });
+    const lastHistDay = history.length ? history[history.length - 1] : null;
+    const todayStart = lastHistDay ? {
+        ...lastHistDay.endBreakdown
+    } : {
+        ...running
+    };
+    const todayObj = initializeDayObject(today, todayStart);
+    const oldestDate = history.length ? history[0].date : today;
+    const logStartDate = Math.floor(Formatter.parse(oldestDate).getTime() / 1000);
+    const lastRates = {};
+    statKeys.forEach(k => {
+        const perFiveE = simulationGain(running[k]);
+        lastRates[k] = perFiveE * (DEMO_FORMULA_E_BASE / DEMO_E_PER_TRAIN);
+    });
+    const meta = {
+        baselineBreakdown: {
+            ...baseline
+        },
+        logStartDate
+    };
+    return {
+        meta,
+        history,
+        today: todayObj
+    };
+}
+
+function getActiveHistory() {
+    if (runtime.demoMode) {
+        if (!runtime.demoHistory) runtime.demoHistory = generateDemoData();
+        return runtime.demoHistory;
+    }
+    if (_historyCache) return _historyCache;
+    return {
+        meta: {
+            baselineBreakdown: {
+                ...ZERO_BREAKDOWN
+            },
+            backfill: defaultBackfill()
+        },
+        history: [],
+        today: initializeDayObject(Formatter.dateLogical(), {
+            ...ZERO_BREAKDOWN
+        })
+    };
+}
+
+function normalizeApiLogs(rawLogs) {
+    if (!rawLogs || Object.keys(rawLogs).length === 0) return [];
+    return Object.keys(rawLogs).map(k => {
+        const l = rawLogs[k];
+        const meta = ITEM_LOG_META[l.log];
+        if (meta) {
+            const e = { type: 'item', id: k, ts: l.timestamp, logId: l.log };
+            const d = l.data || {};
+            if (meta.energy) e.energy = (l.log === XANAX_LOG) ? 250 : parseInt(d.energy_increased || 0);
+            if (meta.energyLost) e.energyLost = parseInt(d.energy_decreased ?? 0);
+            if (meta.happy) e.happy = parseInt(d.happy_increased || 0);
+            if (meta.stat) {
+                // Stat enhancers carry their gain under <stat>_increased; detect which stat.
+                const sn = ['strength', 'defense', 'speed', 'dexterity'].find(s => d[`${s}_increased`] != null);
+                if (sn) {
+                    e.statKey = (sn === 'strength') ? 'str' : (sn === 'defense') ? 'def' : (sn === 'speed') ? 'spd' : 'dex';
+                    e.statGain = r2(parseFloat(d[`${sn}_increased`] || 0));
+                }
+            }
+            return e;
+        }
+        const sn = GAME.STAT_MAP[l.log];
+        if (!sn) return null;
+        const ab = (sn === 'strength') ? 'str' : (sn === 'defense') ? 'def' : (sn === 'speed') ? 'spd' : 'dex';
+        const gain = r2(parseFloat(l.data[`${sn}_increased`] || 0));
+        const cost = parseInt(l.data.energy_used || 0);
+        return {
+            type: 'gym',
+            id: k,
+            ts: l.timestamp,
+            stat: ab,
+            key: sn,
+            gain,
+            after: r2(parseFloat(l.data[`${sn}_after`] || 0)),
+            cost,
+            rate: cost > 0 ? r2((gain / cost) * 150) : 0
+        };
+    }).filter(x => x !== null).sort((a, b) => a.ts - b.ts);
+}
+
+function initializeDayObject(dateStr, baseBreakdown) {
+    const b = {
+        ...baseBreakdown
+    };
+    return {
+        date: dateStr,
+        startTotal: b.str + b.def + b.spd + b.dex,
+        endTotal: b.str + b.def + b.spd + b.dex,
+        startBreakdown: {
+            ...b
+        },
+        endBreakdown: {
+            ...b
+        },
+        gains: {
+            total: 0,
+            ...ZERO_BREAKDOWN
+        },
+        eSpent: {
+            total: 0,
+            ...ZERO_BREAKDOWN
+        },
+        items: {},
+        itemLogIds: [],
+        itemEnergy: 0,
+        itemHappy: 0,
+        lastLogTimestamp: 0,
+        series: []
+    };
+}
+
+function computeAchievements(s) {
+    const { hjDaySet, hjWeek: hjWeekData } = DataController.getHappyJumpData();
+    const allDays = [...(s.history || [])];
+    if (s.today && s.today.date) {
+        const filtered = allDays.filter(d => d.date !== s.today.date);
+        filtered.push(s.today);
+        allDays.splice(0, allDays.length, ...filtered);
+    }
+    allDays.sort((a, b) => a.date.localeCompare(b.date));
+    if (!allDays.length) return null;
+    const GREEN = 1000,
+        GOLD = 1500,
+        DIAMOND = 2000;
+    let greenDays = 0,
+        goldDays = 0,
+        diamondDays = 0,
+        trainingDays = 0,
+        lifetimeEnergy = 0,
+        lifetimeGains = 0;
+    let maxEDay = {
+        value: 0,
+        date: null
+    },
+        maxGainsDay = {
             value: 0,
             date: null
         },
-            maxGainsDay = {
-                value: 0,
-                date: null
-            },
-            maxClick = {
-                value: 0,
-                date: null,
-                stat: null
-            },
-            maxStatGainDay = {
-                value: 0,
-                date: null,
-                stat: null
-            };
-        const bestTrainByStat = {
+        maxClick = {
+            value: 0,
+            date: null,
+            stat: null
+        },
+        maxStatGainDay = {
+            value: 0,
+            date: null,
+            stat: null
+        };
+    const bestTrainByStat = {
+        str: null,
+        def: null,
+        spd: null,
+        dex: null
+    },
+        bestDayByStat = {
             str: null,
             def: null,
             spd: null,
             dex: null
         },
-            bestDayByStat = {
-                str: null,
-                def: null,
-                spd: null,
-                dex: null
-            },
-            bestWeekByStat = {
-                str: null,
-                def: null,
-                spd: null,
-                dex: null
-            },
-            bestMonthByStat = {
-                str: null,
-                def: null,
-                spd: null,
-                dex: null
-            };
-        const bestHJByStat = {
+        bestWeekByStat = {
             str: null,
             def: null,
             spd: null,
-            dex: null,
-            total: null
+            dex: null
+        },
+        bestMonthByStat = {
+            str: null,
+            def: null,
+            spd: null,
+            dex: null
         };
-        const happyItemTotals = {};
-        HAPPY_LOGS.forEach(id => { happyItemTotals[id] = { count: 0, happy: 0 }; });
-        const energyItemTotals = {};
-        ENERGY_LOGS.forEach(id => { energyItemTotals[id] = { count: 0, energy: 0 }; });
-        const statEnhByStat = { str: { count: 0, gain: 0 }, def: { count: 0, gain: 0 }, spd: { count: 0, gain: 0 }, dex: { count: 0, gain: 0 } };
-        const weekE = {},
-            weekG = {},
-            monthE = {},
-            monthG = {},
-            weekDayMap = {},
-            weekStatG = {},
-            monthStatG = {};
-        allDays.forEach(day => {
-            const e = (day.eSpent && day.eSpent.total) || 0,
-                g = (day.gains && day.gains.total) || 0;
-            lifetimeEnergy += e;
-            lifetimeGains += g;
-            if (e >= GOLD) {
-                goldDays++;
-                trainingDays++;
-            } else if (e >= GREEN) {
-                greenDays++;
-                trainingDays++;
-            } else if (e > 0) {
-                trainingDays++;
-            }
-            if (e >= DIAMOND) diamondDays++;
-            if (e > maxEDay.value) maxEDay = {
-                value: e,
-                date: day.date
+    const bestHJByStat = {
+        str: null,
+        def: null,
+        spd: null,
+        dex: null,
+        total: null
+    };
+    const happyItemTotals = {};
+    HAPPY_LOGS.forEach(id => { happyItemTotals[id] = { count: 0, happy: 0 }; });
+    const energyItemTotals = {};
+    ENERGY_LOGS.forEach(id => { energyItemTotals[id] = { count: 0, energy: 0 }; });
+    const odItemTotals = {};
+    OD_LOGS.forEach(id => { odItemTotals[id] = { count: 0, energyLost: 0 }; });
+    const statEnhByStat = { str: { count: 0, gain: 0 }, def: { count: 0, gain: 0 }, spd: { count: 0, gain: 0 }, dex: { count: 0, gain: 0 } };
+    const weekE = {},
+        weekG = {},
+        monthE = {},
+        monthG = {},
+        weekDayMap = {},
+        weekStatG = {},
+        monthStatG = {};
+    allDays.forEach(day => {
+        const e = (day.eSpent && day.eSpent.total) || 0,
+            g = (day.gains && day.gains.total) || 0;
+        lifetimeEnergy += e;
+        lifetimeGains += g;
+        if (e >= GOLD) {
+            goldDays++;
+            trainingDays++;
+        } else if (e >= GREEN) {
+            greenDays++;
+            trainingDays++;
+        } else if (e > 0) {
+            trainingDays++;
+        }
+        if (e >= DIAMOND) diamondDays++;
+        if (e > maxEDay.value) maxEDay = {
+            value: e,
+            date: day.date
+        };
+        if (g > maxGainsDay.value) maxGainsDay = {
+            value: g,
+            date: day.date
+        };
+        (day.series || []).forEach(entry => {
+            if ((entry.gain || 0) > maxClick.value) maxClick = {
+                value: entry.gain,
+                date: day.date,
+                stat: entry.stat,
+                ts: entry.ts,
+                cost: entry.cost
             };
-            if (g > maxGainsDay.value) maxGainsDay = {
-                value: g,
-                date: day.date
-            };
-            (day.series || []).forEach(entry => {
-                if ((entry.gain || 0) > maxClick.value) maxClick = {
+            const _esk = entry.stat;
+            if ((entry.gain || 0) > 0 && bestTrainByStat[_esk] !== undefined) {
+                const _cur = bestTrainByStat[_esk];
+                if (!_cur || entry.gain > _cur.value) bestTrainByStat[_esk] = {
                     value: entry.gain,
                     date: day.date,
-                    stat: entry.stat,
                     ts: entry.ts,
                     cost: entry.cost
                 };
-                const _esk = entry.stat;
-                if ((entry.gain || 0) > 0 && bestTrainByStat[_esk] !== undefined) {
-                    const _cur = bestTrainByStat[_esk];
-                    if (!_cur || entry.gain > _cur.value) bestTrainByStat[_esk] = {
-                        value: entry.gain,
-                        date: day.date,
-                        ts: entry.ts,
-                        cost: entry.cost
-                    };
-                }
-            });
-            const wk = getWeekKey(day.date),
-                mk = day.date.slice(0, 7);
-            weekE[wk] = (weekE[wk] || 0) + e;
-            weekG[wk] = (weekG[wk] || 0) + g;
-            monthE[mk] = (monthE[mk] || 0) + e;
-            monthG[mk] = (monthG[mk] || 0) + g;
-            if (!weekDayMap[wk]) weekDayMap[wk] = [];
-            weekDayMap[wk].push(day);
-            ['str', 'def', 'spd', 'dex'].forEach(sk => {
-                const sg = (day.gains && day.gains[sk]) || 0;
-                if (!sg) return;
-                if (sg > maxStatGainDay.value) maxStatGainDay = {
+            }
+        });
+        const wk = getWeekKey(day.date),
+            mk = day.date.slice(0, 7);
+        weekE[wk] = (weekE[wk] || 0) + e;
+        weekG[wk] = (weekG[wk] || 0) + g;
+        monthE[mk] = (monthE[mk] || 0) + e;
+        monthG[mk] = (monthG[mk] || 0) + g;
+        if (!weekDayMap[wk]) weekDayMap[wk] = [];
+        weekDayMap[wk].push(day);
+        ['str', 'def', 'spd', 'dex'].forEach(sk => {
+            const sg = (day.gains && day.gains[sk]) || 0;
+            if (!sg) return;
+            if (sg > maxStatGainDay.value) maxStatGainDay = {
+                value: sg,
+                date: day.date,
+                stat: sk
+            };
+            {
+                const _cur = bestDayByStat[sk];
+                if (!_cur || sg > _cur.value) bestDayByStat[sk] = {
                     value: sg,
-                    date: day.date,
-                    stat: sk
+                    date: day.date
                 };
-                {
-                    const _cur = bestDayByStat[sk];
-                    if (!_cur || sg > _cur.value) bestDayByStat[sk] = {
-                        value: sg,
-                        date: day.date
-                    };
-                }
-                const wsk = sk + '\x00' + wk,
-                    msk = sk + '\x00' + mk;
-                weekStatG[wsk] = (weekStatG[wsk] || 0) + sg;
-                monthStatG[msk] = (monthStatG[msk] || 0) + sg;
+            }
+            const wsk = sk + '\x00' + wk,
+                msk = sk + '\x00' + mk;
+            weekStatG[wsk] = (weekStatG[wsk] || 0) + sg;
+            monthStatG[msk] = (monthStatG[msk] || 0) + sg;
+        });
+        if (day.items) {
+            HAPPY_LOGS.forEach(id => {
+                const qty = day.items[id] || 0;
+                if (qty > 0) happyItemTotals[id].count += qty;
             });
-            if (day.items) {
-                HAPPY_LOGS.forEach(id => {
-                    const qty = day.items[id] || 0;
-                    if (qty > 0) happyItemTotals[id].count += qty;
+            ENERGY_LOGS.forEach(id => {
+                const qty = day.items[id] || 0;
+                if (qty > 0) energyItemTotals[id].count += qty;
+            });
+            OD_LOGS.forEach(id => {
+                const qty = day.items[id] || 0;
+                if (qty > 0) odItemTotals[id].count += qty;
+            });
+        }
+        (day.series || []).forEach(e => {
+            if (e.type === 'item' && e.happy && happyItemTotals[e.logId]) {
+                happyItemTotals[e.logId].happy += e.happy;
+            }
+            if (e.type === 'item' && e.energy && energyItemTotals[e.logId]) {
+                energyItemTotals[e.logId].energy += e.energy;
+            }
+            if (e.type === 'item' && e.energyLost != null && odItemTotals[e.logId]) {
+                odItemTotals[e.logId].energyLost += e.energyLost;
+            }
+            if (e.type === 'item' && e.statKey && statEnhByStat[e.statKey]) {
+                statEnhByStat[e.statKey].count++;
+                statEnhByStat[e.statKey].gain = Math.round((statEnhByStat[e.statKey].gain + (e.statGain || 0)) * 100) / 100;
+            }
+        });
+    });
+    const maxOf = (obj, key) => Object.entries(obj).reduce((best, [k, v]) => v > best.value ? {
+        [key]: k,
+        value: v
+    } : best, {
+        value: 0,
+        [key]: null
+    });
+    const maxStatOf = (obj, key) => Object.entries(obj).reduce((best, [k, v]) => {
+        const sep = k.indexOf('\x00');
+        return v > best.value ? {
+            value: v,
+            stat: k.slice(0, sep),
+            [key]: k.slice(sep + 1)
+        } : best;
+    }, {
+        value: 0,
+        stat: null,
+        [key]: null
+    });
+    const bestStatWk = maxStatOf(weekStatG, 'weekOf'),
+        bestStatMn = maxStatOf(monthStatG, 'rawMonth');
+    Object.entries(weekStatG).forEach(([k, v]) => {
+        const _sep = k.indexOf('\x00');
+        const _sk = k.slice(0, _sep),
+            _wk = k.slice(_sep + 1);
+        const _cur = bestWeekByStat[_sk];
+        if (!_cur || v > _cur.value) bestWeekByStat[_sk] = {
+            value: v,
+            weekOf: _wk
+        };
+    });
+    Object.entries(monthStatG).forEach(([k, v]) => {
+        const _sep = k.indexOf('\x00');
+        const _sk = k.slice(0, _sep),
+            _mk = k.slice(_sep + 1);
+        const _cur = bestMonthByStat[_sk];
+        if (!_cur || v > _cur.value) bestMonthByStat[_sk] = {
+            value: v,
+            rawMonth: _mk
+        };
+    });
+    const fmtMonth = mk => mk ? `${CONSTANTS.MONTHS[parseInt(mk.slice(5)) - 1]} ${mk.slice(0, 4)}` : null;
+    let greenWeeks = 0,
+        goldWeeks = 0,
+        diamondWeeks = 0;
+    const todayStr = Formatter.dateLogical(),
+        currentWk = getWeekKey(todayStr);
+    Object.keys(weekDayMap).sort().forEach(wk => {
+        if (wk < currentWk) {
+            const wc = computeWeekCompletion(weekDayMap[wk], hjDaySet, hjWeekData[wk] || 0);
+            if (wc.isGold) goldWeeks++;
+            else if (wc.isCompleted) greenWeeks++;
+            if (wc.totDiamond >= GAME.WEEKLY_GOAL) diamondWeeks++;
+        }
+    });
+    const _zg = () => ({
+        str: 0,
+        def: 0,
+        spd: 0,
+        dex: 0
+    });
+    let longestStreak = 0,
+        longestStreakStart = null,
+        longestStreakEnd = null,
+        longestStreakGains = _zg();
+    let longestGoalStreak = 0,
+        longestGoalStreakStart = null,
+        longestGoalStreakEnd = null,
+        longestGoalStreakGains = _zg();
+    let longestGoldStreak = 0,
+        longestGoldStreakStart = null,
+        longestGoldStreakEnd = null,
+        longestGoldStreakGains = _zg();
+    let longestDiamondStreak = 0,
+        longestDiamondStreakStart = null,
+        longestDiamondStreakEnd = null,
+        longestDiamondStreakGains = _zg();
+    let sT = 0,
+        sTStart = null,
+        sTGains = _zg(),
+        sG = 0,
+        sGStart = null,
+        sGGains = _zg(),
+        sGo = 0,
+        sGoStart = null,
+        sGoGains = _zg(),
+        sDi = 0,
+        sDiStart = null,
+        sDiGains = _zg(),
+        prevDate = null;
+    allDays.forEach(day => {
+        const e = (day.eSpent && day.eSpent.total) || 0;
+        const g = day.gains || {};
+        const consecutive = prevDate && (new Date(day.date + 'T00:00:00Z') - new Date(prevDate + 'T00:00:00Z')) / 86400000 === 1;
+        if (e > 0) {
+            if (consecutive && sT > 0) {
+                sT++;
+                ['str', 'def', 'spd', 'dex'].forEach(k => {
+                    sTGains[k] += g[k] || 0;
                 });
-                ENERGY_LOGS.forEach(id => {
-                    const qty = day.items[id] || 0;
-                    if (qty > 0) energyItemTotals[id].count += qty;
-                });
-            }
-            (day.series || []).forEach(e => {
-                if (e.type === 'item' && e.happy && happyItemTotals[e.logId]) {
-                    happyItemTotals[e.logId].happy += e.happy;
-                }
-                if (e.type === 'item' && e.energy && energyItemTotals[e.logId]) {
-                    energyItemTotals[e.logId].energy += e.energy;
-                }
-                if (e.type === 'item' && e.statKey && statEnhByStat[e.statKey]) {
-                    statEnhByStat[e.statKey].count++;
-                    statEnhByStat[e.statKey].gain = Math.round((statEnhByStat[e.statKey].gain + (e.statGain || 0)) * 100) / 100;
-                }
-            });
-        });
-        const maxOf = (obj, key) => Object.entries(obj).reduce((best, [k, v]) => v > best.value ? {
-            [key]: k,
-            value: v
-        } : best, {
-            value: 0,
-            [key]: null
-        });
-        const maxStatOf = (obj, key) => Object.entries(obj).reduce((best, [k, v]) => {
-            const sep = k.indexOf('\x00');
-            return v > best.value ? {
-                value: v,
-                stat: k.slice(0, sep),
-                [key]: k.slice(sep + 1)
-            } : best;
-        }, {
-            value: 0,
-            stat: null,
-            [key]: null
-        });
-        const bestStatWk = maxStatOf(weekStatG, 'weekOf'),
-            bestStatMn = maxStatOf(monthStatG, 'rawMonth');
-        Object.entries(weekStatG).forEach(([k, v]) => {
-            const _sep = k.indexOf('\x00');
-            const _sk = k.slice(0, _sep),
-                _wk = k.slice(_sep + 1);
-            const _cur = bestWeekByStat[_sk];
-            if (!_cur || v > _cur.value) bestWeekByStat[_sk] = {
-                value: v,
-                weekOf: _wk
-            };
-        });
-        Object.entries(monthStatG).forEach(([k, v]) => {
-            const _sep = k.indexOf('\x00');
-            const _sk = k.slice(0, _sep),
-                _mk = k.slice(_sep + 1);
-            const _cur = bestMonthByStat[_sk];
-            if (!_cur || v > _cur.value) bestMonthByStat[_sk] = {
-                value: v,
-                rawMonth: _mk
-            };
-        });
-        const fmtMonth = mk => mk ? `${CONSTANTS.MONTHS[parseInt(mk.slice(5)) - 1]} ${mk.slice(0, 4)}` : null;
-        let greenWeeks = 0,
-            goldWeeks = 0,
-            diamondWeeks = 0;
-        const todayStr = Formatter.dateLogical(),
-            currentWk = getWeekKey(todayStr);
-        Object.keys(weekDayMap).sort().forEach(wk => {
-            if (wk < currentWk) {
-                const wc = computeWeekCompletion(weekDayMap[wk], hjDaySet, hjWeekData[wk] || 0);
-                if (wc.isGold) goldWeeks++;
-                else if (wc.isCompleted) greenWeeks++;
-                if (wc.totDiamond >= GAME.WEEKLY_GOAL) diamondWeeks++;
-            }
-        });
-        const _zg = () => ({
-            str: 0,
-            def: 0,
-            spd: 0,
-            dex: 0
-        });
-        let longestStreak = 0,
-            longestStreakStart = null,
-            longestStreakEnd = null,
-            longestStreakGains = _zg();
-        let longestGoalStreak = 0,
-            longestGoalStreakStart = null,
-            longestGoalStreakEnd = null,
-            longestGoalStreakGains = _zg();
-        let longestGoldStreak = 0,
-            longestGoldStreakStart = null,
-            longestGoldStreakEnd = null,
-            longestGoldStreakGains = _zg();
-        let longestDiamondStreak = 0,
-            longestDiamondStreakStart = null,
-            longestDiamondStreakEnd = null,
-            longestDiamondStreakGains = _zg();
-        let sT = 0,
-            sTStart = null,
-            sTGains = _zg(),
-            sG = 0,
-            sGStart = null,
-            sGGains = _zg(),
-            sGo = 0,
-            sGoStart = null,
-            sGoGains = _zg(),
-            sDi = 0,
-            sDiStart = null,
-            sDiGains = _zg(),
-            prevDate = null;
-        allDays.forEach(day => {
-            const e = (day.eSpent && day.eSpent.total) || 0;
-            const g = day.gains || {};
-            const consecutive = prevDate && (new Date(day.date + 'T00:00:00Z') - new Date(prevDate + 'T00:00:00Z')) / 86400000 === 1;
-            if (e > 0) {
-                if (consecutive && sT > 0) {
-                    sT++;
-                    ['str', 'def', 'spd', 'dex'].forEach(k => {
-                        sTGains[k] += g[k] || 0;
-                    });
-                } else {
-                    sT = 1;
-                    sTStart = day.date;
-                    sTGains = {
-                        str: g.str || 0,
-                        def: g.def || 0,
-                        spd: g.spd || 0,
-                        dex: g.dex || 0
-                    };
-                }
-                if (sT > longestStreak) {
-                    longestStreak = sT;
-                    longestStreakStart = sTStart;
-                    longestStreakEnd = day.date;
-                    longestStreakGains = {
-                        ...sTGains
-                    };
-                }
             } else {
-                sT = 0;
-                sTStart = null;
-                sTGains = _zg();
-            }
-            if (e >= GREEN) {
-                if (consecutive && sG > 0) {
-                    sG++;
-                    ['str', 'def', 'spd', 'dex'].forEach(k => {
-                        sGGains[k] += g[k] || 0;
-                    });
-                } else {
-                    sG = 1;
-                    sGStart = day.date;
-                    sGGains = {
-                        str: g.str || 0,
-                        def: g.def || 0,
-                        spd: g.spd || 0,
-                        dex: g.dex || 0
-                    };
-                }
-                if (sG > longestGoalStreak) {
-                    longestGoalStreak = sG;
-                    longestGoalStreakStart = sGStart;
-                    longestGoalStreakEnd = day.date;
-                    longestGoalStreakGains = {
-                        ...sGGains
-                    };
-                }
-            } else {
-                sG = 0;
-                sGStart = null;
-                sGGains = _zg();
-            }
-            if (e >= GOLD) {
-                if (consecutive && sGo > 0) {
-                    sGo++;
-                    ['str', 'def', 'spd', 'dex'].forEach(k => {
-                        sGoGains[k] += g[k] || 0;
-                    });
-                } else {
-                    sGo = 1;
-                    sGoStart = day.date;
-                    sGoGains = {
-                        str: g.str || 0,
-                        def: g.def || 0,
-                        spd: g.spd || 0,
-                        dex: g.dex || 0
-                    };
-                }
-                if (sGo > longestGoldStreak) {
-                    longestGoldStreak = sGo;
-                    longestGoldStreakStart = sGoStart;
-                    longestGoldStreakEnd = day.date;
-                    longestGoldStreakGains = {
-                        ...sGoGains
-                    };
-                }
-            } else {
-                sGo = 0;
-                sGoStart = null;
-                sGoGains = _zg();
-            }
-            if (e >= 2000) {
-                if (consecutive && sDi > 0) {
-                    sDi++;
-                    ['str', 'def', 'spd', 'dex'].forEach(k => {
-                        sDiGains[k] += g[k] || 0;
-                    });
-                } else {
-                    sDi = 1;
-                    sDiStart = day.date;
-                    sDiGains = {
-                        str: g.str || 0,
-                        def: g.def || 0,
-                        spd: g.spd || 0,
-                        dex: g.dex || 0
-                    };
-                }
-                if (sDi > longestDiamondStreak) {
-                    longestDiamondStreak = sDi;
-                    longestDiamondStreakStart = sDiStart;
-                    longestDiamondStreakEnd = day.date;
-                    longestDiamondStreakGains = {
-                        ...sDiGains
-                    };
-                }
-            } else {
-                sDi = 0;
-                sDiStart = null;
-                sDiGains = _zg();
-            }
-            prevDate = day.date;
-        });
-        const allSeries = [];
-        allDays.forEach(day => {
-            (day.series || []).forEach(e => {
-                if (e.ts && e.cost) allSeries.push(e);
-            });
-        });
-        allSeries.sort((a, b) => a.ts - b.ts);
-        let happyJumps = 0;
-        const hjWeek = {},
-            hjMonth = {};
-        const _registerJumpWindow = (cStart, cEnd, cCost, cStatG) => {
-            if (cCost < GREEN) return;
-            const d = Formatter.dateLogical(cStart * 1000);
-            const wk = getWeekKey(d),
-                mk = d.slice(0, 7);
-            happyJumps++;
-            hjWeek[wk] = (hjWeek[wk] || 0) + 1;
-            hjMonth[mk] = (hjMonth[mk] || 0) + 1;
-            const tot = (cStatG.str || 0) + (cStatG.def || 0) + (cStatG.spd || 0) + (cStatG.dex || 0);
-            ['str', 'def', 'spd', 'dex'].forEach(sk => {
-                const sv = cStatG[sk] || 0;
-                if (sv > 0 && (!bestHJByStat[sk] || sv > bestHJByStat[sk].value)) bestHJByStat[sk] = {
-                    value: sv,
-                    date: d,
-                    ts: cStart,
-                    cost: cCost
+                sT = 1;
+                sTStart = day.date;
+                sTGains = {
+                    str: g.str || 0,
+                    def: g.def || 0,
+                    spd: g.spd || 0,
+                    dex: g.dex || 0
                 };
-            });
-            if (tot > 0 && (!bestHJByStat.total || tot > bestHJByStat.total.value)) bestHJByStat.total = {
-                value: tot,
+            }
+            if (sT > longestStreak) {
+                longestStreak = sT;
+                longestStreakStart = sTStart;
+                longestStreakEnd = day.date;
+                longestStreakGains = {
+                    ...sTGains
+                };
+            }
+        } else {
+            sT = 0;
+            sTStart = null;
+            sTGains = _zg();
+        }
+        if (e >= GREEN) {
+            if (consecutive && sG > 0) {
+                sG++;
+                ['str', 'def', 'spd', 'dex'].forEach(k => {
+                    sGGains[k] += g[k] || 0;
+                });
+            } else {
+                sG = 1;
+                sGStart = day.date;
+                sGGains = {
+                    str: g.str || 0,
+                    def: g.def || 0,
+                    spd: g.spd || 0,
+                    dex: g.dex || 0
+                };
+            }
+            if (sG > longestGoalStreak) {
+                longestGoalStreak = sG;
+                longestGoalStreakStart = sGStart;
+                longestGoalStreakEnd = day.date;
+                longestGoalStreakGains = {
+                    ...sGGains
+                };
+            }
+        } else {
+            sG = 0;
+            sGStart = null;
+            sGGains = _zg();
+        }
+        if (e >= GOLD) {
+            if (consecutive && sGo > 0) {
+                sGo++;
+                ['str', 'def', 'spd', 'dex'].forEach(k => {
+                    sGoGains[k] += g[k] || 0;
+                });
+            } else {
+                sGo = 1;
+                sGoStart = day.date;
+                sGoGains = {
+                    str: g.str || 0,
+                    def: g.def || 0,
+                    spd: g.spd || 0,
+                    dex: g.dex || 0
+                };
+            }
+            if (sGo > longestGoldStreak) {
+                longestGoldStreak = sGo;
+                longestGoldStreakStart = sGoStart;
+                longestGoldStreakEnd = day.date;
+                longestGoldStreakGains = {
+                    ...sGoGains
+                };
+            }
+        } else {
+            sGo = 0;
+            sGoStart = null;
+            sGoGains = _zg();
+        }
+        if (e >= 2000) {
+            if (consecutive && sDi > 0) {
+                sDi++;
+                ['str', 'def', 'spd', 'dex'].forEach(k => {
+                    sDiGains[k] += g[k] || 0;
+                });
+            } else {
+                sDi = 1;
+                sDiStart = day.date;
+                sDiGains = {
+                    str: g.str || 0,
+                    def: g.def || 0,
+                    spd: g.spd || 0,
+                    dex: g.dex || 0
+                };
+            }
+            if (sDi > longestDiamondStreak) {
+                longestDiamondStreak = sDi;
+                longestDiamondStreakStart = sDiStart;
+                longestDiamondStreakEnd = day.date;
+                longestDiamondStreakGains = {
+                    ...sDiGains
+                };
+            }
+        } else {
+            sDi = 0;
+            sDiStart = null;
+            sDiGains = _zg();
+        }
+        prevDate = day.date;
+    });
+    const allSeries = [];
+    allDays.forEach(day => {
+        (day.series || []).forEach(e => {
+            if (e.ts && e.cost) allSeries.push(e);
+        });
+    });
+    allSeries.sort((a, b) => a.ts - b.ts);
+    let happyJumps = 0;
+    const hjWeek = {},
+        hjMonth = {};
+    const _registerJumpWindow = (cStart, cEnd, cCost, cStatG) => {
+        if (cCost < GREEN) return;
+        const d = Formatter.dateLogical(cStart * 1000);
+        const wk = getWeekKey(d),
+            mk = d.slice(0, 7);
+        happyJumps++;
+        hjWeek[wk] = (hjWeek[wk] || 0) + 1;
+        hjMonth[mk] = (hjMonth[mk] || 0) + 1;
+        const tot = (cStatG.str || 0) + (cStatG.def || 0) + (cStatG.spd || 0) + (cStatG.dex || 0);
+        ['str', 'def', 'spd', 'dex'].forEach(sk => {
+            const sv = cStatG[sk] || 0;
+            if (sv > 0 && (!bestHJByStat[sk] || sv > bestHJByStat[sk].value)) bestHJByStat[sk] = {
+                value: sv,
                 date: d,
                 ts: cStart,
-                tsEnd: cEnd,
-                cost: cCost,
-                stats: {
-                    ...cStatG
-                }
+                cost: cCost
             };
+        });
+        if (tot > 0 && (!bestHJByStat.total || tot > bestHJByStat.total.value)) bestHJByStat.total = {
+            value: tot,
+            date: d,
+            ts: cStart,
+            tsEnd: cEnd,
+            cost: cCost,
+            stats: {
+                ...cStatG
+            }
         };
-        if (allSeries.length > 0) {
-            let cStart = allSeries[0].ts,
-                cEnd = allSeries[0].ts,
-                cCost = allSeries[0].cost,
+    };
+    if (allSeries.length > 0) {
+        let cStart = allSeries[0].ts,
+            cEnd = allSeries[0].ts,
+            cCost = allSeries[0].cost,
+            cStatG = {
+                str: 0,
+                def: 0,
+                spd: 0,
+                dex: 0
+            };
+        cStatG[allSeries[0].stat] = (allSeries[0].gain || 0);
+        for (let i = 1; i < allSeries.length; i++) {
+            const entry = allSeries[i];
+            if (entry.ts - cStart <= GAME.HJ_WINDOW_SECONDS) {
+                cCost += entry.cost;
+                cEnd = entry.ts;
+                cStatG[entry.stat] = (cStatG[entry.stat] || 0) + (entry.gain || 0);
+            } else {
+                _registerJumpWindow(cStart, cEnd, cCost, cStatG);
+                cStart = entry.ts;
+                cEnd = entry.ts;
+                cCost = entry.cost;
                 cStatG = {
                     str: 0,
                     def: 0,
                     spd: 0,
                     dex: 0
                 };
-            cStatG[allSeries[0].stat] = (allSeries[0].gain || 0);
-            for (let i = 1; i < allSeries.length; i++) {
-                const entry = allSeries[i];
-                if (entry.ts - cStart <= GAME.HJ_WINDOW_SECONDS) {
-                    cCost += entry.cost;
-                    cEnd = entry.ts;
-                    cStatG[entry.stat] = (cStatG[entry.stat] || 0) + (entry.gain || 0);
-                } else {
-                    _registerJumpWindow(cStart, cEnd, cCost, cStatG);
-                    cStart = entry.ts;
-                    cEnd = entry.ts;
-                    cCost = entry.cost;
-                    cStatG = {
-                        str: 0,
-                        def: 0,
-                        spd: 0,
-                        dex: 0
-                    };
-                    cStatG[entry.stat] = (entry.gain || 0);
+                cStatG[entry.stat] = (entry.gain || 0);
+            }
+        }
+        _registerJumpWindow(cStart, cEnd, cCost, cStatG);
+    }
+    const hjWeekBest = maxOf(hjWeek, 'weekOf'),
+        hjMonthBest = maxOf(hjMonth, 'month');
+    const calDays = Math.round((new Date(allDays[allDays.length - 1].date + 'T00:00:00Z') - new Date(allDays[0].date + 'T00:00:00Z')) / 86400000) + 1;
+    const mxWkE = maxOf(weekE, 'weekOf'),
+        mxWkG = maxOf(weekG, 'weekOf'),
+        mxMnE = maxOf(monthE, 'month'),
+        mxMnG = maxOf(monthG, 'month');
+    DataController.getStickerMap();
+    const stickersUnlocked = DataController._cache.unlockedCount || 0;
+    const lastDay = allDays[allDays.length - 1];
+    const curBD = (lastDay && lastDay.endBreakdown) ? lastDay.endBreakdown : null;
+    const currentStats = curBD ? {
+        str: curBD.str || 0,
+        def: curBD.def || 0,
+        spd: curBD.spd || 0,
+        dex: curBD.dex || 0,
+        total: (curBD.str || 0) + (curBD.def || 0) + (curBD.spd || 0) + (curBD.dex || 0)
+    } : null;
+    return {
+        baseline: (s.meta && s.meta.baselineBreakdown) ? {
+            ...s.meta.baselineBreakdown
+        } : null,
+        currentStats,
+        lifetimeEnergy,
+        lifetimeGains,
+        logStartDate: (s.meta && s.meta.logStartDate) || null,
+        greenDays,
+        goldDays,
+        diamondDays,
+        trainingDays,
+        calDays,
+        greenWeeks,
+        goldWeeks,
+        diamondWeeks,
+        stickersUnlocked,
+        trainingRestRatio: calDays > 0 ? ((trainingDays / calDays) * 100).toFixed(1) + '%' : 'N/A',
+        longestStreak,
+        longestStreakStart,
+        longestStreakEnd,
+        longestStreakGains,
+        longestGoalStreak,
+        longestGoalStreakStart,
+        longestGoalStreakEnd,
+        longestGoalStreakGains,
+        longestGoldStreak,
+        longestGoldStreakStart,
+        longestGoldStreakEnd,
+        longestGoldStreakGains,
+        happyJumps,
+        happyJumpsWeekBest: hjWeekBest.weekOf ? hjWeekBest : null,
+        happyJumpsMonthBest: hjMonthBest.month ? {
+            value: hjMonthBest.value,
+            month: fmtMonth(hjMonthBest.month)
+        } : null,
+        mostEInOneDay: maxEDay.date ? maxEDay : null,
+        mostEInOneWeek: mxWkE.weekOf ? mxWkE : null,
+        mostEInOneMonth: mxMnE.month ? {
+            value: mxMnE.value,
+            month: fmtMonth(mxMnE.month),
+            rawMonth: mxMnE.month
+        } : null,
+        highestGainPerClick: maxClick.date ? maxClick : null,
+        highestGainsInOneDay: maxGainsDay.date ? maxGainsDay : null,
+        highestStatGainDay: maxStatGainDay.date ? maxStatGainDay : null,
+        highestGainsInOneWeek: mxWkG.weekOf ? mxWkG : null,
+        highestGainsInOneMonth: mxMnG.month ? {
+            value: mxMnG.value,
+            month: fmtMonth(mxMnG.month)
+        } : null,
+        highestStatGainWeek: bestStatWk.weekOf ? bestStatWk : null,
+        highestStatGainMonth: bestStatMn.rawMonth ? {
+            value: bestStatMn.value,
+            month: fmtMonth(bestStatMn.rawMonth),
+            rawMonth: bestStatMn.rawMonth,
+            stat: bestStatMn.stat
+        } : null,
+        perStatBest: {
+            bestTrain: bestTrainByStat,
+            bestDay: bestDayByStat,
+            bestWeek: bestWeekByStat,
+            bestMonth: bestMonthByStat
+        },
+        bestHappyJump: bestHJByStat,
+        longestDiamondStreak,
+        longestDiamondStreakStart,
+        longestDiamondStreakEnd,
+        longestDiamondStreakGains,
+        happyItemTotals,
+        energyItemTotals,
+        odItemTotals,
+        statEnhByStat
+    };
+}
+
+function achRefreshPageDom() {
+    const container = document.getElementById('bbgl-ach-pages');
+    if (!container || !runtime._achCache) return;
+    container.innerHTML = buildAchievementsPage(runtime._achPage, runtime._achCache);
+    updateAchPageIndicator();
+}
+
+function renderAchievements() {
+    const s = getActiveHistory();
+    if (!runtime._achCache) {
+        runtime._achCache = Perf.wrap('computeAchievements', () => computeAchievements(s));
+        runtime._achPage = viewState.achPage || 0;
+    }
+    if (!runtime._achCache) return;
+    achRefreshPageDom();
+}
+
+function updateAchPageIndicator() {
+    const ind = document.getElementById('bbgl-ach-pageindicator');
+    if (!ind) return;
+    ind.innerHTML = '';
+    for (let i = 0; i < 5; i++) {
+        const d = document.createElement('div');
+        d.className = 'pg-dot' + (i === runtime._achPage ? ' active' : '');
+        d.onclick = () => {
+            if (i !== runtime._achPage) gotoAchievementsPage(i - runtime._achPage);
+        };
+        ind.appendChild(d);
+    }
+    const p = document.querySelector('.bbgl-ach-prev'),
+        n = document.querySelector('.bbgl-ach-next');
+    if (p) {
+        p.style.display = '';
+        p.removeAttribute('aria-hidden');
+    }
+    if (n) {
+        n.style.display = '';
+        n.removeAttribute('aria-hidden');
+    }
+}
+
+function gotoAchievementsPage(dir) {
+    if (runtime._achAnimating) return;
+    const container = document.getElementById('bbgl-ach-pages');
+    if (!container || !runtime._achCache) return;
+    const newPage = runtime._achPage + dir;
+    if (newPage < 0 || newPage > 4) return;
+    const apply = () => {
+        runtime._achPage = newPage;
+        viewState.achPage = newPage;
+        saveViewState();
+        achRefreshPageDom();
+    };
+    if (userConfig.animations) {
+        runtime._achAnimating = true;
+        container.classList.add('bbgl-crt-out');
+        setTimeout(() => {
+            container.classList.remove('bbgl-crt-out');
+            apply();
+            container.classList.add('bbgl-crt-in');
+            setTimeout(() => {
+                container.classList.remove('bbgl-crt-in');
+                runtime._achAnimating = false;
+            }, 300);
+        }, 280);
+    } else {
+        apply();
+    }
+}
+
+function achLedgerClip(n) {
+    if (n === null || n === undefined || (typeof n === 'number' && Number.isNaN(n))) return '\u2014';
+    return (Math.abs(n) >= 1e9) ? Formatter.abbr(n, 4) : Formatter.number(n);
+}
+
+function achFmtVal(n) {
+    if (n === null || n === undefined) return '\u2014';
+    if (typeof n === 'number') return achLedgerClip(n);
+    return String(n);
+}
+
+function achFmtDate(dateStr) {
+    if (!dateStr) return '';
+    return Formatter.datePretty(dateStr) || dateStr;
+}
+
+function achFmtWeekRange(weekOf) {
+    if (!weekOf) return '';
+    const d = Formatter.parse(weekOf);
+    const end = new Date(d.getTime() + 6 * 86400000);
+    return `${Formatter.dateMonthDay(weekOf)} \u2013 ${Formatter.dateMonthDay(Formatter.dateISO(end.getUTCFullYear(), end.getUTCMonth(), end.getUTCDate()))}, ${end.getUTCFullYear()}`;
+}
+
+function achFmtStreakRange(start, end) {
+    if (!start || !end) return '';
+    const s = achFmtDate(start),
+        e = achFmtDate(end);
+    const sy = start.slice(0, 4),
+        ey = end.slice(0, 4);
+    return (sy === ey ? s.replace(/,?\s*\d{4}$/, '') : s) + ' \u2013 ' + e;
+}
+
+function achEsc(s) {
+    return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/"/g, '&quot;');
+}
+
+function achRowHTML(r) {
+    const isFxClass = r.statClass && r.statClass.startsWith('ach-fx-');
+    const subCls = (!isFxClass && r.statClass) ? ' ' + achEsc(r.statClass) : '';
+    const valCls = (isFxClass && r.statClass) ? ' ' + achEsc(r.statClass) : '';
+    const valNum = r.dualHtml ? r.dualHtml : ((r.display === '—' || r.display === '\u2014') ? `<span class="ach-null">—</span>` : achEsc(r.display));
+    const tip = r.tip ? ` data-tooltip="${achEsc(r.tip)}"` : '';
+    const dateEl = r.clipDate ? `<div class="ach-date">${achEsc(r.clipDate)}</div>` : '';
+    const subEl = r.sub ? `<span class="ach-sub${subCls}">${achEsc(r.sub)}</span>` : '';
+    return `<div class="bbgl-ach-row"${tip} data-ach-key="${achEsc(r.key || '')}" data-clip="${achEsc(r.label + ': ' + r.rawVal)}" data-clip-date="${achEsc(r.clipDate || '')}"><div class="ach-row-main"><div class="ach-k-stack"><span class="ach-k">${achEsc(r.label)}:</span>${dateEl}</div><div class="ach-v-wrap">${subEl}<span class="ach-value${valCls}">${valNum}</span></div></div></div>`;
+}
+
+function achRowsClip(rows) {
+    return rows.map(r => r.clipDate ? `${r.label}: ${r.rawVal} (${r.clipDate})` : `${r.label}: ${r.rawVal}`).join('\n');
+}
+
+function achBuildSection(title, rows, sectionKey = '', colCount = 4) {
+    const COLS = colCount,
+        rpc = rows.length ? Math.ceil(rows.length / COLS) : 0,
+        cols = Array.from({
+            length: COLS
+        }, (_, ci) => {
+            const chunk = [];
+            for (let r = 0; r < rpc; r++) {
+                const i = ci * rpc + r;
+                if (i < rows.length) chunk.push(rows[i]);
+            }
+            return chunk;
+        }),
+        colsHTML = cols.map(chunk => `<div class="bbgl-ach-col">${chunk.map(achRowHTML).join('')}</div>`).join(''),
+        clipAll = achRowsClip(rows);
+    return `<div class="bbgl-ach-section"><div class="bbgl-ach-title-row"><span class="bbgl-ach-section-title" data-ach-section="${achEsc(sectionKey)}" data-clip-section="${achEsc(clipAll)}" data-clip-title="${achEsc(title)}" data-tooltip="Click any stat or row to copy its data, or click this title to copy the entire section to your clipboard.">${achEsc(title)}</span></div><div class="bbgl-ach-cols"${COLS !== 4 ? ` style="grid-template-columns:repeat(${COLS},minmax(0,1fr));"` : ''}>${colsHTML}</div></div>`;
+}
+
+function achBuildDualSection(titleA, rowsA, titleB, rowsB, sectionKeyA = '', sectionKeyB = '') {
+    const clipA = achRowsClip(rowsA),
+        clipB = achRowsClip(rowsB);
+    return `<div class="bbgl-ach-dual"><div class="bbgl-ach-dual-headers"><div class="bbgl-ach-section-title" data-ach-section="${achEsc(sectionKeyA)}" data-clip-section="${achEsc(clipA)}" data-clip-title="${achEsc(titleA)}">${achEsc(titleA)}</div><div class="bbgl-ach-section-title" data-ach-section="${achEsc(sectionKeyB)}" data-clip-section="${achEsc(clipB)}" data-clip-title="${achEsc(titleB)}">${achEsc(titleB)}</div></div><div class="bbgl-ach-dual-body"><div class="bbgl-ach-col-half">${rowsA.map(achRowHTML).join('')}</div><div class="bbgl-ach-col-half">${rowsB.map(achRowHTML).join('')}</div></div></div>`;
+}
+
+function achFmtWeekShort(weekOf) {
+    if (!weekOf) return '';
+    return Formatter.datePretty(weekOf);
+}
+
+function achFmtMonthLong(rawMonth) {
+    if (!rawMonth) return '';
+    return `${CONSTANTS.MONTHS[parseInt(rawMonth.slice(5)) - 1]}, ${rawMonth.slice(0, 4)}`;
+}
+
+function achFmtTimeTCT(ts) {
+    const d = new Date(ts * 1000);
+    return String(d.getUTCHours()).padStart(2, '0') + ':' + String(d.getUTCMinutes()).padStart(2, '0') + ':' + String(d.getUTCSeconds()).padStart(2, '0') + ' TCT';
+}
+let _achTzLocalCache = null;
+
+function achTimeZoneSuffix() {
+    if (!TimeManager.useLocal()) return 'TCT';
+    if (_achTzLocalCache) return _achTzLocalCache;
+    try {
+        const parts = new Intl.DateTimeFormat(undefined, {
+            timeZoneName: 'short'
+        }).formatToParts(new Date());
+        const tz = parts.find(p => p.type === 'timeZoneName');
+        _achTzLocalCache = tz && tz.value ? tz.value : 'Local';
+    } catch (e) {
+        _achTzLocalCache = 'Local';
+    }
+    return _achTzLocalCache;
+}
+
+function achFmtTimeHMClip(ts) {
+    const d = new Date(ts * 1000);
+    return String(d.getUTCHours()).padStart(2, '0') + ':' + String(d.getUTCMinutes()).padStart(2, '0');
+}
+
+function achFmtTimeHMS(ts) {
+    const d = new Date(ts * 1000);
+    const h = TimeManager.useLocal() ? d.getHours() : d.getUTCHours();
+    const m = TimeManager.useLocal() ? d.getMinutes() : d.getUTCMinutes();
+    const s = TimeManager.useLocal() ? d.getSeconds() : d.getUTCSeconds();
+    return String(h).padStart(2, '0') + ':' + String(m).padStart(2, '0') + ':' + String(s).padStart(2, '0') + ' ' + achTimeZoneSuffix();
+}
+
+function achBuildPage0(d) {
+    const ps = d.perStatBest || {
+        bestTrain: {},
+        bestDay: {},
+        bestWeek: {},
+        bestMonth: {}
+    };
+    const STATS = ['str', 'def', 'spd', 'dex'];
+    const STAT_LABEL = {
+        str: 'Strength',
+        def: 'Defense',
+        spd: 'Speed',
+        dex: 'Dexterity'
+    };
+    const rows = [{
+        key: 'best-train',
+        short: 'Single Train',
+        long: 'Highest Single Train',
+        tip: 'Highest gains achieved from a single click, per individual stat.',
+        recs: ps.bestTrain,
+        getDate: r => achFmtDate(r.date),
+        getTime: r => r.ts ? achFmtTimeHMS(r.ts) : ''
+    }, {
+        key: 'best-day',
+        short: 'Best Day',
+        long: 'Best Training Day',
+        tip: 'Highest gains achieved in a single calendar day, per individual stat.',
+        recs: ps.bestDay,
+        getDate: r => achFmtDate(r.date)
+    }, {
+        key: 'best-week',
+        short: 'Best Week',
+        long: 'Best Training Week',
+        tip: 'Highest gains achieved in a single calendar week, per individual stat.',
+        recs: ps.bestWeek,
+        getDate: r => achFmtWeekShort(r.weekOf)
+    }, {
+        key: 'best-month',
+        short: 'Best Month',
+        long: 'Best Month',
+        tip: 'Highest gains achieved in a single calendar month, per individual stat.',
+        recs: ps.bestMonth,
+        getDate: r => achFmtMonthLong(r.rawMonth)
+    }];
+    const headerStats = STATS.map(sk => `<div class="ach-stat-header ach-stat-${sk} bbgl-ach-col-copy" data-stat="${sk}" data-tooltip="Click to copy ${STAT_LABEL[sk]} column" style="cursor:pointer">${STAT_LABEL[sk]}</div>`).join('');
+    const header = `<div class="bbgl-ach-grid-header"><div class="ach-grid-label-area"><span class="bbgl-ach-section-title" data-ach-section="greatest-gains" data-clip-title="Greatest Gains" data-tooltip="Click any stat or row to copy its data, or click this title to copy the entire section to your clipboard.">Greatest Gains</span></div>${headerStats}</div>`;
+    const rowsHTML = rows.map(r => {
+        const labelArea = `<div class="ach-grid-label-area"><div class="ach-k"><span class="ach-title-short">${achEsc(r.short)}</span><span class="ach-title-long">${achEsc(r.long)}</span></div></div>`;
+        const cells = STATS.map(sk => {
+            const rec = r.recs ? r.recs[sk] : null;
+            const valHTML = rec ? '+' + Formatter.dual(rec.value) : '<span class="ach-null">—</span>';
+            const dateHTML = rec ? `<div class="ach-date">${achEsc(r.getDate(rec))}</div>` : '';
+            const timeHTML = (rec && r.getTime) ? `<div class="ach-time">${achEsc(r.getTime(rec))}</div>` : '';
+            return `<div class="bbgl-ach-stat-cell" data-ach-key="${achEsc(r.key)}" data-stat="${sk}"><span class="ach-value">${valHTML}</span>${dateHTML}${timeHTML}</div>`;
+        }).join('');
+        const tipAttr = r.tip ? ` data-tooltip="${achEsc(r.tip)}"` : '';
+        return `<div class="bbgl-ach-row bbgl-ach-row-multi" data-ach-key="${achEsc(r.key)}"${tipAttr}>${labelArea}${cells}</div>`;
+    }).join('');
+    return `<div class="bbgl-ach-section bbgl-ach-section-page0">${header}${rowsHTML}</div>`;
+}
+
+function achBuildPage1(d) {
+    const STATS = ['str', 'def', 'spd', 'dex'];
+    const STAT_LABEL = {
+        str: 'Strength',
+        def: 'Defense',
+        spd: 'Speed',
+        dex: 'Dexterity'
+    };
+    const rows = [{
+        key: 'training-streak',
+        short: 'Best Streak',
+        long: 'Best Training Streak',
+        tip: 'Total stats gained during your longest consecutive training streak.',
+        len: d.longestStreak,
+        start: d.longestStreakStart,
+        end: d.longestStreakEnd,
+        gains: d.longestStreakGains
+    }, {
+        key: 'green-streak',
+        short: 'Best Green',
+        long: 'Best Green Streak',
+        tip: 'Total stats gained during your longest streak of achieving at least Green (1,000E+).',
+        len: d.longestGoalStreak,
+        start: d.longestGoalStreakStart,
+        end: d.longestGoalStreakEnd,
+        gains: d.longestGoalStreakGains
+    }, {
+        key: 'gold-streak',
+        short: 'Best Gold',
+        long: 'Best Gold Streak',
+        tip: 'Total stats gained during your longest streak of achieving at least Gold (1,500E+).',
+        len: d.longestGoldStreak,
+        start: d.longestGoldStreakStart,
+        end: d.longestGoldStreakEnd,
+        gains: d.longestGoldStreakGains
+    }, {
+        key: 'diamond-streak',
+        short: 'Best Diamond',
+        long: 'Best Diamond Streak',
+        tip: 'Total stats gained during your longest streak of achieving Diamond (2,000E+).',
+        len: d.longestDiamondStreak,
+        start: d.longestDiamondStreakStart,
+        end: d.longestDiamondStreakEnd,
+        gains: d.longestDiamondStreakGains
+    }];
+    const headerStats = STATS.map(sk => `<div class="ach-stat-header ach-stat-${sk}">${STAT_LABEL[sk]}</div>`).join('') + `<div class="ach-stat-header ach-stat-tot">Total</div>`;
+    const header = `<div class="bbgl-ach-grid-header"><div class="ach-grid-label-area"><span class="bbgl-ach-section-title" data-ach-section="sexiest-streaks" data-clip-title="Sexiest Streaks" data-tooltip="Click any stat or row to copy its data, or click this title to copy the entire section to your clipboard.">SEXIEST STREAKS</span></div>${headerStats}</div>`;
+    const rowsHTML = rows.map(r => {
+        const dayBit = `<span class="ach-streak-days">${r.len ? r.len + 'd' : '—'}</span>`;
+        const presentStats = (r.gains ? STATS.filter(sk => (r.gains[sk] || 0) > 0) : []);
+        const total = presentStats.reduce((a, sk) => a + (r.gains[sk] || 0), 0);
+        const dateText = (r.start && r.end) ? achEsc(achFmtStreakRange(r.start, r.end)) : '—';
+        const dateHTML = `<div class="ach-date ach-streak-date">${dayBit}<span class="ach-streak-sep">•</span><span class="ach-streak-daterange">${dateText}</span></div>`;
+        const totalText = total > 0 ? '+' + achFmtGain(total) : '<span class="ach-null">—</span>';
+        const inlineDays = r.len ? `<span class="ach-streak-days ach-streak-days-inline"> · ${r.len}d</span>` : '';
+        const inlineDate = (r.start && r.end) ? `<span class="bbgl-ach-streak-date-inline">&nbsp;&nbsp;${dateText}</span>` : '';
+        const labelArea = `<div class="ach-grid-label-area"><div class="ach-k"><span class="ach-title-short">${achEsc(r.short)}</span><span class="ach-title-long">${achEsc(r.long)}</span>${inlineDays}${inlineDate}</div></div>`;
+        const cells = STATS.map(sk => {
+            const v = (r.gains && r.gains[sk]) || 0;
+            const valHTML = v > 0 ? '+' + achEsc(achFmtGain(v)) : '<span class="ach-null">—</span>';
+            return `<div class="bbgl-ach-stat-cell" data-ach-key="${r.key}" data-stat="${sk}"><span class="ach-value">${valHTML}</span></div>`;
+        }).join('');
+        const totalCell = `<div class="bbgl-ach-stat-cell bbgl-ach-stat-cell-total" data-ach-key="${r.key}" data-stat="total"><span class="ach-value ach-stat-tot">${totalText}</span></div>`;
+        const tipAttr = r.tip ? ` data-tooltip="${achEsc(r.tip)}"` : '';
+        return `<div class="bbgl-ach-row bbgl-ach-row-multi" data-ach-key="${r.key}"${tipAttr}>${labelArea}${cells}${totalCell}${dateHTML}</div>`;
+    }).join('');
+    const consVal = d.trainingRestRatio || '—';
+    const consDaysShort = '';
+    const consDaysLong = '(' + (d.trainingDays || 0) + '/' + (d.calDays || 0) + ' Days)';
+    const consRow = `<div class="bbgl-ach-row bbgl-ach-row-multi bbgl-ach-consistency-row" data-ach-key="consistency" data-tooltip="Your lifetime ratio of active training days versus total calendar days."><div class="bbgl-ach-consistency-text"><span class="ach-cons-short">Consistency: <span class="ach-cons-val">${achEsc(consVal)}</span></span><span class="ach-cons-long">Training Consistency: <span class="ach-cons-val">${achEsc(consVal)}</span> <span class="ach-cons-days">${achEsc(consDaysLong)}</span></span></div></div>`;
+    return `<div class="bbgl-ach-section bbgl-ach-section-page0 bbgl-ach-section-page1">${header}${rowsHTML}${consRow}</div>`;
+}
+
+function achFmtTimeHM(ts) {
+    const d = new Date(ts * 1000);
+    const h = TimeManager.useLocal() ? d.getHours() : d.getUTCHours();
+    const m = TimeManager.useLocal() ? d.getMinutes() : d.getUTCMinutes();
+    return String(h).padStart(2, '0') + ':' + String(m).padStart(2, '0');
+}
+
+function achBuildPage2(d) {
+    const STAT_ABBR = {
+        str: 'STR',
+        def: 'DEF',
+        spd: 'SPD',
+        dex: 'DEX'
+    };
+    const STAT_FULL = {
+        str: 'Strength',
+        def: 'Defense',
+        spd: 'Speed',
+        dex: 'Dexterity'
+    };
+    const STATS = ['str', 'def', 'spd', 'dex'];
+    const countRow = (label, shortLabel, count, key, tip) => {
+        const clipVal = String(count);
+        return `<div class="bbgl-ach-row" data-tooltip="${achEsc(tip)}" data-ach-key="${key}" data-clip="${achEsc(label + ': ' + clipVal)}"><div class="ach-row-main"><div class="ach-k-stack"><span class="ach-k"><span class="ach-title-long">${achEsc(label)}</span><span class="ach-title-short">${achEsc(shortLabel)}</span>:</span></div><div class="ach-v-wrap"><span class="ach-value">${achEsc(clipVal)}</span></div></div></div>`;
+    };
+    const bestRow = (longLabel, shortLabel, rec, key, tip) => {
+        if (!rec || !rec.stats) {
+            return `<div class="bbgl-ach-hh-best-row" data-tooltip="${achEsc(tip)}" data-ach-key="${key}"><div class="bbgl-ach-hh-label"><span class="ach-k"><span class="ach-title-long">${achEsc(longLabel)}</span><span class="ach-title-short">${achEsc(shortLabel)}</span></span><div class="bbgl-ach-hh-date-line"><span class="ach-null">No jumps recorded yet</span></div></div><div class="bbgl-ach-hh-cells"><div class="bbgl-ach-hh-cell bbgl-ach-hh-cell-total"><span class="bbgl-ach-hh-tag ach-stat-tot">Total</span><span class="bbgl-ach-hh-val"><span class="ach-null">—</span></span></div></div></div>`;
+        }
+        const dateStr = achFmtDate(rec.date);
+        const timeStr = achFmtTimeHM(rec.ts) + ' – ' + achFmtTimeHM(rec.tsEnd || rec.ts) + ' ' + achTimeZoneSuffix();
+        const timeStrClip = achFmtTimeHMClip(rec.ts) + ' – ' + achFmtTimeHMClip(rec.tsEnd || rec.ts) + ' TCT';
+        const trained = STATS.filter(sk => (rec.stats[sk] || 0) > 0);
+        const statCells = trained.map(sk => `<div class="bbgl-ach-hh-cell bbgl-ach-hh-cell-stat bbgl-ach-stat-cell" data-ach-key="${key}" data-stat="${sk}" data-tooltip="Total ${achEsc(STAT_FULL[sk])} gained during this jump."><span class="bbgl-ach-hh-val">+${achEsc(achFmtGain(rec.stats[sk]))}</span><span class="bbgl-ach-hh-tag ach-stat-${sk}">${STAT_ABBR[sk]}</span></div>`).join('');
+        const totalCell = `<div class="bbgl-ach-hh-cell bbgl-ach-hh-cell-total bbgl-ach-stat-cell" data-ach-key="${key}" data-stat="total" data-tooltip="Total overall stats gained during this jump."><span class="bbgl-ach-hh-tag ach-stat-tot">Total</span><span class="bbgl-ach-hh-val">+${achEsc(achFmtGain(rec.value))}</span></div>`;
+        const clipParts = trained.map(sk => STAT_ABBR[sk] + ': +' + achFmtGain(rec.stats[sk]));
+        clipParts.push('Total: +' + achFmtGain(rec.value));
+        return `<div class="bbgl-ach-hh-best-row" data-tooltip="${achEsc(tip)}" data-ach-key="${key}" data-clip="${achEsc(longLabel + ' (' + dateStr + ', ' + timeStrClip + '): ' + clipParts.join(' | '))}" data-clip-date="${achEsc(dateStr + '  ' + timeStrClip)}"><div class="bbgl-ach-hh-label"><span class="ach-k"><span class="ach-title-long">${achEsc(longLabel)}</span><span class="ach-title-short">${achEsc(shortLabel)}</span></span><div class="bbgl-ach-hh-date-line">${achEsc(dateStr)}<span class="bbgl-ach-hh-time"> &nbsp; ${achEsc(timeStr)}</span></div></div><div class="bbgl-ach-hh-cells">${statCells}${totalCell}</div></div>`;
+    };
+    const hjCount = countRow('Happy Jumps Performed', 'Happy Jumps', d.happyJumps || 0, 'hj-count', 'Total number of Happy Jumps executed (1,000E+ energy used training within a 5-minute window).');
+    const hjBest = bestRow('Best Happy Jump', 'Best Jump', d.bestHappyJump && d.bestHappyJump.total, 'best-hj', 'The single Happy Jump that yielded the highest combined stat gain.');
+    const rowsHTML = `<div class="bbgl-ach-hh-group" data-ach-key="happy-jumps-group">${hjCount}${hjBest}</div>`;
+    let clipAll = `Happy Jumps Performed: ${d.happyJumps || 0}\nBest Happy Jump: ${d.bestHappyJump && d.bestHappyJump.total ? (() => { const rec = d.bestHappyJump.total; const trained = STATS.filter(sk => (rec.stats[sk] || 0) > 0); const parts = trained.map(sk => STAT_ABBR[sk] + ': +' + achFmtGain(rec.stats[sk])); parts.push('Total: +' + achFmtGain(rec.value)); return parts.join(' | '); })() : '—'}`;
+
+    let helpersHTML = '';
+    if (d.happyItemTotals) {
+        const helpers = HAPPY_LOGS.map(id => {
+            const rec = d.happyItemTotals[id] || { count: 0, happy: 0 };
+            return {
+                id,
+                label: ITEM_LOG_META[id].label,
+                short: ITEM_LOG_META[id].short || ITEM_LOG_META[id].label,
+                count: rec.count,
+                happy: rec.happy
+            };
+        }).filter(h => h.count > 0).sort((a, b) => b.count - a.count || b.happy - a.happy);
+
+        if (helpers.length > 0) {
+            const helperRow = (h) => {
+                const tip = `${achEsc(h.label)} | Happy Gained`;
+                const clipVal = `${h.label}: ${h.count} (${Formatter.number(h.happy)} Happy)`;
+                return `<div class="bbgl-ach-row" data-tooltip="${achEsc(tip)}" data-ach-key="happy-helper-${h.id}" data-clip="${achEsc(clipVal)}"><div class="ach-row-main"><div class="ach-k-stack"><span class="ach-k"><span class="ach-title-long">${achEsc(h.label)}</span><span class="ach-title-short">${achEsc(h.short)}</span>:</span></div><div class="ach-v-wrap"><span class="ach-value">${Formatter.number(h.count)}</span><span class="ach-value ach-happy-col">+${achEsc(achFmtGain(h.happy))} <span class="ach-happy-word">Happy</span></span></div></div></div>`;
+            };
+
+            const colCount = 2;
+            const rpc = Math.ceil(helpers.length / colCount);
+            const cols = [];
+            for (let i = 0; i < colCount; i++) {
+                const start = i * rpc;
+                const chunk = helpers.slice(start, start + rpc);
+                if (chunk.length) {
+                    cols.push(`<div class="bbgl-ach-col">${chunk.map(helperRow).join('')}</div>`);
                 }
             }
-            _registerJumpWindow(cStart, cEnd, cCost, cStatG);
-        }
-        const hjWeekBest = maxOf(hjWeek, 'weekOf'),
-            hjMonthBest = maxOf(hjMonth, 'month');
-        const calDays = Math.round((new Date(allDays[allDays.length - 1].date + 'T00:00:00Z') - new Date(allDays[0].date + 'T00:00:00Z')) / 86400000) + 1;
-        const mxWkE = maxOf(weekE, 'weekOf'),
-            mxWkG = maxOf(weekG, 'weekOf'),
-            mxMnE = maxOf(monthE, 'month'),
-            mxMnG = maxOf(monthG, 'month');
-        DataController.getStickerMap();
-        const stickersUnlocked = DataController._cache.unlockedCount || 0;
-        const lastDay = allDays[allDays.length - 1];
-        const curBD = (lastDay && lastDay.endBreakdown) ? lastDay.endBreakdown : null;
-        const currentStats = curBD ? {
-            str: curBD.str || 0,
-            def: curBD.def || 0,
-            spd: curBD.spd || 0,
-            dex: curBD.dex || 0,
-            total: (curBD.str || 0) + (curBD.def || 0) + (curBD.spd || 0) + (curBD.dex || 0)
-        } : null;
-        return {
-            baseline: (s.meta && s.meta.baselineBreakdown) ? {
-                ...s.meta.baselineBreakdown
-            } : null,
-            currentStats,
-            lifetimeEnergy,
-            lifetimeGains,
-            logStartDate: (s.meta && s.meta.logStartDate) || null,
-            greenDays,
-            goldDays,
-            diamondDays,
-            trainingDays,
-            calDays,
-            greenWeeks,
-            goldWeeks,
-            diamondWeeks,
-            stickersUnlocked,
-            trainingRestRatio: calDays > 0 ? ((trainingDays / calDays) * 100).toFixed(1) + '%' : 'N/A',
-            longestStreak,
-            longestStreakStart,
-            longestStreakEnd,
-            longestStreakGains,
-            longestGoalStreak,
-            longestGoalStreakStart,
-            longestGoalStreakEnd,
-            longestGoalStreakGains,
-            longestGoldStreak,
-            longestGoldStreakStart,
-            longestGoldStreakEnd,
-            longestGoldStreakGains,
-            happyJumps,
-            happyJumpsWeekBest: hjWeekBest.weekOf ? hjWeekBest : null,
-            happyJumpsMonthBest: hjMonthBest.month ? {
-                value: hjMonthBest.value,
-                month: fmtMonth(hjMonthBest.month)
-            } : null,
-            mostEInOneDay: maxEDay.date ? maxEDay : null,
-            mostEInOneWeek: mxWkE.weekOf ? mxWkE : null,
-            mostEInOneMonth: mxMnE.month ? {
-                value: mxMnE.value,
-                month: fmtMonth(mxMnE.month),
-                rawMonth: mxMnE.month
-            } : null,
-            highestGainPerClick: maxClick.date ? maxClick : null,
-            highestGainsInOneDay: maxGainsDay.date ? maxGainsDay : null,
-            highestStatGainDay: maxStatGainDay.date ? maxStatGainDay : null,
-            highestGainsInOneWeek: mxWkG.weekOf ? mxWkG : null,
-            highestGainsInOneMonth: mxMnG.month ? {
-                value: mxMnG.value,
-                month: fmtMonth(mxMnG.month)
-            } : null,
-            highestStatGainWeek: bestStatWk.weekOf ? bestStatWk : null,
-            highestStatGainMonth: bestStatMn.rawMonth ? {
-                value: bestStatMn.value,
-                month: fmtMonth(bestStatMn.rawMonth),
-                rawMonth: bestStatMn.rawMonth,
-                stat: bestStatMn.stat
-            } : null,
-            perStatBest: {
-                bestTrain: bestTrainByStat,
-                bestDay: bestDayByStat,
-                bestWeek: bestWeekByStat,
-                bestMonth: bestMonthByStat
-            },
-            bestHappyJump: bestHJByStat,
-            longestDiamondStreak,
-            longestDiamondStreakStart,
-            longestDiamondStreakEnd,
-            longestDiamondStreakGains,
-            happyItemTotals,
-            energyItemTotals,
-            statEnhByStat
-        };
-    }
-
-    function achRefreshPageDom() {
-        const container = document.getElementById('bbgl-ach-pages');
-        if (!container || !runtime._achCache) return;
-        container.innerHTML = buildAchievementsPage(runtime._achPage, runtime._achCache);
-        updateAchPageIndicator();
-    }
-
-    function renderAchievements() {
-        const s = getActiveHistory();
-        if (!runtime._achCache) {
-            runtime._achCache = Perf.wrap('computeAchievements', () => computeAchievements(s));
-            runtime._achPage = viewState.achPage || 0;
-        }
-        if (!runtime._achCache) return;
-        achRefreshPageDom();
-    }
-
-    function updateAchPageIndicator() {
-        const ind = document.getElementById('bbgl-ach-pageindicator');
-        if (!ind) return;
-        ind.innerHTML = '';
-        for (let i = 0; i < 5; i++) {
-            const d = document.createElement('div');
-            d.className = 'pg-dot' + (i === runtime._achPage ? ' active' : '');
-            d.onclick = () => {
-                if (i !== runtime._achPage) gotoAchievementsPage(i - runtime._achPage);
-            };
-            ind.appendChild(d);
-        }
-        const p = document.querySelector('.bbgl-ach-prev'),
-            n = document.querySelector('.bbgl-ach-next');
-        if (p) {
-            p.style.display = '';
-            p.removeAttribute('aria-hidden');
-        }
-        if (n) {
-            n.style.display = '';
-            n.removeAttribute('aria-hidden');
+            const clipHelpers = helpers.map(h => `${h.label}: ${h.count} (${Formatter.number(h.happy)} Happy)`).join('\n');
+            clipAll += '\n\n— Happy Helpers —\n' + clipHelpers;
+            helpersHTML = `<div class="bbgl-ach-subsection-title" style="margin-top:2px" data-ach-section="happy-helpers" data-clip-section="${achEsc(clipHelpers)}" data-clip-title="Happy Helpers" data-tooltip="Click any stat or row to copy its data, or click this title to copy the entire section to your clipboard.">HAPPY HELPERS</div><div class="bbgl-ach-cols" style="grid-template-columns:repeat(${colCount},minmax(0,1fr)); padding-top:1px; padding-bottom:0;">${cols.join('')}</div>`;
         }
     }
 
-    function gotoAchievementsPage(dir) {
-        if (runtime._achAnimating) return;
-        const container = document.getElementById('bbgl-ach-pages');
-        if (!container || !runtime._achCache) return;
-        const newPage = runtime._achPage + dir;
-        if (newPage < 0 || newPage > 4) return;
-        const apply = () => {
-            runtime._achPage = newPage;
-            viewState.achPage = newPage;
-            saveViewState();
-            achRefreshPageDom();
-        };
-        if (userConfig.animations) {
-            runtime._achAnimating = true;
-            container.classList.add('bbgl-crt-out');
-            setTimeout(() => {
-                container.classList.remove('bbgl-crt-out');
-                apply();
-                container.classList.add('bbgl-crt-in');
-                setTimeout(() => {
-                    container.classList.remove('bbgl-crt-in');
-                    runtime._achAnimating = false;
-                }, 300);
-            }, 280);
+    return `<div class="bbgl-ach-section bbgl-ach-section-hh"><div class="bbgl-ach-title-row"><span class="bbgl-ach-section-title" data-ach-section="happy-hopping" data-clip-section="${achEsc(clipAll)}" data-clip-title="Happy Hopping" data-tooltip="Click any stat or row to copy its data, or click this title to copy the entire section to your clipboard.">HAPPY HOPPING</span></div>${rowsHTML}${helpersHTML}</div>`;
+}
+
+function computeEnhancersForPeriod(sl) {
+    const energyItemTotals = {};
+    ENERGY_LOGS.forEach(id => { energyItemTotals[id] = { count: 0, energy: 0 }; });
+    const odItemTotals = {};
+    OD_LOGS.forEach(id => { odItemTotals[id] = { count: 0, energyLost: 0 }; });
+    const statEnhByStat = {
+        str: { count: 0, gain: 0 }, def: { count: 0, gain: 0 },
+        spd: { count: 0, gain: 0 }, dex: { count: 0, gain: 0 }
+    };
+    const days = (sl._dailyList && sl._dailyList.length > 0)
+        ? sl._dailyList
+        : (sl.date ? [DataController.getDateMap()[sl.date]] : []);
+    days.forEach(day => {
+        if (!day) return;
+        if (day.items) {
+            ENERGY_LOGS.forEach(id => {
+                const qty = day.items[id] || 0;
+                if (qty > 0) energyItemTotals[id].count += qty;
+            });
+            OD_LOGS.forEach(id => {
+                const qty = day.items[id] || 0;
+                if (qty > 0) odItemTotals[id].count += qty;
+            });
+        }
+        (day.series || []).forEach(e => {
+            if (e.type === 'item' && e.energy && energyItemTotals[e.logId])
+                energyItemTotals[e.logId].energy += e.energy;
+            if (e.type === 'item' && e.energyLost != null && odItemTotals[e.logId])
+                odItemTotals[e.logId].energyLost += e.energyLost;
+            if (e.type === 'item' && e.statKey && statEnhByStat[e.statKey]) {
+                statEnhByStat[e.statKey].count++;
+                statEnhByStat[e.statKey].gain = Math.round((statEnhByStat[e.statKey].gain + (e.statGain || 0)) * 100) / 100;
+            }
+        });
+    });
+    return { energyItemTotals, odItemTotals, statEnhByStat };
+}
+
+function achBuildPageOverview(d) {
+    const NULL = '<span class="ach-null">—</span>';
+    const enh = d.statEnhByStat || {};
+    const enrg = d.energyItemTotals || {};
+    const od = d.odItemTotals || {};
+    const STAT_ABBR = { str: 'Str', def: 'Def', spd: 'Spd', dex: 'Dex' };
+
+    const STAT_ENH_MAP = { 2150: 'str', 2130: 'spd', 2140: 'def', 2120: 'dex' };
+    const LEFT_COL = [2150, 2130, 2290, 2040, 4900];
+    const RIGHT_COL = [2140, 2120, 2230, 2190, 8981];
+    const OD_AFTER = { 2290: XANAX_OD_LOG, 2230: LSD_OD_LOG };
+
+    const buildRow = (id) => {
+        const meta = ITEM_LOG_META[id];
+        const label = meta.achLabel || meta.label;
+        const sk = STAT_ENH_MAP[id];
+        let countHtml, gainedHtml, clipVal, tip;
+
+        if (sk) {
+            const rec = enh[sk] || { count: 0, gain: 0 };
+            countHtml = rec.count > 0 ? achEsc(Formatter.number(rec.count)) : NULL;
+            // Stat label always shows; number is — when no data
+            const gainNum = rec.gain > 0 ? `+${achEsc(Formatter.gain(rec.gain))}` : NULL;
+            gainedHtml = `${gainNum} <span class="ach-stat-${sk}">${STAT_ABBR[sk]}</span>`;
+            clipVal = `${label}: ${rec.count} (+${Formatter.gain(rec.gain)} ${STAT_ABBR[sk]})`;
+            tip = `${achEsc(label)} | ${STAT_ABBR[sk]} Gained`;
         } else {
-            apply();
+            const rec = enrg[id] || { count: 0, energy: 0 };
+            countHtml = rec.count > 0 ? achEsc(Formatter.number(rec.count)) : NULL;
+            const gainNum = rec.energy > 0 ? `+${achEsc(Formatter.gain(rec.energy))}` : NULL;
+            gainedHtml = `${gainNum} <span class="ach-enh-e-label">E</span>`;
+            clipVal = `${label}: ${rec.count} (+${Formatter.gain(rec.energy)} Energy)`;
+            tip = `${achEsc(label)} | Energy Gained`;
         }
-    }
 
-    function achLedgerClip(n) {
-        if (n === null || n === undefined || (typeof n === 'number' && Number.isNaN(n))) return '\u2014';
-        return (Math.abs(n) >= 1e9) ? Formatter.abbr(n, 4) : Formatter.number(n);
-    }
+        const key = `enh-${id}`;
+        return `<div class="bbgl-ach-row bbgl-ach-enh-row" data-tooltip="${achEsc(tip)}" data-ach-key="${key}" data-clip="${achEsc(clipVal)}"><div class="ach-row-main"><div class="ach-k-stack"><span class="ach-k"><span class="ach-title-long">${achEsc(label)}:</span><span class="ach-title-short">${achEsc(label)}:</span></span></div><div class="ach-v-wrap"><span class="ach-value">${countHtml}</span><span class="ach-value ach-enh-gained">${gainedHtml}</span></div></div></div>`;
+    };
 
-    function achFmtVal(n) {
-        if (n === null || n === undefined) return '\u2014';
-        if (typeof n === 'number') return achLedgerClip(n);
-        return String(n);
-    }
+    const buildODSubRow = (odId) => {
+        const meta = ITEM_LOG_META[odId];
+        const rec = od[odId] || { count: 0, energyLost: 0 };
+        const countHtml = rec.count > 0 ? achEsc(Formatter.number(rec.count)) : NULL;
+        const lostNum = rec.energyLost > 0 ? `-${achEsc(Formatter.number(rec.energyLost))}` : NULL;
+        const gainedHtml = `${lostNum} <span class="ach-enh-e-label">E</span>`;
+        const tip = `${achEsc(meta.label)} | Energy Lost`;
+        const clipVal = `${meta.label}: ${rec.count} (-${Formatter.number(rec.energyLost)} Energy Lost)`;
+        const key = `enh-${odId}`;
+        return `<div class="bbgl-ach-row bbgl-ach-enh-row bbgl-ach-od-row bbgl-subgroup-row bbgl-subgroup-row-last" data-tooltip="${achEsc(tip)}" data-ach-key="${key}" data-clip="${achEsc(clipVal)}"><div class="ach-row-main"><div class="ach-k-stack"><span class="ach-k"><span class="ach-title-long">ODs:</span><span class="ach-title-short">ODs:</span></span></div><div class="ach-v-wrap"><span class="ach-value">${countHtml}</span><span class="ach-value ach-enh-gained ach-enh-od">${gainedHtml}</span></div></div></div>`;
+    };
 
-    function achFmtDate(dateStr) {
-        if (!dateStr) return '';
-        return Formatter.datePretty(dateStr) || dateStr;
-    }
+    const buildColHTML = (col) => col.map(id => {
+        let html = buildRow(id);
+        // OD sub-row is dynamic: only rendered when at least one OD occurred in the period.
+        const odId = OD_AFTER[id];
+        if (odId && od[odId] && od[odId].count > 0) html += buildODSubRow(odId);
+        return html;
+    }).join('');
 
-    function achFmtWeekRange(weekOf) {
-        if (!weekOf) return '';
-        const d = Formatter.parse(weekOf);
-        const end = new Date(d.getTime() + 6 * 86400000);
-        return `${Formatter.dateMonthDay(weekOf)} \u2013 ${Formatter.dateMonthDay(Formatter.dateISO(end.getUTCFullYear(), end.getUTCMonth(), end.getUTCDate()))}, ${end.getUTCFullYear()}`;
-    }
+    const leftHTML = buildColHTML(LEFT_COL);
+    const rightHTML = buildColHTML(RIGHT_COL);
 
-    function achFmtStreakRange(start, end) {
-        if (!start || !end) return '';
-        const s = achFmtDate(start),
-            e = achFmtDate(end);
-        const sy = start.slice(0, 4),
-            ey = end.slice(0, 4);
-        return (sy === ey ? s.replace(/,?\s*\d{4}$/, '') : s) + ' \u2013 ' + e;
-    }
-
-    function achEsc(s) {
-        return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/"/g, '&quot;');
-    }
-
-    function achRowHTML(r) {
-        const isFxClass = r.statClass && r.statClass.startsWith('ach-fx-');
-        const subCls = (!isFxClass && r.statClass) ? ' ' + achEsc(r.statClass) : '';
-        const valCls = (isFxClass && r.statClass) ? ' ' + achEsc(r.statClass) : '';
-        const valNum = r.dualHtml ? r.dualHtml : ((r.display === '—' || r.display === '\u2014') ? `<span class="ach-null">—</span>` : achEsc(r.display));
-        const tip = r.tip ? ` data-tooltip="${achEsc(r.tip)}"` : '';
-        const dateEl = r.clipDate ? `<div class="ach-date">${achEsc(r.clipDate)}</div>` : '';
-        const subEl = r.sub ? `<span class="ach-sub${subCls}">${achEsc(r.sub)}</span>` : '';
-        return `<div class="bbgl-ach-row"${tip} data-ach-key="${achEsc(r.key || '')}" data-clip="${achEsc(r.label + ': ' + r.rawVal)}" data-clip-date="${achEsc(r.clipDate || '')}"><div class="ach-row-main"><div class="ach-k-stack"><span class="ach-k">${achEsc(r.label)}:</span>${dateEl}</div><div class="ach-v-wrap">${subEl}<span class="ach-value${valCls}">${valNum}</span></div></div></div>`;
-    }
-
-    function achRowsClip(rows) {
-        return rows.map(r => r.clipDate ? `${r.label}: ${r.rawVal} (${r.clipDate})` : `${r.label}: ${r.rawVal}`).join('\n');
-    }
-
-    function achBuildSection(title, rows, sectionKey = '', colCount = 4) {
-        const COLS = colCount,
-            rpc = rows.length ? Math.ceil(rows.length / COLS) : 0,
-            cols = Array.from({
-                length: COLS
-            }, (_, ci) => {
-                const chunk = [];
-                for (let r = 0; r < rpc; r++) {
-                    const i = ci * rpc + r;
-                    if (i < rows.length) chunk.push(rows[i]);
-                }
-                return chunk;
-            }),
-            colsHTML = cols.map(chunk => `<div class="bbgl-ach-col">${chunk.map(achRowHTML).join('')}</div>`).join(''),
-            clipAll = achRowsClip(rows);
-        return `<div class="bbgl-ach-section"><div class="bbgl-ach-title-row"><span class="bbgl-ach-section-title" data-ach-section="${achEsc(sectionKey)}" data-clip-section="${achEsc(clipAll)}" data-clip-title="${achEsc(title)}" data-tooltip="Click any stat or row to copy its data, or click this title to copy the entire section to your clipboard.">${achEsc(title)}</span></div><div class="bbgl-ach-cols"${COLS !== 4 ? ` style="grid-template-columns:repeat(${COLS},minmax(0,1fr));"` : ''}>${colsHTML}</div></div>`;
-    }
-
-    function achBuildDualSection(titleA, rowsA, titleB, rowsB, sectionKeyA = '', sectionKeyB = '') {
-        const clipA = achRowsClip(rowsA),
-            clipB = achRowsClip(rowsB);
-        return `<div class="bbgl-ach-dual"><div class="bbgl-ach-dual-headers"><div class="bbgl-ach-section-title" data-ach-section="${achEsc(sectionKeyA)}" data-clip-section="${achEsc(clipA)}" data-clip-title="${achEsc(titleA)}">${achEsc(titleA)}</div><div class="bbgl-ach-section-title" data-ach-section="${achEsc(sectionKeyB)}" data-clip-section="${achEsc(clipB)}" data-clip-title="${achEsc(titleB)}">${achEsc(titleB)}</div></div><div class="bbgl-ach-dual-body"><div class="bbgl-ach-col-half">${rowsA.map(achRowHTML).join('')}</div><div class="bbgl-ach-col-half">${rowsB.map(achRowHTML).join('')}</div></div></div>`;
-    }
-
-    function achFmtWeekShort(weekOf) {
-        if (!weekOf) return '';
-        return Formatter.datePretty(weekOf);
-    }
-
-    function achFmtMonthLong(rawMonth) {
-        if (!rawMonth) return '';
-        return `${CONSTANTS.MONTHS[parseInt(rawMonth.slice(5)) - 1]}, ${rawMonth.slice(0, 4)}`;
-    }
-
-    function achFmtTimeTCT(ts) {
-        const d = new Date(ts * 1000);
-        return String(d.getUTCHours()).padStart(2, '0') + ':' + String(d.getUTCMinutes()).padStart(2, '0') + ':' + String(d.getUTCSeconds()).padStart(2, '0') + ' TCT';
-    }
-    let _achTzLocalCache = null;
-
-    function achTimeZoneSuffix() {
-        if (!TimeManager.useLocal()) return 'TCT';
-        if (_achTzLocalCache) return _achTzLocalCache;
-        try {
-            const parts = new Intl.DateTimeFormat(undefined, {
-                timeZoneName: 'short'
-            }).formatToParts(new Date());
-            const tz = parts.find(p => p.type === 'timeZoneName');
-            _achTzLocalCache = tz && tz.value ? tz.value : 'Local';
-        } catch (e) {
-            _achTzLocalCache = 'Local';
+    const clipAll = [...LEFT_COL, ...RIGHT_COL].map(id => {
+        const meta = ITEM_LOG_META[id];
+        const label = meta.achLabel || meta.label;
+        const sk = STAT_ENH_MAP[id];
+        if (sk) {
+            const rec = enh[sk] || { count: 0, gain: 0 };
+            return `${label}: ${rec.count} (+${Formatter.gain(rec.gain)} ${STAT_ABBR[sk]})`;
         }
-        return _achTzLocalCache;
-    }
+        const rec = enrg[id] || { count: 0, energy: 0 };
+        return `${label}: ${rec.count} (+${Formatter.gain(rec.energy)} Energy)`;
+    }).join('\n');
 
-    function achFmtTimeHMClip(ts) {
-        const d = new Date(ts * 1000);
-        return String(d.getUTCHours()).padStart(2, '0') + ':' + String(d.getUTCMinutes()).padStart(2, '0');
-    }
+    const cols = `<div class="bbgl-ach-col">${leftHTML}</div><div class="bbgl-ach-col">${rightHTML}</div>`;
+    const isPeriod = !!viewState.achEnhPeriodMode;
+    const switchHTML = `<div class="bbgl-enh-mode-switch" data-tooltip-html="<b>Changes the data scope displayed on this page.</b><br><i><b>All-Time</b> shows totals across your entire log history. <b>Selected</b> shows data for the selected period on the calendar.</i>" data-tooltip-side="left"><span class="bbgl-enh-sw-opt${isPeriod ? '' : ' active'}" data-mode="alltime">All-Time</span><span class="bbgl-enh-sw-opt${isPeriod ? ' active' : ''}" data-mode="selected">Selected</span></div>`;
+    return `<div class="bbgl-ach-section bbgl-ach-section-energy"><div class="bbgl-ach-title-row"><span class="bbgl-ach-section-title" data-ach-section="endocrine-enhancers" data-clip-section="${achEsc(clipAll)}" data-clip-title="Endocrine Enhancers" data-tooltip="Click any row to copy its data, or click this title to copy the entire section to your clipboard.">ENDOCRINE ENHANCERS</span>${switchHTML}</div><div class="bbgl-ach-cols" style="grid-template-columns:repeat(2,minmax(0,1fr));">${cols}</div></div>`;
+}
 
-    function achFmtTimeHMS(ts) {
-        const d = new Date(ts * 1000);
-        const h = TimeManager.useLocal() ? d.getHours() : d.getUTCHours();
-        const m = TimeManager.useLocal() ? d.getMinutes() : d.getUTCMinutes();
-        const s = TimeManager.useLocal() ? d.getSeconds() : d.getUTCSeconds();
-        return String(h).padStart(2, '0') + ':' + String(m).padStart(2, '0') + ':' + String(s).padStart(2, '0') + ' ' + achTimeZoneSuffix();
-    }
-
-    function achBuildPage0(d) {
-        const ps = d.perStatBest || {
-            bestTrain: {},
-            bestDay: {},
-            bestWeek: {},
-            bestMonth: {}
+function buildAchievementsPage(pageIdx, d) {
+    const mk = (label, value, opts = {}) => {
+        const base = {
+            label,
+            key: opts.key || '',
+            sub: opts.sub || '',
+            statClass: opts.statClass || '',
+            tip: opts.tip || '',
+            clipDate: opts.clipDate || ''
         };
-        const STATS = ['str', 'def', 'spd', 'dex'];
-        const STAT_LABEL = {
-            str: 'Strength',
-            def: 'Defense',
-            spd: 'Speed',
-            dex: 'Dexterity'
+        if ('dualHtml' in opts) return {
+            ...base,
+            dualHtml: opts.dualHtml,
+            display: opts.display !== undefined ? opts.display : '',
+            rawVal: opts.rawVal !== undefined ? opts.rawVal : (opts.dualHtml && typeof value === 'number' ? achLedgerClip(value) : '\u2014')
         };
-        const rows = [{
-            key: 'best-train',
-            short: 'Single Train',
-            long: 'Highest Single Train',
-            tip: 'Highest gains achieved from a single click, per individual stat.',
-            recs: ps.bestTrain,
-            getDate: r => achFmtDate(r.date),
-            getTime: r => r.ts ? achFmtTimeHMS(r.ts) : ''
-        }, {
-            key: 'best-day',
-            short: 'Best Day',
-            long: 'Best Training Day',
-            tip: 'Highest gains achieved in a single calendar day, per individual stat.',
-            recs: ps.bestDay,
-            getDate: r => achFmtDate(r.date)
-        }, {
-            key: 'best-week',
-            short: 'Best Week',
-            long: 'Best Training Week',
-            tip: 'Highest gains achieved in a single calendar week, per individual stat.',
-            recs: ps.bestWeek,
-            getDate: r => achFmtWeekShort(r.weekOf)
-        }, {
-            key: 'best-month',
-            short: 'Best Month',
-            long: 'Best Month',
-            tip: 'Highest gains achieved in a single calendar month, per individual stat.',
-            recs: ps.bestMonth,
-            getDate: r => achFmtMonthLong(r.rawMonth)
-        }];
-        const headerStats = STATS.map(sk => `<div class="ach-stat-header ach-stat-${sk} bbgl-ach-col-copy" data-stat="${sk}" data-tooltip="Click to copy ${STAT_LABEL[sk]} column" style="cursor:pointer">${STAT_LABEL[sk]}</div>`).join('');
-        const header = `<div class="bbgl-ach-grid-header"><div class="ach-grid-label-area"><span class="bbgl-ach-section-title" data-ach-section="greatest-gains" data-clip-title="Greatest Gains" data-tooltip="Click any stat or row to copy its data, or click this title to copy the entire section to your clipboard.">Greatest Gains</span></div>${headerStats}</div>`;
-        const rowsHTML = rows.map(r => {
-            const labelArea = `<div class="ach-grid-label-area"><div class="ach-k"><span class="ach-title-short">${achEsc(r.short)}</span><span class="ach-title-long">${achEsc(r.long)}</span></div></div>`;
-            const cells = STATS.map(sk => {
-                const rec = r.recs ? r.recs[sk] : null;
-                const valHTML = rec ? '+' + Formatter.dual(rec.value) : '<span class="ach-null">—</span>';
-                const dateHTML = rec ? `<div class="ach-date">${achEsc(r.getDate(rec))}</div>` : '';
-                const timeHTML = (rec && r.getTime) ? `<div class="ach-time">${achEsc(r.getTime(rec))}</div>` : '';
-                return `<div class="bbgl-ach-stat-cell" data-ach-key="${achEsc(r.key)}" data-stat="${sk}"><span class="ach-value">${valHTML}</span>${dateHTML}${timeHTML}</div>`;
-            }).join('');
-            const tipAttr = r.tip ? ` data-tooltip="${achEsc(r.tip)}"` : '';
-            return `<div class="bbgl-ach-row bbgl-ach-row-multi" data-ach-key="${achEsc(r.key)}"${tipAttr}>${labelArea}${cells}</div>`;
-        }).join('');
-        return `<div class="bbgl-ach-section bbgl-ach-section-page0">${header}${rowsHTML}</div>`;
-    }
-
-    function achBuildPage1(d) {
-        const STATS = ['str', 'def', 'spd', 'dex'];
-        const STAT_LABEL = {
-            str: 'Strength',
-            def: 'Defense',
-            spd: 'Speed',
-            dex: 'Dexterity'
+        if (opts.display !== undefined || opts.rawVal !== undefined || value === null || value === undefined || typeof value !== 'number') {
+            const display = opts.display !== undefined ? opts.display : achFmtVal(value);
+            const rawVal = opts.rawVal !== undefined ? opts.rawVal : (opts.display !== undefined ? String(opts.display).replace(/<[^>]+>/g, '') : (value !== null && value !== undefined ? achFmtVal(value) : '\u2014'));
+            return {
+                ...base,
+                dualHtml: '',
+                display,
+                rawVal
+            };
+        }
+        return {
+            ...base,
+            dualHtml: Formatter.dual(value),
+            display: '',
+            rawVal: opts.rawVal !== undefined ? opts.rawVal : achLedgerClip(value)
         };
-        const rows = [{
+    };
+    const mkRec = (label, rec, getDate, tip, suffix, key = '') => {
+        const dt = rec ? getDate(rec) : '';
+        const v = rec ? rec.value : null;
+        const o = {
+            key,
+            statClass: (rec && rec.stat) ? 'ach-stat-' + rec.stat : '',
+            sub: (rec && rec.stat) ? rec.stat.toUpperCase() : '',
+            tip: tip,
+            clipDate: dt
+        };
+        if (suffix) return rec ? mk(label, v, {
+            ...o,
+            dualHtml: Formatter.dual(v) + ' E',
+            rawVal: achLedgerClip(v) + ' E'
+        }) : mk(label, null, {
+            ...o,
+            display: '\u2014',
+            rawVal: '\u2014'
+        });
+        return mk(label, v, o);
+    };
+    const achUnit = (n, sing, plur) => n ? n + '<span class="ach-unit"> ' + (n === 1 ? sing : plur) + '</span>' : '\u2014';
+    if (pageIdx === 0) {
+        return achBuildPage0(d);
+    } else if (pageIdx === 1) {
+        return achBuildPage1(d);
+    } else if (pageIdx === 2) {
+        const overviewD = viewState.achEnhPeriodMode
+            ? computeEnhancersForPeriod(calendarState.selectedData || DataController.getSlice('DAY', Formatter.dateLogical()))
+            : d;
+        return achBuildPageOverview(overviewD);
+    } else if (pageIdx === 3) {
+        return achBuildPage2(d);
+    } else {
+        const consistRows = [mk('Best Training Streak', d.longestStreak, {
             key: 'training-streak',
-            short: 'Best Streak',
-            long: 'Best Training Streak',
-            tip: 'Total stats gained during your longest consecutive training streak.',
-            len: d.longestStreak,
-            start: d.longestStreakStart,
-            end: d.longestStreakEnd,
-            gains: d.longestStreakGains
-        }, {
+            dualHtml: achUnit(d.longestStreak, 'Day', 'Days'),
+            rawVal: d.longestStreak ? d.longestStreak + (d.longestStreak === 1 ? ' Day' : ' Days') : '\u2014',
+            clipDate: achFmtStreakRange(d.longestStreakStart, d.longestStreakEnd),
+            tip: 'Longest streak of active training days'
+        }), mk('Best Green Streak', d.longestGoalStreak, {
             key: 'green-streak',
-            short: 'Best Green',
-            long: 'Best Green Streak',
-            tip: 'Total stats gained during your longest streak of achieving at least Green (1,000E+).',
-            len: d.longestGoalStreak,
-            start: d.longestGoalStreakStart,
-            end: d.longestGoalStreakEnd,
-            gains: d.longestGoalStreakGains
-        }, {
+            dualHtml: achUnit(d.longestGoalStreak, 'Day', 'Days'),
+            rawVal: d.longestGoalStreak ? d.longestGoalStreak + (d.longestGoalStreak === 1 ? ' Day' : ' Days') : '\u2014',
+            clipDate: achFmtStreakRange(d.longestGoalStreakStart, d.longestGoalStreakEnd),
+            tip: 'Longest streak of achieving at least Green (1000E+)'
+        }), mk('Best Gold Streak', d.longestGoldStreak, {
             key: 'gold-streak',
-            short: 'Best Gold',
-            long: 'Best Gold Streak',
-            tip: 'Total stats gained during your longest streak of achieving at least Gold (1,500E+).',
-            len: d.longestGoldStreak,
-            start: d.longestGoldStreakStart,
-            end: d.longestGoldStreakEnd,
-            gains: d.longestGoldStreakGains
-        }, {
-            key: 'diamond-streak',
-            short: 'Best Diamond',
-            long: 'Best Diamond Streak',
-            tip: 'Total stats gained during your longest streak of achieving Diamond (2,000E+).',
-            len: d.longestDiamondStreak,
-            start: d.longestDiamondStreakStart,
-            end: d.longestDiamondStreakEnd,
-            gains: d.longestDiamondStreakGains
-        }];
-        const headerStats = STATS.map(sk => `<div class="ach-stat-header ach-stat-${sk}">${STAT_LABEL[sk]}</div>`).join('') + `<div class="ach-stat-header ach-stat-tot">Total</div>`;
-        const header = `<div class="bbgl-ach-grid-header"><div class="ach-grid-label-area"><span class="bbgl-ach-section-title" data-ach-section="sexiest-streaks" data-clip-title="Sexiest Streaks" data-tooltip="Click any stat or row to copy its data, or click this title to copy the entire section to your clipboard.">SEXIEST STREAKS</span></div>${headerStats}</div>`;
-        const rowsHTML = rows.map(r => {
-            const dayBit = `<span class="ach-streak-days">${r.len ? r.len + 'd' : '—'}</span>`;
-            const presentStats = (r.gains ? STATS.filter(sk => (r.gains[sk] || 0) > 0) : []);
-            const total = presentStats.reduce((a, sk) => a + (r.gains[sk] || 0), 0);
-            const dateText = (r.start && r.end) ? achEsc(achFmtStreakRange(r.start, r.end)) : '—';
-            const dateHTML = `<div class="ach-date ach-streak-date">${dayBit}<span class="ach-streak-sep">•</span><span class="ach-streak-daterange">${dateText}</span></div>`;
-            const totalText = total > 0 ? '+' + achFmtGain(total) : '<span class="ach-null">—</span>';
-            const inlineDays = r.len ? `<span class="ach-streak-days ach-streak-days-inline"> · ${r.len}d</span>` : '';
-            const inlineDate = (r.start && r.end) ? `<span class="bbgl-ach-streak-date-inline">&nbsp;&nbsp;${dateText}</span>` : '';
-            const labelArea = `<div class="ach-grid-label-area"><div class="ach-k"><span class="ach-title-short">${achEsc(r.short)}</span><span class="ach-title-long">${achEsc(r.long)}</span>${inlineDays}${inlineDate}</div></div>`;
-            const cells = STATS.map(sk => {
-                const v = (r.gains && r.gains[sk]) || 0;
-                const valHTML = v > 0 ? '+' + achEsc(achFmtGain(v)) : '<span class="ach-null">—</span>';
-                return `<div class="bbgl-ach-stat-cell" data-ach-key="${r.key}" data-stat="${sk}"><span class="ach-value">${valHTML}</span></div>`;
-            }).join('');
-            const totalCell = `<div class="bbgl-ach-stat-cell bbgl-ach-stat-cell-total" data-ach-key="${r.key}" data-stat="total"><span class="ach-value ach-stat-tot">${totalText}</span></div>`;
-            const tipAttr = r.tip ? ` data-tooltip="${achEsc(r.tip)}"` : '';
-            return `<div class="bbgl-ach-row bbgl-ach-row-multi" data-ach-key="${r.key}"${tipAttr}>${labelArea}${cells}${totalCell}${dateHTML}</div>`;
-        }).join('');
-        const consVal = d.trainingRestRatio || '—';
-        const consDaysShort = '';
-        const consDaysLong = '(' + (d.trainingDays || 0) + '/' + (d.calDays || 0) + ' Days)';
-        const consRow = `<div class="bbgl-ach-row bbgl-ach-row-multi bbgl-ach-consistency-row" data-ach-key="consistency" data-tooltip="Your lifetime ratio of active training days versus total calendar days."><div class="bbgl-ach-consistency-text"><span class="ach-cons-short">Consistency: <span class="ach-cons-val">${achEsc(consVal)}</span></span><span class="ach-cons-long">Training Consistency: <span class="ach-cons-val">${achEsc(consVal)}</span> <span class="ach-cons-days">${achEsc(consDaysLong)}</span></span></div></div>`;
-        return `<div class="bbgl-ach-section bbgl-ach-section-page0 bbgl-ach-section-page1">${header}${rowsHTML}${consRow}</div>`;
+            dualHtml: achUnit(d.longestGoldStreak, 'Day', 'Days'),
+            rawVal: d.longestGoldStreak ? d.longestGoldStreak + (d.longestGoldStreak === 1 ? ' Day' : ' Days') : '\u2014',
+            clipDate: achFmtStreakRange(d.longestGoldStreakStart, d.longestGoldStreakEnd),
+            tip: 'Longest streak of achieving Gold (1500E+)'
+        }), mk('Consistency Rate', null, {
+            key: 'consistency',
+            display: d.trainingRestRatio || '\u2014',
+            rawVal: d.trainingRestRatio || '\u2014',
+            tip: 'Lifetime ratio of rest days to training days'
+        }), mk('Happy Jumps', d.happyJumps, {
+            key: 'happy-jumps',
+            display: String(d.happyJumps || 0),
+            rawVal: String(d.happyJumps || 0),
+            tip: 'Total Happy Jumps performed'
+        })];
+        const rewardRows = [mk('Green Days', d.greenDays, {
+            key: 'green-days',
+            display: String(d.greenDays || 0),
+            rawVal: String(d.greenDays || 0),
+            statClass: 'ach-fx-green',
+            tip: 'Total days where the minimum daily goal (Green: 1,000E+) was achieved.'
+        }), mk('Gold Days', d.goldDays, {
+            key: 'gold-days',
+            display: String(d.goldDays || 0),
+            rawVal: String(d.goldDays || 0),
+            statClass: 'ach-fx-gold',
+            tip: 'Total days where the elite daily goal (Gold: 1,500E+) was achieved.'
+        }), mk('Diamond Days', d.diamondDays, {
+            key: 'diamond-days',
+            display: String(d.diamondDays || 0),
+            rawVal: String(d.diamondDays || 0),
+            statClass: 'ach-fx-diamond',
+            tip: 'Total days where the ultimate daily goal (Diamond: 2,000E+) was achieved.'
+        }), mk('Stickers Unlocked', d.stickersUnlocked, {
+            key: 'stickers',
+            display: (d.stickersUnlocked || 0) + '/' + CUSTOM_STICKERS.length,
+            rawVal: (d.stickersUnlocked || 0) + '/' + CUSTOM_STICKERS.length,
+            statClass: 'ach-fx-holo',
+            tip: 'Total unique milestone stickers earned through consistent training.'
+        }), mk('Green Weeks', d.greenWeeks, {
+            key: 'green-weeks',
+            display: String(d.greenWeeks || 0),
+            rawVal: String(d.greenWeeks || 0),
+            statClass: 'ach-fx-green',
+            tip: 'Total weeks where the minimum weekly training goal was met.'
+        }), mk('Gold Weeks', d.goldWeeks, {
+            key: 'gold-weeks',
+            display: String(d.goldWeeks || 0),
+            rawVal: String(d.goldWeeks || 0),
+            statClass: 'ach-fx-gold',
+            tip: 'Total weeks where the elite weekly training goal was met.'
+        }), mk('Diamond Weeks', d.diamondWeeks, {
+            key: 'diamond-weeks',
+            display: String(d.diamondWeeks || 0),
+            rawVal: String(d.diamondWeeks || 0),
+            statClass: 'ach-fx-diamond',
+            tip: 'Total weeks where the ultimate weekly training goal was met.'
+        })];
+        void consistRows;
+        return achBuildSection('Rewards Reaped', rewardRows, 'rewards-reaped', 2);
     }
+}
 
-    function achFmtTimeHM(ts) {
-        const d = new Date(ts * 1000);
-        const h = TimeManager.useLocal() ? d.getHours() : d.getUTCHours();
-        const m = TimeManager.useLocal() ? d.getMinutes() : d.getUTCMinutes();
-        return String(h).padStart(2, '0') + ':' + String(m).padStart(2, '0');
+const achFmtGain = v => Formatter.achGain(v);
+
+function achStatAbbr(s) {
+    return s ? s.charAt(0).toUpperCase() + s.slice(1) : '';
+}
+
+function achStatFull(s) {
+    return {
+        str: 'Strength',
+        def: 'Defense',
+        spd: 'Speed',
+        dex: 'Dexterity'
+    }[s] || s;
+}
+
+function achFmtGainsLine(g) {
+    const ORDER = ['str', 'def', 'spd', 'dex'];
+    return ORDER.filter(k => g && g[k] > 0).map(k => '+' + achFmtGain(g[k]) + ' ' + achStatAbbr(k)).join(' | ');
+}
+
+function achFmtTs(ts) {
+    const d = new Date(ts * 1000);
+    const datePart = Formatter.datePretty(Formatter.dateISO(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate()));
+    return datePart + '  ' + String(d.getUTCHours()).padStart(2, '0') + ':' + String(d.getUTCMinutes()).padStart(2, '0') + ':' + String(d.getUTCSeconds()).padStart(2, '0');
+}
+
+function achGetDay(date) {
+    const s = getActiveHistory();
+    const all = [...(s.history || [])];
+    if (s.today && s.today.date) {
+        const i = all.findIndex(d => d.date === s.today.date);
+        if (i >= 0) all[i] = s.today;
+        else all.push(s.today);
     }
+    return all.find(d => d.date === date) || null;
+}
 
-    function achBuildPage2(d) {
-        const STAT_ABBR = {
+function achGetTrainBA(rec) {
+    const day = achGetDay(rec.date);
+    if (!day) return null;
+    const series = [...(day.series || [])].sort((a, b) => a.ts - b.ts);
+    let before = (day.startBreakdown && day.startBreakdown[rec.stat]) || 0;
+    for (const e of series) {
+        if (e.ts === rec.ts && e.stat === rec.stat) return {
+            before,
+            after: before + rec.value
+        };
+        if (e.stat === rec.stat) before += (e.gain || 0);
+    }
+    return null;
+}
+
+function achGetDayBA(rec) {
+    const day = achGetDay(rec.date);
+    if (!day) return null;
+    return {
+        before: (day.startBreakdown && day.startBreakdown[rec.stat]) || 0,
+        after: (day.endBreakdown && day.endBreakdown[rec.stat]) || 0
+    };
+}
+
+function achGetMonthBA(rawMonth, stat) {
+    const s = getActiveHistory();
+    const all = [...(s.history || [])];
+    if (s.today && s.today.date) {
+        const i = all.findIndex(d => d.date === s.today.date);
+        if (i >= 0) all[i] = s.today;
+        else all.push(s.today);
+    }
+    const days = all.filter(d => d.date.slice(0, 7) === rawMonth && ((d.gains && d.gains[stat]) || 0) > 0).sort((a, b) => a.date.localeCompare(b.date));
+    if (!days.length) return null;
+    return {
+        before: (days[0].startBreakdown && days[0].startBreakdown[stat]) || 0,
+        after: (days[days.length - 1].endBreakdown && days[days.length - 1].endBreakdown[stat]) || 0
+    };
+}
+
+function achGetWeekBA(weekOf, stat) {
+    const s = getActiveHistory();
+    const all = [...(s.history || [])];
+    if (s.today && s.today.date) {
+        const i = all.findIndex(d => d.date === s.today.date);
+        if (i >= 0) all[i] = s.today;
+        else all.push(s.today);
+    }
+    const startD = new Date(weekOf + 'T00:00:00Z');
+    const endD = new Date(startD);
+    endD.setUTCDate(endD.getUTCDate() + 6);
+    const endStr = Formatter.dateISO(endD.getUTCFullYear(), endD.getUTCMonth(), endD.getUTCDate());
+    const days = all
+        .filter(d => d.date >= weekOf && d.date <= endStr && ((d.gains && d.gains[stat]) || 0) > 0)
+        .sort((a, b) => a.date.localeCompare(b.date));
+    if (!days.length) return null;
+    return {
+        before: (days[0].startBreakdown && days[0].startBreakdown[stat]) || 0,
+        after: (days[days.length - 1].endBreakdown && days[days.length - 1].endBreakdown[stat]) || 0
+    };
+}
+
+function achFmtBA(ba) {
+    return ba ? Formatter.number(ba.before) + ' \u2192 ' + Formatter.number(ba.after) : null;
+}
+
+function achFmtWeekCopy(weekOf) {
+    const we = new Date(weekOf + 'T00:00:00Z');
+    we.setUTCDate(we.getUTCDate() + 6);
+    const endStr = Formatter.dateISO(we.getUTCFullYear(), we.getUTCMonth(), we.getUTCDate());
+    return Formatter.datePretty(weekOf) + ' \u2013 ' + Formatter.datePretty(endStr);
+}
+
+function achClipSection(H, title, blocks) {
+    const NL = '\n';
+    let s = H + NL + NL + '\u2014 ' + title + ' \u2014' + NL;
+    blocks.forEach((b, i) => {
+        if (i) s += (blocks[i - 1].includes(NL) || b.includes(NL)) ? NL + NL : NL;
+        s += b;
+    });
+    return s;
+}
+
+function achFmtStatBlock(key, rec, stat, indent) {
+    if (!rec) return null;
+    const STAT_FULL = {
+        str: 'Strength',
+        def: 'Defense',
+        spd: 'Speed',
+        dex: 'Dexterity'
+    };
+    let ba = null;
+    if (key === 'best-train') ba = achGetTrainBA({
+        value: rec.value,
+        date: rec.date,
+        ts: rec.ts,
+        stat
+    });
+    else if (key === 'best-day') ba = achGetDayBA({
+        date: rec.date,
+        stat
+    });
+    else if (key === 'best-week') ba = achGetWeekBA(rec.weekOf, stat);
+    else if (key === 'best-month') ba = achGetMonthBA(rec.rawMonth, stat);
+    const baStr = ba ? achFmtBA(ba) : null;
+    let dateStr = '';
+    if (key === 'best-train') dateStr = achFmtTs(rec.ts);
+    else if (key === 'best-day') dateStr = Formatter.datePretty(rec.date);
+    else if (key === 'best-week') dateStr = Formatter.datePretty(rec.weekOf);
+    else if (key === 'best-month') dateStr = achFmtMonthLong(rec.rawMonth);
+    const line1 = indent + '+' + Formatter.number(rec.value) + ' ' + STAT_FULL[stat] + (baStr ? ' | ' + baStr : '');
+    const line2 = indent + '  ' + dateStr;
+    return line1 + '\n' + line2;
+}
+
+function handleAchCopy(el) {
+    if (el.closest && el.closest('.bbgl-ach-section-energy')) {
+        const row = el.closest('.bbgl-ach-enh-row');
+        const title = el.closest('.bbgl-ach-section-title');
+        if (title) {
+            const clip = title.getAttribute('data-clip-section');
+            const clipTitle = title.getAttribute('data-clip-title') || 'Endocrine Enhancers';
+            if (clip) {
+                const txt = '👑BBGL Achievements\n\n— ' + clipTitle + ' —\n' + clip;
+                const cols = el.closest('.bbgl-ach-section-energy').querySelector('.bbgl-ach-cols');
+                navigator.clipboard.writeText(txt).then(() => flashCopied(cols || el.closest('.bbgl-ach-section-energy')));
+            }
+            return;
+        }
+        if (row) {
+            const clip = row.getAttribute('data-clip');
+            if (clip) { navigator.clipboard.writeText(clip).then(() => flashCopied(row)); }
+        }
+        return;
+    }
+    const H = '\uD83D\uDC51BBGL Achievements',
+        cache = runtime._achCache;
+    let txt = '',
+        flashEl = null;
+    const NL = '\n',
+        I = '  ';
+    const PS_MAP = {
+        'best-train': 'bestTrain',
+        'best-day': 'bestDay',
+        'best-week': 'bestWeek',
+        'best-month': 'bestMonth'
+    };
+    const TITLE_MAP = {
+        'best-train': 'Highest Gains in a Single Train',
+        'best-day': 'Highest Gains in a Single Day',
+        'best-week': 'Highest Gains in a Single Week',
+        'best-month': 'Highest Gains in a Single Month'
+    };
+    if (el.classList.contains('bbgl-ach-col-copy')) {
+        // Clickable Greatest Gains column title: copy that stat across all four best-X rows.
+        const sk = el.getAttribute('data-stat');
+        const r = cache;
+        const PS_MAP_L = { 'best-train': 'bestTrain', 'best-day': 'bestDay', 'best-week': 'bestWeek', 'best-month': 'bestMonth' };
+        const TITLE_MAP_L = { 'best-train': 'Best Train', 'best-day': 'Best Day', 'best-week': 'Best Week', 'best-month': 'Best Month' };
+        if (sk && r && r.perStatBest) {
+            const lines = ['best-train', 'best-day', 'best-week', 'best-month'].map(mkey => {
+                const rec = (r.perStatBest[PS_MAP_L[mkey]] || {})[sk];
+                return achFmtStatBlock(mkey, rec, sk, '  ');
+            }).filter(Boolean);
+            if (lines.length) {
+                txt = '👑BBGL Achievements\nGreatest Gains — ' + achStatFull(sk) + ':\n' + lines.join(NL);
+                const _sec = el.closest('.bbgl-ach-section');
+                const _cells = _sec ? Array.from(_sec.querySelectorAll(`.bbgl-ach-stat-cell[data-stat="${sk}"]`)).filter(c => !c.querySelector('.ach-null')) : [];
+                flashEl = _cells.length ? _cells : el;
+            }
+        }
+    } else if (el.classList.contains('bbgl-ach-stat-cell')) {
+        const key = el.getAttribute('data-ach-key');
+        const stat = el.getAttribute('data-stat');
+        const recs = (cache && cache.perStatBest && PS_MAP[key]) ? cache.perStatBest[PS_MAP[key]] : null;
+        const rec = (recs && stat) ? recs[stat] : null;
+        const block = achFmtStatBlock(key, rec, stat, '');
+        if (block && TITLE_MAP[key]) {
+            txt = H + NL + TITLE_MAP[key] + ':' + NL + block;
+            flashEl = el;
+        } else if (cache && /^(training|green|gold|diamond)-streak$/.test(key)) {
+            const SK = {
+                'training-streak': ['Best Training Streak', cache.longestStreak, cache.longestStreakGains, cache.longestStreakStart, cache.longestStreakEnd],
+                'green-streak': ['Best Green Streak', cache.longestGoalStreak, cache.longestGoalStreakGains, cache.longestGoalStreakStart, cache.longestGoalStreakEnd],
+                'gold-streak': ['Best Gold Streak', cache.longestGoldStreak, cache.longestGoldStreakGains, cache.longestGoldStreakStart, cache.longestGoldStreakEnd],
+                'diamond-streak': ['Best Diamond Streak', cache.longestDiamondStreak, cache.longestDiamondStreakGains, cache.longestDiamondStreakStart, cache.longestDiamondStreakEnd]
+            };
+            const SF = {
+                str: 'Strength',
+                def: 'Defense',
+                spd: 'Speed',
+                dex: 'Dexterity',
+                total: 'Total'
+            };
+            const ent = SK[key];
+            if (ent && ent[2]) {
+                const label = ent[0],
+                    g = ent[2],
+                    st = ent[3],
+                    en = ent[4];
+                const v = stat === 'total' ? ['str', 'def', 'spd', 'dex'].reduce((a, k) => a + (g[k] || 0), 0) : (g[stat] || 0);
+                txt = H + NL + label + ' — ' + SF[stat] + ':' + NL + '+' + Formatter.number(v) + ' ' + SF[stat] + (st && en ? NL + I + Formatter.datePretty(st) + ' – ' + Formatter.datePretty(en) : '');
+                flashEl = el;
+            }
+        } else if (key === 'best-hj') {
+            const rec = cache && cache.bestHappyJump && cache.bestHappyJump.total;
+            const label = 'Best Happy Jump';
+            const HHSF = {
+                str: 'Strength',
+                def: 'Defense',
+                spd: 'Speed',
+                dex: 'Dexterity',
+                total: 'Total'
+            };
+            if (rec && rec.stats) {
+                const v = stat === 'total' ? rec.value : (rec.stats[stat] || 0);
+                txt = H + NL + label + ' — ' + HHSF[stat] + ': +' + achFmtGain(v);
+                flashEl = el;
+            }
+        }
+    } else if (el.classList.contains('bbgl-ach-hh-group')) {
+        const gKey = el.getAttribute('data-ach-key'),
+            r = cache;
+        const GABR = {
             str: 'STR',
             def: 'DEF',
             spd: 'SPD',
             dex: 'DEX'
         };
-        const STAT_FULL = {
-            str: 'Strength',
-            def: 'Defense',
-            spd: 'Speed',
-            dex: 'Dexterity'
+        const GSTS = ['str', 'def', 'spd', 'dex'];
+        const fmtJ = (rec) => {
+            if (!rec || !rec.stats) return '\u2014';
+            const tr = GSTS.filter(sk => (rec.stats[sk] || 0) > 0);
+            const pts = tr.map(sk => GABR[sk] + ': +' + achFmtGain(rec.stats[sk]));
+            pts.push('Total: +' + achFmtGain(rec.value));
+            return pts.join(' | ');
         };
-        const STATS = ['str', 'def', 'spd', 'dex'];
-        const countRow = (label, shortLabel, count, key, tip) => {
-            const clipVal = String(count);
-            return `<div class="bbgl-ach-row" data-tooltip="${achEsc(tip)}" data-ach-key="${key}" data-clip="${achEsc(label + ': ' + clipVal)}"><div class="ach-row-main"><div class="ach-k-stack"><span class="ach-k"><span class="ach-title-long">${achEsc(label)}</span><span class="ach-title-short">${achEsc(shortLabel)}</span>:</span></div><div class="ach-v-wrap"><span class="ach-value">${achEsc(clipVal)}</span></div></div></div>`;
-        };
-        const bestRow = (longLabel, shortLabel, rec, key, tip) => {
-            if (!rec || !rec.stats) {
-                return `<div class="bbgl-ach-hh-best-row" data-tooltip="${achEsc(tip)}" data-ach-key="${key}"><div class="bbgl-ach-hh-label"><span class="ach-k"><span class="ach-title-long">${achEsc(longLabel)}</span><span class="ach-title-short">${achEsc(shortLabel)}</span></span><div class="bbgl-ach-hh-date-line"><span class="ach-null">No jumps recorded yet</span></div></div><div class="bbgl-ach-hh-cells"><div class="bbgl-ach-hh-cell bbgl-ach-hh-cell-total"><span class="bbgl-ach-hh-tag ach-stat-tot">Total</span><span class="bbgl-ach-hh-val"><span class="ach-null">—</span></span></div></div></div>`;
-            }
-            const dateStr = achFmtDate(rec.date);
-            const timeStr = achFmtTimeHM(rec.ts) + ' – ' + achFmtTimeHM(rec.tsEnd || rec.ts) + ' ' + achTimeZoneSuffix();
-            const timeStrClip = achFmtTimeHMClip(rec.ts) + ' – ' + achFmtTimeHMClip(rec.tsEnd || rec.ts) + ' TCT';
-            const trained = STATS.filter(sk => (rec.stats[sk] || 0) > 0);
-            const statCells = trained.map(sk => `<div class="bbgl-ach-hh-cell bbgl-ach-hh-cell-stat bbgl-ach-stat-cell" data-ach-key="${key}" data-stat="${sk}" data-tooltip="Total ${achEsc(STAT_FULL[sk])} gained during this jump."><span class="bbgl-ach-hh-val">+${achEsc(achFmtGain(rec.stats[sk]))}</span><span class="bbgl-ach-hh-tag ach-stat-${sk}">${STAT_ABBR[sk]}</span></div>`).join('');
-            const totalCell = `<div class="bbgl-ach-hh-cell bbgl-ach-hh-cell-total bbgl-ach-stat-cell" data-ach-key="${key}" data-stat="total" data-tooltip="Total overall stats gained during this jump."><span class="bbgl-ach-hh-tag ach-stat-tot">Total</span><span class="bbgl-ach-hh-val">+${achEsc(achFmtGain(rec.value))}</span></div>`;
-            const clipParts = trained.map(sk => STAT_ABBR[sk] + ': +' + achFmtGain(rec.stats[sk]));
-            clipParts.push('Total: +' + achFmtGain(rec.value));
-            return `<div class="bbgl-ach-hh-best-row" data-tooltip="${achEsc(tip)}" data-ach-key="${key}" data-clip="${achEsc(longLabel + ' (' + dateStr + ', ' + timeStrClip + '): ' + clipParts.join(' | '))}" data-clip-date="${achEsc(dateStr + '  ' + timeStrClip)}"><div class="bbgl-ach-hh-label"><span class="ach-k"><span class="ach-title-long">${achEsc(longLabel)}</span><span class="ach-title-short">${achEsc(shortLabel)}</span></span><div class="bbgl-ach-hh-date-line">${achEsc(dateStr)}<span class="bbgl-ach-hh-time"> &nbsp; ${achEsc(timeStr)}</span></div></div><div class="bbgl-ach-hh-cells">${statCells}${totalCell}</div></div>`;
-        };
-        const hjCount = countRow('Happy Jumps Performed', 'Happy Jumps', d.happyJumps || 0, 'hj-count', 'Total number of Happy Jumps executed (1,000E+ energy used training within a 5-minute window).');
-        const hjBest = bestRow('Best Happy Jump', 'Best Jump', d.bestHappyJump && d.bestHappyJump.total, 'best-hj', 'The single Happy Jump that yielded the highest combined stat gain.');
-        const rowsHTML = `<div class="bbgl-ach-hh-group" data-ach-key="happy-jumps-group">${hjCount}${hjBest}</div>`;
-        let clipAll = `Happy Jumps Performed: ${d.happyJumps || 0}\nBest Happy Jump: ${d.bestHappyJump && d.bestHappyJump.total ? (() => { const rec = d.bestHappyJump.total; const trained = STATS.filter(sk => (rec.stats[sk] || 0) > 0); const parts = trained.map(sk => STAT_ABBR[sk] + ': +' + achFmtGain(rec.stats[sk])); parts.push('Total: +' + achFmtGain(rec.value)); return parts.join(' | '); })() : '—'}`;
-
-        let helpersHTML = '';
-        if (d.happyItemTotals) {
-            const helpers = HAPPY_LOGS.map(id => {
-                const rec = d.happyItemTotals[id] || { count: 0, happy: 0 };
-                return {
-                    id,
-                    label: ITEM_LOG_META[id].label,
-                    short: ITEM_LOG_META[id].short || ITEM_LOG_META[id].label,
-                    count: rec.count,
-                    happy: rec.happy
-                };
-            }).filter(h => h.count > 0).sort((a, b) => b.count - a.count || b.happy - a.happy);
-
-            if (helpers.length > 0) {
-                const helperRow = (h) => {
-                    const tip = `${achEsc(h.label)} | Happy Gained`;
-                    const clipVal = `${h.label}: ${h.count} (${Formatter.number(h.happy)} Happy)`;
-                    return `<div class="bbgl-ach-row" data-tooltip="${achEsc(tip)}" data-ach-key="happy-helper-${h.id}" data-clip="${achEsc(clipVal)}"><div class="ach-row-main"><div class="ach-k-stack"><span class="ach-k"><span class="ach-title-long">${achEsc(h.label)}</span><span class="ach-title-short">${achEsc(h.short)}</span>:</span></div><div class="ach-v-wrap"><span class="ach-value">${Formatter.number(h.count)}</span><span class="ach-value ach-happy-col">+${achEsc(achFmtGain(h.happy))} <span class="ach-happy-word">Happy</span></span></div></div></div>`;
-                };
-
-                const colCount = 2;
-                const rpc = Math.ceil(helpers.length / colCount);
-                const cols = [];
-                for (let i = 0; i < colCount; i++) {
-                    const start = i * rpc;
-                    const chunk = helpers.slice(start, start + rpc);
-                    if (chunk.length) {
-                        cols.push(`<div class="bbgl-ach-col">${chunk.map(helperRow).join('')}</div>`);
-                    }
-                }
-                const clipHelpers = helpers.map(h => `${h.label}: ${h.count} (${Formatter.number(h.happy)} Happy)`).join('\n');
-                clipAll += '\n\n— Happy Helpers —\n' + clipHelpers;
-                helpersHTML = `<div class="bbgl-ach-subsection-title" style="margin-top:2px" data-ach-section="happy-helpers" data-clip-section="${achEsc(clipHelpers)}" data-clip-title="Happy Helpers" data-tooltip="Click any stat or row to copy its data, or click this title to copy the entire section to your clipboard.">HAPPY HELPERS</div><div class="bbgl-ach-cols" style="grid-template-columns:repeat(${colCount},minmax(0,1fr)); padding-top:1px; padding-bottom:0;">${cols.join('')}</div>`;
-            }
+        if (gKey === 'happy-jumps-group') {
+            txt = H + NL + 'Happy Jumps Performed: ' + (r.happyJumps || 0) + NL + 'Best Happy Jump: ' + fmtJ(r.bestHappyJump && r.bestHappyJump.total);
+            flashEl = Array.from(el.children);
         }
-
-        return `<div class="bbgl-ach-section bbgl-ach-section-hh"><div class="bbgl-ach-title-row"><span class="bbgl-ach-section-title" data-ach-section="happy-hopping" data-clip-section="${achEsc(clipAll)}" data-clip-title="Happy Hopping" data-tooltip="Click any stat or row to copy its data, or click this title to copy the entire section to your clipboard.">HAPPY HOPPING</span></div>${rowsHTML}${helpersHTML}</div>`;
-    }
-
-    function computeEnhancersForPeriod(sl) {
-        const energyItemTotals = {};
-        ENERGY_LOGS.forEach(id => { energyItemTotals[id] = { count: 0, energy: 0 }; });
-        const statEnhByStat = {
-            str: { count: 0, gain: 0 }, def: { count: 0, gain: 0 },
-            spd: { count: 0, gain: 0 }, dex: { count: 0, gain: 0 }
+    } else if (el.classList.contains('bbgl-ach-section-title') || el.classList.contains('bbgl-ach-subsection-title')) {
+        const sec = el.getAttribute('data-ach-section'),
+            r = cache,
+            title = el.getAttribute('data-clip-title') || '';
+        const gain = (label, rec, getBA, getDate) => {
+            if (!rec) return label + ': \u2014';
+            const ba = getBA(rec),
+                baStr = achFmtBA(ba);
+            const line1 = label + ': +' + Formatter.number(rec.value) + ' ' + achStatFull(rec.stat) + (baStr ? ' | ' + baStr : '');
+            return line1 + NL + I + getDate(rec);
         };
-        const days = (sl._dailyList && sl._dailyList.length > 0)
-            ? sl._dailyList
-            : (sl.date ? [DataController.getDateMap()[sl.date]] : []);
-        days.forEach(day => {
-            if (!day) return;
-            if (day.items) {
-                ENERGY_LOGS.forEach(id => {
-                    const qty = day.items[id] || 0;
-                    if (qty > 0) energyItemTotals[id].count += qty;
-                });
-            }
-            (day.series || []).forEach(e => {
-                if (e.type === 'item' && e.energy && energyItemTotals[e.logId])
-                    energyItemTotals[e.logId].energy += e.energy;
-                if (e.type === 'item' && e.statKey && statEnhByStat[e.statKey]) {
-                    statEnhByStat[e.statKey].count++;
-                    statEnhByStat[e.statKey].gain = Math.round((statEnhByStat[e.statKey].gain + (e.statGain || 0)) * 100) / 100;
-                }
-            });
-        });
-        return { energyItemTotals, statEnhByStat };
-    }
-
-    function achBuildPageOverview(d) {
-        const NULL = '<span class="ach-null">—</span>';
-        const enh = d.statEnhByStat || {};
-        const enrg = d.energyItemTotals || {};
-        const STAT_ABBR = { str: 'Str', def: 'Def', spd: 'Spd', dex: 'Dex' };
-
-        const STAT_ENH_MAP = { 2150: 'str', 2130: 'spd', 2140: 'def', 2120: 'dex' };
-        const LEFT_COL = [2150, 2130, 2290, 2040, 4900];
-        const RIGHT_COL = [2140, 2120, 2230, 2190, 8981];
-
-        const buildRow = (id) => {
-            const meta = ITEM_LOG_META[id];
-            const label = meta.achLabel || meta.label;
-            const sk = STAT_ENH_MAP[id];
-            let countHtml, gainedHtml, clipVal, tip;
-
-            if (sk) {
-                const rec = enh[sk] || { count: 0, gain: 0 };
-                countHtml = rec.count > 0 ? achEsc(Formatter.number(rec.count)) : NULL;
-                // Stat label always shows; number is — when no data
-                const gainNum = rec.gain > 0 ? `+${achEsc(achFmtGain(rec.gain))}` : NULL;
-                gainedHtml = `${gainNum} <span class="ach-stat-${sk}">${STAT_ABBR[sk]}</span>`;
-                clipVal = `${label}: ${rec.count} (+${achFmtGain(rec.gain)} ${STAT_ABBR[sk]})`;
-                tip = `${achEsc(label)} | ${STAT_ABBR[sk]} Gained`;
+        const eRow = (label, rec, getDate) => !rec ? label + ': \u2014' : label + ': ' + Formatter.number(rec.value) + ' E' + NL + I + getDate(rec);
+        const streak = (label, len, gains, start, end) => {
+            if (!len) return label + ': \u2014';
+            const gLine = gains ? achFmtGainsLine(gains) : '';
+            const tot = gains ? ((gains.str || 0) + (gains.def || 0) + (gains.spd || 0) + (gains.dex || 0)) : 0;
+            let s = label + ': ' + len + (len === 1 ? ' Day' : ' Days') + NL;
+            if (gLine) s += I + 'Gains: ' + gLine + NL;
+            if (tot) s += I + 'Total Gains: +' + Formatter.number(tot) + NL;
+            if (start && end) s += I + Formatter.datePretty(start) + ' \u2013 ' + Formatter.datePretty(end);
+            return s;
+        };
+        let blocks;
+        if (sec === 'greatest-gains') {
+            const buildMulti = (label, mkey) => {
+                const mRecs = (r && r.perStatBest) ? r.perStatBest[PS_MAP[mkey]] : null;
+                if (!mRecs) return label + ': —';
+                const mLines = ['str', 'def', 'spd', 'dex'].map(sk => achFmtStatBlock(mkey, mRecs[sk], sk, I)).filter(Boolean);
+                if (!mLines.length) return label + ': —';
+                return label + ':' + NL + mLines.join(NL);
+            };
+            blocks = [buildMulti('Best Train', 'best-train'), buildMulti('Best Day', 'best-day'), buildMulti('Best Week', 'best-week'), buildMulti('Best Month', 'best-month')];
+        } else if (sec === 'expended-energy') blocks = [eRow('Best Day', r.mostEInOneDay, rec => Formatter.datePretty(rec.date)), eRow('Best Week', r.mostEInOneWeek, rec => achFmtWeekCopy(rec.weekOf)), eRow('Best Month', r.mostEInOneMonth, rec => rec.month)];
+        else if (sec === 'consistency-kept') blocks = [streak('Best Training Streak', r.longestStreak, r.longestStreakGains, r.longestStreakStart, r.longestStreakEnd), streak('Best Green Streak', r.longestGoalStreak, r.longestGoalStreakGains, r.longestGoalStreakStart, r.longestGoalStreakEnd), streak('Best Gold Streak', r.longestGoldStreak, r.longestGoldStreakGains, r.longestGoldStreakStart, r.longestGoldStreakEnd), 'Consistency: ' + (r.trainingRestRatio || '\u2014') + ' | ' + (r.trainingDays || 0) + '/' + (r.calDays || 0) + ' Days Trained', 'Happy Jumps: ' + (r.happyJumps || 0)];
+        else if (sec === 'sexiest-streaks') blocks = [streak('Best Training Streak', r.longestStreak, r.longestStreakGains, r.longestStreakStart, r.longestStreakEnd), streak('Best Green Streak', r.longestGoalStreak, r.longestGoalStreakGains, r.longestGoalStreakStart, r.longestGoalStreakEnd), streak('Best Gold Streak', r.longestGoldStreak, r.longestGoldStreakGains, r.longestGoldStreakStart, r.longestGoldStreakEnd), streak('Best Diamond Streak', r.longestDiamondStreak, r.longestDiamondStreakGains, r.longestDiamondStreakStart, r.longestDiamondStreakEnd), 'Consistency: ' + (r.trainingRestRatio || '\u2014') + ' | ' + (r.trainingDays || 0) + '/' + (r.calDays || 0) + ' Calendar Days Trained'];
+        else if (sec === 'rewards-reaped') blocks = ['Green Days: ' + (r.greenDays || 0), 'Green Weeks: ' + (r.greenWeeks || 0), 'Gold Days: ' + (r.goldDays || 0), 'Gold Weeks: ' + (r.goldWeeks || 0), 'Diamond Days: ' + (r.diamondDays || 0), 'Diamond Weeks: ' + (r.diamondWeeks || 0), 'Stickers Unlocked: ' + (r.stickersUnlocked || 0) + '/' + CUSTOM_STICKERS.length];
+        if (blocks) {
+            txt = achClipSection(H, title, blocks);
+            const _sec = el.closest('.bbgl-ach-section');
+            if (sec === 'greatest-gains') {
+                const _rows = _sec ? Array.from(_sec.querySelectorAll('.bbgl-ach-row-multi')) : [];
+                flashEl = _rows.length ? _rows : el;
+            } else if (sec === 'sexiest-streaks') {
+                const arr = _sec ? Array.from(_sec.querySelectorAll('.bbgl-ach-row-multi')) : [];
+                flashEl = arr.length ? arr : el;
+            } else if (sec === 'rewards-reaped') {
+                const _rows = _sec ? Array.from(_sec.querySelectorAll('.bbgl-ach-row')) : [];
+                flashEl = _rows.length ? _rows : el;
             } else {
-                const rec = enrg[id] || { count: 0, energy: 0 };
-                countHtml = rec.count > 0 ? achEsc(Formatter.number(rec.count)) : NULL;
-                const gainNum = rec.energy > 0 ? `+${achEsc(Formatter.number(rec.energy))}` : NULL;
-                gainedHtml = `${gainNum} <span class="ach-enh-e-label">E</span>`;
-                clipVal = `${label}: ${rec.count} (+${Formatter.number(rec.energy)} Energy)`;
-                tip = `${achEsc(label)} | Energy Gained`;
+                flashEl = el;
             }
-
-            const key = `enh-${id}`;
-            return `<div class="bbgl-ach-row bbgl-ach-enh-row" data-tooltip="${achEsc(tip)}" data-ach-key="${key}" data-clip="${achEsc(clipVal)}"><div class="ach-row-main"><div class="ach-k-stack"><span class="ach-k"><span class="ach-title-long">${achEsc(label)}:</span><span class="ach-title-short">${achEsc(label)}:</span></span></div><div class="ach-v-wrap"><span class="ach-value">${countHtml}</span><span class="ach-value ach-enh-gained">${gainedHtml}</span></div></div></div>`;
-        };
-
-        const leftHTML = LEFT_COL.map(buildRow).join('');
-        const rightHTML = RIGHT_COL.map(buildRow).join('');
-
-        const clipAll = [...LEFT_COL, ...RIGHT_COL].map(id => {
-            const meta = ITEM_LOG_META[id];
-            const label = meta.achLabel || meta.label;
-            const sk = STAT_ENH_MAP[id];
-            if (sk) {
-                const rec = enh[sk] || { count: 0, gain: 0 };
-                return `${label}: ${rec.count} (+${achFmtGain(rec.gain)} ${STAT_ABBR[sk]})`;
+        } else if (el.hasAttribute('data-clip-section')) {
+            txt = H + NL + NL + '\u2014 ' + title + ' \u2014' + NL + el.getAttribute('data-clip-section');
+            if (sec === 'happy-helpers') {
+                const _sec = el.closest('.bbgl-ach-section');
+                const _rows = _sec ? Array.from(_sec.querySelectorAll('.bbgl-ach-cols .bbgl-ach-row')) : [];
+                flashEl = _rows.length ? _rows : el;
+            } else if (sec === 'happy-hopping') {
+                const _sec = el.closest('.bbgl-ach-section');
+                const _groups = _sec ? Array.from(_sec.querySelectorAll('.bbgl-ach-hh-group')) : [];
+                const _helpers = _sec ? Array.from(_sec.querySelectorAll('.bbgl-ach-cols .bbgl-ach-row')) : [];
+                const _rows = [..._groups, ..._helpers];
+                flashEl = _rows.length ? _rows : el;
+            } else {
+                const _sec = el.closest('.bbgl-ach-section');
+                flashEl = _sec ? Array.from(_sec.querySelectorAll('.bbgl-ach-row, .bbgl-ach-hh-group')) : el;
             }
-            const rec = enrg[id] || { count: 0, energy: 0 };
-            return `${label}: ${rec.count} (+${Formatter.number(rec.energy)} Energy)`;
-        }).join('\n');
-
-        const cols = `<div class="bbgl-ach-col">${leftHTML}</div><div class="bbgl-ach-col">${rightHTML}</div>`;
-        const isPeriod = !!viewState.achEnhPeriodMode;
-        const switchHTML = `<div class="bbgl-enh-mode-switch" data-tooltip-html="<b>Changes the data scope displayed on this page.</b><br><i><b>All-Time</b> shows totals across your entire log history. <b>Selected</b> shows data for the selected period on the calendar.</i>" data-tooltip-side="left"><span class="bbgl-enh-sw-opt${isPeriod ? '' : ' active'}" data-mode="alltime">All-Time</span><span class="bbgl-enh-sw-opt${isPeriod ? ' active' : ''}" data-mode="selected">Selected</span></div>`;
-        return `<div class="bbgl-ach-section bbgl-ach-section-energy"><div class="bbgl-ach-title-row"><span class="bbgl-ach-section-title" data-ach-section="endocrine-enhancers" data-clip-section="${achEsc(clipAll)}" data-clip-title="Endocrine Enhancers" data-tooltip="Click any row to copy its data, or click this title to copy the entire section to your clipboard.">ENDOCRINE ENHANCERS</span>${switchHTML}</div><div class="bbgl-ach-cols" style="grid-template-columns:repeat(2,minmax(0,1fr));">${cols}</div></div>`;
-    }
-
-    function buildAchievementsPage(pageIdx, d) {
-        const mk = (label, value, opts = {}) => {
-            const base = {
-                label,
-                key: opts.key || '',
-                sub: opts.sub || '',
-                statClass: opts.statClass || '',
-                tip: opts.tip || '',
-                clipDate: opts.clipDate || ''
-            };
-            if ('dualHtml' in opts) return {
-                ...base,
-                dualHtml: opts.dualHtml,
-                display: opts.display !== undefined ? opts.display : '',
-                rawVal: opts.rawVal !== undefined ? opts.rawVal : (opts.dualHtml && typeof value === 'number' ? achLedgerClip(value) : '\u2014')
-            };
-            if (opts.display !== undefined || opts.rawVal !== undefined || value === null || value === undefined || typeof value !== 'number') {
-                const display = opts.display !== undefined ? opts.display : achFmtVal(value);
-                const rawVal = opts.rawVal !== undefined ? opts.rawVal : (opts.display !== undefined ? String(opts.display).replace(/<[^>]+>/g, '') : (value !== null && value !== undefined ? achFmtVal(value) : '\u2014'));
-                return {
-                    ...base,
-                    dualHtml: '',
-                    display,
-                    rawVal
-                };
-            }
-            return {
-                ...base,
-                dualHtml: Formatter.dual(value),
-                display: '',
-                rawVal: opts.rawVal !== undefined ? opts.rawVal : achLedgerClip(value)
-            };
-        };
-        const mkRec = (label, rec, getDate, tip, suffix, key = '') => {
-            const dt = rec ? getDate(rec) : '';
-            const v = rec ? rec.value : null;
-            const o = {
-                key,
-                statClass: (rec && rec.stat) ? 'ach-stat-' + rec.stat : '',
-                sub: (rec && rec.stat) ? rec.stat.toUpperCase() : '',
-                tip: tip,
-                clipDate: dt
-            };
-            if (suffix) return rec ? mk(label, v, {
-                ...o,
-                dualHtml: Formatter.dual(v) + ' E',
-                rawVal: achLedgerClip(v) + ' E'
-            }) : mk(label, null, {
-                ...o,
-                display: '\u2014',
-                rawVal: '\u2014'
-            });
-            return mk(label, v, o);
-        };
-        const achUnit = (n, sing, plur) => n ? n + '<span class="ach-unit"> ' + (n === 1 ? sing : plur) + '</span>' : '\u2014';
-        if (pageIdx === 0) {
-            const overviewD = viewState.achEnhPeriodMode
-                ? computeEnhancersForPeriod(calendarState.selectedData || DataController.getSlice('DAY', Formatter.dateLogical()))
-                : d;
-            return achBuildPageOverview(overviewD);
-        } else if (pageIdx === 1) {
-            return achBuildPage0(d);
-        } else if (pageIdx === 2) {
-            return achBuildPage1(d);
-        } else if (pageIdx === 3) {
-            return achBuildPage2(d);
-        } else {
-            const consistRows = [mk('Best Training Streak', d.longestStreak, {
-                key: 'training-streak',
-                dualHtml: achUnit(d.longestStreak, 'Day', 'Days'),
-                rawVal: d.longestStreak ? d.longestStreak + (d.longestStreak === 1 ? ' Day' : ' Days') : '\u2014',
-                clipDate: achFmtStreakRange(d.longestStreakStart, d.longestStreakEnd),
-                tip: 'Longest streak of active training days'
-            }), mk('Best Green Streak', d.longestGoalStreak, {
-                key: 'green-streak',
-                dualHtml: achUnit(d.longestGoalStreak, 'Day', 'Days'),
-                rawVal: d.longestGoalStreak ? d.longestGoalStreak + (d.longestGoalStreak === 1 ? ' Day' : ' Days') : '\u2014',
-                clipDate: achFmtStreakRange(d.longestGoalStreakStart, d.longestGoalStreakEnd),
-                tip: 'Longest streak of achieving at least Green (1000E+)'
-            }), mk('Best Gold Streak', d.longestGoldStreak, {
-                key: 'gold-streak',
-                dualHtml: achUnit(d.longestGoldStreak, 'Day', 'Days'),
-                rawVal: d.longestGoldStreak ? d.longestGoldStreak + (d.longestGoldStreak === 1 ? ' Day' : ' Days') : '\u2014',
-                clipDate: achFmtStreakRange(d.longestGoldStreakStart, d.longestGoldStreakEnd),
-                tip: 'Longest streak of achieving Gold (1500E+)'
-            }), mk('Consistency Rate', null, {
-                key: 'consistency',
-                display: d.trainingRestRatio || '\u2014',
-                rawVal: d.trainingRestRatio || '\u2014',
-                tip: 'Lifetime ratio of rest days to training days'
-            }), mk('Happy Jumps', d.happyJumps, {
-                key: 'happy-jumps',
-                display: String(d.happyJumps || 0),
-                rawVal: String(d.happyJumps || 0),
-                tip: 'Total Happy Jumps performed'
-            })];
-            const rewardRows = [mk('Green Days', d.greenDays, {
-                key: 'green-days',
-                display: String(d.greenDays || 0),
-                rawVal: String(d.greenDays || 0),
-                statClass: 'ach-fx-green',
-                tip: 'Total days where the minimum daily goal (Green: 1,000E+) was achieved.'
-            }), mk('Gold Days', d.goldDays, {
-                key: 'gold-days',
-                display: String(d.goldDays || 0),
-                rawVal: String(d.goldDays || 0),
-                statClass: 'ach-fx-gold',
-                tip: 'Total days where the elite daily goal (Gold: 1,500E+) was achieved.'
-            }), mk('Diamond Days', d.diamondDays, {
-                key: 'diamond-days',
-                display: String(d.diamondDays || 0),
-                rawVal: String(d.diamondDays || 0),
-                statClass: 'ach-fx-diamond',
-                tip: 'Total days where the ultimate daily goal (Diamond: 2,000E+) was achieved.'
-            }), mk('Stickers Unlocked', d.stickersUnlocked, {
-                key: 'stickers',
-                display: (d.stickersUnlocked || 0) + '/' + CUSTOM_STICKERS.length,
-                rawVal: (d.stickersUnlocked || 0) + '/' + CUSTOM_STICKERS.length,
-                statClass: 'ach-fx-holo',
-                tip: 'Total unique milestone stickers earned through consistent training.'
-            }), mk('Green Weeks', d.greenWeeks, {
-                key: 'green-weeks',
-                display: String(d.greenWeeks || 0),
-                rawVal: String(d.greenWeeks || 0),
-                statClass: 'ach-fx-green',
-                tip: 'Total weeks where the minimum weekly training goal was met.'
-            }), mk('Gold Weeks', d.goldWeeks, {
-                key: 'gold-weeks',
-                display: String(d.goldWeeks || 0),
-                rawVal: String(d.goldWeeks || 0),
-                statClass: 'ach-fx-gold',
-                tip: 'Total weeks where the elite weekly training goal was met.'
-            }), mk('Diamond Weeks', d.diamondWeeks, {
-                key: 'diamond-weeks',
-                display: String(d.diamondWeeks || 0),
-                rawVal: String(d.diamondWeeks || 0),
-                statClass: 'ach-fx-diamond',
-                tip: 'Total weeks where the ultimate weekly training goal was met.'
-            })];
-            void consistRows;
-            return achBuildSection('Rewards Reaped', rewardRows, 'rewards-reaped', 2);
         }
-    }
-
-    function achFmtGain(v) {
-        if (v >= 1e9) return (v / 1e9).toFixed(4) + 'B';
-        if (v >= 1e6) return (v / 1e6).toFixed(3) + 'M';
-        if (v >= 1e4) return (v / 1000).toFixed(2) + 'K';
-        if (v >= 1e3) return (v / 1000).toFixed(1) + 'K';
-        return Formatter.number(v);
-    }
-
-    function achStatAbbr(s) {
-        return s ? s.charAt(0).toUpperCase() + s.slice(1) : '';
-    }
-
-    function achStatFull(s) {
-        return {
-            str: 'Strength',
-            def: 'Defense',
-            spd: 'Speed',
-            dex: 'Dexterity'
-        }[s] || s;
-    }
-
-    function achFmtGainsLine(g) {
-        const ORDER = ['str', 'def', 'spd', 'dex'];
-        return ORDER.filter(k => g && g[k] > 0).map(k => '+' + achFmtGain(g[k]) + ' ' + achStatAbbr(k)).join(' | ');
-    }
-
-    function achFmtTs(ts) {
-        const d = new Date(ts * 1000);
-        const datePart = Formatter.datePretty(Formatter.dateISO(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate()));
-        return datePart + '  ' + String(d.getUTCHours()).padStart(2, '0') + ':' + String(d.getUTCMinutes()).padStart(2, '0') + ':' + String(d.getUTCSeconds()).padStart(2, '0');
-    }
-
-    function achGetDay(date) {
-        const s = getActiveHistory();
-        const all = [...(s.history || [])];
-        if (s.today && s.today.date) {
-            const i = all.findIndex(d => d.date === s.today.date);
-            if (i >= 0) all[i] = s.today;
-            else all.push(s.today);
-        }
-        return all.find(d => d.date === date) || null;
-    }
-
-    function achGetTrainBA(rec) {
-        const day = achGetDay(rec.date);
-        if (!day) return null;
-        const series = [...(day.series || [])].sort((a, b) => a.ts - b.ts);
-        let before = (day.startBreakdown && day.startBreakdown[rec.stat]) || 0;
-        for (const e of series) {
-            if (e.ts === rec.ts && e.stat === rec.stat) return {
-                before,
-                after: before + rec.value
-            };
-            if (e.stat === rec.stat) before += (e.gain || 0);
-        }
-        return null;
-    }
-
-    function achGetDayBA(rec) {
-        const day = achGetDay(rec.date);
-        if (!day) return null;
-        return {
-            before: (day.startBreakdown && day.startBreakdown[rec.stat]) || 0,
-            after: (day.endBreakdown && day.endBreakdown[rec.stat]) || 0
-        };
-    }
-
-    function achGetMonthBA(rawMonth, stat) {
-        const s = getActiveHistory();
-        const all = [...(s.history || [])];
-        if (s.today && s.today.date) {
-            const i = all.findIndex(d => d.date === s.today.date);
-            if (i >= 0) all[i] = s.today;
-            else all.push(s.today);
-        }
-        const days = all.filter(d => d.date.slice(0, 7) === rawMonth && ((d.gains && d.gains[stat]) || 0) > 0).sort((a, b) => a.date.localeCompare(b.date));
-        if (!days.length) return null;
-        return {
-            before: (days[0].startBreakdown && days[0].startBreakdown[stat]) || 0,
-            after: (days[days.length - 1].endBreakdown && days[days.length - 1].endBreakdown[stat]) || 0
-        };
-    }
-
-    function achGetWeekBA(weekOf, stat) {
-        const s = getActiveHistory();
-        const all = [...(s.history || [])];
-        if (s.today && s.today.date) {
-            const i = all.findIndex(d => d.date === s.today.date);
-            if (i >= 0) all[i] = s.today;
-            else all.push(s.today);
-        }
-        const startD = new Date(weekOf + 'T00:00:00Z');
-        const endD = new Date(startD);
-        endD.setUTCDate(endD.getUTCDate() + 6);
-        const endStr = Formatter.dateISO(endD.getUTCFullYear(), endD.getUTCMonth(), endD.getUTCDate());
-        const days = all
-            .filter(d => d.date >= weekOf && d.date <= endStr && ((d.gains && d.gains[stat]) || 0) > 0)
-            .sort((a, b) => a.date.localeCompare(b.date));
-        if (!days.length) return null;
-        return {
-            before: (days[0].startBreakdown && days[0].startBreakdown[stat]) || 0,
-            after: (days[days.length - 1].endBreakdown && days[days.length - 1].endBreakdown[stat]) || 0
-        };
-    }
-
-    function achFmtBA(ba) {
-        return ba ? Formatter.number(ba.before) + ' \u2192 ' + Formatter.number(ba.after) : null;
-    }
-
-    function achFmtWeekCopy(weekOf) {
-        const we = new Date(weekOf + 'T00:00:00Z');
-        we.setUTCDate(we.getUTCDate() + 6);
-        const endStr = Formatter.dateISO(we.getUTCFullYear(), we.getUTCMonth(), we.getUTCDate());
-        return Formatter.datePretty(weekOf) + ' \u2013 ' + Formatter.datePretty(endStr);
-    }
-
-    function achClipSection(H, title, blocks) {
-        const NL = '\n';
-        let s = H + NL + NL + '\u2014 ' + title + ' \u2014' + NL;
-        blocks.forEach((b, i) => {
-            if (i) s += (blocks[i - 1].includes(NL) || b.includes(NL)) ? NL + NL : NL;
-            s += b;
-        });
-        return s;
-    }
-
-    function achFmtStatBlock(key, rec, stat, indent) {
-        if (!rec) return null;
-        const STAT_FULL = {
-            str: 'Strength',
-            def: 'Defense',
-            spd: 'Speed',
-            dex: 'Dexterity'
-        };
-        let ba = null;
-        if (key === 'best-train') ba = achGetTrainBA({
-            value: rec.value,
-            date: rec.date,
-            ts: rec.ts,
-            stat
-        });
-        else if (key === 'best-day') ba = achGetDayBA({
-            date: rec.date,
-            stat
-        });
-        else if (key === 'best-week') ba = achGetWeekBA(rec.weekOf, stat);
-        else if (key === 'best-month') ba = achGetMonthBA(rec.rawMonth, stat);
-        const baStr = ba ? achFmtBA(ba) : null;
-        let dateStr = '';
-        if (key === 'best-train') dateStr = achFmtTs(rec.ts);
-        else if (key === 'best-day') dateStr = Formatter.datePretty(rec.date);
-        else if (key === 'best-week') dateStr = Formatter.datePretty(rec.weekOf);
-        else if (key === 'best-month') dateStr = achFmtMonthLong(rec.rawMonth);
-        const line1 = indent + '+' + Formatter.number(rec.value) + ' ' + STAT_FULL[stat] + (baStr ? ' | ' + baStr : '');
-        const line2 = indent + '  ' + dateStr;
-        return line1 + '\n' + line2;
-    }
-
-    function handleAchCopy(el) {
-        if (el.closest && el.closest('.bbgl-ach-section-energy')) {
-            const row = el.closest('.bbgl-ach-enh-row');
-            const title = el.closest('.bbgl-ach-section-title');
-            if (title) {
-                const clip = title.getAttribute('data-clip-section');
-                const clipTitle = title.getAttribute('data-clip-title') || 'Endocrine Enhancers';
-                if (clip) {
-                    const txt = '👑BBGL Achievements\n\n— ' + clipTitle + ' —\n' + clip;
-                    const cols = el.closest('.bbgl-ach-section-energy').querySelector('.bbgl-ach-cols');
-                    navigator.clipboard.writeText(txt).then(() => flashCopied(cols || el.closest('.bbgl-ach-section-energy')));
-                }
-                return;
-            }
-            if (row) {
-                const clip = row.getAttribute('data-clip');
-                if (clip) { navigator.clipboard.writeText(clip).then(() => flashCopied(row)); }
-            }
-            return;
-        }
-        const H = '\uD83D\uDC51BBGL Achievements',
-            cache = runtime._achCache;
-        let txt = '',
-            flashEl = null;
-        const NL = '\n',
-            I = '  ';
+    } else {
+        const key = el.getAttribute('data-ach-key'),
+            r = cache;
         const PS_MAP = {
             'best-train': 'bestTrain',
             'best-day': 'bestDay',
@@ -10379,683 +10672,507 @@
             'best-week': 'Highest Gains in a Single Week',
             'best-month': 'Highest Gains in a Single Month'
         };
-        if (el.classList.contains('bbgl-ach-col-copy')) {
-            // Clickable Greatest Gains column title: copy that stat across all four best-X rows.
-            const sk = el.getAttribute('data-stat');
-            const r = cache;
-            const PS_MAP_L = { 'best-train': 'bestTrain', 'best-day': 'bestDay', 'best-week': 'bestWeek', 'best-month': 'bestMonth' };
-            const TITLE_MAP_L = { 'best-train': 'Best Train', 'best-day': 'Best Day', 'best-week': 'Best Week', 'best-month': 'Best Month' };
-            if (sk && r && r.perStatBest) {
-                const lines = ['best-train', 'best-day', 'best-week', 'best-month'].map(mkey => {
-                    const rec = (r.perStatBest[PS_MAP_L[mkey]] || {})[sk];
-                    return achFmtStatBlock(mkey, rec, sk, '  ');
-                }).filter(Boolean);
-                if (lines.length) {
-                    txt = '👑BBGL Achievements\nGreatest Gains — ' + achStatFull(sk) + ':\n' + lines.join(NL);
-                    const _sec = el.closest('.bbgl-ach-section');
-                    const _cells = _sec ? Array.from(_sec.querySelectorAll(`.bbgl-ach-stat-cell[data-stat="${sk}"]`)).filter(c => !c.querySelector('.ach-null')) : [];
-                    flashEl = _cells.length ? _cells : el;
-                }
+        if (key === 'best-train' || key === 'best-day' || key === 'best-week' || key === 'best-month') {
+            const mRecs = (r && r.perStatBest) ? r.perStatBest[PS_MAP[key]] : null;
+            const mTitle = TITLE_MAP[key];
+            if (mRecs && mTitle) {
+                const mLines = ['str', 'def', 'spd', 'dex'].map(sk => achFmtStatBlock(key, mRecs[sk], sk, I)).filter(Boolean);
+                txt = H + NL + mTitle + ':' + (mLines.length ? NL + mLines.join(NL) : NL + '—');
             }
-        } else if (el.classList.contains('bbgl-ach-stat-cell')) {
-            const key = el.getAttribute('data-ach-key');
-            const stat = el.getAttribute('data-stat');
-            const recs = (cache && cache.perStatBest && PS_MAP[key]) ? cache.perStatBest[PS_MAP[key]] : null;
-            const rec = (recs && stat) ? recs[stat] : null;
-            const block = achFmtStatBlock(key, rec, stat, '');
-            if (block && TITLE_MAP[key]) {
-                txt = H + NL + TITLE_MAP[key] + ':' + NL + block;
-                flashEl = el;
-            } else if (cache && /^(training|green|gold|diamond)-streak$/.test(key)) {
-                const SK = {
-                    'training-streak': ['Best Training Streak', cache.longestStreak, cache.longestStreakGains, cache.longestStreakStart, cache.longestStreakEnd],
-                    'green-streak': ['Best Green Streak', cache.longestGoalStreak, cache.longestGoalStreakGains, cache.longestGoalStreakStart, cache.longestGoalStreakEnd],
-                    'gold-streak': ['Best Gold Streak', cache.longestGoldStreak, cache.longestGoldStreakGains, cache.longestGoldStreakStart, cache.longestGoldStreakEnd],
-                    'diamond-streak': ['Best Diamond Streak', cache.longestDiamondStreak, cache.longestDiamondStreakGains, cache.longestDiamondStreakStart, cache.longestDiamondStreakEnd]
-                };
-                const SF = {
-                    str: 'Strength',
-                    def: 'Defense',
-                    spd: 'Speed',
-                    dex: 'Dexterity',
-                    total: 'Total'
-                };
-                const ent = SK[key];
-                if (ent && ent[2]) {
-                    const label = ent[0],
-                        g = ent[2],
-                        st = ent[3],
-                        en = ent[4];
-                    const v = stat === 'total' ? ['str', 'def', 'spd', 'dex'].reduce((a, k) => a + (g[k] || 0), 0) : (g[stat] || 0);
-                    txt = H + NL + label + ' — ' + SF[stat] + ':' + NL + '+' + Formatter.number(v) + ' ' + SF[stat] + (st && en ? NL + I + Formatter.datePretty(st) + ' – ' + Formatter.datePretty(en) : '');
-                    flashEl = el;
-                }
-            } else if (key === 'best-hj') {
-                const rec = cache && cache.bestHappyJump && cache.bestHappyJump.total;
-                const label = 'Best Happy Jump';
-                const HHSF = {
-                    str: 'Strength',
-                    def: 'Defense',
-                    spd: 'Speed',
-                    dex: 'Dexterity',
-                    total: 'Total'
-                };
-                if (rec && rec.stats) {
-                    const v = stat === 'total' ? rec.value : (rec.stats[stat] || 0);
-                    txt = H + NL + label + ' — ' + HHSF[stat] + ': +' + achFmtGain(v);
-                    flashEl = el;
-                }
-            }
-        } else if (el.classList.contains('bbgl-ach-hh-group')) {
-            const gKey = el.getAttribute('data-ach-key'),
-                r = cache;
-            const GABR = {
-                str: 'STR',
-                def: 'DEF',
-                spd: 'SPD',
-                dex: 'DEX'
-            };
-            const GSTS = ['str', 'def', 'spd', 'dex'];
-            const fmtJ = (rec) => {
-                if (!rec || !rec.stats) return '\u2014';
-                const tr = GSTS.filter(sk => (rec.stats[sk] || 0) > 0);
-                const pts = tr.map(sk => GABR[sk] + ': +' + achFmtGain(rec.stats[sk]));
-                pts.push('Total: +' + achFmtGain(rec.value));
-                return pts.join(' | ');
-            };
-            if (gKey === 'happy-jumps-group') {
-                txt = H + NL + 'Happy Jumps Performed: ' + (r.happyJumps || 0) + NL + 'Best Happy Jump: ' + fmtJ(r.bestHappyJump && r.bestHappyJump.total);
-                flashEl = Array.from(el.children);
-            }
-        } else if (el.classList.contains('bbgl-ach-section-title') || el.classList.contains('bbgl-ach-subsection-title')) {
-            const sec = el.getAttribute('data-ach-section'),
-                r = cache,
-                title = el.getAttribute('data-clip-title') || '';
-            const gain = (label, rec, getBA, getDate) => {
-                if (!rec) return label + ': \u2014';
-                const ba = getBA(rec),
-                    baStr = achFmtBA(ba);
-                const line1 = label + ': +' + Formatter.number(rec.value) + ' ' + achStatFull(rec.stat) + (baStr ? ' | ' + baStr : '');
-                return line1 + NL + I + getDate(rec);
-            };
-            const eRow = (label, rec, getDate) => !rec ? label + ': \u2014' : label + ': ' + Formatter.number(rec.value) + ' E' + NL + I + getDate(rec);
-            const streak = (label, len, gains, start, end) => {
-                if (!len) return label + ': \u2014';
-                const gLine = gains ? achFmtGainsLine(gains) : '';
-                const tot = gains ? ((gains.str || 0) + (gains.def || 0) + (gains.spd || 0) + (gains.dex || 0)) : 0;
-                let s = label + ': ' + len + (len === 1 ? ' Day' : ' Days') + NL;
-                if (gLine) s += I + 'Gains: ' + gLine + NL;
-                if (tot) s += I + 'Total Gains: +' + Formatter.number(tot) + NL;
-                if (start && end) s += I + Formatter.datePretty(start) + ' \u2013 ' + Formatter.datePretty(end);
-                return s;
-            };
-            let blocks;
-            if (sec === 'greatest-gains') {
-                const buildMulti = (label, mkey) => {
-                    const mRecs = (r && r.perStatBest) ? r.perStatBest[PS_MAP[mkey]] : null;
-                    if (!mRecs) return label + ': —';
-                    const mLines = ['str', 'def', 'spd', 'dex'].map(sk => achFmtStatBlock(mkey, mRecs[sk], sk, I)).filter(Boolean);
-                    if (!mLines.length) return label + ': —';
-                    return label + ':' + NL + mLines.join(NL);
-                };
-                blocks = [buildMulti('Best Train', 'best-train'), buildMulti('Best Day', 'best-day'), buildMulti('Best Week', 'best-week'), buildMulti('Best Month', 'best-month')];
-            } else if (sec === 'expended-energy') blocks = [eRow('Best Day', r.mostEInOneDay, rec => Formatter.datePretty(rec.date)), eRow('Best Week', r.mostEInOneWeek, rec => achFmtWeekCopy(rec.weekOf)), eRow('Best Month', r.mostEInOneMonth, rec => rec.month)];
-            else if (sec === 'consistency-kept') blocks = [streak('Best Training Streak', r.longestStreak, r.longestStreakGains, r.longestStreakStart, r.longestStreakEnd), streak('Best Green Streak', r.longestGoalStreak, r.longestGoalStreakGains, r.longestGoalStreakStart, r.longestGoalStreakEnd), streak('Best Gold Streak', r.longestGoldStreak, r.longestGoldStreakGains, r.longestGoldStreakStart, r.longestGoldStreakEnd), 'Consistency: ' + (r.trainingRestRatio || '\u2014') + ' | ' + (r.trainingDays || 0) + '/' + (r.calDays || 0) + ' Days Trained', 'Happy Jumps: ' + (r.happyJumps || 0)];
-            else if (sec === 'sexiest-streaks') blocks = [streak('Best Training Streak', r.longestStreak, r.longestStreakGains, r.longestStreakStart, r.longestStreakEnd), streak('Best Green Streak', r.longestGoalStreak, r.longestGoalStreakGains, r.longestGoalStreakStart, r.longestGoalStreakEnd), streak('Best Gold Streak', r.longestGoldStreak, r.longestGoldStreakGains, r.longestGoldStreakStart, r.longestGoldStreakEnd), streak('Best Diamond Streak', r.longestDiamondStreak, r.longestDiamondStreakGains, r.longestDiamondStreakStart, r.longestDiamondStreakEnd), 'Consistency: ' + (r.trainingRestRatio || '\u2014') + ' | ' + (r.trainingDays || 0) + '/' + (r.calDays || 0) + ' Calendar Days Trained'];
-            else if (sec === 'rewards-reaped') blocks = ['Green Days: ' + (r.greenDays || 0), 'Green Weeks: ' + (r.greenWeeks || 0), 'Gold Days: ' + (r.goldDays || 0), 'Gold Weeks: ' + (r.goldWeeks || 0), 'Diamond Days: ' + (r.diamondDays || 0), 'Diamond Weeks: ' + (r.diamondWeeks || 0), 'Stickers Unlocked: ' + (r.stickersUnlocked || 0) + '/' + CUSTOM_STICKERS.length];
-            if (blocks) {
-                txt = achClipSection(H, title, blocks);
-                const _sec = el.closest('.bbgl-ach-section');
-                if (sec === 'greatest-gains') {
-                    const _rows = _sec ? Array.from(_sec.querySelectorAll('.bbgl-ach-row-multi')) : [];
-                    flashEl = _rows.length ? _rows : el;
-                } else if (sec === 'sexiest-streaks') {
-                    const arr = _sec ? Array.from(_sec.querySelectorAll('.bbgl-ach-row-multi')) : [];
-                    flashEl = arr.length ? arr : el;
-                } else if (sec === 'rewards-reaped') {
-                    const _rows = _sec ? Array.from(_sec.querySelectorAll('.bbgl-ach-row')) : [];
-                    flashEl = _rows.length ? _rows : el;
-                } else {
-                    flashEl = el;
-                }
-            } else if (el.hasAttribute('data-clip-section')) {
-                txt = H + NL + NL + '\u2014 ' + title + ' \u2014' + NL + el.getAttribute('data-clip-section');
-                if (sec === 'happy-helpers') {
-                    const _sec = el.closest('.bbgl-ach-section');
-                    const _rows = _sec ? Array.from(_sec.querySelectorAll('.bbgl-ach-cols .bbgl-ach-row')) : [];
-                    flashEl = _rows.length ? _rows : el;
-                } else if (sec === 'happy-hopping') {
-                    const _sec = el.closest('.bbgl-ach-section');
-                    const _groups = _sec ? Array.from(_sec.querySelectorAll('.bbgl-ach-hh-group')) : [];
-                    const _helpers = _sec ? Array.from(_sec.querySelectorAll('.bbgl-ach-cols .bbgl-ach-row')) : [];
-                    const _rows = [..._groups, ..._helpers];
-                    flashEl = _rows.length ? _rows : el;
-                } else {
-                    const _sec = el.closest('.bbgl-ach-section');
-                    flashEl = _sec ? Array.from(_sec.querySelectorAll('.bbgl-ach-row, .bbgl-ach-hh-group')) : el;
-                }
-            }
+        } else if (key === 'most-e-day' && r.mostEInOneDay) {
+            const rec = r.mostEInOneDay;
+            txt = H + NL + 'Most Energy Used Training in a Single Day:' + NL + Formatter.number(rec.value) + ' E' + NL + I + Formatter.datePretty(rec.date);
+        } else if (key === 'most-e-week' && r.mostEInOneWeek) {
+            const rec = r.mostEInOneWeek;
+            txt = H + NL + 'Most Energy Used Training in a Single Week:' + NL + Formatter.number(rec.value) + ' E' + NL + I + achFmtWeekCopy(rec.weekOf);
+        } else if (key === 'most-e-month' && r.mostEInOneMonth) {
+            const rec = r.mostEInOneMonth;
+            txt = H + NL + 'Most Energy Used Training in a Single Month:' + NL + Formatter.number(rec.value) + ' E' + NL + I + rec.month;
+        } else if (key === 'training-streak' || key === 'green-streak' || key === 'gold-streak' || key === 'diamond-streak') {
+            const SK = {
+                'training-streak': ['Longest Training Streak', r.longestStreak, r.longestStreakGains, r.longestStreakStart, r.longestStreakEnd],
+                'green-streak': ['Longest Green Streak (1,000 E+)', r.longestGoalStreak, r.longestGoalStreakGains, r.longestGoalStreakStart, r.longestGoalStreakEnd],
+                'gold-streak': ['Longest Gold Streak (1,500 E+)', r.longestGoldStreak, r.longestGoldStreakGains, r.longestGoldStreakStart, r.longestGoldStreakEnd],
+                'diamond-streak': ['Longest Diamond Streak (2,000 E+)', r.longestDiamondStreak, r.longestDiamondStreakGains, r.longestDiamondStreakStart, r.longestDiamondStreakEnd]
+            }[key];
+            const label = SK[0],
+                len = SK[1] || 0,
+                gains = SK[2],
+                st = SK[3],
+                en = SK[4];
+            const gLine = gains ? achFmtGainsLine(gains) : '';
+            const tot = gains ? ((gains.str || 0) + (gains.def || 0) + (gains.spd || 0) + (gains.dex || 0)) : 0;
+            txt = H + NL + label + ': ' + len + (len === 1 ? ' Day' : ' Days');
+            if (gLine) txt += NL + 'Gains: ' + gLine;
+            if (tot) txt += NL + 'Total Gains: +' + Formatter.number(tot);
+            if (st && en) txt += NL + I + Formatter.datePretty(st) + ' \u2013 ' + Formatter.datePretty(en);
+        } else if (key === 'consistency') {
+            txt = H + NL + 'Training Consistency: ' + (r.trainingRestRatio || '\u2014') + NL + (r.trainingDays || 0) + '/' + (r.calDays || 0) + ' Days Trained';
+        } else if (key === 'happy-jumps') {
+            txt = H + NL + 'Happy Jumps: ' + (r.happyJumps || 0);
+        } else if (key === 'green-days') {
+            txt = H + NL + 'Green Days: ' + (r.greenDays || 0);
+        } else if (key === 'green-weeks') {
+            txt = H + NL + 'Green Weeks: ' + (r.greenWeeks || 0);
+        } else if (key === 'gold-days') {
+            txt = H + NL + 'Gold Days: ' + (r.goldDays || 0);
+        } else if (key === 'gold-weeks') {
+            txt = H + NL + 'Gold Weeks: ' + (r.goldWeeks || 0);
+        } else if (key === 'diamond-days') {
+            txt = H + NL + 'Diamond Days: ' + (r.diamondDays || 0);
+        } else if (key === 'diamond-weeks') {
+            txt = H + NL + 'Diamond Weeks: ' + (r.diamondWeeks || 0);
+        } else if (key === 'stickers') {
+            txt = H + NL + 'Stickers Unlocked: ' + (r.stickersUnlocked || 0) + '/' + CUSTOM_STICKERS.length;
         } else {
-            const key = el.getAttribute('data-ach-key'),
-                r = cache;
-            const PS_MAP = {
-                'best-train': 'bestTrain',
-                'best-day': 'bestDay',
-                'best-week': 'bestWeek',
-                'best-month': 'bestMonth'
-            };
-            const TITLE_MAP = {
-                'best-train': 'Highest Gains in a Single Train',
-                'best-day': 'Highest Gains in a Single Day',
-                'best-week': 'Highest Gains in a Single Week',
-                'best-month': 'Highest Gains in a Single Month'
-            };
-            if (key === 'best-train' || key === 'best-day' || key === 'best-week' || key === 'best-month') {
-                const mRecs = (r && r.perStatBest) ? r.perStatBest[PS_MAP[key]] : null;
-                const mTitle = TITLE_MAP[key];
-                if (mRecs && mTitle) {
-                    const mLines = ['str', 'def', 'spd', 'dex'].map(sk => achFmtStatBlock(key, mRecs[sk], sk, I)).filter(Boolean);
-                    txt = H + NL + mTitle + ':' + (mLines.length ? NL + mLines.join(NL) : NL + '—');
-                }
-            } else if (key === 'most-e-day' && r.mostEInOneDay) {
-                const rec = r.mostEInOneDay;
-                txt = H + NL + 'Most Energy Used Training in a Single Day:' + NL + Formatter.number(rec.value) + ' E' + NL + I + Formatter.datePretty(rec.date);
-            } else if (key === 'most-e-week' && r.mostEInOneWeek) {
-                const rec = r.mostEInOneWeek;
-                txt = H + NL + 'Most Energy Used Training in a Single Week:' + NL + Formatter.number(rec.value) + ' E' + NL + I + achFmtWeekCopy(rec.weekOf);
-            } else if (key === 'most-e-month' && r.mostEInOneMonth) {
-                const rec = r.mostEInOneMonth;
-                txt = H + NL + 'Most Energy Used Training in a Single Month:' + NL + Formatter.number(rec.value) + ' E' + NL + I + rec.month;
-            } else if (key === 'training-streak' || key === 'green-streak' || key === 'gold-streak' || key === 'diamond-streak') {
-                const SK = {
-                    'training-streak': ['Longest Training Streak', r.longestStreak, r.longestStreakGains, r.longestStreakStart, r.longestStreakEnd],
-                    'green-streak': ['Longest Green Streak (1,000 E+)', r.longestGoalStreak, r.longestGoalStreakGains, r.longestGoalStreakStart, r.longestGoalStreakEnd],
-                    'gold-streak': ['Longest Gold Streak (1,500 E+)', r.longestGoldStreak, r.longestGoldStreakGains, r.longestGoldStreakStart, r.longestGoldStreakEnd],
-                    'diamond-streak': ['Longest Diamond Streak (2,000 E+)', r.longestDiamondStreak, r.longestDiamondStreakGains, r.longestDiamondStreakStart, r.longestDiamondStreakEnd]
-                }[key];
-                const label = SK[0],
-                    len = SK[1] || 0,
-                    gains = SK[2],
-                    st = SK[3],
-                    en = SK[4];
-                const gLine = gains ? achFmtGainsLine(gains) : '';
-                const tot = gains ? ((gains.str || 0) + (gains.def || 0) + (gains.spd || 0) + (gains.dex || 0)) : 0;
-                txt = H + NL + label + ': ' + len + (len === 1 ? ' Day' : ' Days');
-                if (gLine) txt += NL + 'Gains: ' + gLine;
-                if (tot) txt += NL + 'Total Gains: +' + Formatter.number(tot);
-                if (st && en) txt += NL + I + Formatter.datePretty(st) + ' \u2013 ' + Formatter.datePretty(en);
-            } else if (key === 'consistency') {
-                txt = H + NL + 'Training Consistency: ' + (r.trainingRestRatio || '\u2014') + NL + (r.trainingDays || 0) + '/' + (r.calDays || 0) + ' Days Trained';
-            } else if (key === 'happy-jumps') {
-                txt = H + NL + 'Happy Jumps: ' + (r.happyJumps || 0);
-            } else if (key === 'green-days') {
-                txt = H + NL + 'Green Days: ' + (r.greenDays || 0);
-            } else if (key === 'green-weeks') {
-                txt = H + NL + 'Green Weeks: ' + (r.greenWeeks || 0);
-            } else if (key === 'gold-days') {
-                txt = H + NL + 'Gold Days: ' + (r.goldDays || 0);
-            } else if (key === 'gold-weeks') {
-                txt = H + NL + 'Gold Weeks: ' + (r.goldWeeks || 0);
-            } else if (key === 'diamond-days') {
-                txt = H + NL + 'Diamond Days: ' + (r.diamondDays || 0);
-            } else if (key === 'diamond-weeks') {
-                txt = H + NL + 'Diamond Weeks: ' + (r.diamondWeeks || 0);
-            } else if (key === 'stickers') {
-                txt = H + NL + 'Stickers Unlocked: ' + (r.stickersUnlocked || 0) + '/' + CUSTOM_STICKERS.length;
-            } else {
-                const clip = el.getAttribute('data-clip') || '',
-                    clipDate = el.getAttribute('data-clip-date') || '';
-                txt = H + NL + NL + (clipDate ? clipDate + ':' + NL : '') + clip;
-            }
-            flashEl = el;
+            const clip = el.getAttribute('data-clip') || '',
+                clipDate = el.getAttribute('data-clip-date') || '';
+            txt = H + NL + NL + (clipDate ? clipDate + ':' + NL : '') + clip;
         }
-        if (!txt || !flashEl || (Array.isArray(flashEl) && !flashEl.length)) return;
-        navigator.clipboard.writeText(txt).then(() => flashCopied(flashEl));
+        flashEl = el;
     }
+    if (!txt || !flashEl || (Array.isArray(flashEl) && !flashEl.length)) return;
+    navigator.clipboard.writeText(txt).then(() => flashCopied(flashEl));
+}
 
-    // Builds the "Copy Session Data" clipboard text. Pass all four STAT_KEYS for the full button,
-    // or a single-element array [k] for a per-column copy. Energy line uses s[keys[0]].cost for
-    // single-stat, s.total.cost for full. Format is identical to the existing copy-session output.
-    function buildSessionText(sl, s, keys) {
-        const fM = v => (Math.abs(v) >= 1e9) ? Formatter.abbr(v, 4) : Formatter.number(v);
-        const statEmoji = { str: '💪', def: '🛡️', spd: '🎯', dex: '🤺' };
-        const statNames = { str: 'Strength', def: 'Defense', spd: 'Speed', dex: 'Dexterity' };
-        let ds = '';
-        if (sl._dailyList && sl._dailyList.length > 1)
-            ds = `${Formatter.dateFull(sl._dailyList[0].date)} - ${Formatter.dateFull(sl._dailyList[sl._dailyList.length - 1].date)}`;
-        else
-            ds = Formatter.dateFull(sl.date);
-        const isSingle = keys.length === 1;
-        const eCost = isSingle ? s[keys[0]].cost : s.total.cost;
-        const eTxt = eCost > 0 ? `⚡${Formatter.number(eCost)} E` : '🛌 I was a lazy POS.';
-        const statLines = keys
-            .filter(k => s[k].gain > 0 || s[k].cost > 0)
-            .map(k => `${statEmoji[k]}${statNames[k]}: +${fM(s[k].gain)} (${fM(s[k].start)} → ${fM(s[k].end)})`);
-        return ['👑BBGymLog', `${ds} |${eTxt}`, ...statLines].join('\n');
-    }
+// Builds the "Copy Session Data" clipboard text. Pass all four STAT_KEYS for the full button,
+// or a single-element array [k] for a per-column copy. Energy line uses s[keys[0]].cost for
+// single-stat, s.total.cost for full. Format is identical to the existing copy-session output.
+function buildSessionText(sl, s, keys) {
+    const fM = v => (Math.abs(v) >= 1e9) ? Formatter.abbr(v, 4) : Formatter.number(v);
+    const statEmoji = { str: '💪', def: '🛡️', spd: '🎯', dex: '🤺' };
+    const statNames = { str: 'Strength', def: 'Defense', spd: 'Speed', dex: 'Dexterity' };
+    let ds = '';
+    if (sl._dailyList && sl._dailyList.length > 1)
+        ds = `${Formatter.dateFull(sl._dailyList[0].date)} - ${Formatter.dateFull(sl._dailyList[sl._dailyList.length - 1].date)}`;
+    else
+        ds = Formatter.dateFull(sl.date);
+    const isSingle = keys.length === 1;
+    const eCost = isSingle ? s[keys[0]].cost : s.total.cost;
+    const eTxt = eCost > 0 ? `⚡${Formatter.number(eCost)} E` : '🛌 I was a lazy POS.';
+    const statLines = keys
+        .filter(k => s[k].gain > 0 || s[k].cost > 0)
+        .map(k => `${statEmoji[k]}${statNames[k]}: +${fM(s[k].gain)} (${fM(s[k].start)} → ${fM(s[k].end)})`);
+    return ['👑BBGymLog', `${ds} |${eTxt}`, ...statLines].join('\n');
+}
 
-    // Reusable "Copied!" overlay: hide the element's children, show a centred overlay for 1s.
-    // Accepts a single element or an array of elements.
-    function flashCopied(flashEl) {
-        const _flashEls = Array.isArray(flashEl) ? flashEl : [flashEl];
-        const _states = _flashEls.map(e => {
-            const kids = Array.from(e.children);
-            const visStates = kids.map(c => c.style.visibility);
-            kids.forEach(c => {
-                c.style.visibility = 'hidden';
-            });
-            const prevPos = e.style.position;
-            const cs = window.getComputedStyle(e);
-            if (cs.position === 'static') e.style.position = 'relative';
-            const overlay = document.createElement('span');
-            overlay.className = 'bbgl-ach-copied-flash';
-            overlay.textContent = 'Copied!';
-            e.appendChild(overlay);
-            return {
-                e,
-                kids,
-                visStates,
-                prevPos,
-                overlay
-            };
+// Reusable "Copied!" overlay: hide the element's children, show a centred overlay for 1s.
+// Accepts a single element or an array of elements.
+function flashCopied(flashEl) {
+    const _flashEls = Array.isArray(flashEl) ? flashEl : [flashEl];
+    const _states = _flashEls.map(e => {
+        const kids = Array.from(e.children);
+        const visStates = kids.map(c => c.style.visibility);
+        kids.forEach(c => {
+            c.style.visibility = 'hidden';
         });
-        setTimeout(() => _states.forEach(s => {
-            if (s.overlay && s.overlay.parentNode) s.overlay.parentNode.removeChild(s.overlay);
-            s.kids.forEach((c, i) => {
-                c.style.visibility = s.visStates[i];
-            });
-            s.e.style.position = s.prevPos;
-        }), 1000);
+        const prevPos = e.style.position;
+        const cs = window.getComputedStyle(e);
+        if (cs.position === 'static') e.style.position = 'relative';
+        const overlay = document.createElement('span');
+        overlay.className = 'bbgl-ach-copied-flash';
+        overlay.textContent = 'Copied!';
+        e.appendChild(overlay);
+        return {
+            e,
+            kids,
+            visStates,
+            prevPos,
+            overlay
+        };
+    });
+    setTimeout(() => _states.forEach(s => {
+        if (s.overlay && s.overlay.parentNode) s.overlay.parentNode.removeChild(s.overlay);
+        s.kids.forEach((c, i) => {
+            c.style.visibility = s.visStates[i];
+        });
+        s.e.style.position = s.prevPos;
+    }), 1000);
+}
+async function exportData() {
+    let s;
+    try {
+        s = await DBManager.getStorage();
+        if (!s) {
+            alert("Export Error: Local database is inaccessible or empty. Cannot export data.\n\nRecommendation: Please refresh the page and try again. If you are using Private Browsing or have strict storage limits enabled, you may need to disable them for Torn.com to allow the Gym Log to save and export data.");
+            return;
+        }
+    } catch (e) {
+        alert("Export Error: " + (e.message || "Failed to read local database.") + "\n\nRecommendation: Please refresh the page. Ensure your browser is not blocking local storage for Torn.com.");
+        return;
     }
-    async function exportData() {
-        let s;
+    const active = getActiveHistory();
+    let activeCount = 0;
+    [...(active.history || []), active.today].filter(Boolean).forEach(d => {
+        if (d.series) activeCount += d.series.length;
+    });
+    if (s.series && s.series.length < activeCount) {
+        if (!confirm(`⚠️ EXPORT WARNING ⚠️\n\nThe exported file will be missing some recent logs visible on your screen due to a database error.\n\nRecommendation: Cancel this export and refresh the browser to reset the connection, then try again.\n\nDownload incomplete file anyway?`)) {
+            return;
+        }
+    }
+    const now = new Date();
+    const month = CONSTANTS.MONTHS[TimeManager.month(now)];
+    const day = TimeManager.date(now);
+    const year = TimeManager.year(now);
+    const filename = `BBGymLogData - ${month} ${day}_${year}.json`;
+    DataController.getStickerMap();
+    if (_historyCache && _historyCache.meta && _historyCache.meta.stickers) {
+        if (!s.meta) s.meta = {};
+        s.meta.stickers = _historyCache.meta.stickers;
+    }
+    const use24h = !new Intl.DateTimeFormat(navigator.language, {
+        hour: 'numeric'
+    }).format(new Date(0)).match(/AM|PM/i);
+    const ordinal = n => {
+        const sfx = ['th', 'st', 'nd', 'rd'],
+            v = n % 100;
+        return n + (sfx[(v - 20) % 10] || sfx[v] || sfx[0]);
+    };
+    const fmtReadable = d => `${CONSTANTS.MONTHS[d.getUTCMonth()]} ${ordinal(d.getUTCDate())}, ${d.getUTCFullYear()} - ${String(d.getUTCHours()).padStart(2, '0')}:${String(d.getUTCMinutes()).padStart(2, '0')} UTC`;
+    const tzName = (() => {
         try {
-            s = await DBManager.getStorage();
-            if (!s) {
-                alert("Export Error: Local database is inaccessible or empty. Cannot export data.\n\nRecommendation: Please refresh the page and try again. If you are using Private Browsing or have strict storage limits enabled, you may need to disable them for Torn.com to allow the Gym Log to save and export data.");
-                return;
-            }
+            return new Intl.DateTimeFormat('en', {
+                timeZoneName: 'short'
+            }).formatToParts(now).find(p => p.type === 'timeZoneName').value;
         } catch (e) {
-            alert("Export Error: " + (e.message || "Failed to read local database.") + "\n\nRecommendation: Please refresh the page. Ensure your browser is not blocking local storage for Torn.com.");
-            return;
+            return '';
         }
-        const active = getActiveHistory();
-        let activeCount = 0;
-        [...(active.history || []), active.today].filter(Boolean).forEach(d => {
-            if (d.series) activeCount += d.series.length;
-        });
-        if (s.series && s.series.length < activeCount) {
-            if (!confirm(`⚠️ EXPORT WARNING ⚠️\n\nThe exported file will be missing some recent logs visible on your screen due to a database error.\n\nRecommendation: Cancel this export and refresh the browser to reset the connection, then try again.\n\nDownload incomplete file anyway?`)) {
-                return;
-            }
+    })();
+    const fmtTs = ts => {
+        const d = new Date(ts * 1000);
+        const utcStr = `${String(d.getUTCHours()).padStart(2, '0')}:${String(d.getUTCMinutes()).padStart(2, '0')}:${String(d.getUTCSeconds()).padStart(2, '0')} UTC`;
+        const lH = d.getHours(),
+            lM = String(d.getMinutes()).padStart(2, '0'),
+            lS = String(d.getSeconds()).padStart(2, '0');
+        const localStr = use24h ? `${String(lH).padStart(2, '0')}:${lM}:${lS}` : `${lH % 12 || 12}:${lM}:${lS}${lH >= 12 ? 'pm' : 'am'}`;
+        return `${utcStr} / ${localStr}${tzName ? ` ${tzName}` : ''}`;
+    };
+    const exportStorage = JSON.parse(JSON.stringify(s));
+    // Per-item-code all-history usage totals for the export meta, nested by category group
+    // ("Energy Items" / "Happy Items"). Every tracked code is listed even when unused (0).
+    const itemTotals = {};
+    Object.keys(ITEM_LOG_META).forEach(id => {
+        const m = ITEM_LOG_META[id];
+        const g = ITEM_GROUP_LABELS[m.group] || 'Other Items';
+        if (!itemTotals[g]) itemTotals[g] = {};
+        itemTotals[g][m.label] = 0;
+    });
+    (exportStorage.series || []).forEach(e => {
+        if (typeof e.gain === 'number') e.gain = r2(e.gain);
+        if (typeof e.after === 'number') e.after = r2(e.after);
+        if (e.type === 'item' && ITEM_LOG_META[e.logId]) {
+            const m = ITEM_LOG_META[e.logId];
+            itemTotals[ITEM_GROUP_LABELS[m.group] || 'Other Items'][m.label]++;
         }
-        const now = new Date();
-        const month = CONSTANTS.MONTHS[TimeManager.month(now)];
-        const day = TimeManager.date(now);
-        const year = TimeManager.year(now);
-        const filename = `BBGymLogData - ${month} ${day}_${year}.json`;
-        DataController.getStickerMap();
-        if (_historyCache && _historyCache.meta && _historyCache.meta.stickers) {
-            if (!s.meta) s.meta = {};
-            s.meta.stickers = _historyCache.meta.stickers;
-        }
-        const use24h = !new Intl.DateTimeFormat(navigator.language, {
-            hour: 'numeric'
-        }).format(new Date(0)).match(/AM|PM/i);
-        const ordinal = n => {
-            const sfx = ['th', 'st', 'nd', 'rd'],
-                v = n % 100;
-            return n + (sfx[(v - 20) % 10] || sfx[v] || sfx[0]);
+    });
+    const getUtcDay = ts => {
+        const d = new Date(ts * 1000);
+        return {
+            label: `${CONSTANTS.MONTHS[d.getUTCMonth()]} ${ordinal(d.getUTCDate())}, ${d.getUTCFullYear()}`,
+            key: `${d.getUTCFullYear()}-${d.getUTCMonth()}-${d.getUTCDate()}`
         };
-        const fmtReadable = d => `${CONSTANTS.MONTHS[d.getUTCMonth()]} ${ordinal(d.getUTCDate())}, ${d.getUTCFullYear()} - ${String(d.getUTCHours()).padStart(2, '0')}:${String(d.getUTCMinutes()).padStart(2, '0')} UTC`;
-        const tzName = (() => {
-            try {
-                return new Intl.DateTimeFormat('en', {
-                    timeZoneName: 'short'
-                }).formatToParts(now).find(p => p.type === 'timeZoneName').value;
-            } catch (e) {
-                return '';
-            }
-        })();
-        const fmtTs = ts => {
-            const d = new Date(ts * 1000);
-            const utcStr = `${String(d.getUTCHours()).padStart(2, '0')}:${String(d.getUTCMinutes()).padStart(2, '0')}:${String(d.getUTCSeconds()).padStart(2, '0')} UTC`;
-            const lH = d.getHours(),
-                lM = String(d.getMinutes()).padStart(2, '0'),
-                lS = String(d.getSeconds()).padStart(2, '0');
-            const localStr = use24h ? `${String(lH).padStart(2, '0')}:${lM}:${lS}` : `${lH % 12 || 12}:${lM}:${lS}${lH >= 12 ? 'pm' : 'am'}`;
-            return `${utcStr} / ${localStr}${tzName ? ` ${tzName}` : ''}`;
+    };
+    const getLocalDay = ts => {
+        const d = new Date(ts * 1000);
+        return {
+            label: `${CONSTANTS.MONTHS[d.getMonth()]} ${ordinal(d.getDate())}, ${d.getFullYear()}`,
+            key: `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`
         };
-        const exportStorage = JSON.parse(JSON.stringify(s));
-        // Per-item-code all-history usage totals for the export meta, nested by category group
-        // ("Energy Items" / "Happy Items"). Every tracked code is listed even when unused (0).
-        const itemTotals = {};
-        Object.keys(ITEM_LOG_META).forEach(id => {
-            const m = ITEM_LOG_META[id];
-            const g = ITEM_GROUP_LABELS[m.group] || 'Other Items';
-            if (!itemTotals[g]) itemTotals[g] = {};
-            itemTotals[g][m.label] = 0;
-        });
-        (exportStorage.series || []).forEach(e => {
-            if (typeof e.gain === 'number') e.gain = r2(e.gain);
-            if (typeof e.after === 'number') e.after = r2(e.after);
-            if (e.type === 'item' && ITEM_LOG_META[e.logId]) {
-                const m = ITEM_LOG_META[e.logId];
-                itemTotals[ITEM_GROUP_LABELS[m.group] || 'Other Items'][m.label]++;
-            }
-        });
-        const getUtcDay = ts => {
-            const d = new Date(ts * 1000);
-            return {
-                label: `${CONSTANTS.MONTHS[d.getUTCMonth()]} ${ordinal(d.getUTCDate())}, ${d.getUTCFullYear()}`,
-                key: `${d.getUTCFullYear()}-${d.getUTCMonth()}-${d.getUTCDate()}`
+    };
+    const log = [];
+    let curDayObj = null,
+        prevLocalKey = null;
+    [...(exportStorage.series || [])].reverse().forEach(e => {
+        const utc = getUtcDay(e.ts),
+            local = getLocalDay(e.ts);
+        if (!curDayObj || utc.key !== curDayObj._k) {
+            curDayObj = {
+                day: `${utc.label} - UTC`,
+                _k: utc.key,
+                _lk: new Set(),
+                entries: []
             };
-        };
-        const getLocalDay = ts => {
-            const d = new Date(ts * 1000);
-            return {
-                label: `${CONSTANTS.MONTHS[d.getMonth()]} ${ordinal(d.getDate())}, ${d.getFullYear()}`,
-                key: `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`
-            };
-        };
-        const log = [];
-        let curDayObj = null,
+            log.push(curDayObj);
             prevLocalKey = null;
-        [...(exportStorage.series || [])].reverse().forEach(e => {
-            const utc = getUtcDay(e.ts),
-                local = getLocalDay(e.ts);
-            if (!curDayObj || utc.key !== curDayObj._k) {
-                curDayObj = {
-                    day: `${utc.label} - UTC`,
-                    _k: utc.key,
-                    _lk: new Set(),
-                    entries: []
-                };
-                log.push(curDayObj);
-                prevLocalKey = null;
+        }
+        if (prevLocalKey !== null && local.key !== prevLocalKey) curDayObj.entries.push(`── ${local.label} (${tzName}) ──`);
+        else if (prevLocalKey === null && utc.key !== local.key) curDayObj.entries.push(`── ${local.label} (${tzName}) ──`);
+        if (e.type === 'item') {
+            // Simple labeled line with the raw timestamp (intentionally not human-readable),
+            // plus the captured metric for the item's group.
+            const label = (ITEM_LOG_META[e.logId] && ITEM_LOG_META[e.logId].label) || `Item ${e.logId}`;
+            const entry = { [label]: e.ts };
+            if (e.energy) entry.e = e.energy;
+            if (e.energyLost != null) entry.eLost = e.energyLost;
+            if (e.happy) entry.happy = e.happy;
+            if (e.statKey) {
+                entry.stat = e.statKey;
+                entry.gain = e.statGain;
             }
-            if (prevLocalKey !== null && local.key !== prevLocalKey) curDayObj.entries.push(`── ${local.label} (${tzName}) ──`);
-            else if (prevLocalKey === null && utc.key !== local.key) curDayObj.entries.push(`── ${local.label} (${tzName}) ──`);
-            if (e.type === 'item') {
-                // Simple labeled line with the raw timestamp (intentionally not human-readable),
-                // plus the captured metric for the item's group.
-                const label = (ITEM_LOG_META[e.logId] && ITEM_LOG_META[e.logId].label) || `Item ${e.logId}`;
-                const entry = { [label]: e.ts };
-                if (e.energy) entry.e = e.energy;
-                if (e.happy) entry.happy = e.happy;
-                if (e.statKey) {
-                    entry.stat = e.statKey;
-                    entry.gain = e.statGain;
-                }
-                curDayObj.entries.push(entry);
-            } else {
-                curDayObj.entries.push({
-                    at: fmtTs(e.ts),
-                    ts: e.ts,
-                    stat: e.stat,
-                    gain: r2(e.gain),
-                    cost: e.cost,
-                    after: r2(e.after),
-                    ...(e.rate !== undefined ? {
-                        rate: e.rate
-                    } : {})
-                });
-            }
-            curDayObj._lk.add(local.key);
-            prevLocalKey = local.key;
-        });
-        log.forEach(d => {
-            if (d._lk && d._lk.size === 1 && [...d._lk][0] === d._k) d.day = d.day.replace(' - UTC', ` - UTC/${tzName}`);
-            delete d._k;
-            delete d._lk;
-        });
-        exportStorage.series = log;
-        const achievements = computeAchievements(getActiveHistory());
-        const cleanCfg = {};
-        ALLOWED_CONFIG_KEYS.forEach(k => {
-            if (userConfig[k] !== undefined) {
-                // Export privacyAgreed as its raw ISO value (NOT reformatted) so the install date
-                // survives an export/import round-trip; reformatting it produced an unparseable
-                // string that corrupted the stored value.
-                cleanCfg[k] = userConfig[k];
-            }
-        });
-        const stickers = exportStorage?.meta?.stickers;
-        if (exportStorage.meta) delete exportStorage.meta.stickers;
-        // syncFloor is device-local live-sync state; dropping it means a fresh import does one
-        // unbounded (self-healing) reconcile, then re-anchors from the imported data.
-        if (exportStorage.meta) delete exportStorage.meta.syncFloor;
-        let content = JSON.stringify({
-            meta: {
-                version: SCRIPT_VERSION,
-                exportedAt: fmtReadable(now),
-                itemTotals
-            },
-            config: cleanCfg,
-            achievements,
-            storage: exportStorage,
-            _s: stickers ? JSON.stringify(stickers) : undefined
-        }, null, 2);
-        content = content.replace(/\{\n(\s+)"at": ("[^"]*"),\n\s+"ts": (\d+),\n\s+"stat": ("[^"]*"),\n\s+"gain": ([\d.]+),\n\s+"cost": (\d+),\n\s+"after": ([\d.]+)(?:,\n\s+"rate": ([\d.]+))?\n\s+\}/g, (m, sp, la, ts, st, g, co, a, r) => {
-            let o = '{"at": ' + la + ', "ts": ' + ts + ',\n' + sp + '"stat": ' + st + ',\n' + sp + '"gain": ' + g + ', "cost": ' + co + ',\n' + sp + '"after": ' + a;
-            if (r) o += ', "rate": ' + r;
-            return o + '}';
-        });
-        // Collapse the simple item lines to one line each, mirroring the gym-line collapse above.
-        // Each is a flat object keyed by the item label plus optional metric fields (e/happy/stat+
-        // gain), so just squash the internal whitespace.
-        const itemLineLabels = Object.values(ITEM_LOG_META).map(m => m.label.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('|');
-        content = content.replace(new RegExp('\\{\\n\\s+"(' + itemLineLabels + ')":[^}]*\\}', 'g'), m => m.replace(/\s*\n\s*/g, ' '));
-        content = content.replace(/\},(\ *\n\ +)\{"at":/g, '},\n$1{"at":');
-        content = content.replace(/\},(\ *\n([ ]+))"\u2500/g, '},\n\n$2"\u2500');
-        content = content.replace(/\u2500",(\ *\n([ ]+))\{"at":/g, '\u2500",\n\n$2{"at":');
-        content = content.replace(/"meta": \{\n\s+"version": "([^"]+)",\n\s+"exportedAt": "([^"]+)"\n\s+\}/, '"meta": {"version": "$1", "exportedAt": "$2"}');
-        content = content.replace(/"config": \{([\s\S]*?)\n\s+\}(?=,\n\s+"achievements")/, (m, inner) => '"config": {' + inner.replace(/\n\s+/g, ' ').trimStart() + '}');
-        try {
-            const f = new File([content], filename, {
-                type: 'text/plain'
+            curDayObj.entries.push(entry);
+        } else {
+            curDayObj.entries.push({
+                at: fmtTs(e.ts),
+                ts: e.ts,
+                stat: e.stat,
+                gain: r2(e.gain),
+                cost: e.cost,
+                after: r2(e.after),
+                ...(e.rate !== undefined ? {
+                    rate: e.rate
+                } : {})
             });
-            if (navigator.canShare && navigator.canShare({
-                files: [f]
-            }) && window.innerWidth <= 800) {
-                await navigator.share({
-                    title: filename,
-                    files: [f]
-                });
-                return;
-            }
-        } catch (e) { }
-        const blob = new Blob([content], {
-            type: 'application/json'
+        }
+        curDayObj._lk.add(local.key);
+        prevLocalKey = local.key;
+    });
+    log.forEach(d => {
+        if (d._lk && d._lk.size === 1 && [...d._lk][0] === d._k) d.day = d.day.replace(' - UTC', ` - UTC/${tzName}`);
+        delete d._k;
+        delete d._lk;
+    });
+    exportStorage.series = log;
+    const achievements = computeAchievements(getActiveHistory());
+    const cleanCfg = {};
+    ALLOWED_CONFIG_KEYS.forEach(k => {
+        if (userConfig[k] !== undefined) {
+            // Export privacyAgreed as its raw ISO value (NOT reformatted) so the install date
+            // survives an export/import round-trip; reformatting it produced an unparseable
+            // string that corrupted the stored value.
+            cleanCfg[k] = userConfig[k];
+        }
+    });
+    const stickers = exportStorage?.meta?.stickers;
+    if (exportStorage.meta) delete exportStorage.meta.stickers;
+    // syncFloor is device-local live-sync state; dropping it means a fresh import does one
+    // unbounded (self-healing) reconcile, then re-anchors from the imported data.
+    if (exportStorage.meta) delete exportStorage.meta.syncFloor;
+    let rankedWars;
+    try {
+        const warsRaw = localStorage.getItem(KEYS.WARS_DATA);
+        if (warsRaw) {
+            const wars = JSON.parse(warsRaw);
+            rankedWars = Object.entries(wars).map(([id, w]) => ({
+                id,
+                start: w.war && w.war.start,
+                end: w.war && w.war.end,
+                winner: w.war && w.war.winner
+            }));
+        }
+    } catch (e) { /* skip */ }
+    let content = JSON.stringify({
+        meta: {
+            version: SCRIPT_VERSION,
+            exportedAt: fmtReadable(now),
+            itemTotals,
+            ...(rankedWars ? { rankedWars } : {})
+        },
+        config: cleanCfg,
+        achievements,
+        storage: exportStorage,
+        _s: stickers ? JSON.stringify(stickers) : undefined
+    }, null, 2);
+    content = content.replace(/\{\n(\s+)"at": ("[^"]*"),\n\s+"ts": (\d+),\n\s+"stat": ("[^"]*"),\n\s+"gain": ([\d.]+),\n\s+"cost": (\d+),\n\s+"after": ([\d.]+)(?:,\n\s+"rate": ([\d.]+))?\n\s+\}/g, (m, sp, la, ts, st, g, co, a, r) => {
+        let o = '{"at": ' + la + ', "ts": ' + ts + ',\n' + sp + '"stat": ' + st + ',\n' + sp + '"gain": ' + g + ', "cost": ' + co + ',\n' + sp + '"after": ' + a;
+        if (r) o += ', "rate": ' + r;
+        return o + '}';
+    });
+    // Collapse the simple item lines to one line each, mirroring the gym-line collapse above.
+    // Each is a flat object keyed by the item label plus optional metric fields (e/happy/stat+
+    // gain), so just squash the internal whitespace.
+    const itemLineLabels = Object.values(ITEM_LOG_META).map(m => m.label.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('|');
+    content = content.replace(new RegExp('\\{\\n\\s+"(' + itemLineLabels + ')":[^}]*\\}', 'g'), m => m.replace(/\s*\n\s*/g, ' '));
+    content = content.replace(/\},(\ *\n\ +)\{"at":/g, '},\n$1{"at":');
+    content = content.replace(/\},(\ *\n([ ]+))"\u2500/g, '},\n\n$2"\u2500');
+    content = content.replace(/\u2500",(\ *\n([ ]+))\{"at":/g, '\u2500",\n\n$2{"at":');
+    content = content.replace(/"meta": \{\n\s+"version": "([^"]+)",\n\s+"exportedAt": "([^"]+)"\n\s+\}/, '"meta": {"version": "$1", "exportedAt": "$2"}');
+    content = content.replace(/"config": \{([\s\S]*?)\n\s+\}(?=,\n\s+"achievements")/, (m, inner) => '"config": {' + inner.replace(/\n\s+/g, ' ').trimStart() + '}');
+    try {
+        const f = new File([content], filename, {
+            type: 'text/plain'
         });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.style.display = 'none';
-        a.href = url;
-        a.download = filename;
-        document.body.appendChild(a);
-        a.click();
-        setTimeout(() => {
-            document.body.removeChild(a);
-            URL.revokeObjectURL(url);
-        }, 3000);
-    }
-
-    function importData(f, onDone, opts = {}) {
-        if (!f) {
-            if (onDone) onDone(false);
+        if (navigator.canShare && navigator.canShare({
+            files: [f]
+        }) && window.innerWidth <= 800) {
+            await navigator.share({
+                title: filename,
+                files: [f]
+            });
             return;
         }
-        const silent = !!opts.silent;
-        const r = new FileReader();
-        r.onload = async (e) => {
-            let ok = false;
-            try {
-                const j = JSON.parse(e.target.result);
-                const val = validateImportSchema(j);
-                if (!val.ok) {
-                    if (!silent) alert(`Import Failed: ${val.msg}`);
-                    if (onDone) onDone(false);
-                    return;
-                }
-                if (j.storage) {
-                    j.storage = sanitizeStorageRecord(j.storage);
-                    if (j.storage.series && j.storage.series.length && j.storage.series[0] && j.storage.series[0].day) {
-                        // Reverse map: exported item lines are labeled ({"Xanax Taken": <ts>} with an
-                        // optional "e" for energy). Convert them back to canonical item entries.
-                        const labelToItem = {};
-                        Object.keys(ITEM_LOG_META).forEach(id => {
-                            labelToItem[ITEM_LOG_META[id].label] = { logId: Number(id), energy: !!ITEM_LOG_META[id].energy };
-                        });
-                        j.storage.series = j.storage.series.flatMap(d => (d.entries || []).filter(e => typeof e === 'object' && e !== null)).reverse();
-                        j.storage.series = j.storage.series.map(e => {
-                            // New-style labeled item line: no ts/stat, single label key (+ optional e).
-                            if (e && e.ts === undefined && e.stat === undefined) {
-                                const k = Object.keys(e).find(key => key !== 'e' && labelToItem[key]);
-                                if (k) {
-                                    const m = labelToItem[k];
-                                    const out = { type: 'item', logId: m.logId, ts: e[k] };
-                                    if (e.e !== undefined) out.energy = e.e;
-                                    return out;
-                                }
-                            }
-                            delete e.at;
-                            delete e.loggedAt;
-                            return e;
-                        });
-                    }
-                    const importedMeta = j.storage.meta || {};
-                    let stickers = importedMeta.stickers || j._s;
-                    if (typeof stickers === 'string') {
-                        try {
-                            stickers = JSON.parse(stickers);
-                        } catch (e) { }
-                    }
-                    if (!stickers) stickers = {};
-                    j.storage.meta.stickers = stickers;
-                    await DBManager.setStorage(j.storage);
-                    const rebuilt = DataController._rebuildFromSeries(j.storage.series || [], (j.storage.meta && j.storage.meta.baselineBreakdown) || ZERO_BREAKDOWN);
-                    _historyCache = {
-                        meta: {
-                            ...importedMeta,
-                            stickers
-                        },
-                        history: rebuilt.history,
-                        today: rebuilt.today
-                    };
-                    if (j.config && typeof j.config === 'object') {
-                        ALLOWED_CONFIG_KEYS.forEach(k => {
-                            if (j.config[k] !== undefined) userConfig[k] = j.config[k];
-                        });
-                        if (!userConfig.privacyAgreed || isNaN(Date.parse(userConfig.privacyAgreed))) {
-                            userConfig.privacyAgreed = new Date().toISOString();
-                        }
-                        saveConfig();
-                    }
-                    try {
-                        const importedVer = (j && j.meta && j.meta.version) ? String(j.meta.version) : '';
-                        const curSeen = localStorage.getItem(KEYS.CHANGELOG_VER);
-                        if (!curSeen) {
-                            if (importedVer) localStorage.setItem(KEYS.CHANGELOG_VER, importedVer);
-                            else if (SCRIPT_VERSION) localStorage.setItem(KEYS.CHANGELOG_VER, SCRIPT_VERSION);
-                        }
-                        const seenNow = localStorage.getItem(KEYS.CHANGELOG_VER);
-                        if (SCRIPT_VERSION && seenNow && seenNow !== SCRIPT_VERSION) {
-                            localStorage.setItem(KEYS.CHANGELOG_NOTIF, '1');
-                            syncChangelogNotif(true);
-                        }
-                    } catch (e) { }
-                    DataController.invalidate();
-                    calendarState.selectedData = null;
-                    calendarState.selectedLabel = null;
-                    viewState.activeViewLabel = null;
-                    ok = true;
-                    if (!silent) renderPanelContent();
-                    if (!silent) alert("Training Data Imported Successfully.");
-                } else if (!silent) alert("Error: No valid training data found.");
-            } catch (err) {
-                if (!silent) alert("Error importing file: " + (err.message === "Database not initialized" ? "Database not initialized.\n\nRecommendation: Refresh the page and ensure your browser is not blocking local storage for Torn.com." : "Invalid JSON format."));
-            }
-            const inp = document.getElementById('import-file');
-            if (inp) inp.value = '';
-            const inp2 = document.getElementById('init-import-file');
-            if (inp2) inp2.value = '';
-            if (onDone) onDone(ok);
-        };
-        r.readAsText(f);
-    }
+    } catch (e) { }
+    const blob = new Blob([content], {
+        type: 'application/json'
+    });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.style.display = 'none';
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    setTimeout(() => {
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+    }, 3000);
+}
 
-    function importDataFromWelcome(f) {
-        importData(f, async (success) => {
-            if (!success) return;
-            refreshInitLock();
-            if (!userConfig.apiKey) {
-                renderPanelContent();
-                const wv = dom.welcomeView;
-                if (wv && wv.classList.contains('active-view')) refreshInitMask(wv);
+function importData(f, onDone, opts = {}) {
+    if (!f) {
+        if (onDone) onDone(false);
+        return;
+    }
+    const silent = !!opts.silent;
+    const r = new FileReader();
+    r.onload = async (e) => {
+        let ok = false;
+        try {
+            const j = JSON.parse(e.target.result);
+            const val = validateImportSchema(j);
+            if (!val.ok) {
+                if (!silent) alert(`Import Failed: ${val.msg}`);
+                if (onDone) onDone(false);
                 return;
             }
-            try {
-                const res = await fetch(`https://api.torn.com/user/?selections=battlestats,log&log=5300&key=${userConfig.apiKey}`);
-                const data = await res.json();
-                if (data.error) {
-                    alert(`Saved API key is no longer valid: ${data.error.error}\n\nPlease enter a new key to continue.`);
-                    userConfig.apiKey = '';
-                    saveConfig();
-                    refreshInitLock();
-                    renderPanelContent();
-                    const wv = dom.welcomeView;
-                    if (wv && wv.classList.contains('active-view')) {
-                        refreshInitMask(wv);
-                        const iak = wv.querySelector('#init-api-key');
-                        if (iak) iak.value = '';
-                    }
-                    return;
+            if (j.storage) {
+                j.storage = sanitizeStorageRecord(j.storage);
+                if (j.storage.series && j.storage.series.length && j.storage.series[0] && j.storage.series[0].day) {
+                    // Reverse map: exported item lines are labeled ({"Xanax Taken": <ts>} with an
+                    // optional "e" for energy). Convert them back to canonical item entries.
+                    const labelToItem = {};
+                    Object.keys(ITEM_LOG_META).forEach(id => {
+                        labelToItem[ITEM_LOG_META[id].label] = { logId: Number(id), energy: !!ITEM_LOG_META[id].energy };
+                    });
+                    j.storage.series = j.storage.series.flatMap(d => (d.entries || []).filter(e => typeof e === 'object' && e !== null)).reverse();
+                    j.storage.series = j.storage.series.map(e => {
+                        // New-style labeled item line: no ts/stat, single label key (+ optional e).
+                        if (e && e.ts === undefined && e.stat === undefined) {
+                            const k = Object.keys(e).find(key => key !== 'e' && labelToItem[key]);
+                            if (k) {
+                                const m = labelToItem[k];
+                                const out = { type: 'item', logId: m.logId, ts: e[k] };
+                                if (e.e !== undefined) out.energy = e.e;
+                                return out;
+                            }
+                        }
+                        delete e.at;
+                        delete e.loggedAt;
+                        return e;
+                    });
                 }
-                localStorage.setItem('bbgl_initialized', '1');
-                refreshInitLock();
+                const importedMeta = j.storage.meta || {};
+                let stickers = importedMeta.stickers || j._s;
+                if (typeof stickers === 'string') {
+                    try {
+                        stickers = JSON.parse(stickers);
+                    } catch (e) { }
+                }
+                if (!stickers) stickers = {};
+                j.storage.meta.stickers = stickers;
+                await DBManager.setStorage(j.storage);
+                const rebuilt = DataController._rebuildFromSeries(j.storage.series || [], (j.storage.meta && j.storage.meta.baselineBreakdown) || ZERO_BREAKDOWN);
+                _historyCache = {
+                    meta: {
+                        ...importedMeta,
+                        stickers
+                    },
+                    history: rebuilt.history,
+                    today: rebuilt.today
+                };
+                if (j.config && typeof j.config === 'object') {
+                    ALLOWED_CONFIG_KEYS.forEach(k => {
+                        if (j.config[k] !== undefined) userConfig[k] = j.config[k];
+                    });
+                    if (!userConfig.privacyAgreed || isNaN(Date.parse(userConfig.privacyAgreed))) {
+                        userConfig.privacyAgreed = new Date().toISOString();
+                    }
+                    saveConfig();
+                }
+                try {
+                    const importedVer = (j && j.meta && j.meta.version) ? String(j.meta.version) : '';
+                    const curSeen = localStorage.getItem(KEYS.CHANGELOG_VER);
+                    if (!curSeen) {
+                        if (importedVer) localStorage.setItem(KEYS.CHANGELOG_VER, importedVer);
+                        else if (SCRIPT_VERSION) localStorage.setItem(KEYS.CHANGELOG_VER, SCRIPT_VERSION);
+                    }
+                    const seenNow = localStorage.getItem(KEYS.CHANGELOG_VER);
+                    if (SCRIPT_VERSION && seenNow && seenNow !== SCRIPT_VERSION) {
+                        localStorage.setItem(KEYS.CHANGELOG_NOTIF, '1');
+                        syncChangelogNotif(true);
+                    }
+                } catch (e) { }
+                DataController.invalidate();
                 calendarState.selectedData = null;
-                calendarState.selectedLabel = Formatter.dateLogical();
+                calendarState.selectedLabel = null;
                 viewState.activeViewLabel = null;
-                switchView('ledger');
-                syncWithFeedback('FULL_SYNC');
-            } catch (e) {
-                alert("Network error during API key verification. Please try again.");
+                ok = true;
+                if (!silent) renderPanelContent();
+                if (!silent) alert("Training Data Imported Successfully.");
+            } else if (!silent) alert("Error: No valid training data found.");
+        } catch (err) {
+            if (!silent) alert("Error importing file: " + (err.message === "Database not initialized" ? "Database not initialized.\n\nRecommendation: Refresh the page and ensure your browser is not blocking local storage for Torn.com." : "Invalid JSON format."));
+        }
+        const inp = document.getElementById('import-file');
+        if (inp) inp.value = '';
+        const inp2 = document.getElementById('init-import-file');
+        if (inp2) inp2.value = '';
+        if (onDone) onDone(ok);
+    };
+    r.readAsText(f);
+}
+
+function importDataFromWelcome(f) {
+    importData(f, async (success) => {
+        if (!success) return;
+        refreshInitLock();
+        if (!userConfig.apiKey) {
+            renderPanelContent();
+            const wv = dom.welcomeView;
+            if (wv && wv.classList.contains('active-view')) refreshInitMask(wv);
+            return;
+        }
+        try {
+            const res = await fetch(`https://api.torn.com/user/?selections=battlestats,log&log=5300&key=${userConfig.apiKey}`);
+            const data = await res.json();
+            if (data.error) {
+                alert(`Saved API key is no longer valid: ${data.error.error}\n\nPlease enter a new key to continue.`);
+                userConfig.apiKey = '';
+                saveConfig();
+                refreshInitLock();
                 renderPanelContent();
                 const wv = dom.welcomeView;
-                if (wv && wv.classList.contains('active-view')) refreshInitMask(wv);
+                if (wv && wv.classList.contains('active-view')) {
+                    refreshInitMask(wv);
+                    const iak = wv.querySelector('#init-api-key');
+                    if (iak) iak.value = '';
+                }
+                return;
             }
-        }, {
-            silent: true
-        });
-    }
-    async function clearData() {
-        if (confirm("⚠️ CLEAR LOG HISTORY? ⚠️\n\nThis will permanently delete your training data.\n\nUse 'Export Log' before proceeding to preserve it.")) {
-            await DBManager.clearStorage();
-            const keep = [KEYS.CONFIG, KEYS.STATE];
-            for (let i = localStorage.length - 1; i >= 0; i--) {
-                const k = localStorage.key(i);
-                if (k && k.startsWith('bbgl_') && k !== KEYS.STORAGE && !keep.includes(k)) localStorage.removeItem(k);
-            }
-            sessionStorage.removeItem(KEYS.SESSION);
-            sessionStorage.removeItem(KEYS.SESSION_CACHE);
-            DataController.invalidate();
-            _historyCache = null;
+            localStorage.setItem('bbgl_initialized', '1');
+            refreshInitLock();
             calendarState.selectedData = null;
-            calendarState.selectedLabel = null;
+            calendarState.selectedLabel = Formatter.dateLogical();
             viewState.activeViewLabel = null;
-            runtime.apiCallTotal = 0;
-            runtime.stickerSlots = [];
+            switchView('ledger');
+            syncWithFeedback('FULL_SYNC');
+        } catch (e) {
+            alert("Network error during API key verification. Please try again.");
             renderPanelContent();
-            alert("History cleared.");
+            const wv = dom.welcomeView;
+            if (wv && wv.classList.contains('active-view')) refreshInitMask(wv);
         }
-    }
-    // [TEMP — delete before full release]
-    async function factoryReset() {
+    }, {
+        silent: true
+    });
+}
+async function clearData() {
+    if (confirm("⚠️ CLEAR LOG HISTORY? ⚠️\n\nThis will permanently delete your training data.\n\nUse 'Export Log' before proceeding to preserve it.")) {
         await DBManager.clearStorage();
+        const keep = [KEYS.CONFIG, KEYS.STATE];
         for (let i = localStorage.length - 1; i >= 0; i--) {
             const k = localStorage.key(i);
-            if (k && k.startsWith('bbgl_')) localStorage.removeItem(k);
+            if (k && k.startsWith('bbgl_') && k !== KEYS.STORAGE && !keep.includes(k)) localStorage.removeItem(k);
         }
         sessionStorage.removeItem(KEYS.SESSION);
         sessionStorage.removeItem(KEYS.SESSION_CACHE);
@@ -11066,141 +11183,161 @@
         viewState.activeViewLabel = null;
         runtime.apiCallTotal = 0;
         runtime.stickerSlots = [];
-        runtime.currentStats = null;
-        runtime._achPage = 0;
-        const _fresh = { apiKey: '', dayStartMode: 'utc', weekStartMode: 'mon', animations: true, buttonLocation: 'both', ratesEnabled: true, bestGym: true, bestGymSpecialist: true, bestGymUnpurchased: true, drugTracker: 'xanax', privacyAgreed: '', configVersion: REQUIRED_CONFIG_VERSION };
-        ALLOWED_CONFIG_KEYS.forEach(k => { userConfig[k] = _fresh[k] !== undefined ? _fresh[k] : userConfig[k]; });
-        saveConfig();
-        localStorage.setItem(KEYS.CHANGELOG_NOTIF, '1');
-        runtime.wasVersionWiped = true;
+        renderPanelContent();
+        alert("History cleared.");
     }
-    async function devFactoryReset() {
-        if (confirm("⚠️ DEV FACTORY RESET ⚠️\n\nThis will completely wipe ALL data, settings, API keys, and cache. The script will emulate a completely fresh install.\n\nProceed?")) {
-            await DBManager.clearStorage();
-            localStorage.clear();
-            const devMode = sessionStorage.getItem(KEYS.DEV_MODE);
-            sessionStorage.clear();
-            if (devMode) sessionStorage.setItem(KEYS.DEV_MODE, devMode);
-            window.location.reload();
-        }
+}
+// [TEMP — delete before full release]
+async function factoryReset() {
+    await DBManager.clearStorage();
+    for (let i = localStorage.length - 1; i >= 0; i--) {
+        const k = localStorage.key(i);
+        if (k && k.startsWith('bbgl_')) localStorage.removeItem(k);
     }
-    const BestGymController = {
-        _suppressed: {},
-        // Reads Torn's React fiber props off a gym button to find its { id, status, ... } item.
-        // Purchase state lives only in these props (status 'newSeen' = unlocked but not bought),
-        // so this lets us know ownership with zero clicks / no flicker.
-        _reactItem(btn) {
-            try {
-                const key = Object.keys(btn).find(k => k.startsWith('__reactFiber$') || k.startsWith('__reactInternalInstance$'));
-                let f = btn[key],
-                    depth = 0;
-                while (f && depth < 16) {
-                    const pp = f.memoizedProps;
-                    if (pp && pp.item && pp.item.id != null && pp.item.status) return pp.item;
-                    f = f.return;
-                    depth++;
-                }
-            } catch (e) { }
-            return null;
-        },
-        scanGyms() {
-            const root = document.getElementById('gymroot') || document;
-            const result = {
-                gyms: {},
-                active: null
-            };
-            root.querySelectorAll("button[class*='gymButton']").forEach((btn) => {
-                const icon = btn.querySelector("[class*='gym-']");
-                if (!icon) return;
-                const match = /gym-(\d+)/.exec(icon.getAttribute('class') || '');
-                if (!match) return;
-                const id = parseInt(match[1], 10);
-                if (!id || result.gyms[id]) return;
-                const cls = ' ' + (btn.getAttribute('class') || '') + ' ';
-                const locked = /\s(?:locked|inProgress)/i.test(cls);
-                const active = /\sactive/i.test(cls);
-                const item = this._reactItem(btn);
-                const status = item ? item.status : null;
-                // owned = purchased: 'active' (training there) or 'available' (can ACTIVATE).
-                // 'newSeen' = unlocked but unpurchased (BUY). If status is unreadable, owned stays
-                // false so the unpurchased filter errs on the safe side (won't auto-switch there).
-                const owned = status === 'active' || status === 'available';
-                result.gyms[id] = {
-                    id: id,
-                    btn: btn,
-                    locked: locked,
-                    active: active,
-                    status: status,
-                    owned: owned
-                };
-                if (active) result.active = id;
-            });
-            return result;
-        },
-        bestGymFor(stat, scan) {
-            const tiers = GYM_TIERS[stat];
-            if (!tiers) return null;
-            // Rank = index of the tie-group containing the gym (gyms in the same group share
-            // identical gym points). -1 if the gym gives nothing for this stat.
-            const rankOf = (id) => {
-                for (let i = 0; i < tiers.length; i++) {
-                    const g = tiers[i];
-                    if (Array.isArray(g) ? g.indexOf(id) !== -1 : g === id) return i;
-                }
-                return -1;
-            };
-            const allowSpec = userConfig.bestGymSpecialist;
-            const allowUnpurchased = userConfig.bestGymUnpurchased;
-            // Seed with the active gym's rank so we only ever pick a STRICTLY higher group —
-            // never switch sideways to a gym with the same gym points.
-            let bestId = null,
-                bestRank = scan.active != null ? rankOf(scan.active) : -1;
-            Object.keys(scan.gyms).forEach((key) => {
-                const gym = scan.gyms[key];
-                if (gym.locked) return;
-                if (!allowSpec && gym.id >= 25) return;
-                if (!allowUnpurchased && !gym.owned) return;
-                const rank = rankOf(gym.id);
-                if (rank > bestRank) {
-                    bestRank = rank;
-                    bestId = gym.id;
-                }
-            });
-            return bestId;
-        },
-        swapToGym(gym) {
-            try {
-                gym.btn.click();
-                return true;
-            } catch (e) {
-                Log.warn('BestGym: gym switch failed', e);
-                return false;
+    sessionStorage.removeItem(KEYS.SESSION);
+    sessionStorage.removeItem(KEYS.SESSION_CACHE);
+    DataController.invalidate();
+    _historyCache = null;
+    calendarState.selectedData = null;
+    calendarState.selectedLabel = null;
+    viewState.activeViewLabel = null;
+    runtime.apiCallTotal = 0;
+    runtime.stickerSlots = [];
+    runtime.currentStats = null;
+    runtime._achPage = 0;
+    const _fresh = { apiKey: '', dayStartMode: 'utc', weekStartMode: 'mon', animations: true, buttonLocation: 'both', ratesEnabled: true, bestGym: true, bestGymSpecialist: true, bestGymUnpurchased: true, drugTracker: 'xanax', privacyAgreed: '', configVersion: REQUIRED_CONFIG_VERSION };
+    ALLOWED_CONFIG_KEYS.forEach(k => { userConfig[k] = _fresh[k] !== undefined ? _fresh[k] : userConfig[k]; });
+    saveConfig();
+    localStorage.setItem(KEYS.CHANGELOG_NOTIF, '1');
+    runtime.wasVersionWiped = true;
+}
+async function devFactoryReset() {
+    if (confirm("⚠️ DEV FACTORY RESET ⚠️\n\nThis will completely wipe ALL data, settings, API keys, and cache. The script will emulate a completely fresh install.\n\nProceed?")) {
+        await DBManager.clearStorage();
+        localStorage.clear();
+        const devMode = sessionStorage.getItem(KEYS.DEV_MODE);
+        sessionStorage.clear();
+        if (devMode) sessionStorage.setItem(KEYS.DEV_MODE, devMode);
+        window.location.reload();
+    }
+}
+const BestGymController = {
+    _suppressed: {},
+    // Reads Torn's React fiber props off a gym button to find its { id, status, ... } item.
+    // Purchase state lives only in these props (status 'newSeen' = unlocked but not bought),
+    // so this lets us know ownership with zero clicks / no flicker.
+    _reactItem(btn) {
+        try {
+            const key = Object.keys(btn).find(k => k.startsWith('__reactFiber$') || k.startsWith('__reactInternalInstance$'));
+            let f = btn[key],
+                depth = 0;
+            while (f && depth < 16) {
+                const pp = f.memoizedProps;
+                if (pp && pp.item && pp.item.id != null && pp.item.status) return pp.item;
+                f = f.return;
+                depth++;
             }
-        },
-        _statFromLabel(label) {
-            if (label === 'Train strength') return 'str';
-            if (label === 'Train defense') return 'def';
-            if (label === 'Train speed') return 'spd';
-            if (label === 'Train dexterity') return 'dex';
-            return null;
-        },
-        handleTrainClick(e) {
-            if (!userConfig.bestGym) return false;
-            const btn = e.target && e.target.closest ? e.target.closest('button') : null;
-            if (!btn) return false;
-            const stat = this._statFromLabel(btn.getAttribute('aria-label') || '');
-            if (!stat || this._suppressed[stat]) return false;
-            const scan = this.scanGyms();
-            const best = this.bestGymFor(stat, scan);
-            if (!best || best === scan.active) return false;
-            const gym = scan.gyms[best];
-            if (!gym || !this.swapToGym(gym)) return false;
-            e.preventDefault();
-            e.stopImmediatePropagation();
-            this._suppressed[stat] = true;
+        } catch (e) { }
+        return null;
+    },
+    scanGyms() {
+        const root = document.getElementById('gymroot') || document;
+        const result = {
+            gyms: {},
+            active: null
+        };
+        root.querySelectorAll("button[class*='gymButton']").forEach((btn) => {
+            const icon = btn.querySelector("[class*='gym-']");
+            if (!icon) return;
+            const match = /gym-(\d+)/.exec(icon.getAttribute('class') || '');
+            if (!match) return;
+            const id = parseInt(match[1], 10);
+            if (!id || result.gyms[id]) return;
+            const cls = ' ' + (btn.getAttribute('class') || '') + ' ';
+            const locked = /\s(?:locked|inProgress)/i.test(cls);
+            const active = /\sactive/i.test(cls);
+            const item = this._reactItem(btn);
+            const status = item ? item.status : null;
+            // owned = purchased: 'active' (training there) or 'available' (can ACTIVATE).
+            // 'newSeen' = unlocked but unpurchased (BUY). If status is unreadable, owned stays
+            // false so the unpurchased filter errs on the safe side (won't auto-switch there).
+            const owned = status === 'active' || status === 'available';
+            result.gyms[id] = {
+                id: id,
+                btn: btn,
+                locked: locked,
+                active: active,
+                status: status,
+                owned: owned
+            };
+            if (active) result.active = id;
+        });
+        return result;
+    },
+    bestGymFor(stat, scan) {
+        const tiers = GYM_TIERS[stat];
+        if (!tiers) return null;
+        // Rank = index of the tie-group containing the gym (gyms in the same group share
+        // identical gym points). -1 if the gym gives nothing for this stat.
+        const rankOf = (id) => {
+            for (let i = 0; i < tiers.length; i++) {
+                const g = tiers[i];
+                if (Array.isArray(g) ? g.indexOf(id) !== -1 : g === id) return i;
+            }
+            return -1;
+        };
+        const allowSpec = userConfig.bestGymSpecialist;
+        const allowUnpurchased = userConfig.bestGymUnpurchased;
+        // Seed with the active gym's rank so we only ever pick a STRICTLY higher group —
+        // never switch sideways to a gym with the same gym points.
+        let bestId = null,
+            bestRank = scan.active != null ? rankOf(scan.active) : -1;
+        Object.keys(scan.gyms).forEach((key) => {
+            const gym = scan.gyms[key];
+            if (gym.locked) return;
+            if (!allowSpec && gym.id >= 25) return;
+            if (!allowUnpurchased && !gym.owned) return;
+            const rank = rankOf(gym.id);
+            if (rank > bestRank) {
+                bestRank = rank;
+                bestId = gym.id;
+            }
+        });
+        return bestId;
+    },
+    swapToGym(gym) {
+        try {
+            gym.btn.click();
             return true;
+        } catch (e) {
+            Log.warn('BestGym: gym switch failed', e);
+            return false;
         }
-    };
+    },
+    _statFromLabel(label) {
+        if (label === 'Train strength') return 'str';
+        if (label === 'Train defense') return 'def';
+        if (label === 'Train speed') return 'spd';
+        if (label === 'Train dexterity') return 'dex';
+        return null;
+    },
+    handleTrainClick(e) {
+        if (!userConfig.bestGym) return false;
+        const btn = e.target && e.target.closest ? e.target.closest('button') : null;
+        if (!btn) return false;
+        const stat = this._statFromLabel(btn.getAttribute('aria-label') || '');
+        if (!stat || this._suppressed[stat]) return false;
+        const scan = this.scanGyms();
+        const best = this.bestGymFor(stat, scan);
+        if (!best || best === scan.active) return false;
+        const gym = scan.gyms[best];
+        if (!gym || !this.swapToGym(gym)) return false;
+        e.preventDefault();
+        e.stopImmediatePropagation();
+        this._suppressed[stat] = true;
+        return true;
+    }
+};
 
     /**
      *  [SECTION VI] THE GYM EQUIPMENT (UI Layer)
@@ -11315,6 +11452,36 @@
         updateLevelBar();
     }
 
+    // Ranked-war calendar markers. Buckets each stored war's start/end timestamp into the same
+    // logical date the calendar grid uses, memoized on the raw localStorage string so it only
+    // recomputes when the stored war data actually changes. Foundation for real markers later.
+    // `raw` starts as a sentinel (false) that no localStorage value can equal — otherwise an
+    // absent key (getItem -> null) would match an initial null and return the uninitialized map.
+    let _warMarkerCache = { raw: false, map: {} };
+    function getWarMarkers() {
+        const raw = localStorage.getItem(KEYS.WARS_DATA);
+        if (raw === _warMarkerCache.raw) return _warMarkerCache.map || {};
+        const map = {};
+        if (raw) {
+            try {
+                const wars = JSON.parse(raw);
+                Object.values(wars).forEach(w => {
+                    if (!w || !w.war) return;
+                    if (w.war.start) {
+                        const ds = Formatter.dateLogical(w.war.start * 1000);
+                        (map[ds] = map[ds] || {}).warStart = true;
+                    }
+                    if (w.war.end) {
+                        const ds = Formatter.dateLogical(w.war.end * 1000);
+                        (map[ds] = map[ds] || {}).warEnd = true;
+                    }
+                });
+            } catch (e) { /* malformed war data — no markers */ }
+        }
+        _warMarkerCache = { raw, map };
+        return map;
+    }
+
     function renderCell(cont, y, m, d, g, rIdx, cIdx) {
         const ds = Formatter.dateISO(y, m, d),
             sl = DataController.getSlice('DAY', ds),
@@ -11377,6 +11544,19 @@
         ns.className = 'day-num';
         ns.innerText = d;
         cell.appendChild(ns);
+        // Foundational text markers (War Start / War End / OD). Plain text for now to verify the
+        // tracking lands on the right days before real visual markers are designed.
+        const markerLabels = [];
+        const wm = getWarMarkers()[ds];
+        if (wm && wm.warStart) markerLabels.push('War Start');
+        if (wm && wm.warEnd) markerLabels.push('War End');
+        if (((sl.xanaxODs || 0) + (sl.lsdODs || 0)) > 0) markerLabels.push('OD');
+        if (markerLabels.length) {
+            const mk = document.createElement('div');
+            mk.className = 'bbgl-cal-markers';
+            mk.innerHTML = markerLabels.map(t => `<span class="bbgl-cal-marker">${t}</span>`).join('');
+            cell.appendChild(mk);
+        }
         if (isFlipped && sl.meta.tier > 0) {
             const item = DataController.getStickerMap().get(ds);
             if (item) {
@@ -11473,7 +11653,7 @@
         let pctDiamond = Math.min(100, totDiamond / 10);
         let pctGold = Math.min(100 - pctDiamond, totGold / 10);
         let pctGreen = Math.min(100 - pctDiamond - pctGold, totGreen / 10);
-
+        
         let sum = pctGreen + pctGold + pctDiamond;
         if (goal && sum < 100) {
             const deficit = 100 - sum;
@@ -11512,7 +11692,7 @@
 
         let actualDLeft = dLeft;
         let gRight = pctGreen;
-
+        
         let greenTouchesNext = false;
         let goldTouchesPrev = false;
         if (pctDiamond > 0) {
@@ -12024,12 +12204,12 @@
         });
     }
     const SB_DESKTOP = {
-        target: '#nav-gym[class*="area-desktop"]',
-        container: 'area-desktop___vZLI8',
-        link: 'desktopLink___SG2RU',
-        row: 'area-row___iBD8N',
-        id: 'nav-gym-log-desktop'
-    },
+            target: '#nav-gym[class*="area-desktop"]',
+            container: 'area-desktop___vZLI8',
+            link: 'desktopLink___SG2RU',
+            row: 'area-row___iBD8N',
+            id: 'nav-gym-log-desktop'
+        },
         SB_MOBILE = {
             target: '#nav-gym[class*="area-mobile"]',
             container: 'area-mobile___sx8BQ',
@@ -12125,7 +12305,7 @@
             if (!next.has(w)) {
                 try {
                     runtime.layoutResizeObserver.unobserve(w);
-                } catch (_) { }
+                } catch (_) {}
                 prev.delete(w);
             }
         });
@@ -12248,7 +12428,7 @@
                 _syncLayoutResizeTargets();
                 handleLayout();
                 clearTimeout(runtime._layoutResyncTimer);
-                runtime._layoutResyncTimer = setTimeout(function () {
+                runtime._layoutResyncTimer = setTimeout(function() {
                     runtime._layoutResyncTimer = null;
                     _syncLayoutResizeTargets();
                 }, 350);
@@ -12631,7 +12811,7 @@
         });
     }
     const DOC_LOADING_HTML = `<div style="padding:20px; text-align:center; color:#888;">Loading...</div>`;
-    const DOC_ERROR_HTML = `<div style="padding:20px; text-align:center; color:#888;">Could not load document. Check your connection.</div>`;
+    const DOC_ERROR_HTML   = `<div style="padding:20px; text-align:center; color:#888;">Could not load document. Check your connection.</div>`;
 
     const PRIVACY_TEXT = {
         ACK_INTRO: `<div style="padding:0 0 8px 0; color:#bbb; font-size:12px;">By using this script, you acknowledge and agree to the following:</div>`,
@@ -12640,10 +12820,10 @@
 
     function buildPrivacyModalHTML(reviewMode) {
         const ackRows = PRIVACY_TEXT.ACK_ITEMS.map((txt, i) => {
-            const ctrl = reviewMode ? `<span class="bbgl-ack-check">${ICONS.CHECK}</span>` : `<input type="checkbox" id="bbgl-ack-${i + 1}">`,
-                label = reviewMode ? `<span>${txt}</span>` : `<label for="bbgl-ack-${i + 1}">${txt}</label>`;
-            return `<div class="bbgl-ack-row">${ctrl}${label}</div>`;
-        }).join(''),
+                const ctrl = reviewMode ? `<span class="bbgl-ack-check">${ICONS.CHECK}</span>` : `<input type="checkbox" id="bbgl-ack-${i + 1}">`,
+                    label = reviewMode ? `<span>${txt}</span>` : `<label for="bbgl-ack-${i + 1}">${txt}</label>`;
+                return `<div class="bbgl-ack-row">${ctrl}${label}</div>`;
+            }).join(''),
             discSection = buildSection('Privacy Disclosure', `<div class="bbgl-modal-scrollbox"><div id="bbgl-privacy-disc">${DOC_LOADING_HTML}</div></div>`, 'margin-bottom:5px;'),
             ackSection = buildSection('User Acknowledgement', `<div class="bbgl-modal-scrollbox">${PRIVACY_TEXT.ACK_INTRO}${ackRows}</div>`, 'margin-bottom:8px;'),
             footer = reviewMode ? '' : `<div style="display:flex; margin:0 10px 4px 10px;">${buildButton('bbgl-privacy-demo-btn', 'DEMO', 'purple', 'flex:2; border-radius:4px 0 0 4px; margin:0;')}<span class="bbgl-agree-wrap" style="flex:1; display:flex;" data-tooltip="${TOOLTIPS.AGREE_GATE}">${buildButton('bbgl-privacy-agree-btn', 'AGREE', 'green', 'flex:1; border-radius:0 4px 4px 0; margin:0;')}</span></div>`;
@@ -12747,7 +12927,7 @@
         refreshStartState();
         // Agreement is intentionally not persisted: starting the scan creates its own timers, which
         // are the record. The disclaimer is shown fresh on every manual start.
-        startBtn.onclick = function () {
+        startBtn.onclick = function() {
             if (startBtn.classList.contains('bbgl-btn-disabled')) return;
             this.blur();
             closeBackfillModal();
@@ -12791,12 +12971,12 @@
             };
             boxes.forEach(b => b.onchange = refreshAgreeState);
             refreshAgreeState();
-            modal.querySelector('#bbgl-privacy-demo-btn').onclick = function () {
+            modal.querySelector('#bbgl-privacy-demo-btn').onclick = function() {
                 this.blur();
                 enterDemo('privacy');
                 closePrivacyModal();
             };
-            agreeBtn.onclick = function () {
+            agreeBtn.onclick = function() {
                 if (agreeBtn.classList.contains('bbgl-btn-disabled')) return;
                 this.blur();
                 userConfig.privacyAgreed = new Date().toISOString();
@@ -12902,12 +13082,12 @@
         try {
             const raw = await fetchDoc('welcome');
             const parts = raw.split('<!--RETURNING-->');
-            introHTML = parts[0] || DOC_ERROR_HTML;
+            introHTML     = parts[0] || DOC_ERROR_HTML;
             returningHTML = parts[1] || DOC_ERROR_HTML;
-        } catch (e) { }
-        const introEl = wv.querySelector('#bbgl-welcome-intro-text');
+        } catch (e) {}
+        const introEl     = wv.querySelector('#bbgl-welcome-intro-text');
         const returningEl = wv.querySelector('#bbgl-welcome-returning-text');
-        if (introEl) introEl.innerHTML = introHTML;
+        if (introEl)     introEl.innerHTML = introHTML;
         if (returningEl) returningEl.innerHTML = returningHTML;
     }
 
@@ -13025,9 +13205,9 @@
                 tl = DataController.getTimeline(),
                 h = getActiveHistory();
             let sr = {
-                ...ZERO_BREAKDOWN,
-                total: 0
-            },
+                    ...ZERO_BREAKDOWN,
+                    total: 0
+                },
                 startTs = 0;
             if (vt === 'DAY') {
                 const _p = sl.date.split('-');
@@ -13079,8 +13259,8 @@
             };
             const _snapAt = (cutoffMs, d, baseVals, baseRates) => {
                 let vals = {
-                    ...baseVals
-                },
+                        ...baseVals
+                    },
                     rates = {
                         ...baseRates
                     };
@@ -13158,8 +13338,8 @@
                     };
                 };
                 let lr = {
-                    ...sr
-                },
+                        ...sr
+                    },
                     now = Date.now();
                 const BKT = 15 * 60 * 1000;
                 const sBkts = [];
@@ -13932,11 +14112,11 @@
                 return;
             }
             const dat = GraphController._transformData({
-                selectedData: calendarState.selectedData,
-                selectedLabel: calendarState.selectedLabel,
-                year: calendarState.year,
-                graphMode: graphState.mode
-            }),
+                    selectedData: calendarState.selectedData,
+                    selectedLabel: calendarState.selectedLabel,
+                    year: calendarState.year,
+                    graphMode: graphState.mode
+                }),
                 tr = dat.trends,
                 lbls = dat.labels,
                 vt = dat.viewType,
@@ -14046,9 +14226,9 @@
                 g.appendChild(t);
             }
             const gx = (v) => {
-                const r = xp.max - xp.min;
-                return r === 0 ? 0 : ((v - xp.min) / r) * cw;
-            },
+                    const r = xp.max - xp.min;
+                    return r === 0 ? 0 : ((v - xp.min) / r) * cw;
+                },
                 gy = (v) => chPlot - ((v - fMin) / fr) * chPlot;
             (function _drawTicks() {
                 const _addTick = (tx) => {
@@ -14622,8 +14802,8 @@
         if (runtime.viewerLoopId) cancelAnimationFrame(runtime.viewerLoopId);
         requestAnimationFrame(animateViewer);
         const spdUp = () => {
-            runtime.viewerSpeed = 3;
-        },
+                runtime.viewerSpeed = 3;
+            },
             spdDn = () => {
                 runtime.viewerSpeed = 0.3;
             };
@@ -15288,13 +15468,13 @@
             runtime.viewerLoopId = null;
         }
         const gel = (m) => {
-            if (m === 'settings') return sp;
-            if (m === 'welcome') return wv;
-            if (m === 'graph') return dom.graphContainer;
-            if (m === 'stickers') return dom.stickerContainer;
-            if (m === 'achievements') return dom.achievementsContainer;
-            return dom.ledgerView;
-        },
+                if (m === 'settings') return sp;
+                if (m === 'welcome') return wv;
+                if (m === 'graph') return dom.graphContainer;
+                if (m === 'stickers') return dom.stickerContainer;
+                if (m === 'achievements') return dom.achievementsContainer;
+                return dom.ledgerView;
+            },
             cel = gel(cm),
             nel = gel(tgt);
         const app = () => {
@@ -15348,12 +15528,12 @@
                         iweekSel.onchange = () => onChangeWeekStart(iweekSel.value);
                     }
                     const ipb = wv.querySelector('#init-privacy-btn');
-                    if (ipb) ipb.onclick = function () {
+                    if (ipb) ipb.onclick = function() {
                         this.blur();
                         openPrivacyModal();
                     };
                     const isb = wv.querySelector('#init-start-btn');
-                    if (isb && iak) isb.onclick = async function () {
+                    if (isb && iak) isb.onclick = async function() {
                         this.blur();
                         const v = iak.value.trim();
                         if (!/^[a-zA-Z0-9]{16}$/.test(v)) {
@@ -15390,13 +15570,13 @@
                         }
                     };
                     const cb = wv.querySelector('#init-create-api-btn');
-                    if (cb) cb.onclick = function () {
+                    if (cb) cb.onclick = function() {
                         this.blur();
                         window.open('https://www.torn.com/preferences.php#tab=api?step=addNewKey&user=battlestats,log&=,,,,&logIds=56,52,54,50,23,6&title=Big%20Black%20Gym%20Log', '_blank');
                     };
                     const rib = wv.querySelector('#init-returning-import-btn'),
                         rif = wv.querySelector('#init-import-file');
-                    if (rib && rif) rib.onclick = function () {
+                    if (rib && rif) rib.onclick = function() {
                         this.blur();
                         rif.click();
                     };
@@ -15737,7 +15917,7 @@
         if (ds && ds.lastResult === 'partial') {
             // Cooldown elapsed: stay in the resume state until the log is fully backfilled.
             btn.textContent = 'Partial Scan Complete! Resume?';
-            btn.onclick = function () {
+            btn.onclick = function() {
                 this.blur();
                 backfillLogs(this);
             };
@@ -15745,7 +15925,7 @@
         }
 
         btn.innerHTML = '<span class="view-std">BB Backfill</span><span class="view-exp">Big Black Backfill</span>';
-        btn.onclick = function () {
+        btn.onclick = function() {
             this.blur();
             openBackfillModal();
         };
@@ -16021,7 +16201,7 @@
             }
         };
         const ub = get('updt-settings-btn');
-        if (ub && ai) ub.onclick = async function () {
+        if (ub && ai) ub.onclick = async function() {
             this.blur();
             const v = ai.value.trim();
             if (!/^[a-zA-Z0-9]{16}$/.test(v)) {
@@ -16056,7 +16236,7 @@
             }
         };
         const cab = get('clear-api-btn');
-        if (cab && ai) cab.onclick = function () {
+        if (cab && ai) cab.onclick = function() {
             this.blur();
             userConfig.apiKey = '';
             saveConfig();
@@ -16072,23 +16252,23 @@
             }, 2000);
         };
         const crb = get('create-api-btn');
-        if (crb) crb.onclick = function () {
+        if (crb) crb.onclick = function() {
             this.blur();
             window.open('https://www.torn.com/preferences.php#tab=api?step=addNewKey&user=battlestats,log&=,,,,&logIds=56,52,54,50,23,6&title=Big%20Black%20Gym%20Log', '_blank');
         };
         const rb = get('refresh-log-btn');
-        if (rb) rb.onclick = function () {
+        if (rb) rb.onclick = function() {
             this.blur();
             if (checkRefreshCooldown(this)) return;
             syncWithFeedback('FULL_SYNC');
         };
         const eb = get('export-btn');
-        if (eb) eb.onclick = function () {
+        if (eb) eb.onclick = function() {
             this.blur();
             exportData();
         };
         const ib = get('import-btn');
-        if (ib) ib.onclick = function () {
+        if (ib) ib.onclick = function() {
             this.blur();
             get('import-file').click();
         };
@@ -16098,28 +16278,28 @@
         // so renderBackfillButton owns wiring its onclick for the current state.
         renderBackfillButton();
         const clb = get('clear-btn');
-        if (clb) clb.onclick = function () {
+        if (clb) clb.onclick = function() {
             this.blur();
             clearData();
         };
         const wb = get('show-welcome-btn');
-        if (wb) wb.onclick = function () {
+        if (wb) wb.onclick = function() {
             this.blur();
             runtime.welcomeReturn = 'settings';
             switchView('welcome');
         };
         const cl = get('settings-changelog-btn');
-        if (cl) cl.onclick = function () {
+        if (cl) cl.onclick = function() {
             this.blur();
             openChangelogModal();
         };
         const pl = get('settings-privacy-btn');
-        if (pl) pl.onclick = function () {
+        if (pl) pl.onclick = function() {
             this.blur();
             openPrivacyModal();
         };
         const sdemo = get('settings-demo-btn');
-        if (sdemo) sdemo.onclick = function () {
+        if (sdemo) sdemo.onclick = function() {
             this.blur();
             if (runtime.demoMode) {
                 const deb = document.getElementById('bbgl-demo-exit');
@@ -16129,17 +16309,17 @@
             }
         };
         const fgb = get('feature-guide-btn');
-        if (fgb) fgb.onclick = function () {
+        if (fgb) fgb.onclick = function() {
             this.blur();
             openFeatureGuideModal();
         };
         const sbb = get('settings-backfill-btn');
-        if (sbb) sbb.onclick = function () {
+        if (sbb) sbb.onclick = function() {
             this.blur();
             openBackfillModal();
         };
         const drb = get('dev-reset-btn');
-        if (drb) drb.onclick = function () {
+        if (drb) drb.onclick = function() {
             this.blur();
             devFactoryReset();
         };
@@ -16457,13 +16637,13 @@
         // fast-paths out when nothing has changed, so steady state stays lightweight.
         const _bbglRecheckNav = () => {
             [150, 600, 1500].forEach(ms => setTimeout(() => {
-                try { handleDomMutation(); } catch (e) { }
+                try { handleDomMutation(); } catch (e) {}
             }, ms));
         };
         ['pushState', 'replaceState'].forEach(name => {
             const orig = history[name];
             if (typeof orig !== 'function' || orig._bbglWrapped) return;
-            const wrapped = function () {
+            const wrapped = function() {
                 const r = orig.apply(this, arguments);
                 _bbglRecheckNav();
                 return r;
@@ -16707,7 +16887,7 @@
         }, {
             passive: false
         });
-        document.addEventListener('click', function (e) {
+        document.addEventListener('click', function(e) {
             if (e.target.closest('#bbgl-gym-tab')) {
                 e.preventDefault();
                 e.stopPropagation();
@@ -16793,14 +16973,14 @@
                 if (!hit) return;
                 if (hit.id === 'nav-gym') handleNavGym();
                 else if (hit.id === 'notes_panel_button') handleNotesBtn(hit);
-            } catch (e) { }
+            } catch (e) {}
         }
-        Node.prototype.insertBefore = function (n, r) {
+        Node.prototype.insertBefore = function(n, r) {
             const res = _oI.call(this, n, r);
             check(n);
             return res;
         };
-        Node.prototype.appendChild = function (n) {
+        Node.prototype.appendChild = function(n) {
             const res = _oA.call(this, n);
             check(n);
             return res;

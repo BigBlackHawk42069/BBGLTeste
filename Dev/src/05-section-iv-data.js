@@ -339,9 +339,26 @@
         };
     }
 
+    async function fetchWars(manual) {
+        const TWELVE_HOURS = 12 * 60 * 60 * 1000;
+        const lastSync = parseInt(localStorage.getItem(KEYS.WARS_SYNC) || '0');
+        if (!manual && (Date.now() - lastSync) < TWELVE_HOURS) return;
+        try {
+            incrementApiCount(1);
+            const res = await fetch(`https://api.torn.com/faction/?selections=rankedwars&key=${userConfig.apiKey}`);
+            if (!res.ok) return;
+            const data = await res.json();
+            if (data.error) return;
+            localStorage.setItem(KEYS.WARS_DATA, JSON.stringify(data.rankedwars || {}));
+            localStorage.setItem(KEYS.WARS_SYNC, Date.now().toString());
+        } catch (e) {
+            Log.error('Wars fetch failed', e);
+        }
+    }
+
     // This is the ONLY function that connects to the internet with your API key.
     // It strictly contacts api.torn.com to fetch your Gym training logs (Log IDs 5300-5303), a
-    // fixed short list of item-use logs (Xanax, energy cans, etc. — see ITEM_LOG_META), and current stats.
+    // fixed short list of item-use logs (Xanax, energy cans, ODs, etc. — see ITEM_LOG_META), and current stats.
     async function universalFetch(mission, options = {}) {
         if (runtime.demoMode) return {
             success: false,
@@ -459,6 +476,7 @@
         const result = await universalFetch(mission, options);
 
         if (result.ok) {
+            if (mission !== 'TRAIN_SINGLE') fetchWars(true);
             scheduleHeartbeat();
             if (btn) {
                 btn.innerText = "Refreshed!";
@@ -488,6 +506,7 @@
         runtime.bgSyncId = setTimeout(async function bgSyncTick() {
             runtime.bgSyncId = null;
             await universalFetch('FULL_SYNC');
+            fetchWars(false);
             scheduleHeartbeat();
         }, delay);
     }
@@ -694,7 +713,7 @@
     }
 
     // Deep Log Scan: uses your API key to page back through your full training history on Torn's
-    // servers. Only reads gym training logs and a short list of item logs (energy cans, Xanax, etc.)
+    // servers. Only reads gym training logs and a short list of item logs (energy cans, Xanax, ODs, etc.)
     // — never reads your messages, money, or any other personal information.
     async function backfillLogs(btn) {
         if (runtime.demoMode) return;

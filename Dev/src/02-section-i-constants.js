@@ -44,7 +44,9 @@
         SB_NOTIF: 'bbgl_sb_notif_seen',
         DEV_MODE: 'bbgl_dev_mode',
         CHANGELOG_VER: 'bbgl_changelog_seen_ver',
-        CHANGELOG_NOTIF: 'bbgl_changelog_notif'
+        CHANGELOG_NOTIF: 'bbgl_changelog_notif',
+        WARS_SYNC: 'bbgl_wars_last_sync_v1',
+        WARS_DATA: 'bbgl_wars_data_v1'
     };
     // [TEMP — delete before full release]
     const REQUIRED_CONFIG_VERSION = 1;
@@ -78,12 +80,13 @@
         }
     };
     // Item-use activity-log codes we track alongside gym training. Single source of truth for the
-    // log id -> display label/group/metric mapping. `group` (energy|stat|happy) buckets each code for
+    // log id -> display label/group/metric mapping. `group` (energy|stat|happy|od) buckets each code for
     // the grouped export totals and the happy-jump page. The per-item metric flag says what extra
     // datum to capture beyond a plain count:
-    //   energy:true -> data.energy_increased (energy cans)
-    //   happy:true  -> data.happy_increased  (happy items)
-    //   stat:true   -> data.<stat>_increased (stat enhancers; stat auto-detected)
+    //   energy:true     -> data.energy_increased (energy cans, xanax, lsd)
+    //   happy:true      -> data.happy_increased  (happy items)
+    //   stat:true       -> data.<stat>_increased (stat enhancers; stat auto-detected)
+    //   energyLost:true -> data.energy_decreased (ODs; stored as positive, treated as loss)
     // Quantity-only codes carry no flag. ITEM_LOGS is derived so the API normalizer, the request
     // groups, the export totals, and the ledger counters all agree.
     const ITEM_LOG_META = {
@@ -100,9 +103,11 @@
         2020: { label: 'Candy Used', group: 'happy', happy: true },
         2180: { label: 'Erotic DVD Used', group: 'happy', happy: true },
         2210: { label: 'Ecstasy Taken', group: 'happy', happy: true },
-        8983: { label: 'Yellow Egg Used', group: 'happy', happy: true }
+        8983: { label: 'Yellow Egg Used', group: 'happy', happy: true },
+        2291: { label: 'Xanax OD', group: 'od', energyLost: true, short: 'Xan OD' },
+        2231: { label: 'LSD OD', group: 'od', energyLost: true, short: 'LSD OD' }
     };
-    const ITEM_GROUP_LABELS = { energy: 'Energy Items', stat: 'Stat Items', happy: 'Happy Items' };
+    const ITEM_GROUP_LABELS = { energy: 'Energy Items', stat: 'Stat Items', happy: 'Happy Items', od: 'OD Items' };
     const ITEM_LOGS = Object.keys(ITEM_LOG_META).map(Number);
     const itemLogsByGroup = g => ITEM_LOGS.filter(id => ITEM_LOG_META[id].group === g);
     // Gym training log ids, one per stat.
@@ -110,13 +115,14 @@
     // Per-group code lists for the live request architecture. battlestats is always fetched on its
     // own call (it can't share a request with `log`), and any one `log=` call may carry at most 10
     // log types — so items are split across the train-click call (energy) and the heartbeat /
-    // reconciliation calls (stat + happy). Backfill ignores these and paginates one type at a time.
+    // reconciliation calls (stat + happy + od). Backfill ignores these and paginates one type at a time.
     const ENERGY_LOGS = itemLogsByGroup('energy'); // 6
     const STAT_LOGS = itemLogsByGroup('stat');     // 4
     const HAPPY_LOGS = itemLogsByGroup('happy');   // 4
-    const TRAIN_ENERGY_PARAM = [...TRAIN_LOGS, ...ENERGY_LOGS].join(','); // reconcile call (10)
-    const STAT_HAPPY_PARAM = [...STAT_LOGS, ...HAPPY_LOGS].join(',');     // reconcile call (8)
-    const ENERGY_PARAM = ENERGY_LOGS.join(',');                          // train-click rider (6)
+    const OD_LOGS = itemLogsByGroup('od');         // 2
+    const TRAIN_ENERGY_PARAM = [...TRAIN_LOGS, ...ENERGY_LOGS].join(',');          // reconcile call (10)
+    const STAT_HAPPY_PARAM = [...STAT_LOGS, ...HAPPY_LOGS, ...OD_LOGS].join(','); // reconcile call (10)
+    const ENERGY_PARAM = ENERGY_LOGS.join(',');                                    // train-click rider (6)
     // Backfill batches its backward scan into these two grouped `log=` calls (<=10 types each),
     // reusing the live reconcile groups so the scan spends one request per group per page instead
     // of one per log code. BACKFILL_GROUP_OF maps every individual code back to its group so the
@@ -128,8 +134,10 @@
     const BACKFILL_GROUP_KEYS = Object.keys(BACKFILL_GROUPS);
     const BACKFILL_GROUP_OF = {};
     [...TRAIN_LOGS, ...ENERGY_LOGS].forEach(c => { BACKFILL_GROUP_OF[String(c)] = 'trainEnergy'; });
-    [...STAT_LOGS, ...HAPPY_LOGS].forEach(c => { BACKFILL_GROUP_OF[String(c)] = 'statHappy'; });
+    [...STAT_LOGS, ...HAPPY_LOGS, ...OD_LOGS].forEach(c => { BACKFILL_GROUP_OF[String(c)] = 'statHappy'; });
     const XANAX_LOG = 2290,
+        XANAX_OD_LOG = 2291,
+        LSD_OD_LOG = 2231,
         ECAN_LOG = 2040;
     // Overlap buffer (seconds) subtracted from a group's last-success time to form its `from=` bound.
     // Comfortably exceeds the 2h heartbeat so a single missed beat still re-covers the gap; dedup

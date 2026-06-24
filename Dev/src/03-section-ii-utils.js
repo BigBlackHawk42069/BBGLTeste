@@ -38,11 +38,16 @@
             if (exp) return this.number(Math.floor(n), 0);
             return this.abbr(n, 1);
         },
+        gain(v) {
+            const a = Math.abs(v);
+            if (a < 1e6) return this.number(v);
+            return this.abbr(v, (m, abs) => m >= 1e9 ? 4 : m === 1e6 ? 3 : 2);
+        },
         achGain(v) {
             const a = Math.abs(v);
             if (a < 100) return this.number(v, 1);
             if (a < 1000) return this.number(v, 0);
-            return this.abbr(v, (m, abs) => m === 1e9 ? 4 : m === 1e6 ? 3 : (abs >= 1e4 ? 2 : 1), true, false);
+            return this.abbr(v, (m, abs) => m >= 1e9 ? 4 : m === 1e6 ? 3 : (abs >= 1e4 ? 2 : 1), true, false);
         },
         ratePct(v) {
             if (Math.abs(v) < 1000) return this.number(v, 0);

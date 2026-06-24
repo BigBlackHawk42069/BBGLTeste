@@ -3145,6 +3145,30 @@
                         pointer-events: none;
                     }
 
+                    /* Foundational text-only calendar markers (War Start / War End / OD). */
+                    .bbgl-cal-markers {
+                        position: absolute;
+                        left: 1px;
+                        right: 1px;
+                        bottom: 1px;
+                        display: flex;
+                        flex-direction: column;
+                        align-items: center;
+                        gap: 1px;
+                        pointer-events: none;
+                        z-index: 3;
+                    }
+
+                    .bbgl-cal-marker {
+                        font-size: clamp(5px, 1.3cqi, 8px);
+                        line-height: 1;
+                        font-weight: 700;
+                        letter-spacing: .02em;
+                        color: #ef5350;
+                        text-shadow: 0 1px 2px rgba(0, 0, 0, .9);
+                        white-space: nowrap;
+                    }
+
                     .bbgl-day-cell.is-plate {
                         z-index: 2;
                         border-bottom: 1px solid rgba(0, 0, 0, .4);
@@ -3994,6 +4018,16 @@
                     .ach-enh-gained .ach-stat-def { color: #dc3912; }
                     .ach-enh-gained .ach-stat-spd { color: #ff9900; }
                     .ach-enh-gained .ach-stat-dex { color: #109618; }
+                    .bbgl-ach-row.bbgl-ach-od-row .ach-k,
+                    .bbgl-ach-row.bbgl-ach-od-row .ach-value { color: #aaa; }
+                    .bbgl-ach-row.bbgl-ach-od-row .ach-value.ach-enh-od .ach-enh-e-label { color: #c06060; }
+
+                    /* OD sub-rows: indent the label past the subgroup connector line. The
+                       energy-section row padding shorthand (above) outranks the generic
+                       .bbgl-subgroup-row padding-left, so restore the indent at higher specificity. */
+                    .bbgl-ach-section-energy .bbgl-ach-row.bbgl-ach-od-row {
+                        padding-left: 24px;
+                    }
 
                     .ach-happy-word {
                         color: #f5c518;
@@ -5135,6 +5169,17 @@
                     #bbgl-panel.bbgl-mode-page .bbgl-ach-row .ach-value.ach-enh-gained {
                         display: inline-flex;
                         min-width: 5.5em;
+                    }
+
+                    /* OD sub-rows are detail-only: hidden in the compact panel, shown in
+                       expanded panel and page mode. */
+                    .bbgl-ach-od-row {
+                        display: none;
+                    }
+
+                    #bbgl-panel.bbgl-expanded .bbgl-ach-od-row,
+                    #bbgl-panel.bbgl-mode-page .bbgl-ach-od-row {
+                        display: flex;
                     }
 
                     #bbgl-panel.bbgl-expanded .ach-unit,

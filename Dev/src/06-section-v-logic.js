@@ -486,14 +486,19 @@ const DataController = {
         const itemDays = sDay ? [sDay] : (dList || []);
         const items = {};
         let itemEnergy = 0;
+        let odEnergyLost = 0;
         itemDays.forEach(d => {
             if (d && d.items) Object.keys(d.items).forEach(id => {
                 items[id] = (items[id] || 0) + d.items[id];
             });
             if (d) itemEnergy += (d.itemEnergy || 0);
+            if (d) odEnergyLost += (d.itemEnergyLost || 0);
         });
         r.items = items;
         r.xanax = items[XANAX_LOG] || 0;
+        r.xanaxODs = items[XANAX_OD_LOG] || 0;
+        r.lsdODs = items[LSD_OD_LOG] || 0;
+        r.odEnergyLost = odEnergyLost;
         r.ecans = items[ECAN_LOG] || 0;
         r.ecanEnergy = itemEnergy;
         r.dayCount = sDay ? 1 : (dList ? dList.length : 0);
@@ -687,7 +692,10 @@ const DataController = {
             if (!s.today.itemLogIds.includes(itemKey)) {
                 s.today.itemLogIds.push(itemKey);
                 s.today.items[l.logId] = (s.today.items[l.logId] || 0) + 1;
-                if (l.energy) s.today.itemEnergy = (s.today.itemEnergy || 0) + l.energy;
+                // itemEnergy is surfaced as ecanEnergy (the "Cans (+N)" readout) so it must track
+                // ONLY energy-can energy — not Xanax/LSD/refill/coupon/egg energy.
+                if (l.logId === ECAN_LOG && l.energy) s.today.itemEnergy = (s.today.itemEnergy || 0) + l.energy;
+                if (l.energyLost != null) s.today.itemEnergyLost = (s.today.itemEnergyLost || 0) + l.energyLost;
                 if (l.happy) s.today.itemHappy = (s.today.itemHappy || 0) + l.happy;
             }
             const entry = {
@@ -697,6 +705,7 @@ const DataController = {
                 logId: l.logId
             };
             if (l.energy) entry.energy = l.energy;
+            if (l.energyLost != null) entry.energyLost = l.energyLost;
             if (l.happy) entry.happy = l.happy;
             if (l.statKey) {
                 entry.statKey = l.statKey;
@@ -760,7 +769,8 @@ const DataController = {
                 if (!days[dateKey].itemLogIds.includes(itemKey)) {
                     days[dateKey].itemLogIds.push(itemKey);
                     days[dateKey].items[e.logId] = (days[dateKey].items[e.logId] || 0) + 1;
-                    if (e.energy) days[dateKey].itemEnergy = (days[dateKey].itemEnergy || 0) + e.energy;
+                    if (e.logId === ECAN_LOG && e.energy) days[dateKey].itemEnergy = (days[dateKey].itemEnergy || 0) + e.energy;
+                    if (e.energyLost != null) days[dateKey].itemEnergyLost = (days[dateKey].itemEnergyLost || 0) + e.energyLost;
                     if (e.happy) days[dateKey].itemHappy = (days[dateKey].itemHappy || 0) + e.happy;
                 }
                 if (!e.synthetic) days[dateKey].series.push(e);
@@ -1101,7 +1111,8 @@ function normalizeApiLogs(rawLogs) {
         if (meta) {
             const e = { type: 'item', id: k, ts: l.timestamp, logId: l.log };
             const d = l.data || {};
-            if (meta.energy) e.energy = parseInt(d.energy_increased || 0);
+            if (meta.energy) e.energy = (l.log === XANAX_LOG) ? 250 : parseInt(d.energy_increased || 0);
+            if (meta.energyLost) e.energyLost = parseInt(d.energy_decreased ?? 0);
             if (meta.happy) e.happy = parseInt(d.happy_increased || 0);
             if (meta.stat) {
                 // Stat enhancers carry their gain under <stat>_increased; detect which stat.
@@ -1235,6 +1246,8 @@ function computeAchievements(s) {
     HAPPY_LOGS.forEach(id => { happyItemTotals[id] = { count: 0, happy: 0 }; });
     const energyItemTotals = {};
     ENERGY_LOGS.forEach(id => { energyItemTotals[id] = { count: 0, energy: 0 }; });
+    const odItemTotals = {};
+    OD_LOGS.forEach(id => { odItemTotals[id] = { count: 0, energyLost: 0 }; });
     const statEnhByStat = { str: { count: 0, gain: 0 }, def: { count: 0, gain: 0 }, spd: { count: 0, gain: 0 }, dex: { count: 0, gain: 0 } };
     const weekE = {},
         weekG = {},
@@ -1322,6 +1335,10 @@ function computeAchievements(s) {
                 const qty = day.items[id] || 0;
                 if (qty > 0) energyItemTotals[id].count += qty;
             });
+            OD_LOGS.forEach(id => {
+                const qty = day.items[id] || 0;
+                if (qty > 0) odItemTotals[id].count += qty;
+            });
         }
         (day.series || []).forEach(e => {
             if (e.type === 'item' && e.happy && happyItemTotals[e.logId]) {
@@ -1329,6 +1346,9 @@ function computeAchievements(s) {
             }
             if (e.type === 'item' && e.energy && energyItemTotals[e.logId]) {
                 energyItemTotals[e.logId].energy += e.energy;
+            }
+            if (e.type === 'item' && e.energyLost != null && odItemTotals[e.logId]) {
+                odItemTotals[e.logId].energyLost += e.energyLost;
             }
             if (e.type === 'item' && e.statKey && statEnhByStat[e.statKey]) {
                 statEnhByStat[e.statKey].count++;
@@ -1709,6 +1729,7 @@ function computeAchievements(s) {
         longestDiamondStreakGains,
         happyItemTotals,
         energyItemTotals,
+        odItemTotals,
         statEnhByStat
     };
 }
@@ -2122,6 +2143,8 @@ function achBuildPage2(d) {
 function computeEnhancersForPeriod(sl) {
     const energyItemTotals = {};
     ENERGY_LOGS.forEach(id => { energyItemTotals[id] = { count: 0, energy: 0 }; });
+    const odItemTotals = {};
+    OD_LOGS.forEach(id => { odItemTotals[id] = { count: 0, energyLost: 0 }; });
     const statEnhByStat = {
         str: { count: 0, gain: 0 }, def: { count: 0, gain: 0 },
         spd: { count: 0, gain: 0 }, dex: { count: 0, gain: 0 }
@@ -2136,28 +2159,36 @@ function computeEnhancersForPeriod(sl) {
                 const qty = day.items[id] || 0;
                 if (qty > 0) energyItemTotals[id].count += qty;
             });
+            OD_LOGS.forEach(id => {
+                const qty = day.items[id] || 0;
+                if (qty > 0) odItemTotals[id].count += qty;
+            });
         }
         (day.series || []).forEach(e => {
             if (e.type === 'item' && e.energy && energyItemTotals[e.logId])
                 energyItemTotals[e.logId].energy += e.energy;
+            if (e.type === 'item' && e.energyLost != null && odItemTotals[e.logId])
+                odItemTotals[e.logId].energyLost += e.energyLost;
             if (e.type === 'item' && e.statKey && statEnhByStat[e.statKey]) {
                 statEnhByStat[e.statKey].count++;
                 statEnhByStat[e.statKey].gain = Math.round((statEnhByStat[e.statKey].gain + (e.statGain || 0)) * 100) / 100;
             }
         });
     });
-    return { energyItemTotals, statEnhByStat };
+    return { energyItemTotals, odItemTotals, statEnhByStat };
 }
 
 function achBuildPageOverview(d) {
     const NULL = '<span class="ach-null">—</span>';
     const enh = d.statEnhByStat || {};
     const enrg = d.energyItemTotals || {};
+    const od = d.odItemTotals || {};
     const STAT_ABBR = { str: 'Str', def: 'Def', spd: 'Spd', dex: 'Dex' };
 
     const STAT_ENH_MAP = { 2150: 'str', 2130: 'spd', 2140: 'def', 2120: 'dex' };
     const LEFT_COL = [2150, 2130, 2290, 2040, 4900];
     const RIGHT_COL = [2140, 2120, 2230, 2190, 8981];
+    const OD_AFTER = { 2290: XANAX_OD_LOG, 2230: LSD_OD_LOG };
 
     const buildRow = (id) => {
         const meta = ITEM_LOG_META[id];
@@ -2169,16 +2200,16 @@ function achBuildPageOverview(d) {
             const rec = enh[sk] || { count: 0, gain: 0 };
             countHtml = rec.count > 0 ? achEsc(Formatter.number(rec.count)) : NULL;
             // Stat label always shows; number is — when no data
-            const gainNum = rec.gain > 0 ? `+${achEsc(achFmtGain(rec.gain))}` : NULL;
+            const gainNum = rec.gain > 0 ? `+${achEsc(Formatter.gain(rec.gain))}` : NULL;
             gainedHtml = `${gainNum} <span class="ach-stat-${sk}">${STAT_ABBR[sk]}</span>`;
-            clipVal = `${label}: ${rec.count} (+${achFmtGain(rec.gain)} ${STAT_ABBR[sk]})`;
+            clipVal = `${label}: ${rec.count} (+${Formatter.gain(rec.gain)} ${STAT_ABBR[sk]})`;
             tip = `${achEsc(label)} | ${STAT_ABBR[sk]} Gained`;
         } else {
             const rec = enrg[id] || { count: 0, energy: 0 };
             countHtml = rec.count > 0 ? achEsc(Formatter.number(rec.count)) : NULL;
-            const gainNum = rec.energy > 0 ? `+${achEsc(Formatter.number(rec.energy))}` : NULL;
+            const gainNum = rec.energy > 0 ? `+${achEsc(Formatter.gain(rec.energy))}` : NULL;
             gainedHtml = `${gainNum} <span class="ach-enh-e-label">E</span>`;
-            clipVal = `${label}: ${rec.count} (+${Formatter.number(rec.energy)} Energy)`;
+            clipVal = `${label}: ${rec.count} (+${Formatter.gain(rec.energy)} Energy)`;
             tip = `${achEsc(label)} | Energy Gained`;
         }
 
@@ -2186,8 +2217,28 @@ function achBuildPageOverview(d) {
         return `<div class="bbgl-ach-row bbgl-ach-enh-row" data-tooltip="${achEsc(tip)}" data-ach-key="${key}" data-clip="${achEsc(clipVal)}"><div class="ach-row-main"><div class="ach-k-stack"><span class="ach-k"><span class="ach-title-long">${achEsc(label)}:</span><span class="ach-title-short">${achEsc(label)}:</span></span></div><div class="ach-v-wrap"><span class="ach-value">${countHtml}</span><span class="ach-value ach-enh-gained">${gainedHtml}</span></div></div></div>`;
     };
 
-    const leftHTML = LEFT_COL.map(buildRow).join('');
-    const rightHTML = RIGHT_COL.map(buildRow).join('');
+    const buildODSubRow = (odId) => {
+        const meta = ITEM_LOG_META[odId];
+        const rec = od[odId] || { count: 0, energyLost: 0 };
+        const countHtml = rec.count > 0 ? achEsc(Formatter.number(rec.count)) : NULL;
+        const lostNum = rec.energyLost > 0 ? `-${achEsc(Formatter.number(rec.energyLost))}` : NULL;
+        const gainedHtml = `${lostNum} <span class="ach-enh-e-label">E</span>`;
+        const tip = `${achEsc(meta.label)} | Energy Lost`;
+        const clipVal = `${meta.label}: ${rec.count} (-${Formatter.number(rec.energyLost)} Energy Lost)`;
+        const key = `enh-${odId}`;
+        return `<div class="bbgl-ach-row bbgl-ach-enh-row bbgl-ach-od-row bbgl-subgroup-row bbgl-subgroup-row-last" data-tooltip="${achEsc(tip)}" data-ach-key="${key}" data-clip="${achEsc(clipVal)}"><div class="ach-row-main"><div class="ach-k-stack"><span class="ach-k"><span class="ach-title-long">ODs:</span><span class="ach-title-short">ODs:</span></span></div><div class="ach-v-wrap"><span class="ach-value">${countHtml}</span><span class="ach-value ach-enh-gained ach-enh-od">${gainedHtml}</span></div></div></div>`;
+    };
+
+    const buildColHTML = (col) => col.map(id => {
+        let html = buildRow(id);
+        // OD sub-row is dynamic: only rendered when at least one OD occurred in the period.
+        const odId = OD_AFTER[id];
+        if (odId && od[odId] && od[odId].count > 0) html += buildODSubRow(odId);
+        return html;
+    }).join('');
+
+    const leftHTML = buildColHTML(LEFT_COL);
+    const rightHTML = buildColHTML(RIGHT_COL);
 
     const clipAll = [...LEFT_COL, ...RIGHT_COL].map(id => {
         const meta = ITEM_LOG_META[id];
@@ -2195,10 +2246,10 @@ function achBuildPageOverview(d) {
         const sk = STAT_ENH_MAP[id];
         if (sk) {
             const rec = enh[sk] || { count: 0, gain: 0 };
-            return `${label}: ${rec.count} (+${achFmtGain(rec.gain)} ${STAT_ABBR[sk]})`;
+            return `${label}: ${rec.count} (+${Formatter.gain(rec.gain)} ${STAT_ABBR[sk]})`;
         }
         const rec = enrg[id] || { count: 0, energy: 0 };
-        return `${label}: ${rec.count} (+${Formatter.number(rec.energy)} Energy)`;
+        return `${label}: ${rec.count} (+${Formatter.gain(rec.energy)} Energy)`;
     }).join('\n');
 
     const cols = `<div class="bbgl-ach-col">${leftHTML}</div><div class="bbgl-ach-col">${rightHTML}</div>`;
@@ -2263,14 +2314,14 @@ function buildAchievementsPage(pageIdx, d) {
     };
     const achUnit = (n, sing, plur) => n ? n + '<span class="ach-unit"> ' + (n === 1 ? sing : plur) + '</span>' : '\u2014';
     if (pageIdx === 0) {
+        return achBuildPage0(d);
+    } else if (pageIdx === 1) {
+        return achBuildPage1(d);
+    } else if (pageIdx === 2) {
         const overviewD = viewState.achEnhPeriodMode
             ? computeEnhancersForPeriod(calendarState.selectedData || DataController.getSlice('DAY', Formatter.dateLogical()))
             : d;
         return achBuildPageOverview(overviewD);
-    } else if (pageIdx === 1) {
-        return achBuildPage0(d);
-    } else if (pageIdx === 2) {
-        return achBuildPage1(d);
     } else if (pageIdx === 3) {
         return achBuildPage2(d);
     } else {
@@ -2351,13 +2402,7 @@ function buildAchievementsPage(pageIdx, d) {
     }
 }
 
-function achFmtGain(v) {
-    if (v >= 1e9) return (v / 1e9).toFixed(4) + 'B';
-    if (v >= 1e6) return (v / 1e6).toFixed(3) + 'M';
-    if (v >= 1e4) return (v / 1000).toFixed(2) + 'K';
-    if (v >= 1e3) return (v / 1000).toFixed(1) + 'K';
-    return Formatter.number(v);
-}
+const achFmtGain = v => Formatter.achGain(v);
 
 function achStatAbbr(s) {
     return s ? s.charAt(0).toUpperCase() + s.slice(1) : '';
@@ -2950,6 +2995,7 @@ async function exportData() {
             const label = (ITEM_LOG_META[e.logId] && ITEM_LOG_META[e.logId].label) || `Item ${e.logId}`;
             const entry = { [label]: e.ts };
             if (e.energy) entry.e = e.energy;
+            if (e.energyLost != null) entry.eLost = e.energyLost;
             if (e.happy) entry.happy = e.happy;
             if (e.statKey) {
                 entry.stat = e.statKey;
@@ -2993,11 +3039,25 @@ async function exportData() {
     // syncFloor is device-local live-sync state; dropping it means a fresh import does one
     // unbounded (self-healing) reconcile, then re-anchors from the imported data.
     if (exportStorage.meta) delete exportStorage.meta.syncFloor;
+    let rankedWars;
+    try {
+        const warsRaw = localStorage.getItem(KEYS.WARS_DATA);
+        if (warsRaw) {
+            const wars = JSON.parse(warsRaw);
+            rankedWars = Object.entries(wars).map(([id, w]) => ({
+                id,
+                start: w.war && w.war.start,
+                end: w.war && w.war.end,
+                winner: w.war && w.war.winner
+            }));
+        }
+    } catch (e) { /* skip */ }
     let content = JSON.stringify({
         meta: {
             version: SCRIPT_VERSION,
             exportedAt: fmtReadable(now),
-            itemTotals
+            itemTotals,
+            ...(rankedWars ? { rankedWars } : {})
         },
         config: cleanCfg,
         achievements,

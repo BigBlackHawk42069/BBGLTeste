@@ -111,6 +111,36 @@
         updateLevelBar();
     }
 
+    // Ranked-war calendar markers. Buckets each stored war's start/end timestamp into the same
+    // logical date the calendar grid uses, memoized on the raw localStorage string so it only
+    // recomputes when the stored war data actually changes. Foundation for real markers later.
+    // `raw` starts as a sentinel (false) that no localStorage value can equal — otherwise an
+    // absent key (getItem -> null) would match an initial null and return the uninitialized map.
+    let _warMarkerCache = { raw: false, map: {} };
+    function getWarMarkers() {
+        const raw = localStorage.getItem(KEYS.WARS_DATA);
+        if (raw === _warMarkerCache.raw) return _warMarkerCache.map || {};
+        const map = {};
+        if (raw) {
+            try {
+                const wars = JSON.parse(raw);
+                Object.values(wars).forEach(w => {
+                    if (!w || !w.war) return;
+                    if (w.war.start) {
+                        const ds = Formatter.dateLogical(w.war.start * 1000);
+                        (map[ds] = map[ds] || {}).warStart = true;
+                    }
+                    if (w.war.end) {
+                        const ds = Formatter.dateLogical(w.war.end * 1000);
+                        (map[ds] = map[ds] || {}).warEnd = true;
+                    }
+                });
+            } catch (e) { /* malformed war data — no markers */ }
+        }
+        _warMarkerCache = { raw, map };
+        return map;
+    }
+
     function renderCell(cont, y, m, d, g, rIdx, cIdx) {
         const ds = Formatter.dateISO(y, m, d),
             sl = DataController.getSlice('DAY', ds),
@@ -173,6 +203,19 @@
         ns.className = 'day-num';
         ns.innerText = d;
         cell.appendChild(ns);
+        // Foundational text markers (War Start / War End / OD). Plain text for now to verify the
+        // tracking lands on the right days before real visual markers are designed.
+        const markerLabels = [];
+        const wm = getWarMarkers()[ds];
+        if (wm && wm.warStart) markerLabels.push('War Start');
+        if (wm && wm.warEnd) markerLabels.push('War End');
+        if (((sl.xanaxODs || 0) + (sl.lsdODs || 0)) > 0) markerLabels.push('OD');
+        if (markerLabels.length) {
+            const mk = document.createElement('div');
+            mk.className = 'bbgl-cal-markers';
+            mk.innerHTML = markerLabels.map(t => `<span class="bbgl-cal-marker">${t}</span>`).join('');
+            cell.appendChild(mk);
+        }
         if (isFlipped && sl.meta.tier > 0) {
             const item = DataController.getStickerMap().get(ds);
             if (item) {
