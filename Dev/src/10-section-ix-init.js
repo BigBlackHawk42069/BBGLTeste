@@ -424,6 +424,7 @@
             p = document.createElement('div');
             p.id = 'bbgl-panel';
             if (viewState.expanded) p.classList.add('bbgl-expanded');
+            else p.classList.add('bbgl-compact');
             if (viewState.isTall) p.classList.add('bbgl-tall');
             p.innerHTML = getDashboardHTML();
             document.body.appendChild(p);
@@ -1076,9 +1077,11 @@
             const p = dom.panel;
             if (viewState.expanded) {
                 p.classList.add('bbgl-expanded');
+                p.classList.remove('bbgl-compact');
                 pb.innerHTML = ICONS.COMPRESS;
             } else {
                 p.classList.remove('bbgl-expanded');
+                p.classList.add('bbgl-compact');
                 pb.innerHTML = ICONS.POPOUT;
             }
             saveViewState();
@@ -1588,8 +1591,8 @@
                 }
                 if (!p.classList.contains('bbgl-mode-page')) {
                     if (expandedC) {
-                        if (ns.expanded) p.classList.add('bbgl-expanded');
-                        else p.classList.remove('bbgl-expanded');
+                        if (ns.expanded) { p.classList.add('bbgl-expanded'); p.classList.remove('bbgl-compact'); }
+                        else { p.classList.remove('bbgl-expanded'); p.classList.add('bbgl-compact'); }
                         const pb = dom.popBtn;
                         if (pb) pb.innerHTML = ns.expanded ? ICONS.COMPRESS : ICONS.POPOUT;
                     }

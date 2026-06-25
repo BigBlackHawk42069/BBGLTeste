@@ -16,7 +16,7 @@
         MINIMIZE: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24" class="bbgl-native-icon" aria-label="Minimize">${ASSETS.GRADIENT}<rect fill="url(#bbgl_silver_grad)" x="0" y="21" width="24" height="3"></rect></svg>`,
         POPOUT: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 18 18" width="24" height="24" class="bbgl-native-icon">${ASSETS.GRADIENT}<path fill="url(#bbgl_silver_grad)" d="M12,12H6V6h6ZM4.5,6.621V4.5H6.621L4.061,1.939,6,0H0V6L1.939,4.061ZM6.621,13.5H4.5V11.379L1.939,13.94,0,12v6H6L4.061,16.06ZM13.5,11.379V13.5H11.379l2.561,2.56L12,18h6V12l-1.94,1.94L13.5,11.379ZM12,0l1.94,1.939L11.379,4.5H13.5V6.621l2.56-2.561L18,6V0Z"></path></svg>`,
         COMPRESS: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 18 18" width="24" height="24" class="bbgl-native-icon">${ASSETS.GRADIENT}<g transform="translate(1290 304)"><path fill="url(#bbgl_silver_grad)" d="M-1277-291h6l-1.939,1.939,1.561,1.561-2.121,2.12-1.561-1.561L-1277-285Zm-9.94,4.06-1.561,1.561-2.12-2.12,1.561-1.561L-1291-291h6v6ZM-1284-292v-6h6v6Zm7-7v-6l1.939,1.94,1.561-1.561,2.121,2.121-1.561,1.561L-1271-299Zm-14,0,1.939-1.939-1.561-1.561,2.12-2.121,1.561,1.561L-1285-305v6Z"></path></g></svg>`,
-        CHART: `<svg viewBox="0 0 24 24"><path d="M7 19h2v-8H7v8zm4 0h2V5h-2v14zm4 0h2v-6h-2v6z"/></svg>`,
+        CHART: `<svg viewBox="0 0 24 24" fill="none"><line x1="4" y1="20" x2="4" y2="12" stroke="#3264c6" stroke-width="5" stroke-linecap="round"/><line x1="9.5" y1="20" x2="9.5" y2="6" stroke="#dc3912" stroke-width="5" stroke-linecap="round"/><line x1="15" y1="20" x2="15" y2="10" stroke="#ff9900" stroke-width="5" stroke-linecap="round"/><line x1="20.5" y1="20" x2="20.5" y2="14" stroke="#109618" stroke-width="5" stroke-linecap="round"/></svg>`,
         LEDGER: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="2" width="18" height="20" rx="2" fill="none"/><line x1="7" y1="8" x2="17" y2="8"/><line x1="7" y1="12" x2="17" y2="12"/><line x1="7" y1="16" x2="17" y2="16"/></svg>`,
         GRAPH: `<svg viewBox="0 0 24 24"><path d="M3,12 L7,16 L13,6 L18,14 L22,8" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg>`,
         STICKERBOOK: `<svg viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3.5" fill="none"/><circle cx="12" cy="5.5" r="3.5" fill="none"/><circle cx="18" cy="10" r="3.5" fill="none"/><circle cx="16" cy="17" r="3.5" fill="none"/><circle cx="8" cy="17" r="3.5" fill="none"/><circle cx="6" cy="10" r="3.5" fill="none"/></svg>`,
@@ -744,6 +744,7 @@
                         padding-left: clamp(4px, calc(4px + 3px * var(--bbgl-page-t)), 7px);
                         padding-right: clamp(16px, calc(16px + 16px * var(--bbgl-page-t)), 32px);
                         gap: clamp(8px, calc(8px + 8px * var(--bbgl-page-t)), 16px);
+                        margin-bottom: clamp(4px, calc(4px + 4px * var(--bbgl-page-t)), 8px);
                         padding-bottom: clamp(3px, calc(3px + 3px * var(--bbgl-page-t)), 6px);
                     }
 
@@ -1403,7 +1404,7 @@
                         padding-top: 18px;
                     }
 
-                    #bbgl-panel.bbgl-tall:not(.bbgl-expanded):not(.bbgl-mode-page) .ledger-content {
+                    #bbgl-panel.bbgl-tall.bbgl-compact .ledger-content {
                         padding-top: 8px !important;
                     }
 
@@ -2016,11 +2017,11 @@
                         --pill-bg: rgba(255, 255, 255, .1);
                     }
 
-                    #bbgl-panel:not(.bbgl-expanded):not(.bbgl-mode-page) .g-hud {
+                    #bbgl-panel.bbgl-compact .g-hud {
                         margin-top: 1px;
                     }
 
-                    #bbgl-panel:not(.bbgl-expanded):not(.bbgl-mode-page) #bbgl-graph-container .g-pill {
+                    #bbgl-panel.bbgl-compact #bbgl-graph-container .g-pill {
                         font-size: 8px;
                         padding: 2px 5px;
                         line-height: 1;
@@ -2066,7 +2067,7 @@
                         letter-spacing: .5px;
                     }
 
-                    #bbgl-panel:not(.bbgl-expanded):not(.bbgl-mode-page) .g-text.x-label {
+                    #bbgl-panel.bbgl-compact .g-text.x-label {
                         font-size: 10px;
                     }
 
@@ -2765,12 +2766,13 @@
                         padding: 0 8px 0 2px;
                         gap: 8px;
                         position: relative;
-                        margin-bottom: 6px;
+                        margin-bottom: 4px;
                         transition: margin-bottom .3s ease;
                     }
 
                     #bbgl-panel.bbgl-expanded .bbgl-month-header {
                         gap: clamp(6px, 2.08cqi, 12px);
+                        margin-bottom: 12px;
                     }
 
                     .arrow-btn {
@@ -2806,12 +2808,13 @@
                     .title-group {
                         flex-grow: 1;
                         text-align: left;
-                        padding-left: 2px;
+                        padding-left: 0;
+                        transform: translateX(-6px);
                         display: flex;
                         flex-direction: row;
                         justify-content: flex-start;
                         align-items: center;
-                        gap: 8px;
+                        gap: 5px;
                     }
 
                     .title-stack {
@@ -2823,90 +2826,112 @@
 
                     #bbgl-panel.bbgl-expanded .title-stack {
                         gap: 6px;
+                        margin-top: -4px;
                     }
 
                     #bbgl-panel.bbgl-mode-page .title-stack {
-                        gap: clamp(0px, calc(0px + 10px * var(--bbgl-page-t)), 10px);
+                        gap: clamp(0px, calc(0px + 2px * var(--bbgl-page-t)), 2px);
+                        margin-top: clamp(-4px, calc(-4px - 4px * var(--bbgl-page-t)), -8px);
                     }
 
                     .all-time-btn {
-                        width: 20px;
-                        height: 20px;
-                        color: #ffd700;
-                        /**/
+                        height: 30px;
+                        margin-bottom: 2px;
                         cursor: pointer;
                         display: flex;
                         align-items: center;
                         justify-content: center;
                         transition: all .2s;
-                        margin-top: 4px;
-                        margin-bottom: -4px;
+                        align-self: flex-end;
+                    }
+
+                    .bbgl-expanded .all-time-btn {
+                        height: 45px;
+                        margin-bottom: 0px;
+                    }
+
+                    #bbgl-panel.bbgl-mode-page .all-time-btn {
+                        height: clamp(38px, calc(38px + 17px * var(--bbgl-page-t)), 55px);
+                        margin-bottom: clamp(0px, calc(0px + 1px * var(--bbgl-page-t)), 1px);
                     }
 
                     .all-time-btn:hover {
                         transform: scale(1.1);
-                        filter: drop-shadow(0 0 5px rgba(255, 215, 0, .6));
+                        transform-origin: center bottom;
+                        filter: drop-shadow(0 0 8px rgba(255, 215, 0, .8));
                     }
 
                     .all-time-btn svg {
-                        width: 100%;
                         height: 100%;
-                        fill: currentColor;
+                        width: auto;
                         filter: drop-shadow(0 1px 2px rgba(0, 0, 0, .8));
                     }
 
-                    .bbgl-expanded .all-time-btn {
-                        width: 30px;
-                        height: 30px;
-                    }
-
-                    #bbgl-panel.bbgl-mode-page .all-time-btn {
-                        width: clamp(24px, calc(24px + 16px * var(--bbgl-page-t)), 40px);
-                        height: clamp(24px, calc(24px + 16px * var(--bbgl-page-t)), 40px);
-                        margin-top: clamp(2px, calc(2px + 2px * var(--bbgl-page-t)), 4px);
-                    }
 
                     .header-row {
                         display: flex;
-                        align-items: center;
-                        gap: 6px;
+                        align-items: flex-end;
+                        gap: 2px;
                         position: relative;
+                    }
+
+                    #bbgl-panel.bbgl-expanded .header-row {
+                        gap: 6px;
                     }
 
                     #bbgl-panel.bbgl-mode-page .header-row {
                         gap: clamp(3px, calc(3px + 3px * var(--bbgl-page-t)), 6px);
                     }
 
-                    #bbgl-panel:not(.bbgl-mode-page) .title-stack > .header-row:nth-child(2) {
-                        margin-bottom: -2px;
+                    #bbgl-panel:not(.bbgl-mode-page) .title-stack > .header-row:nth-child(1) {
+                        margin-bottom: 2px;
                     }
 
-                    #bbgl-panel.bbgl-expanded:not(.bbgl-mode-page) .title-stack > .header-row:nth-child(2) {
-                        margin-bottom: -4px;
+                    #bbgl-panel:not(.bbgl-expanded) .title-stack > .header-row:nth-child(2) {
+                        transform: translateY(-3px);
                     }
 
-                    .stats-btn {
-                        width: 18px;
-                        height: 18px;
+                    #bbgl-panel.bbgl-expanded:not(.bbgl-mode-page) .title-stack > .header-row:nth-child(1) {
+                        margin-bottom: -10px;
+                        transform: translateY(-2px);
+                    }
+
+                    #bbgl-panel.bbgl-mode-page .title-stack > .header-row:nth-child(1) {
+                        margin-bottom: clamp(-2px, calc(-2px + 2px * var(--bbgl-page-t)), 0px);
+                        transform: translateY(-2px);
+                    }
+
+                    #bbgl-panel.bbgl-mode-page .title-stack > .header-row:nth-child(2) {
+                        transform: translateY(clamp(-1px, calc(3px - 4px * var(--bbgl-page-t)), 3px));
+                    }
+
+.stats-btn {
                         display: flex;
-                        align-items: center;
+                        align-items: flex-end;
                         justify-content: center;
                         cursor: pointer;
-                        opacity: .9;
+                        opacity: .95;
                         transition: all .2s;
-                        filter: drop-shadow(0 1px 2px rgba(0, 0, 0, .8));
+                        align-self: flex-end;
+                        transform: translateY(-2px);
                     }
 
                     .stats-btn:hover {
-                        /**/
                         opacity: 1;
-                        transform: scale(1.15);
-                        filter: drop-shadow(0 0 4px rgba(255, 255, 255, .6));
+                        transform: translateY(-2px) scale(1.25);
+                        filter: drop-shadow(0 0 6px rgba(255, 255, 255, .7));
                     }
 
                     .stats-btn svg {
-                        fill: #fff;
                         width: 100%;
+                        height: 78%;
+                    }
+
+                    #bbgl-panel.bbgl-mode-page .stats-btn svg {
+                        height: 85%;
+                    }
+
+                    #bbgl-panel.bbgl-mode-page #month-stats-btn svg {
                         height: 100%;
                     }
 
@@ -2962,22 +2987,27 @@
                         font-size: 20px;
                     }
 
-                    #bbgl-panel.bbgl-expanded .stats-btn {
-                        width: 18px;
-                        height: 18px;
-                    }
+                    #year-stats-btn { width: 14px; height: 14px; transform: translateY(-1px); }
+                    #month-stats-btn { width: 16px; height: 16px; }
+
+                    #bbgl-panel.bbgl-expanded #year-stats-btn { width: 13px; height: 13px; }
+                    #bbgl-panel.bbgl-expanded #month-stats-btn { width: 21px; height: 21px; }
 
                     #bbgl-panel.bbgl-mode-page #year-trigger {
-                        font-size: clamp(11px, calc(11px + 9px * var(--bbgl-page-t)), 20px);
+                        font-size: clamp(13px, calc(13px + 7px * var(--bbgl-page-t)), 20px);
                     }
 
                     #bbgl-panel.bbgl-mode-page #month-trigger {
-                        font-size: clamp(19px, calc(19px + 11px * var(--bbgl-page-t)), 30px);
+                        font-size: clamp(18px, calc(18px + 11px * var(--bbgl-page-t)), 29px);
                     }
 
-                    #bbgl-panel.bbgl-mode-page .stats-btn {
-                        width: clamp(24px, calc(24px + 2px * var(--bbgl-page-t)), 26px);
-                        height: clamp(24px, calc(24px + 2px * var(--bbgl-page-t)), 26px);
+                    #bbgl-panel.bbgl-mode-page #year-stats-btn {
+                        width: clamp(17px, calc(17px + 10px * var(--bbgl-page-t)), 27px);
+                        height: clamp(17px, calc(17px + 10px * var(--bbgl-page-t)), 27px);
+                    }
+                    #bbgl-panel.bbgl-mode-page #month-stats-btn {
+                        width: clamp(20px, calc(20px + 6px * var(--bbgl-page-t)), 26px);
+                        height: clamp(20px, calc(20px + 6px * var(--bbgl-page-t)), 26px);
                     }
 
                     #bbgl-panel.bbgl-mode-page .arrow-btn {
@@ -3606,9 +3636,9 @@
                         box-shadow: 0 0 5px rgba(255, 255, 255, .3), inset 0 2px 5px rgba(0, 0, 0, .8);
                     }
 
-                    #bbgl-panel:not(.bbgl-expanded):not(.bbgl-mode-page) body:not(.is-touch-device) .bbgl-weekly-track:hover,
-                    #bbgl-panel:not(.bbgl-expanded):not(.bbgl-mode-page) .bbgl-weekly-track.is-scrub-hovered,
-                    #bbgl-panel:not(.bbgl-expanded):not(.bbgl-mode-page) .bbgl-weekly-track.is-viewing {
+                    body:not(.is-touch-device) #bbgl-panel.bbgl-compact .bbgl-weekly-track:hover,
+                    #bbgl-panel.bbgl-compact .bbgl-weekly-track.is-scrub-hovered,
+                    #bbgl-panel.bbgl-compact .bbgl-weekly-track.is-viewing {
                         height: 12px;
                     }
 
@@ -4008,7 +4038,7 @@
                         font-size: clamp(11px, 2.05cqi, 13px) !important;
                     }
 
-                    #bbgl-panel:not(.bbgl-expanded):not(.bbgl-mode-page) .bbgl-ach-section-energy .bbgl-ach-row {
+                    #bbgl-panel.bbgl-compact .bbgl-ach-section-energy .bbgl-ach-row {
                         font-size: clamp(9px, 1.7cqi, 11px) !important;
                     }
 
@@ -4407,9 +4437,13 @@
                             font-size: 9px !important;
                         }
 
-                        #bbgl-panel.bbgl-expanded:not(.bbgl-mode-page) .stats-btn {
-                            width: 28px !important;
-                            height: 28px !important;
+                        #bbgl-panel.bbgl-expanded:not(.bbgl-mode-page) #year-stats-btn {
+                            width: 13px !important;
+                            height: 13px !important;
+                        }
+                        #bbgl-panel.bbgl-expanded:not(.bbgl-mode-page) #month-stats-btn {
+                            width: 21px !important;
+                            height: 21px !important;
                         }
 
                         #bbgl-panel.bbgl-expanded:not(.bbgl-mode-page) #bbgl-ledger-toggle,
@@ -4530,14 +4564,7 @@
                         font-size: clamp(18px, 3.65cqi, 21px) !important;
                     }
 
-                    #bbgl-panel.bbgl-expanded:not(.bbgl-mode-page) .all-time-btn {
-                        width: 33px !important;
-                        height: 33px !important;
-                        margin-top: 8px !important;
-                        margin-bottom: -8px !important;
-                    }
-
-                    #bbgl-panel.bbgl-expanded:not(.bbgl-mode-page) #year-trigger {
+#bbgl-panel.bbgl-expanded:not(.bbgl-mode-page) #year-trigger {
                         font-size: clamp(14px, 2.78cqi, 16px) !important;
                     }
 
@@ -4550,12 +4577,16 @@
                         font-size: clamp(11px, 2.08cqi, 12px) !important;
                     }
 
-                    #bbgl-panel:not(.bbgl-expanded):not(.bbgl-mode-page) .ui-floating-label,
-                    #bbgl-panel:not(.bbgl-expanded):not(.bbgl-mode-page) .ui-floating-summary {
+                    #bbgl-panel.bbgl-compact .ui-floating-label,
+                    #bbgl-panel.bbgl-compact .ui-floating-summary {
                         font-size: 10.5px !important;
                     }
 
-                    #bbgl-panel.bbgl-expanded:not(.bbgl-mode-page) .stats-btn {
+                    #bbgl-panel.bbgl-expanded:not(.bbgl-mode-page) #year-stats-btn {
+                        width: 23px !important;
+                        height: 23px !important;
+                    }
+                    #bbgl-panel.bbgl-expanded:not(.bbgl-mode-page) #month-stats-btn {
                         width: 28px !important;
                         height: 28px !important;
                     }
@@ -4852,7 +4883,7 @@
                         box-sizing: border-box;
                     }
 
-                    #bbgl-panel:not(.bbgl-expanded):not(.bbgl-mode-page) #bbgl-ach-footer {
+                    #bbgl-panel.bbgl-compact #bbgl-ach-footer {
                         padding-bottom: 0px;
                     }
 
@@ -5541,16 +5572,16 @@
                         font-weight: 500;
                     }
 
-                    #bbgl-panel:not(.bbgl-expanded):not(.bbgl-mode-page) .bbgl-ach-section-page0 .bbgl-ach-grid-header,
-                    #bbgl-panel:not(.bbgl-expanded):not(.bbgl-mode-page) .bbgl-ach-section-page0 .bbgl-ach-row-multi {
+                    #bbgl-panel.bbgl-compact .bbgl-ach-section-page0 .bbgl-ach-grid-header,
+                    #bbgl-panel.bbgl-compact .bbgl-ach-section-page0 .bbgl-ach-row-multi {
                         grid-template-columns: minmax(0, 28%) repeat(4, minmax(0, 1fr));
                     }
 
-                    #bbgl-panel:not(.bbgl-expanded):not(.bbgl-mode-page) .bbgl-ach-section-title {
+                    #bbgl-panel.bbgl-compact .bbgl-ach-section-title {
                         font-size: clamp(10px, 2cqi, 12px);
                     }
 
-                    #bbgl-panel:not(.bbgl-expanded):not(.bbgl-mode-page) .bbgl-ach-subsection-title {
+                    #bbgl-panel.bbgl-compact .bbgl-ach-subsection-title {
                         font-size: clamp(9px, 1.6cqi, 10px);
                     }
 
@@ -5609,17 +5640,17 @@
                         display: none;
                     }
 
-                    #bbgl-panel:not(.bbgl-expanded):not(.bbgl-mode-page) .bbgl-ach-section-page1 .bbgl-ach-grid-header,
-                    #bbgl-panel:not(.bbgl-expanded):not(.bbgl-mode-page) .bbgl-ach-section-page1 .bbgl-ach-row-multi {
+                    #bbgl-panel.bbgl-compact .bbgl-ach-section-page1 .bbgl-ach-grid-header,
+                    #bbgl-panel.bbgl-compact .bbgl-ach-section-page1 .bbgl-ach-row-multi {
                         grid-template-columns: minmax(0, 1fr) repeat(4, 0fr) auto;
                     }
 
-                    #bbgl-panel:not(.bbgl-expanded):not(.bbgl-mode-page) .bbgl-ach-section-page1 .bbgl-ach-stat-cell:not(.bbgl-ach-stat-cell-total),
-                    #bbgl-panel:not(.bbgl-expanded):not(.bbgl-mode-page) .bbgl-ach-section-page1 .ach-stat-header:not(.ach-stat-tot) {
+                    #bbgl-panel.bbgl-compact .bbgl-ach-section-page1 .bbgl-ach-stat-cell:not(.bbgl-ach-stat-cell-total),
+                    #bbgl-panel.bbgl-compact .bbgl-ach-section-page1 .ach-stat-header:not(.ach-stat-tot) {
                         display: none;
                     }
 
-                    #bbgl-panel:not(.bbgl-expanded):not(.bbgl-mode-page) .bbgl-ach-section-page1 .bbgl-ach-stat-cell-total .ach-value {
+                    #bbgl-panel.bbgl-compact .bbgl-ach-section-page1 .bbgl-ach-stat-cell-total .ach-value {
                         text-align: right;
                         justify-content: flex-end;
                     }
@@ -5700,7 +5731,7 @@
                         display: inline;
                     }
 
-                    #bbgl-panel:not(.bbgl-expanded):not(.bbgl-mode-page) .bbgl-ach-section-page0 .bbgl-ach-row-multi {
+                    #bbgl-panel.bbgl-compact .bbgl-ach-section-page0 .bbgl-ach-row-multi {
                         padding-top: 1px;
                         padding-bottom: 1px;
                     }

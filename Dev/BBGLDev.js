@@ -923,7 +923,7 @@
         MINIMIZE: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24" class="bbgl-native-icon" aria-label="Minimize">${ASSETS.GRADIENT}<rect fill="url(#bbgl_silver_grad)" x="0" y="21" width="24" height="3"></rect></svg>`,
         POPOUT: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 18 18" width="24" height="24" class="bbgl-native-icon">${ASSETS.GRADIENT}<path fill="url(#bbgl_silver_grad)" d="M12,12H6V6h6ZM4.5,6.621V4.5H6.621L4.061,1.939,6,0H0V6L1.939,4.061ZM6.621,13.5H4.5V11.379L1.939,13.94,0,12v6H6L4.061,16.06ZM13.5,11.379V13.5H11.379l2.561,2.56L12,18h6V12l-1.94,1.94L13.5,11.379ZM12,0l1.94,1.939L11.379,4.5H13.5V6.621l2.56-2.561L18,6V0Z"></path></svg>`,
         COMPRESS: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 18 18" width="24" height="24" class="bbgl-native-icon">${ASSETS.GRADIENT}<g transform="translate(1290 304)"><path fill="url(#bbgl_silver_grad)" d="M-1277-291h6l-1.939,1.939,1.561,1.561-2.121,2.12-1.561-1.561L-1277-285Zm-9.94,4.06-1.561,1.561-2.12-2.12,1.561-1.561L-1291-291h6v6ZM-1284-292v-6h6v6Zm7-7v-6l1.939,1.94,1.561-1.561,2.121,2.121-1.561,1.561L-1271-299Zm-14,0,1.939-1.939-1.561-1.561,2.12-2.121,1.561,1.561L-1285-305v6Z"></path></g></svg>`,
-        CHART: `<svg viewBox="0 0 24 24"><path d="M7 19h2v-8H7v8zm4 0h2V5h-2v14zm4 0h2v-6h-2v6z"/></svg>`,
+        CHART: `<svg viewBox="0 0 24 24" fill="none"><line x1="4" y1="20" x2="4" y2="12" stroke="#3264c6" stroke-width="5" stroke-linecap="round"/><line x1="9.5" y1="20" x2="9.5" y2="6" stroke="#dc3912" stroke-width="5" stroke-linecap="round"/><line x1="15" y1="20" x2="15" y2="10" stroke="#ff9900" stroke-width="5" stroke-linecap="round"/><line x1="20.5" y1="20" x2="20.5" y2="14" stroke="#109618" stroke-width="5" stroke-linecap="round"/></svg>`,
         LEDGER: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="2" width="18" height="20" rx="2" fill="none"/><line x1="7" y1="8" x2="17" y2="8"/><line x1="7" y1="12" x2="17" y2="12"/><line x1="7" y1="16" x2="17" y2="16"/></svg>`,
         GRAPH: `<svg viewBox="0 0 24 24"><path d="M3,12 L7,16 L13,6 L18,14 L22,8" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg>`,
         STICKERBOOK: `<svg viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3.5" fill="none"/><circle cx="12" cy="5.5" r="3.5" fill="none"/><circle cx="18" cy="10" r="3.5" fill="none"/><circle cx="16" cy="17" r="3.5" fill="none"/><circle cx="8" cy="17" r="3.5" fill="none"/><circle cx="6" cy="10" r="3.5" fill="none"/></svg>`,
@@ -1651,6 +1651,7 @@
                         padding-left: clamp(4px, calc(4px + 3px * var(--bbgl-page-t)), 7px);
                         padding-right: clamp(16px, calc(16px + 16px * var(--bbgl-page-t)), 32px);
                         gap: clamp(8px, calc(8px + 8px * var(--bbgl-page-t)), 16px);
+                        margin-bottom: clamp(4px, calc(4px + 4px * var(--bbgl-page-t)), 8px);
                         padding-bottom: clamp(3px, calc(3px + 3px * var(--bbgl-page-t)), 6px);
                     }
 
@@ -2310,7 +2311,7 @@
                         padding-top: 18px;
                     }
 
-                    #bbgl-panel.bbgl-tall:not(.bbgl-expanded):not(.bbgl-mode-page) .ledger-content {
+                    #bbgl-panel.bbgl-tall.bbgl-compact .ledger-content {
                         padding-top: 8px !important;
                     }
 
@@ -2923,11 +2924,11 @@
                         --pill-bg: rgba(255, 255, 255, .1);
                     }
 
-                    #bbgl-panel:not(.bbgl-expanded):not(.bbgl-mode-page) .g-hud {
+                    #bbgl-panel.bbgl-compact .g-hud {
                         margin-top: 1px;
                     }
 
-                    #bbgl-panel:not(.bbgl-expanded):not(.bbgl-mode-page) #bbgl-graph-container .g-pill {
+                    #bbgl-panel.bbgl-compact #bbgl-graph-container .g-pill {
                         font-size: 8px;
                         padding: 2px 5px;
                         line-height: 1;
@@ -2973,7 +2974,7 @@
                         letter-spacing: .5px;
                     }
 
-                    #bbgl-panel:not(.bbgl-expanded):not(.bbgl-mode-page) .g-text.x-label {
+                    #bbgl-panel.bbgl-compact .g-text.x-label {
                         font-size: 10px;
                     }
 
@@ -3672,12 +3673,13 @@
                         padding: 0 8px 0 2px;
                         gap: 8px;
                         position: relative;
-                        margin-bottom: 6px;
+                        margin-bottom: 4px;
                         transition: margin-bottom .3s ease;
                     }
 
                     #bbgl-panel.bbgl-expanded .bbgl-month-header {
                         gap: clamp(6px, 2.08cqi, 12px);
+                        margin-bottom: 12px;
                     }
 
                     .arrow-btn {
@@ -3713,12 +3715,13 @@
                     .title-group {
                         flex-grow: 1;
                         text-align: left;
-                        padding-left: 2px;
+                        padding-left: 0;
+                        transform: translateX(-6px);
                         display: flex;
                         flex-direction: row;
                         justify-content: flex-start;
                         align-items: center;
-                        gap: 8px;
+                        gap: 5px;
                     }
 
                     .title-stack {
@@ -3730,90 +3733,112 @@
 
                     #bbgl-panel.bbgl-expanded .title-stack {
                         gap: 6px;
+                        margin-top: -4px;
                     }
 
                     #bbgl-panel.bbgl-mode-page .title-stack {
-                        gap: clamp(0px, calc(0px + 10px * var(--bbgl-page-t)), 10px);
+                        gap: clamp(0px, calc(0px + 2px * var(--bbgl-page-t)), 2px);
+                        margin-top: clamp(-4px, calc(-4px - 4px * var(--bbgl-page-t)), -8px);
                     }
 
                     .all-time-btn {
-                        width: 20px;
-                        height: 20px;
-                        color: #ffd700;
-                        /**/
+                        height: 30px;
+                        margin-bottom: 2px;
                         cursor: pointer;
                         display: flex;
                         align-items: center;
                         justify-content: center;
                         transition: all .2s;
-                        margin-top: 4px;
-                        margin-bottom: -4px;
+                        align-self: flex-end;
+                    }
+
+                    .bbgl-expanded .all-time-btn {
+                        height: 45px;
+                        margin-bottom: 0px;
+                    }
+
+                    #bbgl-panel.bbgl-mode-page .all-time-btn {
+                        height: clamp(38px, calc(38px + 17px * var(--bbgl-page-t)), 55px);
+                        margin-bottom: clamp(0px, calc(0px + 1px * var(--bbgl-page-t)), 1px);
                     }
 
                     .all-time-btn:hover {
                         transform: scale(1.1);
-                        filter: drop-shadow(0 0 5px rgba(255, 215, 0, .6));
+                        transform-origin: center bottom;
+                        filter: drop-shadow(0 0 8px rgba(255, 215, 0, .8));
                     }
 
                     .all-time-btn svg {
-                        width: 100%;
                         height: 100%;
-                        fill: currentColor;
+                        width: auto;
                         filter: drop-shadow(0 1px 2px rgba(0, 0, 0, .8));
                     }
 
-                    .bbgl-expanded .all-time-btn {
-                        width: 30px;
-                        height: 30px;
-                    }
-
-                    #bbgl-panel.bbgl-mode-page .all-time-btn {
-                        width: clamp(24px, calc(24px + 16px * var(--bbgl-page-t)), 40px);
-                        height: clamp(24px, calc(24px + 16px * var(--bbgl-page-t)), 40px);
-                        margin-top: clamp(2px, calc(2px + 2px * var(--bbgl-page-t)), 4px);
-                    }
 
                     .header-row {
                         display: flex;
-                        align-items: center;
-                        gap: 6px;
+                        align-items: flex-end;
+                        gap: 2px;
                         position: relative;
+                    }
+
+                    #bbgl-panel.bbgl-expanded .header-row {
+                        gap: 6px;
                     }
 
                     #bbgl-panel.bbgl-mode-page .header-row {
                         gap: clamp(3px, calc(3px + 3px * var(--bbgl-page-t)), 6px);
                     }
 
-                    #bbgl-panel:not(.bbgl-mode-page) .title-stack > .header-row:nth-child(2) {
-                        margin-bottom: -2px;
+                    #bbgl-panel:not(.bbgl-mode-page) .title-stack > .header-row:nth-child(1) {
+                        margin-bottom: 2px;
                     }
 
-                    #bbgl-panel.bbgl-expanded:not(.bbgl-mode-page) .title-stack > .header-row:nth-child(2) {
-                        margin-bottom: -4px;
+                    #bbgl-panel:not(.bbgl-expanded) .title-stack > .header-row:nth-child(2) {
+                        transform: translateY(-3px);
                     }
 
-                    .stats-btn {
-                        width: 18px;
-                        height: 18px;
+                    #bbgl-panel.bbgl-expanded:not(.bbgl-mode-page) .title-stack > .header-row:nth-child(1) {
+                        margin-bottom: -10px;
+                        transform: translateY(-2px);
+                    }
+
+                    #bbgl-panel.bbgl-mode-page .title-stack > .header-row:nth-child(1) {
+                        margin-bottom: clamp(-2px, calc(-2px + 2px * var(--bbgl-page-t)), 0px);
+                        transform: translateY(-2px);
+                    }
+
+                    #bbgl-panel.bbgl-mode-page .title-stack > .header-row:nth-child(2) {
+                        transform: translateY(clamp(-1px, calc(3px - 4px * var(--bbgl-page-t)), 3px));
+                    }
+
+.stats-btn {
                         display: flex;
-                        align-items: center;
+                        align-items: flex-end;
                         justify-content: center;
                         cursor: pointer;
-                        opacity: .9;
+                        opacity: .95;
                         transition: all .2s;
-                        filter: drop-shadow(0 1px 2px rgba(0, 0, 0, .8));
+                        align-self: flex-end;
+                        transform: translateY(-2px);
                     }
 
                     .stats-btn:hover {
-                        /**/
                         opacity: 1;
-                        transform: scale(1.15);
-                        filter: drop-shadow(0 0 4px rgba(255, 255, 255, .6));
+                        transform: translateY(-2px) scale(1.25);
+                        filter: drop-shadow(0 0 6px rgba(255, 255, 255, .7));
                     }
 
                     .stats-btn svg {
-                        fill: #fff;
                         width: 100%;
+                        height: 78%;
+                    }
+
+                    #bbgl-panel.bbgl-mode-page .stats-btn svg {
+                        height: 85%;
+                    }
+
+                    #bbgl-panel.bbgl-mode-page #month-stats-btn svg {
                         height: 100%;
                     }
 
@@ -3869,22 +3894,27 @@
                         font-size: 20px;
                     }
 
-                    #bbgl-panel.bbgl-expanded .stats-btn {
-                        width: 18px;
-                        height: 18px;
-                    }
+                    #year-stats-btn { width: 14px; height: 14px; transform: translateY(-1px); }
+                    #month-stats-btn { width: 16px; height: 16px; }
+
+                    #bbgl-panel.bbgl-expanded #year-stats-btn { width: 13px; height: 13px; }
+                    #bbgl-panel.bbgl-expanded #month-stats-btn { width: 21px; height: 21px; }
 
                     #bbgl-panel.bbgl-mode-page #year-trigger {
-                        font-size: clamp(11px, calc(11px + 9px * var(--bbgl-page-t)), 20px);
+                        font-size: clamp(13px, calc(13px + 7px * var(--bbgl-page-t)), 20px);
                     }
 
                     #bbgl-panel.bbgl-mode-page #month-trigger {
-                        font-size: clamp(19px, calc(19px + 11px * var(--bbgl-page-t)), 30px);
+                        font-size: clamp(18px, calc(18px + 11px * var(--bbgl-page-t)), 29px);
                     }
 
-                    #bbgl-panel.bbgl-mode-page .stats-btn {
-                        width: clamp(24px, calc(24px + 2px * var(--bbgl-page-t)), 26px);
-                        height: clamp(24px, calc(24px + 2px * var(--bbgl-page-t)), 26px);
+                    #bbgl-panel.bbgl-mode-page #year-stats-btn {
+                        width: clamp(17px, calc(17px + 10px * var(--bbgl-page-t)), 27px);
+                        height: clamp(17px, calc(17px + 10px * var(--bbgl-page-t)), 27px);
+                    }
+                    #bbgl-panel.bbgl-mode-page #month-stats-btn {
+                        width: clamp(20px, calc(20px + 6px * var(--bbgl-page-t)), 26px);
+                        height: clamp(20px, calc(20px + 6px * var(--bbgl-page-t)), 26px);
                     }
 
                     #bbgl-panel.bbgl-mode-page .arrow-btn {
@@ -4513,9 +4543,9 @@
                         box-shadow: 0 0 5px rgba(255, 255, 255, .3), inset 0 2px 5px rgba(0, 0, 0, .8);
                     }
 
-                    #bbgl-panel:not(.bbgl-expanded):not(.bbgl-mode-page) body:not(.is-touch-device) .bbgl-weekly-track:hover,
-                    #bbgl-panel:not(.bbgl-expanded):not(.bbgl-mode-page) .bbgl-weekly-track.is-scrub-hovered,
-                    #bbgl-panel:not(.bbgl-expanded):not(.bbgl-mode-page) .bbgl-weekly-track.is-viewing {
+                    body:not(.is-touch-device) #bbgl-panel.bbgl-compact .bbgl-weekly-track:hover,
+                    #bbgl-panel.bbgl-compact .bbgl-weekly-track.is-scrub-hovered,
+                    #bbgl-panel.bbgl-compact .bbgl-weekly-track.is-viewing {
                         height: 12px;
                     }
 
@@ -4915,7 +4945,7 @@
                         font-size: clamp(11px, 2.05cqi, 13px) !important;
                     }
 
-                    #bbgl-panel:not(.bbgl-expanded):not(.bbgl-mode-page) .bbgl-ach-section-energy .bbgl-ach-row {
+                    #bbgl-panel.bbgl-compact .bbgl-ach-section-energy .bbgl-ach-row {
                         font-size: clamp(9px, 1.7cqi, 11px) !important;
                     }
 
@@ -5314,9 +5344,13 @@
                             font-size: 9px !important;
                         }
 
-                        #bbgl-panel.bbgl-expanded:not(.bbgl-mode-page) .stats-btn {
-                            width: 28px !important;
-                            height: 28px !important;
+                        #bbgl-panel.bbgl-expanded:not(.bbgl-mode-page) #year-stats-btn {
+                            width: 13px !important;
+                            height: 13px !important;
+                        }
+                        #bbgl-panel.bbgl-expanded:not(.bbgl-mode-page) #month-stats-btn {
+                            width: 21px !important;
+                            height: 21px !important;
                         }
 
                         #bbgl-panel.bbgl-expanded:not(.bbgl-mode-page) #bbgl-ledger-toggle,
@@ -5437,14 +5471,7 @@
                         font-size: clamp(18px, 3.65cqi, 21px) !important;
                     }
 
-                    #bbgl-panel.bbgl-expanded:not(.bbgl-mode-page) .all-time-btn {
-                        width: 33px !important;
-                        height: 33px !important;
-                        margin-top: 8px !important;
-                        margin-bottom: -8px !important;
-                    }
-
-                    #bbgl-panel.bbgl-expanded:not(.bbgl-mode-page) #year-trigger {
+#bbgl-panel.bbgl-expanded:not(.bbgl-mode-page) #year-trigger {
                         font-size: clamp(14px, 2.78cqi, 16px) !important;
                     }
 
@@ -5457,12 +5484,16 @@
                         font-size: clamp(11px, 2.08cqi, 12px) !important;
                     }
 
-                    #bbgl-panel:not(.bbgl-expanded):not(.bbgl-mode-page) .ui-floating-label,
-                    #bbgl-panel:not(.bbgl-expanded):not(.bbgl-mode-page) .ui-floating-summary {
+                    #bbgl-panel.bbgl-compact .ui-floating-label,
+                    #bbgl-panel.bbgl-compact .ui-floating-summary {
                         font-size: 10.5px !important;
                     }
 
-                    #bbgl-panel.bbgl-expanded:not(.bbgl-mode-page) .stats-btn {
+                    #bbgl-panel.bbgl-expanded:not(.bbgl-mode-page) #year-stats-btn {
+                        width: 23px !important;
+                        height: 23px !important;
+                    }
+                    #bbgl-panel.bbgl-expanded:not(.bbgl-mode-page) #month-stats-btn {
                         width: 28px !important;
                         height: 28px !important;
                     }
@@ -5759,7 +5790,7 @@
                         box-sizing: border-box;
                     }
 
-                    #bbgl-panel:not(.bbgl-expanded):not(.bbgl-mode-page) #bbgl-ach-footer {
+                    #bbgl-panel.bbgl-compact #bbgl-ach-footer {
                         padding-bottom: 0px;
                     }
 
@@ -6448,16 +6479,16 @@
                         font-weight: 500;
                     }
 
-                    #bbgl-panel:not(.bbgl-expanded):not(.bbgl-mode-page) .bbgl-ach-section-page0 .bbgl-ach-grid-header,
-                    #bbgl-panel:not(.bbgl-expanded):not(.bbgl-mode-page) .bbgl-ach-section-page0 .bbgl-ach-row-multi {
+                    #bbgl-panel.bbgl-compact .bbgl-ach-section-page0 .bbgl-ach-grid-header,
+                    #bbgl-panel.bbgl-compact .bbgl-ach-section-page0 .bbgl-ach-row-multi {
                         grid-template-columns: minmax(0, 28%) repeat(4, minmax(0, 1fr));
                     }
 
-                    #bbgl-panel:not(.bbgl-expanded):not(.bbgl-mode-page) .bbgl-ach-section-title {
+                    #bbgl-panel.bbgl-compact .bbgl-ach-section-title {
                         font-size: clamp(10px, 2cqi, 12px);
                     }
 
-                    #bbgl-panel:not(.bbgl-expanded):not(.bbgl-mode-page) .bbgl-ach-subsection-title {
+                    #bbgl-panel.bbgl-compact .bbgl-ach-subsection-title {
                         font-size: clamp(9px, 1.6cqi, 10px);
                     }
 
@@ -6516,17 +6547,17 @@
                         display: none;
                     }
 
-                    #bbgl-panel:not(.bbgl-expanded):not(.bbgl-mode-page) .bbgl-ach-section-page1 .bbgl-ach-grid-header,
-                    #bbgl-panel:not(.bbgl-expanded):not(.bbgl-mode-page) .bbgl-ach-section-page1 .bbgl-ach-row-multi {
+                    #bbgl-panel.bbgl-compact .bbgl-ach-section-page1 .bbgl-ach-grid-header,
+                    #bbgl-panel.bbgl-compact .bbgl-ach-section-page1 .bbgl-ach-row-multi {
                         grid-template-columns: minmax(0, 1fr) repeat(4, 0fr) auto;
                     }
 
-                    #bbgl-panel:not(.bbgl-expanded):not(.bbgl-mode-page) .bbgl-ach-section-page1 .bbgl-ach-stat-cell:not(.bbgl-ach-stat-cell-total),
-                    #bbgl-panel:not(.bbgl-expanded):not(.bbgl-mode-page) .bbgl-ach-section-page1 .ach-stat-header:not(.ach-stat-tot) {
+                    #bbgl-panel.bbgl-compact .bbgl-ach-section-page1 .bbgl-ach-stat-cell:not(.bbgl-ach-stat-cell-total),
+                    #bbgl-panel.bbgl-compact .bbgl-ach-section-page1 .ach-stat-header:not(.ach-stat-tot) {
                         display: none;
                     }
 
-                    #bbgl-panel:not(.bbgl-expanded):not(.bbgl-mode-page) .bbgl-ach-section-page1 .bbgl-ach-stat-cell-total .ach-value {
+                    #bbgl-panel.bbgl-compact .bbgl-ach-section-page1 .bbgl-ach-stat-cell-total .ach-value {
                         text-align: right;
                         justify-content: flex-end;
                     }
@@ -6607,7 +6638,7 @@
                         display: inline;
                     }
 
-                    #bbgl-panel:not(.bbgl-expanded):not(.bbgl-mode-page) .bbgl-ach-section-page0 .bbgl-ach-row-multi {
+                    #bbgl-panel.bbgl-compact .bbgl-ach-section-page0 .bbgl-ach-row-multi {
                         padding-top: 1px;
                         padding-bottom: 1px;
                     }
@@ -11358,6 +11389,30 @@ const BestGymController = {
      *  You should still get a Tetanus Booster!
      */
 
+    function buildChartSVG(sl) {
+        const stats = sl && sl.stats;
+        const keys = ['str', 'def', 'spd', 'dex'];
+        const colors = ['#3264c6', '#dc3912', '#ff9900', '#109618'];
+        const xs = [4, 9.5, 15, 20.5];
+        const maxH = 16, minH = 1;
+        const vals = keys.map(k => (stats && stats[k] ? stats[k].end : 0));
+        const maxVal = Math.max(...vals);
+        const lines = keys.map((k, i) => {
+            const h = maxVal > 0 ? Math.max((vals[i] / maxVal) * maxH, minH) : maxH * 0.25;
+            return `<line x1="${xs[i]}" y1="20" x2="${xs[i]}" y2="${(20 - h).toFixed(2)}" stroke="${colors[i]}" stroke-width="5" stroke-linecap="round"/>`;
+        });
+        return `<svg viewBox="0 0 24 24" fill="none">${lines.join('')}</svg>`;
+    }
+
+    function updateSummaryCharts() {
+        const mBtn = document.getElementById('month-stats-btn');
+        const yBtn = document.getElementById('year-stats-btn');
+        if (!mBtn || !yBtn) return;
+        const y = calendarState.year, m = calendarState.month;
+        mBtn.innerHTML = buildChartSVG(DataController.getSlice('MONTH', CONSTANTS.MONTHS[m], y));
+        yBtn.innerHTML = buildChartSVG(DataController.getSlice('YEAR', String(y)));
+    }
+
     function renderPanelContent() {
         const s = getActiveHistory(),
             dm = DataController.getDateMap(),
@@ -11462,6 +11517,7 @@ const BestGymController = {
         yt.setAttribute('data-tooltip-html', generateRichTooltip(DataController.getSlice('YEAR', String(y))));
         Perf.end('renderPanel');
         updateLevelBar();
+        updateSummaryCharts();
     }
 
     // Ranked-war calendar markers. Buckets each stored war's start/end timestamp into the same
@@ -13153,10 +13209,10 @@ const BestGymController = {
     }
 
     function getDashboardHTML() {
-        const CROWN = `<svg viewBox="0 0 24 24"><path d="M5 16L3 5l5.5 5L12 4l3.5 6L21 5l-2 11H5zm14 3c0 .6-.4 1-1 1H6c-.6 0-1-.4-1-1v-1h14v1z"/></svg>`;
+        const TROPHY = `<svg viewBox="0 0 46 58" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M8 2 H38 L35 30 Q34 37 23 39 Q12 37 11 30 Z" fill="rgba(184,134,11,0.55)" stroke="#ffd700" stroke-width="1.5"/><path d="M8 2 Q2 2 2 10 Q2 20 11 25" fill="none" stroke="#ffd700" stroke-width="1.8" stroke-linecap="round"/><path d="M38 2 Q44 2 44 10 Q44 20 35 25" fill="none" stroke="#ffd700" stroke-width="1.8" stroke-linecap="round"/><rect x="19" y="39" width="8" height="9" fill="rgba(184,134,11,0.55)" stroke="#ffd700" stroke-width="1.2"/><rect x="12" y="48" width="22" height="5" rx="2" fill="rgba(184,134,11,0.55)" stroke="#ffd700" stroke-width="1.2"/><text x="23" y="17" text-anchor="middle" font-family="'Fjalla One', Arial Narrow, sans-serif" font-size="9.5" fill="#ffd700">ALL</text><text x="23" y="29" text-anchor="middle" font-family="'Fjalla One', Arial Narrow, sans-serif" font-size="9.5" fill="#ffd700">TIME</text></svg>`;
         const weekDays = userConfig.weekStartMode === 'mon' ? ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'] : ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
         const weekRowHTML = weekDays.map(d => `<span>${d}</span>`).join('');
-        return `<div class="bbgl-header" id="bbgl-header-bar"><div class="bbgl-header-left">${ICONS.LOGO}<span class="bbgl-header-text"><span class="bbgl-short-title">Big Black Log</span><span class="bbgl-long-title">Big Black Gym Log</span></span></div><div class="bbgl-header-right"><span id="bbgl-demo-exit-btn" class="close-settings-btn bbgl-close-purple" style="display:${runtime.demoMode ? 'flex' : 'none'};" data-tooltip-html="${TOOLTIPS.DEMO_EXIT_HTML}"><span class="bbgl-demo-x-label">Demo</span>${ICONS.CLOSE}</span><span id="bbgl-settings-btn" class="bbgl-custom-icon">⚙</span><span id="bbgl-close-btn" class="bbgl-native-icon">${ICONS.MINIMIZE}</span><span id="bbgl-pop-btn" class="bbgl-native-icon">${viewState.expanded ? ICONS.COMPRESS : ICONS.POPOUT}</span></div></div><div id="bbgl-content-wrapper"><div id="bbgl-top-panel"><div id="bbgl-tall-toggle">${viewState.isTall ? '–' : '+'}</div><div id="bbgl-ledger-toggle" data-tooltip="${TOOLTIPS.LEDGER_VIEW}">${ICONS.LEDGER}</div><div id="bbgl-graph-toggle" data-tooltip="${TOOLTIPS.GRAPH_VIEW}">${ICONS.GRAPH}</div><div id="bbgl-achievements-toggle" data-tooltip="${TOOLTIPS.ACHIEVEMENTS}">${ICONS.ACHIEVEMENTS}</div><div id="bbgl-sticker-toggle" data-tooltip="${TOOLTIPS.STICKERBOOK}">${ICONS.STICKERBOOK}</div><div id="bbgl-item-counters"></div><div id="bbgl-copy-btn" class="copy-hist-btn" data-tooltip="${TOOLTIPS.COPY_SESSION}">${ICONS.CLIPBOARD}</div><div id="bbgl-sticker-title"></div><div class="ui-floating-label" id="bbgl-date-label">LOADING...</div><div class="ui-floating-summary" id="bbgl-summary-label"></div><div id="bbgl-ledger-view" class="ledger-content"></div><div id="bbgl-graph-container"><div class="g-hud"><div class="g-toggles"><div class="g-pill active" data-type="mode" data-val="values">Gains</div><div class="g-pill" data-type="mode" data-val="rates">Rates</div></div><div class="g-toggles"><div class="g-pill p-str active" data-type="stat" data-val="str">STR</div><div class="g-pill p-def" data-type="stat" data-val="def">DEF</div><div class="g-pill p-spd active" data-type="stat" data-val="spd">SPD</div><div class="g-pill p-dex" data-type="stat" data-val="dex">DEX</div><div class="g-pill p-tot" data-type="stat" data-val="total">TOT</div></div></div><svg id="bbgl-graph-svg"></svg></div><div id="bbgl-achievements-container" class="ledger-content"><div class="bbgl-ach-scroll"><div id="bbgl-ach-pages"></div></div><div id="bbgl-ach-footer" class="bbgl-ach-footer"><div class="bbgl-ach-footer-side bbgl-ach-footer-left"><button type="button" class="bbgl-ach-nav bbgl-ach-prev" aria-label="Previous achievements page">\u276e</button></div><div id="bbgl-ach-pageindicator"></div><div class="bbgl-ach-footer-side bbgl-ach-footer-right"><button type="button" class="bbgl-ach-nav bbgl-ach-next" aria-label="Next achievements page">\u276f</button></div></div></div><div id="bbgl-sticker-bg"></div><div id="bbgl-sticker-container"><div id="sticker-sponsor-btn" class="sticker-nav-btn disabled">❮</div><div id="sticker-prev-btn" class="sticker-nav-btn">❮</div><div id="sticker-next-btn" class="sticker-nav-btn">❯</div><div id="bbgl-sticker-grid"></div><div id="bbgl-sticker-pagination"></div></div><div class="glass-overlay"></div></div><div id="bbgl-bottom-panel"><div class="bbgl-header-wrapper"><div class="bbgl-month-header"><div class="title-group"><div class="title-stack"><div id="all-time-btn" class="all-time-btn" data-tooltip="${TOOLTIPS.ALL_TIME_SUMMARY}">${CROWN}</div><div class="header-row"><div class="header-trigger" id="year-trigger"></div><div class="stats-btn" id="year-stats-btn" data-tooltip="${TOOLTIPS.YEARLY_SUMMARY}">${ICONS.CHART}</div><div id="bbgl-year-dropdown" class="bbgl-dropdown-menu"></div></div><div class="header-row"><div class="header-trigger" id="month-trigger"></div><div class="stats-btn" id="month-stats-btn" data-tooltip="${TOOLTIPS.MONTHLY_SUMMARY}">${ICONS.CHART}</div><div id="bbgl-month-dropdown" class="bbgl-dropdown-menu"></div></div></div></div><button class="arrow-btn" id="prev-month-btn">❮</button><button class="arrow-btn" id="next-month-btn">❯</button></div><div id="bbgl-level-container"><span id="bbgl-level-num">Lv 1</span><div id="bbgl-level-track"><div id="bbgl-level-fill"></div></div></div></div><div id="bbgl-demo-exit" style="display: ${runtime.demoMode ? 'flex' : 'none'};" data-tooltip="${TOOLTIPS.DEMO_EXIT}" data-tooltip-html="${TOOLTIPS.DEMO_EXIT_HTML}">DEMO MODE</div><div class="bbgl-grid-container"><div class="bbgl-week-row">${weekRowHTML}</div><div class="calendar-wrapper" id="swipe-area"><div id="bbgl-cal-container" class="bbgl-cal-container"></div></div></div></div><div id="bbgl-item-viewer"><div class="viewer-window"><div class="viewer-stage"><div class="viewer-pedestal" id="vi-pedestal-wrapper"><div class="viewer-obj" id="vi-obj-target"><div class="layer-front"></div><div class="layer-back"></div></div></div></div></div><div class="viewer-info-overlay"><div class="vi-name" id="vi-name-target">Item Name</div></div></div><div id="bbgl-settings-view">${getSettingsHTML()}</div><div id="bbgl-welcome-view"></div></div>`;
+        return `<div class="bbgl-header" id="bbgl-header-bar"><div class="bbgl-header-left">${ICONS.LOGO}<span class="bbgl-header-text"><span class="bbgl-short-title">Big Black Log</span><span class="bbgl-long-title">Big Black Gym Log</span></span></div><div class="bbgl-header-right"><span id="bbgl-demo-exit-btn" class="close-settings-btn bbgl-close-purple" style="display:${runtime.demoMode ? 'flex' : 'none'};" data-tooltip-html="${TOOLTIPS.DEMO_EXIT_HTML}"><span class="bbgl-demo-x-label">Demo</span>${ICONS.CLOSE}</span><span id="bbgl-settings-btn" class="bbgl-custom-icon">⚙</span><span id="bbgl-close-btn" class="bbgl-native-icon">${ICONS.MINIMIZE}</span><span id="bbgl-pop-btn" class="bbgl-native-icon">${viewState.expanded ? ICONS.COMPRESS : ICONS.POPOUT}</span></div></div><div id="bbgl-content-wrapper"><div id="bbgl-top-panel"><div id="bbgl-tall-toggle">${viewState.isTall ? '–' : '+'}</div><div id="bbgl-ledger-toggle" data-tooltip="${TOOLTIPS.LEDGER_VIEW}">${ICONS.LEDGER}</div><div id="bbgl-graph-toggle" data-tooltip="${TOOLTIPS.GRAPH_VIEW}">${ICONS.GRAPH}</div><div id="bbgl-achievements-toggle" data-tooltip="${TOOLTIPS.ACHIEVEMENTS}">${ICONS.ACHIEVEMENTS}</div><div id="bbgl-sticker-toggle" data-tooltip="${TOOLTIPS.STICKERBOOK}">${ICONS.STICKERBOOK}</div><div id="bbgl-item-counters"></div><div id="bbgl-copy-btn" class="copy-hist-btn" data-tooltip="${TOOLTIPS.COPY_SESSION}">${ICONS.CLIPBOARD}</div><div id="bbgl-sticker-title"></div><div class="ui-floating-label" id="bbgl-date-label">LOADING...</div><div class="ui-floating-summary" id="bbgl-summary-label"></div><div id="bbgl-ledger-view" class="ledger-content"></div><div id="bbgl-graph-container"><div class="g-hud"><div class="g-toggles"><div class="g-pill active" data-type="mode" data-val="values">Gains</div><div class="g-pill" data-type="mode" data-val="rates">Rates</div></div><div class="g-toggles"><div class="g-pill p-str active" data-type="stat" data-val="str">STR</div><div class="g-pill p-def" data-type="stat" data-val="def">DEF</div><div class="g-pill p-spd active" data-type="stat" data-val="spd">SPD</div><div class="g-pill p-dex" data-type="stat" data-val="dex">DEX</div><div class="g-pill p-tot" data-type="stat" data-val="total">TOT</div></div></div><svg id="bbgl-graph-svg"></svg></div><div id="bbgl-achievements-container" class="ledger-content"><div class="bbgl-ach-scroll"><div id="bbgl-ach-pages"></div></div><div id="bbgl-ach-footer" class="bbgl-ach-footer"><div class="bbgl-ach-footer-side bbgl-ach-footer-left"><button type="button" class="bbgl-ach-nav bbgl-ach-prev" aria-label="Previous achievements page">\u276e</button></div><div id="bbgl-ach-pageindicator"></div><div class="bbgl-ach-footer-side bbgl-ach-footer-right"><button type="button" class="bbgl-ach-nav bbgl-ach-next" aria-label="Next achievements page">\u276f</button></div></div></div><div id="bbgl-sticker-bg"></div><div id="bbgl-sticker-container"><div id="sticker-sponsor-btn" class="sticker-nav-btn disabled">❮</div><div id="sticker-prev-btn" class="sticker-nav-btn">❮</div><div id="sticker-next-btn" class="sticker-nav-btn">❯</div><div id="bbgl-sticker-grid"></div><div id="bbgl-sticker-pagination"></div></div><div class="glass-overlay"></div></div><div id="bbgl-bottom-panel"><div class="bbgl-header-wrapper"><div class="bbgl-month-header"><div class="title-group"><div id="all-time-btn" class="all-time-btn" data-tooltip="${TOOLTIPS.ALL_TIME_SUMMARY}">${TROPHY}</div><div class="title-stack"><div class="header-row"><div class="header-trigger" id="year-trigger"></div><div class="stats-btn" id="year-stats-btn" data-tooltip="${TOOLTIPS.YEARLY_SUMMARY}">${ICONS.CHART}</div><div id="bbgl-year-dropdown" class="bbgl-dropdown-menu"></div></div><div class="header-row"><div class="header-trigger" id="month-trigger"></div><div class="stats-btn" id="month-stats-btn" data-tooltip="${TOOLTIPS.MONTHLY_SUMMARY}">${ICONS.CHART}</div><div id="bbgl-month-dropdown" class="bbgl-dropdown-menu"></div></div></div></div><button class="arrow-btn" id="prev-month-btn">❮</button><button class="arrow-btn" id="next-month-btn">❯</button></div><div id="bbgl-level-container"><span id="bbgl-level-num">Lv 1</span><div id="bbgl-level-track"><div id="bbgl-level-fill"></div></div></div></div><div id="bbgl-demo-exit" style="display: ${runtime.demoMode ? 'flex' : 'none'};" data-tooltip="${TOOLTIPS.DEMO_EXIT}" data-tooltip-html="${TOOLTIPS.DEMO_EXIT_HTML}">DEMO MODE</div><div class="bbgl-grid-container"><div class="bbgl-week-row">${weekRowHTML}</div><div class="calendar-wrapper" id="swipe-area"><div id="bbgl-cal-container" class="bbgl-cal-container"></div></div></div></div><div id="bbgl-item-viewer"><div class="viewer-window"><div class="viewer-stage"><div class="viewer-pedestal" id="vi-pedestal-wrapper"><div class="viewer-obj" id="vi-obj-target"><div class="layer-front"></div><div class="layer-back"></div></div></div></div></div><div class="viewer-info-overlay"><div class="vi-name" id="vi-name-target">Item Name</div></div></div><div id="bbgl-settings-view">${getSettingsHTML()}</div><div id="bbgl-welcome-view"></div></div>`;
     }
 
     /**
@@ -15371,6 +15427,7 @@ const BestGymController = {
             p = document.createElement('div');
             p.id = 'bbgl-panel';
             if (viewState.expanded) p.classList.add('bbgl-expanded');
+            else p.classList.add('bbgl-compact');
             if (viewState.isTall) p.classList.add('bbgl-tall');
             p.innerHTML = getDashboardHTML();
             document.body.appendChild(p);
@@ -16023,9 +16080,11 @@ const BestGymController = {
             const p = dom.panel;
             if (viewState.expanded) {
                 p.classList.add('bbgl-expanded');
+                p.classList.remove('bbgl-compact');
                 pb.innerHTML = ICONS.COMPRESS;
             } else {
                 p.classList.remove('bbgl-expanded');
+                p.classList.add('bbgl-compact');
                 pb.innerHTML = ICONS.POPOUT;
             }
             saveViewState();
@@ -16535,8 +16594,8 @@ const BestGymController = {
                 }
                 if (!p.classList.contains('bbgl-mode-page')) {
                     if (expandedC) {
-                        if (ns.expanded) p.classList.add('bbgl-expanded');
-                        else p.classList.remove('bbgl-expanded');
+                        if (ns.expanded) { p.classList.add('bbgl-expanded'); p.classList.remove('bbgl-compact'); }
+                        else { p.classList.remove('bbgl-expanded'); p.classList.add('bbgl-compact'); }
                         const pb = dom.popBtn;
                         if (pb) pb.innerHTML = ns.expanded ? ICONS.COMPRESS : ICONS.POPOUT;
                     }
