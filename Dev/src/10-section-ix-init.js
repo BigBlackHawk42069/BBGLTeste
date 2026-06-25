@@ -81,6 +81,12 @@
         runtime.isViewAnimating = true;
         calendarState.selectedData = d;
         calendarState.selectedLabel = l;
+        const mBtn = document.getElementById('month-stats-btn');
+        const yBtn = document.getElementById('year-stats-btn');
+        const aBtn = document.getElementById('all-time-btn');
+        if (mBtn) mBtn.classList.toggle('active', l === CONSTANTS.MONTHS[calendarState.month]);
+        if (yBtn) yBtn.classList.toggle('active', l === String(calendarState.year));
+        if (aBtn) aBtn.classList.toggle('active', l === 'All-Time');
         closeItemViewer();
         updateCellSelection(l);
         const tp = dom.topPanel;
@@ -284,9 +290,34 @@
         }
     }
 
+    function closeDropdown(d) {
+        d.classList.remove('show');
+        d.style.position = '';
+        d.style.top = '';
+        d.style.left = '';
+        d.style.zIndex = '';
+    }
+
+    function openDropdown(d, trigger) {
+        // #bbgl-panel sets container-type, and intermediate ancestors use
+        // transform — any of these makes itself the containing block for a
+        // position:fixed child, so viewport coords don't apply. Park the menu
+        // at 0,0 to discover the containing block's origin, then offset the
+        // trigger's viewport rect into that coordinate space.
+        d.style.position = 'fixed';
+        d.style.top = '0px';
+        d.style.left = '0px';
+        d.style.zIndex = '9999999';
+        d.classList.add('show');
+        const origin = d.getBoundingClientRect();
+        const r = trigger.getBoundingClientRect();
+        d.style.top = (r.bottom - origin.top + 2) + 'px';
+        d.style.left = (r.left - origin.left) + 'px';
+    }
+
     function toggleMonthDropdown() {
         const d = dom.monthDropdown;
-        dom.yearDropdown.classList.remove('show');
+        closeDropdown(dom.yearDropdown);
         d.innerHTML = '';
         CONSTANTS.MONTHS_SHORT.forEach((m, i) => {
             const x = document.createElement('div');
@@ -296,17 +327,18 @@
                 calendarState.month = i;
                 d.querySelectorAll('.drop-item').forEach(el => el.classList.remove('active'));
                 x.classList.add('active');
-                d.classList.remove('show');
+                closeDropdown(d);
                 renderPanelContent();
             };
             d.appendChild(x);
         });
-        d.classList.toggle('show');
+        if (d.classList.contains('show')) closeDropdown(d);
+        else openDropdown(d, dom.monthTrigger);
     }
 
     function toggleYearDropdown() {
         const d = dom.yearDropdown;
-        dom.monthDropdown.classList.remove('show');
+        closeDropdown(dom.monthDropdown);
         d.innerHTML = '';
         const s = getActiveHistory(),
             ys = new Set();
@@ -320,12 +352,13 @@
                 calendarState.year = y;
                 d.querySelectorAll('.drop-item').forEach(el => el.classList.remove('active'));
                 x.classList.add('active');
-                d.classList.remove('show');
+                closeDropdown(d);
                 renderPanelContent();
             };
             d.appendChild(x);
         });
-        d.classList.toggle('show');
+        if (d.classList.contains('show')) closeDropdown(d);
+        else openDropdown(d, dom.yearTrigger);
     }
 
     function calcAllTimeStats() {

@@ -923,7 +923,8 @@
         MINIMIZE: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24" class="bbgl-native-icon" aria-label="Minimize">${ASSETS.GRADIENT}<rect fill="url(#bbgl_silver_grad)" x="0" y="21" width="24" height="3"></rect></svg>`,
         POPOUT: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 18 18" width="24" height="24" class="bbgl-native-icon">${ASSETS.GRADIENT}<path fill="url(#bbgl_silver_grad)" d="M12,12H6V6h6ZM4.5,6.621V4.5H6.621L4.061,1.939,6,0H0V6L1.939,4.061ZM6.621,13.5H4.5V11.379L1.939,13.94,0,12v6H6L4.061,16.06ZM13.5,11.379V13.5H11.379l2.561,2.56L12,18h6V12l-1.94,1.94L13.5,11.379ZM12,0l1.94,1.939L11.379,4.5H13.5V6.621l2.56-2.561L18,6V0Z"></path></svg>`,
         COMPRESS: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 18 18" width="24" height="24" class="bbgl-native-icon">${ASSETS.GRADIENT}<g transform="translate(1290 304)"><path fill="url(#bbgl_silver_grad)" d="M-1277-291h6l-1.939,1.939,1.561,1.561-2.121,2.12-1.561-1.561L-1277-285Zm-9.94,4.06-1.561,1.561-2.12-2.12,1.561-1.561L-1291-291h6v6ZM-1284-292v-6h6v6Zm7-7v-6l1.939,1.94,1.561-1.561,2.121,2.121-1.561,1.561L-1271-299Zm-14,0,1.939-1.939-1.561-1.561,2.12-2.121,1.561,1.561L-1285-305v6Z"></path></g></svg>`,
-        CHART: `<svg viewBox="0 0 24 24" fill="none"><line x1="4" y1="20" x2="4" y2="12" stroke="#3264c6" stroke-width="5" stroke-linecap="round"/><line x1="9.5" y1="20" x2="9.5" y2="6" stroke="#dc3912" stroke-width="5" stroke-linecap="round"/><line x1="15" y1="20" x2="15" y2="10" stroke="#ff9900" stroke-width="5" stroke-linecap="round"/><line x1="20.5" y1="20" x2="20.5" y2="14" stroke="#109618" stroke-width="5" stroke-linecap="round"/></svg>`,
+        CHART: `<svg viewBox="0 0 24 24" fill="none"><line x1="4" y1="20" x2="4" y2="12" stroke="#536e8c" stroke-width="5" stroke-linecap="round"/><line x1="9.5" y1="20" x2="9.5" y2="6" stroke="#a64d42" stroke-width="5" stroke-linecap="round"/><line x1="15" y1="20" x2="15" y2="10" stroke="#b88645" stroke-width="5" stroke-linecap="round"/><line x1="20.5" y1="20" x2="20.5" y2="14" stroke="#547d51" stroke-width="5" stroke-linecap="round"/></svg>`,
+        CHART_ALL: `<svg viewBox="0 -0.5 46 60" fill="none"><line x1="8" y1="40" x2="8" y2="30" stroke="#536e8c" stroke-width="9" stroke-linecap="round"/><line x1="18" y1="40" x2="18" y2="30" stroke="#a64d42" stroke-width="9" stroke-linecap="round"/><line x1="29" y1="40" x2="29" y2="30" stroke="#b88645" stroke-width="9" stroke-linecap="round"/><line x1="39" y1="40" x2="39" y2="30" stroke="#547d51" stroke-width="9" stroke-linecap="round"/><text x="23" y="57" text-anchor="middle" font-family="'Fjalla One', Arial Narrow, sans-serif" font-size="12" fill="#e6e6e6">All-Time</text></svg>`,
         LEDGER: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="2" width="18" height="20" rx="2" fill="none"/><line x1="7" y1="8" x2="17" y2="8"/><line x1="7" y1="12" x2="17" y2="12"/><line x1="7" y1="16" x2="17" y2="16"/></svg>`,
         GRAPH: `<svg viewBox="0 0 24 24"><path d="M3,12 L7,16 L13,6 L18,14 L22,8" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg>`,
         STICKERBOOK: `<svg viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3.5" fill="none"/><circle cx="12" cy="5.5" r="3.5" fill="none"/><circle cx="18" cy="10" r="3.5" fill="none"/><circle cx="16" cy="17" r="3.5" fill="none"/><circle cx="8" cy="17" r="3.5" fill="none"/><circle cx="6" cy="10" r="3.5" fill="none"/></svg>`,
@@ -3626,7 +3627,6 @@
                         padding: 0;
                         box-sizing: border-box;
                         overflow: hidden;
-                        will-change: transform;
                     }
 
                     .bbgl-header-wrapper {
@@ -3655,7 +3655,7 @@
                         background-image: url('${ASSETS.HEADER_IMG}');
                         background-size: 100% 100%;
                         background-position: center;
-                        opacity: 1;
+                        opacity: 0.85;
                         z-index: -1;
                         pointer-events: none;
                         border-radius: 3px 3px 0 0;
@@ -3716,12 +3716,18 @@
                         flex-grow: 1;
                         text-align: left;
                         padding-left: 0;
-                        transform: translateX(-6px);
+                        transform: translateX(0px);
                         display: flex;
-                        flex-direction: row;
+                        flex-direction: column;
                         justify-content: flex-start;
-                        align-items: center;
-                        gap: 5px;
+                        align-items: flex-start;
+                        gap: 3px;
+                        /* transform makes this a stacking-context root, so the
+                           dropdown's z-index is scoped here. Lift the whole
+                           group above #bbgl-level-container (z-index:10) so the
+                           open menu paints over the exp bar. */
+                        position: relative;
+                        z-index: 30;
                     }
 
                     .title-stack {
@@ -3735,37 +3741,45 @@
                         gap: 6px;
                         margin-top: -4px;
                     }
+                    #bbgl-panel.bbgl-expanded .title-group {
+                        gap: 6px;
+                        transform: translateX(-6px);
+                    }
+                    #bbgl-panel.bbgl-compact .title-group {
+                        gap: 1px;
+                    }
 
                     #bbgl-panel.bbgl-mode-page .title-stack {
                         gap: clamp(0px, calc(0px + 2px * var(--bbgl-page-t)), 2px);
                         margin-top: clamp(-4px, calc(-4px - 4px * var(--bbgl-page-t)), -8px);
                     }
+                    #bbgl-panel.bbgl-mode-page .title-group {
+                        gap: clamp(6px, calc(8px - 2px * var(--bbgl-page-t)), 8px);
+                    }
 
                     .all-time-btn {
                         height: 30px;
-                        margin-bottom: 2px;
+                        margin-bottom: 0px;
                         cursor: pointer;
                         display: flex;
                         align-items: center;
                         justify-content: center;
                         transition: all .2s;
-                        align-self: flex-end;
+                        align-self: flex-start;
                     }
 
                     .bbgl-expanded .all-time-btn {
-                        height: 45px;
-                        margin-bottom: 0px;
+                        height: 43px;
                     }
 
                     #bbgl-panel.bbgl-mode-page .all-time-btn {
-                        height: clamp(38px, calc(38px + 17px * var(--bbgl-page-t)), 55px);
-                        margin-bottom: clamp(0px, calc(0px + 1px * var(--bbgl-page-t)), 1px);
+                        height: clamp(30px, calc(30px + 13px * var(--bbgl-page-t)), 43px);
                     }
 
-                    .all-time-btn:hover {
+                    .all-time-btn:hover, .all-time-btn.active {
                         transform: scale(1.1);
                         transform-origin: center bottom;
-                        filter: drop-shadow(0 0 8px rgba(255, 215, 0, .8));
+                        filter: drop-shadow(0 0 8px rgba(216, 150, 224, 0.9)) drop-shadow(0 0 3px rgba(171, 71, 188, 1));
                     }
 
                     .all-time-btn svg {
@@ -3795,21 +3809,21 @@
                     }
 
                     #bbgl-panel:not(.bbgl-expanded) .title-stack > .header-row:nth-child(2) {
-                        transform: translateY(-3px);
+                        top: -3px;
                     }
 
                     #bbgl-panel.bbgl-expanded:not(.bbgl-mode-page) .title-stack > .header-row:nth-child(1) {
                         margin-bottom: -10px;
-                        transform: translateY(-2px);
+                        top: -2px;
                     }
 
                     #bbgl-panel.bbgl-mode-page .title-stack > .header-row:nth-child(1) {
                         margin-bottom: clamp(-2px, calc(-2px + 2px * var(--bbgl-page-t)), 0px);
-                        transform: translateY(-2px);
+                        top: -2px;
                     }
 
                     #bbgl-panel.bbgl-mode-page .title-stack > .header-row:nth-child(2) {
-                        transform: translateY(clamp(-1px, calc(3px - 4px * var(--bbgl-page-t)), 3px));
+                        top: clamp(-1px, calc(3px - 4px * var(--bbgl-page-t)), 3px);
                     }
 
 .stats-btn {
@@ -3823,10 +3837,13 @@
                         transform: translateY(-2px);
                     }
 
-                    .stats-btn:hover {
+                    .stats-btn:hover, .stats-btn.active {
                         opacity: 1;
                         transform: translateY(-2px) scale(1.25);
-                        filter: drop-shadow(0 0 6px rgba(255, 255, 255, .7));
+                        filter: drop-shadow(0 0 6px rgba(216, 150, 224, 0.9)) drop-shadow(0 0 2px rgba(171, 71, 188, 1));
+                    }
+                    #year-stats-btn:hover, #year-stats-btn.active {
+                        transform: translateY(-3px) scale(1.25);
                     }
 
                     .stats-btn svg {
@@ -5490,12 +5507,15 @@
                     }
 
                     #bbgl-panel.bbgl-expanded:not(.bbgl-mode-page) #year-stats-btn {
-                        width: 23px !important;
-                        height: 23px !important;
+                        width: clamp(13px, 4.00cqi, 23px) !important;
+                        height: clamp(13px, 4.00cqi, 23px) !important;
                     }
                     #bbgl-panel.bbgl-expanded:not(.bbgl-mode-page) #month-stats-btn {
-                        width: 28px !important;
-                        height: 28px !important;
+                        width: clamp(21px, 4.86cqi, 28px) !important;
+                        height: clamp(21px, 4.86cqi, 28px) !important;
+                    }
+                    #bbgl-panel.bbgl-expanded:not(.bbgl-mode-page) .all-time-btn {
+                        height: clamp(35px, 7.47cqi, 43px) !important;
                     }
 
                     /* Expanded panel graph view: fluid scaling to replace hard 620px breakpoint ---------------------*/
@@ -11392,16 +11412,37 @@ const BestGymController = {
     function buildChartSVG(sl) {
         const stats = sl && sl.stats;
         const keys = ['str', 'def', 'spd', 'dex'];
-        const colors = ['#3264c6', '#dc3912', '#ff9900', '#109618'];
+        const colors = ['#4a6070', '#7a3d36', '#8a6530', '#486644'];
         const xs = [4, 9.5, 15, 20.5];
-        const maxH = 16, minH = 1;
+        const maxH = 14, minH = 2;
         const vals = keys.map(k => (stats && stats[k] ? stats[k].end : 0));
         const maxVal = Math.max(...vals);
+        const hs = vals.map(v => maxVal > 0 ? Math.max((v / maxVal) * maxH, minH) : maxH * 0.25);
         const lines = keys.map((k, i) => {
-            const h = maxVal > 0 ? Math.max((vals[i] / maxVal) * maxH, minH) : maxH * 0.25;
-            return `<line x1="${xs[i]}" y1="20" x2="${xs[i]}" y2="${(20 - h).toFixed(2)}" stroke="${colors[i]}" stroke-width="5" stroke-linecap="round"/>`;
+            return `<line x1="${xs[i]}" y1="20" x2="${xs[i]}" y2="${(20 - hs[i]).toFixed(2)}" stroke="${colors[i]}" stroke-width="5" stroke-linecap="round"/>`;
         });
-        return `<svg viewBox="0 0 24 24" fill="none">${lines.join('')}</svg>`;
+        const bgLines = keys.map((k, i) =>
+            `<line x1="${xs[i]}" y1="20" x2="${xs[i]}" y2="${(20 - hs[i]).toFixed(2)}" stroke="#000" stroke-width="7" stroke-linecap="round"/>`
+        );
+        return `<svg viewBox="0 0 24 24" fill="none">${bgLines.join('')}${lines.join('')}</svg>`;
+    }
+
+    function buildAllTimeChartSVG(sl) {
+        const stats = sl && sl.stats;
+        const keys = ['str', 'def', 'spd', 'dex'];
+        const colors = ['#4a6070', '#7a3d36', '#8a6530', '#486644'];
+        const xs = [8, 18, 29, 39];
+        const maxH = 36, minH = 2;
+        const vals = keys.map(k => (stats && stats[k] ? stats[k].end : 0));
+        const maxVal = Math.max(...vals);
+        const hs = vals.map(v => maxVal > 0 ? Math.max((v / maxVal) * maxH, minH) : maxH * 0.25);
+        const lines = keys.map((k, i) => {
+            return `<line x1="${xs[i]}" y1="40" x2="${xs[i]}" y2="${(40 - hs[i]).toFixed(2)}" stroke="${colors[i]}" stroke-width="9" stroke-linecap="round"/>`;
+        });
+        const bgLines = keys.map((k, i) =>
+            `<line x1="${xs[i]}" y1="40" x2="${xs[i]}" y2="${(40 - hs[i]).toFixed(2)}" stroke="#000" stroke-width="11" stroke-linecap="round"/>`
+        );
+        return `<svg viewBox="0 -1.5 46 63" fill="none">${bgLines.join('')}${lines.join('')}<text x="23" y="60" text-anchor="middle" font-family="'Fjalla One', Arial Narrow, sans-serif" font-size="12" fill="#e6e6e6">All-Time</text></svg>`;
     }
 
     function updateSummaryCharts() {
@@ -11411,6 +11452,13 @@ const BestGymController = {
         const y = calendarState.year, m = calendarState.month;
         mBtn.innerHTML = buildChartSVG(DataController.getSlice('MONTH', CONSTANTS.MONTHS[m], y));
         yBtn.innerHTML = buildChartSVG(DataController.getSlice('YEAR', String(y)));
+        const aBtn = document.getElementById('all-time-btn');
+        if (aBtn) aBtn.innerHTML = buildAllTimeChartSVG(DataController.getSlice('ALL', 'All-Time'));
+        
+        const activeL = viewState.activeViewLabel;
+        mBtn.classList.toggle('active', activeL === CONSTANTS.MONTHS[m]);
+        yBtn.classList.toggle('active', activeL === String(y));
+        if (aBtn) aBtn.classList.toggle('active', activeL === 'All-Time');
     }
 
     function renderPanelContent() {
@@ -13209,10 +13257,9 @@ const BestGymController = {
     }
 
     function getDashboardHTML() {
-        const TROPHY = `<svg viewBox="0 0 46 58" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M8 2 H38 L35 30 Q34 37 23 39 Q12 37 11 30 Z" fill="rgba(184,134,11,0.55)" stroke="#ffd700" stroke-width="1.5"/><path d="M8 2 Q2 2 2 10 Q2 20 11 25" fill="none" stroke="#ffd700" stroke-width="1.8" stroke-linecap="round"/><path d="M38 2 Q44 2 44 10 Q44 20 35 25" fill="none" stroke="#ffd700" stroke-width="1.8" stroke-linecap="round"/><rect x="19" y="39" width="8" height="9" fill="rgba(184,134,11,0.55)" stroke="#ffd700" stroke-width="1.2"/><rect x="12" y="48" width="22" height="5" rx="2" fill="rgba(184,134,11,0.55)" stroke="#ffd700" stroke-width="1.2"/><text x="23" y="17" text-anchor="middle" font-family="'Fjalla One', Arial Narrow, sans-serif" font-size="9.5" fill="#ffd700">ALL</text><text x="23" y="29" text-anchor="middle" font-family="'Fjalla One', Arial Narrow, sans-serif" font-size="9.5" fill="#ffd700">TIME</text></svg>`;
         const weekDays = userConfig.weekStartMode === 'mon' ? ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'] : ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
         const weekRowHTML = weekDays.map(d => `<span>${d}</span>`).join('');
-        return `<div class="bbgl-header" id="bbgl-header-bar"><div class="bbgl-header-left">${ICONS.LOGO}<span class="bbgl-header-text"><span class="bbgl-short-title">Big Black Log</span><span class="bbgl-long-title">Big Black Gym Log</span></span></div><div class="bbgl-header-right"><span id="bbgl-demo-exit-btn" class="close-settings-btn bbgl-close-purple" style="display:${runtime.demoMode ? 'flex' : 'none'};" data-tooltip-html="${TOOLTIPS.DEMO_EXIT_HTML}"><span class="bbgl-demo-x-label">Demo</span>${ICONS.CLOSE}</span><span id="bbgl-settings-btn" class="bbgl-custom-icon">⚙</span><span id="bbgl-close-btn" class="bbgl-native-icon">${ICONS.MINIMIZE}</span><span id="bbgl-pop-btn" class="bbgl-native-icon">${viewState.expanded ? ICONS.COMPRESS : ICONS.POPOUT}</span></div></div><div id="bbgl-content-wrapper"><div id="bbgl-top-panel"><div id="bbgl-tall-toggle">${viewState.isTall ? '–' : '+'}</div><div id="bbgl-ledger-toggle" data-tooltip="${TOOLTIPS.LEDGER_VIEW}">${ICONS.LEDGER}</div><div id="bbgl-graph-toggle" data-tooltip="${TOOLTIPS.GRAPH_VIEW}">${ICONS.GRAPH}</div><div id="bbgl-achievements-toggle" data-tooltip="${TOOLTIPS.ACHIEVEMENTS}">${ICONS.ACHIEVEMENTS}</div><div id="bbgl-sticker-toggle" data-tooltip="${TOOLTIPS.STICKERBOOK}">${ICONS.STICKERBOOK}</div><div id="bbgl-item-counters"></div><div id="bbgl-copy-btn" class="copy-hist-btn" data-tooltip="${TOOLTIPS.COPY_SESSION}">${ICONS.CLIPBOARD}</div><div id="bbgl-sticker-title"></div><div class="ui-floating-label" id="bbgl-date-label">LOADING...</div><div class="ui-floating-summary" id="bbgl-summary-label"></div><div id="bbgl-ledger-view" class="ledger-content"></div><div id="bbgl-graph-container"><div class="g-hud"><div class="g-toggles"><div class="g-pill active" data-type="mode" data-val="values">Gains</div><div class="g-pill" data-type="mode" data-val="rates">Rates</div></div><div class="g-toggles"><div class="g-pill p-str active" data-type="stat" data-val="str">STR</div><div class="g-pill p-def" data-type="stat" data-val="def">DEF</div><div class="g-pill p-spd active" data-type="stat" data-val="spd">SPD</div><div class="g-pill p-dex" data-type="stat" data-val="dex">DEX</div><div class="g-pill p-tot" data-type="stat" data-val="total">TOT</div></div></div><svg id="bbgl-graph-svg"></svg></div><div id="bbgl-achievements-container" class="ledger-content"><div class="bbgl-ach-scroll"><div id="bbgl-ach-pages"></div></div><div id="bbgl-ach-footer" class="bbgl-ach-footer"><div class="bbgl-ach-footer-side bbgl-ach-footer-left"><button type="button" class="bbgl-ach-nav bbgl-ach-prev" aria-label="Previous achievements page">\u276e</button></div><div id="bbgl-ach-pageindicator"></div><div class="bbgl-ach-footer-side bbgl-ach-footer-right"><button type="button" class="bbgl-ach-nav bbgl-ach-next" aria-label="Next achievements page">\u276f</button></div></div></div><div id="bbgl-sticker-bg"></div><div id="bbgl-sticker-container"><div id="sticker-sponsor-btn" class="sticker-nav-btn disabled">❮</div><div id="sticker-prev-btn" class="sticker-nav-btn">❮</div><div id="sticker-next-btn" class="sticker-nav-btn">❯</div><div id="bbgl-sticker-grid"></div><div id="bbgl-sticker-pagination"></div></div><div class="glass-overlay"></div></div><div id="bbgl-bottom-panel"><div class="bbgl-header-wrapper"><div class="bbgl-month-header"><div class="title-group"><div id="all-time-btn" class="all-time-btn" data-tooltip="${TOOLTIPS.ALL_TIME_SUMMARY}">${TROPHY}</div><div class="title-stack"><div class="header-row"><div class="header-trigger" id="year-trigger"></div><div class="stats-btn" id="year-stats-btn" data-tooltip="${TOOLTIPS.YEARLY_SUMMARY}">${ICONS.CHART}</div><div id="bbgl-year-dropdown" class="bbgl-dropdown-menu"></div></div><div class="header-row"><div class="header-trigger" id="month-trigger"></div><div class="stats-btn" id="month-stats-btn" data-tooltip="${TOOLTIPS.MONTHLY_SUMMARY}">${ICONS.CHART}</div><div id="bbgl-month-dropdown" class="bbgl-dropdown-menu"></div></div></div></div><button class="arrow-btn" id="prev-month-btn">❮</button><button class="arrow-btn" id="next-month-btn">❯</button></div><div id="bbgl-level-container"><span id="bbgl-level-num">Lv 1</span><div id="bbgl-level-track"><div id="bbgl-level-fill"></div></div></div></div><div id="bbgl-demo-exit" style="display: ${runtime.demoMode ? 'flex' : 'none'};" data-tooltip="${TOOLTIPS.DEMO_EXIT}" data-tooltip-html="${TOOLTIPS.DEMO_EXIT_HTML}">DEMO MODE</div><div class="bbgl-grid-container"><div class="bbgl-week-row">${weekRowHTML}</div><div class="calendar-wrapper" id="swipe-area"><div id="bbgl-cal-container" class="bbgl-cal-container"></div></div></div></div><div id="bbgl-item-viewer"><div class="viewer-window"><div class="viewer-stage"><div class="viewer-pedestal" id="vi-pedestal-wrapper"><div class="viewer-obj" id="vi-obj-target"><div class="layer-front"></div><div class="layer-back"></div></div></div></div></div><div class="viewer-info-overlay"><div class="vi-name" id="vi-name-target">Item Name</div></div></div><div id="bbgl-settings-view">${getSettingsHTML()}</div><div id="bbgl-welcome-view"></div></div>`;
+        return `<div class="bbgl-header" id="bbgl-header-bar"><div class="bbgl-header-left">${ICONS.LOGO}<span class="bbgl-header-text"><span class="bbgl-short-title">Big Black Log</span><span class="bbgl-long-title">Big Black Gym Log</span></span></div><div class="bbgl-header-right"><span id="bbgl-demo-exit-btn" class="close-settings-btn bbgl-close-purple" style="display:${runtime.demoMode ? 'flex' : 'none'};" data-tooltip-html="${TOOLTIPS.DEMO_EXIT_HTML}"><span class="bbgl-demo-x-label">Demo</span>${ICONS.CLOSE}</span><span id="bbgl-settings-btn" class="bbgl-custom-icon">⚙</span><span id="bbgl-close-btn" class="bbgl-native-icon">${ICONS.MINIMIZE}</span><span id="bbgl-pop-btn" class="bbgl-native-icon">${viewState.expanded ? ICONS.COMPRESS : ICONS.POPOUT}</span></div></div><div id="bbgl-content-wrapper"><div id="bbgl-top-panel"><div id="bbgl-tall-toggle">${viewState.isTall ? '–' : '+'}</div><div id="bbgl-ledger-toggle" data-tooltip="${TOOLTIPS.LEDGER_VIEW}">${ICONS.LEDGER}</div><div id="bbgl-graph-toggle" data-tooltip="${TOOLTIPS.GRAPH_VIEW}">${ICONS.GRAPH}</div><div id="bbgl-achievements-toggle" data-tooltip="${TOOLTIPS.ACHIEVEMENTS}">${ICONS.ACHIEVEMENTS}</div><div id="bbgl-sticker-toggle" data-tooltip="${TOOLTIPS.STICKERBOOK}">${ICONS.STICKERBOOK}</div><div id="bbgl-item-counters"></div><div id="bbgl-copy-btn" class="copy-hist-btn" data-tooltip="${TOOLTIPS.COPY_SESSION}">${ICONS.CLIPBOARD}</div><div id="bbgl-sticker-title"></div><div class="ui-floating-label" id="bbgl-date-label">LOADING...</div><div class="ui-floating-summary" id="bbgl-summary-label"></div><div id="bbgl-ledger-view" class="ledger-content"></div><div id="bbgl-graph-container"><div class="g-hud"><div class="g-toggles"><div class="g-pill active" data-type="mode" data-val="values">Gains</div><div class="g-pill" data-type="mode" data-val="rates">Rates</div></div><div class="g-toggles"><div class="g-pill p-str active" data-type="stat" data-val="str">STR</div><div class="g-pill p-def" data-type="stat" data-val="def">DEF</div><div class="g-pill p-spd active" data-type="stat" data-val="spd">SPD</div><div class="g-pill p-dex" data-type="stat" data-val="dex">DEX</div><div class="g-pill p-tot" data-type="stat" data-val="total">TOT</div></div></div><svg id="bbgl-graph-svg"></svg></div><div id="bbgl-achievements-container" class="ledger-content"><div class="bbgl-ach-scroll"><div id="bbgl-ach-pages"></div></div><div id="bbgl-ach-footer" class="bbgl-ach-footer"><div class="bbgl-ach-footer-side bbgl-ach-footer-left"><button type="button" class="bbgl-ach-nav bbgl-ach-prev" aria-label="Previous achievements page">\u276e</button></div><div id="bbgl-ach-pageindicator"></div><div class="bbgl-ach-footer-side bbgl-ach-footer-right"><button type="button" class="bbgl-ach-nav bbgl-ach-next" aria-label="Next achievements page">\u276f</button></div></div></div><div id="bbgl-sticker-bg"></div><div id="bbgl-sticker-container"><div id="sticker-sponsor-btn" class="sticker-nav-btn disabled">❮</div><div id="sticker-prev-btn" class="sticker-nav-btn">❮</div><div id="sticker-next-btn" class="sticker-nav-btn">❯</div><div id="bbgl-sticker-grid"></div><div id="bbgl-sticker-pagination"></div></div><div class="glass-overlay"></div></div><div id="bbgl-bottom-panel"><div class="bbgl-header-wrapper"><div class="bbgl-month-header"><div class="title-group"><div id="all-time-btn" class="all-time-btn" data-tooltip="${TOOLTIPS.ALL_TIME_SUMMARY}">${ICONS.CHART_ALL}</div><div class="title-stack"><div class="header-row"><div class="header-trigger" id="year-trigger"></div><div class="stats-btn" id="year-stats-btn" data-tooltip="${TOOLTIPS.YEARLY_SUMMARY}">${ICONS.CHART}</div><div id="bbgl-year-dropdown" class="bbgl-dropdown-menu"></div></div><div class="header-row"><div class="header-trigger" id="month-trigger"></div><div class="stats-btn" id="month-stats-btn" data-tooltip="${TOOLTIPS.MONTHLY_SUMMARY}">${ICONS.CHART}</div><div id="bbgl-month-dropdown" class="bbgl-dropdown-menu"></div></div></div></div><button class="arrow-btn" id="prev-month-btn">❮</button><button class="arrow-btn" id="next-month-btn">❯</button></div><div id="bbgl-level-container"><span id="bbgl-level-num">Lv 1</span><div id="bbgl-level-track"><div id="bbgl-level-fill"></div></div></div></div><div id="bbgl-demo-exit" style="display: ${runtime.demoMode ? 'flex' : 'none'};" data-tooltip="${TOOLTIPS.DEMO_EXIT}" data-tooltip-html="${TOOLTIPS.DEMO_EXIT_HTML}">DEMO MODE</div><div class="bbgl-grid-container"><div class="bbgl-week-row">${weekRowHTML}</div><div class="calendar-wrapper" id="swipe-area"><div id="bbgl-cal-container" class="bbgl-cal-container"></div></div></div></div><div id="bbgl-item-viewer"><div class="viewer-window"><div class="viewer-stage"><div class="viewer-pedestal" id="vi-pedestal-wrapper"><div class="viewer-obj" id="vi-obj-target"><div class="layer-front"></div><div class="layer-back"></div></div></div></div></div><div class="viewer-info-overlay"><div class="vi-name" id="vi-name-target">Item Name</div></div></div><div id="bbgl-settings-view">${getSettingsHTML()}</div><div id="bbgl-welcome-view"></div></div>`;
     }
 
     /**
@@ -15084,6 +15131,12 @@ const BestGymController = {
         runtime.isViewAnimating = true;
         calendarState.selectedData = d;
         calendarState.selectedLabel = l;
+        const mBtn = document.getElementById('month-stats-btn');
+        const yBtn = document.getElementById('year-stats-btn');
+        const aBtn = document.getElementById('all-time-btn');
+        if (mBtn) mBtn.classList.toggle('active', l === CONSTANTS.MONTHS[calendarState.month]);
+        if (yBtn) yBtn.classList.toggle('active', l === String(calendarState.year));
+        if (aBtn) aBtn.classList.toggle('active', l === 'All-Time');
         closeItemViewer();
         updateCellSelection(l);
         const tp = dom.topPanel;
@@ -15287,9 +15340,34 @@ const BestGymController = {
         }
     }
 
+    function closeDropdown(d) {
+        d.classList.remove('show');
+        d.style.position = '';
+        d.style.top = '';
+        d.style.left = '';
+        d.style.zIndex = '';
+    }
+
+    function openDropdown(d, trigger) {
+        // #bbgl-panel sets container-type, and intermediate ancestors use
+        // transform — any of these makes itself the containing block for a
+        // position:fixed child, so viewport coords don't apply. Park the menu
+        // at 0,0 to discover the containing block's origin, then offset the
+        // trigger's viewport rect into that coordinate space.
+        d.style.position = 'fixed';
+        d.style.top = '0px';
+        d.style.left = '0px';
+        d.style.zIndex = '9999999';
+        d.classList.add('show');
+        const origin = d.getBoundingClientRect();
+        const r = trigger.getBoundingClientRect();
+        d.style.top = (r.bottom - origin.top + 2) + 'px';
+        d.style.left = (r.left - origin.left) + 'px';
+    }
+
     function toggleMonthDropdown() {
         const d = dom.monthDropdown;
-        dom.yearDropdown.classList.remove('show');
+        closeDropdown(dom.yearDropdown);
         d.innerHTML = '';
         CONSTANTS.MONTHS_SHORT.forEach((m, i) => {
             const x = document.createElement('div');
@@ -15299,17 +15377,18 @@ const BestGymController = {
                 calendarState.month = i;
                 d.querySelectorAll('.drop-item').forEach(el => el.classList.remove('active'));
                 x.classList.add('active');
-                d.classList.remove('show');
+                closeDropdown(d);
                 renderPanelContent();
             };
             d.appendChild(x);
         });
-        d.classList.toggle('show');
+        if (d.classList.contains('show')) closeDropdown(d);
+        else openDropdown(d, dom.monthTrigger);
     }
 
     function toggleYearDropdown() {
         const d = dom.yearDropdown;
-        dom.monthDropdown.classList.remove('show');
+        closeDropdown(dom.monthDropdown);
         d.innerHTML = '';
         const s = getActiveHistory(),
             ys = new Set();
@@ -15323,12 +15402,13 @@ const BestGymController = {
                 calendarState.year = y;
                 d.querySelectorAll('.drop-item').forEach(el => el.classList.remove('active'));
                 x.classList.add('active');
-                d.classList.remove('show');
+                closeDropdown(d);
                 renderPanelContent();
             };
             d.appendChild(x);
         });
-        d.classList.toggle('show');
+        if (d.classList.contains('show')) closeDropdown(d);
+        else openDropdown(d, dom.yearTrigger);
     }
 
     function calcAllTimeStats() {
