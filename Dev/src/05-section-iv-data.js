@@ -345,11 +345,18 @@
         if (!manual && (Date.now() - lastSync) < TWELVE_HOURS) return;
         try {
             incrementApiCount(1);
-            const res = await fetch(`https://api.torn.com/faction/?selections=rankedwars&key=${userConfig.apiKey}`);
+            const res = await fetch(`https://api.torn.com/faction/?selections=rankedwars,basic&key=${userConfig.apiKey}`);
             if (!res.ok) return;
             const data = await res.json();
             if (data.error) return;
-            localStorage.setItem(KEYS.WARS_DATA, JSON.stringify(data.rankedwars || {}));
+            const wars = data.rankedwars || {};
+            if (data.ID) {
+                Object.values(wars).forEach(w => {
+                    if (!w || !w.war || !w.war.end || w.war.winner == null) return;
+                    w.outcome = w.war.winner === data.ID ? 'won' : 'lost';
+                });
+            }
+            localStorage.setItem(KEYS.WARS_DATA, JSON.stringify(wars));
             localStorage.setItem(KEYS.WARS_SYNC, Date.now().toString());
         } catch (e) {
             Log.error('Wars fetch failed', e);

@@ -185,7 +185,10 @@
                     }
                     if (w.war.end) {
                         const ds = Formatter.dateLogical(w.war.end * 1000);
-                        (map[ds] = map[ds] || {}).warEnd = true;
+                        const entry = (map[ds] = map[ds] || {});
+                        if (w.outcome === 'won') entry.warWon = true;
+                        else if (w.outcome === 'lost') entry.warLost = true;
+                        else entry.warEnd = true;
                     }
                 });
             } catch (e) { /* malformed war data — no markers */ }
@@ -261,6 +264,8 @@
         const markerLabels = [];
         const wm = getWarMarkers()[ds];
         if (wm && wm.warStart) markerLabels.push('War Start');
+        if (wm && wm.warWon) markerLabels.push('War Won');
+        if (wm && wm.warLost) markerLabels.push('War Lost');
         if (wm && wm.warEnd) markerLabels.push('War End');
         if (((sl.xanaxODs || 0) + (sl.lsdODs || 0)) > 0) markerLabels.push('OD');
         if (markerLabels.length) {
@@ -356,6 +361,13 @@
             d.style.width = '100%';
             tr.appendChild(d);
             anchor.appendChild(tr);
+            ['left', 'center', 'right'].forEach(pos => {
+                const _h = document.createElement('div');
+                _h.className = 'bbgl-bar-handle';
+                _h.dataset.pos = pos;
+                _h.setAttribute('aria-hidden', 'true');
+                anchor.appendChild(_h);
+            });
             cont.appendChild(anchor);
             if (viewState.activeViewLabel === sl.label && calendarState.selectedLabel !== sl.label) openHistory(sl, sl.label);
             return;
@@ -467,6 +479,13 @@
             tr.appendChild(d);
         }
         anchor.appendChild(tr);
+        ['left', 'center', 'right'].forEach(pos => {
+            const handle = document.createElement('div');
+            handle.className = 'bbgl-bar-handle';
+            handle.dataset.pos = pos;
+            handle.setAttribute('aria-hidden', 'true');
+            anchor.appendChild(handle);
+        });
         cont.appendChild(anchor);
         if (viewState.activeViewLabel === sl.label && calendarState.selectedLabel !== sl.label) openHistory(sl, sl.label);
     }

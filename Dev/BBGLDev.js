@@ -4537,7 +4537,7 @@
                         bottom: 0;
                         left: 0;
                         width: 100%;
-                        height: 8px;
+                        height: 10px;
                         display: flex;
                         cursor: pointer;
                         transition: height .2s cubic-bezier(.18, .89, .32, 1.28);
@@ -4550,12 +4550,12 @@
 
                     body:not(.is-touch-device) .bbgl-weekly-track:hover,
                     .bbgl-weekly-track.is-scrub-hovered {
-                        height: 14px;
+                        height: 16px;
                         z-index: 100;
                     }
 
                     .bbgl-weekly-track.is-viewing {
-                        height: 14px;
+                        height: 16px;
                         z-index: 80;
                         box-shadow: 0 0 5px rgba(255, 255, 255, .3), inset 0 2px 5px rgba(0, 0, 0, .8);
                     }
@@ -4564,6 +4564,16 @@
                     #bbgl-panel.bbgl-compact .bbgl-weekly-track.is-scrub-hovered,
                     #bbgl-panel.bbgl-compact .bbgl-weekly-track.is-viewing {
                         height: 12px;
+                    }
+
+                    #bbgl-panel.bbgl-mode-page .bbgl-weekly-track {
+                        height: 14px;
+                    }
+
+                    body:not(.is-touch-device) #bbgl-panel.bbgl-mode-page .bbgl-weekly-track:hover,
+                    #bbgl-panel.bbgl-mode-page .bbgl-weekly-track.is-scrub-hovered,
+                    #bbgl-panel.bbgl-mode-page .bbgl-weekly-track.is-viewing {
+                        height: 22px;
                     }
 
                     .bbgl-weekly-track.track-solidified {
@@ -4682,6 +4692,57 @@
                     .seg-silver {
                         background: linear-gradient(180deg, #222 0%, #555 35%, #aaa 45%, #aaa 55%, #555 65%, #1a1a1a 100%);
                         box-shadow: inset 0 1px 2px rgba(0, 0, 0, .4);
+                    }
+
+                    /* ─── Weekly Bar Handle ─────────────────────────────────── */
+                    .bbgl-bar-handle {
+                        position: absolute;
+                        bottom: -2px;
+                        width: 34px;
+                        height: 14px;
+                        z-index: 110;
+                        pointer-events: none;
+                        background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 34 12' preserveAspectRatio='none'%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0' y1='0' x2='0' y2='1'%3E%3Cstop offset='0' stop-color='%232a2a2a'/%3E%3Cstop offset='.25' stop-color='%23555'/%3E%3Cstop offset='.5' stop-color='%23999'/%3E%3Cstop offset='.75' stop-color='%23555'/%3E%3Cstop offset='1' stop-color='%231e1e1e'/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect width='34' height='12' fill='url(%23g)'/%3E%3Cpolygon points='17.3,4.3 21.8,9.3 19.8,9.3 17.3,6.5 14.8,9.3 12.8,9.3' fill='%23000' fill-opacity='.4'/%3E%3Cpolygon points='17,3.5 21.5,8.5 19.5,8.5 17,5.7 14.5,8.5 12.5,8.5' fill='%23fff'/%3E%3C/svg%3E");
+                        background-size: 100% 100%;
+                        background-repeat: no-repeat;
+                        box-shadow: inset 1px 0 0 rgba(255, 255, 255, .12), inset -1px 0 0 rgba(0, 0, 0, .4), inset 0 1px 0 rgba(255, 255, 255, .18), inset 0 -1px 0 rgba(0, 0, 0, .5), 0 1px 3px rgba(0, 0, 0, .7);
+                        transition: height .2s cubic-bezier(.18, .89, .32, 1.28), box-shadow .15s ease, filter .15s ease;
+                    }
+
+                    .bbgl-bar-handle[data-pos="left"]   { left: 0; }
+                    .bbgl-bar-handle[data-pos="center"] { left: 50%; transform: translateX(-50%); }
+                    .bbgl-bar-handle[data-pos="right"]  { right: 0; }
+
+                    body:not(.is-touch-device) .bbgl-weekly-track:hover ~ .bbgl-bar-handle,
+                    .bbgl-weekly-track.is-scrub-hovered ~ .bbgl-bar-handle,
+                    .bbgl-weekly-track.is-viewing ~ .bbgl-bar-handle {
+                        height: 20px;
+                        box-shadow: inset 1px 0 0 rgba(255, 255, 255, .12), inset -1px 0 0 rgba(0, 0, 0, .4), inset 0 1px 0 rgba(255, 255, 255, .18), inset 0 -1px 0 rgba(0, 0, 0, .5), 0 0 8px rgba(200, 200, 255, .3), 0 1px 3px rgba(0, 0, 0, .7);
+                        filter: brightness(1.2);
+                    }
+
+                    body:not(.is-touch-device) #bbgl-panel.bbgl-compact .bbgl-weekly-track:hover ~ .bbgl-bar-handle,
+                    #bbgl-panel.bbgl-compact .bbgl-weekly-track.is-scrub-hovered ~ .bbgl-bar-handle,
+                    #bbgl-panel.bbgl-compact .bbgl-weekly-track.is-viewing ~ .bbgl-bar-handle {
+                        height: 16px;
+                    }
+
+                    #bbgl-panel.bbgl-mode-page .bbgl-bar-handle {
+                        height: 18px;
+                    }
+
+                    body:not(.is-touch-device) #bbgl-panel.bbgl-mode-page .bbgl-weekly-track:hover ~ .bbgl-bar-handle,
+                    #bbgl-panel.bbgl-mode-page .bbgl-weekly-track.is-scrub-hovered ~ .bbgl-bar-handle,
+                    #bbgl-panel.bbgl-mode-page .bbgl-weekly-track.is-viewing ~ .bbgl-bar-handle {
+                        height: 26px;
+                    }
+
+                    body:not(.is-touch-device) .bbgl-weekly-track:active ~ .bbgl-bar-handle {
+                        filter: brightness(.85);
+                    }
+
+                    #bbgl-panel.bbgl-no-animations .bbgl-bar-handle {
+                        transition: none;
                     }
 
                     /* ─── Level EXP Bar ─────────────────────────────────── */
@@ -7359,11 +7420,18 @@
         if (!manual && (Date.now() - lastSync) < TWELVE_HOURS) return;
         try {
             incrementApiCount(1);
-            const res = await fetch(`https://api.torn.com/faction/?selections=rankedwars&key=${userConfig.apiKey}`);
+            const res = await fetch(`https://api.torn.com/faction/?selections=rankedwars,basic&key=${userConfig.apiKey}`);
             if (!res.ok) return;
             const data = await res.json();
             if (data.error) return;
-            localStorage.setItem(KEYS.WARS_DATA, JSON.stringify(data.rankedwars || {}));
+            const wars = data.rankedwars || {};
+            if (data.ID) {
+                Object.values(wars).forEach(w => {
+                    if (!w || !w.war || !w.war.end || w.war.winner == null) return;
+                    w.outcome = w.war.winner === data.ID ? 'won' : 'lost';
+                });
+            }
+            localStorage.setItem(KEYS.WARS_DATA, JSON.stringify(wars));
             localStorage.setItem(KEYS.WARS_SYNC, Date.now().toString());
         } catch (e) {
             Log.error('Wars fetch failed', e);
@@ -11589,7 +11657,10 @@ const BestGymController = {
                     }
                     if (w.war.end) {
                         const ds = Formatter.dateLogical(w.war.end * 1000);
-                        (map[ds] = map[ds] || {}).warEnd = true;
+                        const entry = (map[ds] = map[ds] || {});
+                        if (w.outcome === 'won') entry.warWon = true;
+                        else if (w.outcome === 'lost') entry.warLost = true;
+                        else entry.warEnd = true;
                     }
                 });
             } catch (e) { /* malformed war data — no markers */ }
@@ -11665,6 +11736,8 @@ const BestGymController = {
         const markerLabels = [];
         const wm = getWarMarkers()[ds];
         if (wm && wm.warStart) markerLabels.push('War Start');
+        if (wm && wm.warWon) markerLabels.push('War Won');
+        if (wm && wm.warLost) markerLabels.push('War Lost');
         if (wm && wm.warEnd) markerLabels.push('War End');
         if (((sl.xanaxODs || 0) + (sl.lsdODs || 0)) > 0) markerLabels.push('OD');
         if (markerLabels.length) {
@@ -11760,6 +11833,13 @@ const BestGymController = {
             d.style.width = '100%';
             tr.appendChild(d);
             anchor.appendChild(tr);
+            ['left', 'center', 'right'].forEach(pos => {
+                const _h = document.createElement('div');
+                _h.className = 'bbgl-bar-handle';
+                _h.dataset.pos = pos;
+                _h.setAttribute('aria-hidden', 'true');
+                anchor.appendChild(_h);
+            });
             cont.appendChild(anchor);
             if (viewState.activeViewLabel === sl.label && calendarState.selectedLabel !== sl.label) openHistory(sl, sl.label);
             return;
@@ -11871,6 +11951,13 @@ const BestGymController = {
             tr.appendChild(d);
         }
         anchor.appendChild(tr);
+        ['left', 'center', 'right'].forEach(pos => {
+            const handle = document.createElement('div');
+            handle.className = 'bbgl-bar-handle';
+            handle.dataset.pos = pos;
+            handle.setAttribute('aria-hidden', 'true');
+            anchor.appendChild(handle);
+        });
         cont.appendChild(anchor);
         if (viewState.activeViewLabel === sl.label && calendarState.selectedLabel !== sl.label) openHistory(sl, sl.label);
     }

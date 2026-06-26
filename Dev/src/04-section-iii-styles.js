@@ -3630,7 +3630,7 @@
                         bottom: 0;
                         left: 0;
                         width: 100%;
-                        height: 8px;
+                        height: 10px;
                         display: flex;
                         cursor: pointer;
                         transition: height .2s cubic-bezier(.18, .89, .32, 1.28);
@@ -3643,12 +3643,12 @@
 
                     body:not(.is-touch-device) .bbgl-weekly-track:hover,
                     .bbgl-weekly-track.is-scrub-hovered {
-                        height: 14px;
+                        height: 16px;
                         z-index: 100;
                     }
 
                     .bbgl-weekly-track.is-viewing {
-                        height: 14px;
+                        height: 16px;
                         z-index: 80;
                         box-shadow: 0 0 5px rgba(255, 255, 255, .3), inset 0 2px 5px rgba(0, 0, 0, .8);
                     }
@@ -3657,6 +3657,16 @@
                     #bbgl-panel.bbgl-compact .bbgl-weekly-track.is-scrub-hovered,
                     #bbgl-panel.bbgl-compact .bbgl-weekly-track.is-viewing {
                         height: 12px;
+                    }
+
+                    #bbgl-panel.bbgl-mode-page .bbgl-weekly-track {
+                        height: 14px;
+                    }
+
+                    body:not(.is-touch-device) #bbgl-panel.bbgl-mode-page .bbgl-weekly-track:hover,
+                    #bbgl-panel.bbgl-mode-page .bbgl-weekly-track.is-scrub-hovered,
+                    #bbgl-panel.bbgl-mode-page .bbgl-weekly-track.is-viewing {
+                        height: 22px;
                     }
 
                     .bbgl-weekly-track.track-solidified {
@@ -3775,6 +3785,57 @@
                     .seg-silver {
                         background: linear-gradient(180deg, #222 0%, #555 35%, #aaa 45%, #aaa 55%, #555 65%, #1a1a1a 100%);
                         box-shadow: inset 0 1px 2px rgba(0, 0, 0, .4);
+                    }
+
+                    /* ─── Weekly Bar Handle ─────────────────────────────────── */
+                    .bbgl-bar-handle {
+                        position: absolute;
+                        bottom: -2px;
+                        width: 34px;
+                        height: 14px;
+                        z-index: 110;
+                        pointer-events: none;
+                        background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 34 12' preserveAspectRatio='none'%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0' y1='0' x2='0' y2='1'%3E%3Cstop offset='0' stop-color='%232a2a2a'/%3E%3Cstop offset='.25' stop-color='%23555'/%3E%3Cstop offset='.5' stop-color='%23999'/%3E%3Cstop offset='.75' stop-color='%23555'/%3E%3Cstop offset='1' stop-color='%231e1e1e'/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect width='34' height='12' fill='url(%23g)'/%3E%3Cpolygon points='17.3,4.3 21.8,9.3 19.8,9.3 17.3,6.5 14.8,9.3 12.8,9.3' fill='%23000' fill-opacity='.4'/%3E%3Cpolygon points='17,3.5 21.5,8.5 19.5,8.5 17,5.7 14.5,8.5 12.5,8.5' fill='%23fff'/%3E%3C/svg%3E");
+                        background-size: 100% 100%;
+                        background-repeat: no-repeat;
+                        box-shadow: inset 1px 0 0 rgba(255, 255, 255, .12), inset -1px 0 0 rgba(0, 0, 0, .4), inset 0 1px 0 rgba(255, 255, 255, .18), inset 0 -1px 0 rgba(0, 0, 0, .5), 0 1px 3px rgba(0, 0, 0, .7);
+                        transition: height .2s cubic-bezier(.18, .89, .32, 1.28), box-shadow .15s ease, filter .15s ease;
+                    }
+
+                    .bbgl-bar-handle[data-pos="left"]   { left: 0; }
+                    .bbgl-bar-handle[data-pos="center"] { left: 50%; transform: translateX(-50%); }
+                    .bbgl-bar-handle[data-pos="right"]  { right: 0; }
+
+                    body:not(.is-touch-device) .bbgl-weekly-track:hover ~ .bbgl-bar-handle,
+                    .bbgl-weekly-track.is-scrub-hovered ~ .bbgl-bar-handle,
+                    .bbgl-weekly-track.is-viewing ~ .bbgl-bar-handle {
+                        height: 20px;
+                        box-shadow: inset 1px 0 0 rgba(255, 255, 255, .12), inset -1px 0 0 rgba(0, 0, 0, .4), inset 0 1px 0 rgba(255, 255, 255, .18), inset 0 -1px 0 rgba(0, 0, 0, .5), 0 0 8px rgba(200, 200, 255, .3), 0 1px 3px rgba(0, 0, 0, .7);
+                        filter: brightness(1.2);
+                    }
+
+                    body:not(.is-touch-device) #bbgl-panel.bbgl-compact .bbgl-weekly-track:hover ~ .bbgl-bar-handle,
+                    #bbgl-panel.bbgl-compact .bbgl-weekly-track.is-scrub-hovered ~ .bbgl-bar-handle,
+                    #bbgl-panel.bbgl-compact .bbgl-weekly-track.is-viewing ~ .bbgl-bar-handle {
+                        height: 16px;
+                    }
+
+                    #bbgl-panel.bbgl-mode-page .bbgl-bar-handle {
+                        height: 18px;
+                    }
+
+                    body:not(.is-touch-device) #bbgl-panel.bbgl-mode-page .bbgl-weekly-track:hover ~ .bbgl-bar-handle,
+                    #bbgl-panel.bbgl-mode-page .bbgl-weekly-track.is-scrub-hovered ~ .bbgl-bar-handle,
+                    #bbgl-panel.bbgl-mode-page .bbgl-weekly-track.is-viewing ~ .bbgl-bar-handle {
+                        height: 26px;
+                    }
+
+                    body:not(.is-touch-device) .bbgl-weekly-track:active ~ .bbgl-bar-handle {
+                        filter: brightness(.85);
+                    }
+
+                    #bbgl-panel.bbgl-no-animations .bbgl-bar-handle {
+                        transition: none;
                     }
 
                     /* ─── Level EXP Bar ─────────────────────────────────── */
