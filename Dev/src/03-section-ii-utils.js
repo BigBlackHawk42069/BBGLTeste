@@ -363,15 +363,15 @@
     }
 
     // ─── LEVELING MATH ENGINE ────────────────────────────────────────────────
-    // Power 2.25 curve | Floor: 200 EXP | P0 Peak: 1903 EXP (~72,000 budget)
-    // Atrophy multipliers: +15% and +30%
-    const LEVEL_FLOOR = 200;
-    const LEVEL_P0_MAX = 1903;
-    const LEVEL_ATRO_MULT = [1, 1.15, 1.30];
+    // Power 1.5 curve | Floor: 50 EXP | P0 Peak: 481 EXP (~22,000 budget)
+    // Atrophy multipliers: ×1.5 (P1) and ×2.0 (P2)
+    const LEVEL_FLOOR = 50;
+    const LEVEL_P0_MAX = 481;
+    const LEVEL_ATRO_MULT = [1, 1.5, 2.0];
 
     function computeLevelExpCost(level, atrophy) {
         const t = (level - 1) / 98;
-        const base = Math.round(LEVEL_FLOOR + (LEVEL_P0_MAX - LEVEL_FLOOR) * Math.pow(t, 2.25));
+        const base = Math.round(LEVEL_FLOOR + (LEVEL_P0_MAX - LEVEL_FLOOR) * Math.pow(t, 1.5));
         return Math.round(base * LEVEL_ATRO_MULT[atrophy]);
     }
 
@@ -404,25 +404,24 @@
     }
 
     // Real-time daily EXP for the leveling bar (NOT the weekly progress bar).
-    // Piecewise rate: 0.2 EXP/E up to 1500E, then 0.4 EXP/E beyond (2x, not 3x).
-    // Happy Jump days get a flat 500 EXP base; extra E above 1000 adds at normal rates.
+    // Scaling tiers: 0.20/E (0-1000), 0.25/E (1001-1500), 0.30/E (1501+). +50 flat at 2000E (diamond).
+    // HJ days: burst energy (≤1000E) earns at 0.40/E; extra E above continues in normal scaling bands.
     function computeDailyLevelExp(eSpent, hasTrainLog, isHJ = false) {
         if (!hasTrainLog) return 0;
-        if (isHJ) return Math.round(
-            500
-            + Math.min(Math.max(eSpent - 1000, 0), 500) * 0.2
-            + Math.max(eSpent - 1500, 0) * 0.4
-        );
-        const base  = Math.min(eSpent, 1500) * 0.2;
-        const bonus = Math.max(eSpent - 1500, 0) * 0.4;
-        return Math.round(base + bonus);
-    }
-
-    function weeklyBonusExp(isCompleted, isGold, isDiamond) {
-        if (isDiamond)   return 500;
-        if (isGold)      return 500;
-        if (isCompleted) return 250;
-        return 0;
+        if (isHJ) {
+            const hjE    = Math.min(eSpent, 1000);
+            const extraE = Math.max(eSpent - 1000, 0);
+            const hjBase = hjE * 0.40;
+            const t2     = Math.min(extraE, 500) * 0.25;
+            const t3     = Math.max(extraE - 500, 0) * 0.30;
+            const diamond = eSpent >= 2000 ? 50 : 0;
+            return Math.round(hjBase + t2 + t3 + diamond);
+        }
+        const t1     = Math.min(eSpent, 1000) * 0.20;
+        const t2     = Math.min(Math.max(eSpent - 1000, 0), 500) * 0.25;
+        const t3     = Math.max(eSpent - 1500, 0) * 0.30;
+        const diamond = eSpent >= 2000 ? 50 : 0;
+        return Math.round(t1 + t2 + t3 + diamond);
     }
     // ─────────────────────────────────────────────────────────────────────────
 

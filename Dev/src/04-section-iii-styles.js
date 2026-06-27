@@ -3698,12 +3698,12 @@
                     .bbgl-weekly-track {
                         position: absolute;
                         bottom: 0;
-                        left: calc(var(--bbgl-tab-w) - 2px);
-                        width: calc(100% - var(--bbgl-tab-w) + 2px);
+                        left: 0;
+                        width: 100%;
                         height: 15px;
                         display: flex;
                         cursor: pointer;
-                        border-radius: 0 4px 4px 0;
+                        border-radius: 4px;
                         overflow: hidden;
                         pointer-events: auto;
                         background: repeating-linear-gradient(90deg, transparent 0, transparent 1px, rgba(255, 255, 255, .03) 1px, rgba(255, 255, 255, .03) 2px), linear-gradient(180deg, #1a1a1a 0%, #2a2a2a 100%);

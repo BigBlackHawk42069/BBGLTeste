@@ -159,9 +159,6 @@ const DataController = {
                 isGold,
                 isDiamond
             } = computeWeekCompletion(days, hjDaySet, hjWeek[wk] || 0);
-            if (!runtime.demoMode) {
-                careerLevelExp += weeklyBonusExp(isCompleted, isGold, isDiamond);
-            }
             const numFeatured = isGold ? 2 : (isCompleted ? 1 : 0);
             const splitIdx = Math.max(0, stickerworthyDays.length - numFeatured);
             const rouletteDays = stickerworthyDays.slice(0, splitIdx);
