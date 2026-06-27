@@ -64,12 +64,6 @@
         }
     };
     const GAME = {
-        WEEKLY_GOAL: 1000,
-        POINTS_GREEN: 200,
-        POINTS_GOLD: 200,
-        POINTS_DIAMOND: 500,
-        POINTS_HJ_GREEN: 500,
-        POINTS_HJ_GOLD: 500,
         GOLD_WEEK_JUMPS: 3,
         HJ_WINDOW_SECONDS: 300,
         STAT_MAP: {
@@ -87,6 +81,7 @@
     //   happy:true      -> data.happy_increased  (happy items)
     //   stat:true       -> data.<stat>_increased (stat enhancers; stat auto-detected)
     //   energyLost:true -> data.energy_decreased (ODs; stored as positive, treated as loss)
+    //   happyLost:true  -> data.happy_decreased  (happy-draining ODs, e.g. ecstasy)
     // Quantity-only codes carry no flag. ITEM_LOGS is derived so the API normalizer, the request
     // groups, the export totals, and the ledger counters all agree.
     const ITEM_LOG_META = {
@@ -105,7 +100,8 @@
         2210: { label: 'Ecstasy Taken', group: 'happy', happy: true },
         8983: { label: 'Yellow Egg Used', group: 'happy', happy: true },
         2291: { label: 'Xanax OD', group: 'od', energyLost: true, short: 'Xan OD' },
-        2231: { label: 'LSD OD', group: 'od', energyLost: true, short: 'LSD OD' }
+        2231: { label: 'LSD OD', group: 'od', energyLost: true, short: 'LSD OD' },
+        2211: { label: 'Ecstasy OD', group: 'od', happyLost: true, energyLost: true, short: 'Ex OD' }
     };
     const ITEM_GROUP_LABELS = { energy: 'Energy Items', stat: 'Stat Items', happy: 'Happy Items', od: 'OD Items' };
     const ITEM_LOGS = Object.keys(ITEM_LOG_META).map(Number);
@@ -116,28 +112,31 @@
     // own call (it can't share a request with `log`), and any one `log=` call may carry at most 10
     // log types — so items are split across the train-click call (energy) and the heartbeat /
     // reconciliation calls (stat + happy + od). Backfill ignores these and paginates one type at a time.
-    const ENERGY_LOGS = itemLogsByGroup('energy'); // 6
-    const STAT_LOGS = itemLogsByGroup('stat');     // 4
-    const HAPPY_LOGS = itemLogsByGroup('happy');   // 4
-    const OD_LOGS = itemLogsByGroup('od');         // 2
-    const TRAIN_ENERGY_PARAM = [...TRAIN_LOGS, ...ENERGY_LOGS].join(',');          // reconcile call (10)
-    const STAT_HAPPY_PARAM = [...STAT_LOGS, ...HAPPY_LOGS, ...OD_LOGS].join(','); // reconcile call (10)
-    const ENERGY_PARAM = ENERGY_LOGS.join(',');                                    // train-click rider (6)
-    // Backfill batches its backward scan into these two grouped `log=` calls (<=10 types each),
-    // reusing the live reconcile groups so the scan spends one request per group per page instead
-    // of one per log code. BACKFILL_GROUP_OF maps every individual code back to its group so the
-    // origin floor can reason about per-group completeness.
+    const ENERGY_LOGS = itemLogsByGroup('energy');   // 6
+    const STAT_LOGS = itemLogsByGroup('stat');        // 4
+    const HAPPY_LOGS = itemLogsByGroup('happy');      // 4
+    const OD_LOGS = itemLogsByGroup('od');            // 3 (xan, lsd, ex)
+    const TRAIN_ENERGY_PARAM = [...TRAIN_LOGS, ...ENERGY_LOGS].join(',');   // reconcile call (10)
+    const STAT_HAPPY_PARAM = [...HAPPY_LOGS, ...OD_LOGS].join(',');         // reconcile call (7)
+    const STAT_ENHANCER_PARAM = STAT_LOGS.join(',');                        // conditional call (4)
+    const ENERGY_PARAM = ENERGY_LOGS.join(',');                             // train-click rider (6)
+    // Backfill batches its backward scan into grouped `log=` calls (<=10 types each). Stat enhancers
+    // get their own group since they are excluded from the live STAT_HAPPY_PARAM call and must still
+    // be scanned historically. BACKFILL_GROUP_OF maps every code back to its group.
     const BACKFILL_GROUPS = {
         trainEnergy: TRAIN_ENERGY_PARAM,
-        statHappy: STAT_HAPPY_PARAM
+        statHappy: STAT_HAPPY_PARAM,
+        statEnhancers: STAT_ENHANCER_PARAM
     };
     const BACKFILL_GROUP_KEYS = Object.keys(BACKFILL_GROUPS);
     const BACKFILL_GROUP_OF = {};
     [...TRAIN_LOGS, ...ENERGY_LOGS].forEach(c => { BACKFILL_GROUP_OF[String(c)] = 'trainEnergy'; });
-    [...STAT_LOGS, ...HAPPY_LOGS, ...OD_LOGS].forEach(c => { BACKFILL_GROUP_OF[String(c)] = 'statHappy'; });
+    [...HAPPY_LOGS, ...OD_LOGS].forEach(c => { BACKFILL_GROUP_OF[String(c)] = 'statHappy'; });
+    STAT_LOGS.forEach(c => { BACKFILL_GROUP_OF[String(c)] = 'statEnhancers'; });
     const XANAX_LOG = 2290,
         XANAX_OD_LOG = 2291,
         LSD_OD_LOG = 2231,
+        EX_OD_LOG = 2211,
         ECAN_LOG = 2040;
     // Overlap buffer (seconds) subtracted from a group's last-success time to form its `from=` bound.
     // Comfortably exceeds the 2h heartbeat so a single missed beat still re-covers the gap; dedup

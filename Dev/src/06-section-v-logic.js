@@ -157,10 +157,10 @@ const DataController = {
             const {
                 isCompleted,
                 isGold,
-                totDiamond
+                isDiamond
             } = computeWeekCompletion(days, hjDaySet, hjWeek[wk] || 0);
             if (!runtime.demoMode) {
-                careerLevelExp += weeklyBonusExp(isCompleted, isGold, totDiamond >= GAME.WEEKLY_GOAL);
+                careerLevelExp += weeklyBonusExp(isCompleted, isGold, isDiamond);
             }
             const numFeatured = isGold ? 2 : (isCompleted ? 1 : 0);
             const splitIdx = Math.max(0, stickerworthyDays.length - numFeatured);
@@ -487,18 +487,22 @@ const DataController = {
         const items = {};
         let itemEnergy = 0;
         let odEnergyLost = 0;
+        let odHappyLost = 0;
         itemDays.forEach(d => {
             if (d && d.items) Object.keys(d.items).forEach(id => {
                 items[id] = (items[id] || 0) + d.items[id];
             });
             if (d) itemEnergy += (d.itemEnergy || 0);
             if (d) odEnergyLost += (d.itemEnergyLost || 0);
+            if (d) odHappyLost += (d.itemHappyLost || 0);
         });
         r.items = items;
         r.xanax = items[XANAX_LOG] || 0;
         r.xanaxODs = items[XANAX_OD_LOG] || 0;
         r.lsdODs = items[LSD_OD_LOG] || 0;
+        r.exODs = items[EX_OD_LOG] || 0;
         r.odEnergyLost = odEnergyLost;
+        r.exHappyLost = odHappyLost;
         r.ecans = items[ECAN_LOG] || 0;
         r.ecanEnergy = itemEnergy;
         r.dayCount = sDay ? 1 : (dList ? dList.length : 0);
@@ -697,6 +701,7 @@ const DataController = {
                 // ONLY energy-can energy — not Xanax/LSD/refill/coupon/egg energy.
                 if (l.logId === ECAN_LOG && l.energy) s.today.itemEnergy = (s.today.itemEnergy || 0) + l.energy;
                 if (l.energyLost != null) s.today.itemEnergyLost = (s.today.itemEnergyLost || 0) + l.energyLost;
+                if (l.happyLost != null) s.today.itemHappyLost = (s.today.itemHappyLost || 0) + l.happyLost;
                 if (l.happy) s.today.itemHappy = (s.today.itemHappy || 0) + l.happy;
             }
             const entry = {
@@ -707,6 +712,7 @@ const DataController = {
             };
             if (l.energy) entry.energy = l.energy;
             if (l.energyLost != null) entry.energyLost = l.energyLost;
+            if (l.happyLost != null) entry.happyLost = l.happyLost;
             if (l.happy) entry.happy = l.happy;
             if (l.statKey) {
                 entry.statKey = l.statKey;
@@ -772,6 +778,7 @@ const DataController = {
                     days[dateKey].items[e.logId] = (days[dateKey].items[e.logId] || 0) + 1;
                     if (e.logId === ECAN_LOG && e.energy) days[dateKey].itemEnergy = (days[dateKey].itemEnergy || 0) + e.energy;
                     if (e.energyLost != null) days[dateKey].itemEnergyLost = (days[dateKey].itemEnergyLost || 0) + e.energyLost;
+                    if (e.happyLost != null) days[dateKey].itemHappyLost = (days[dateKey].itemHappyLost || 0) + e.happyLost;
                     if (e.happy) days[dateKey].itemHappy = (days[dateKey].itemHappy || 0) + e.happy;
                 }
                 if (!e.synthetic) days[dateKey].series.push(e);
@@ -1114,6 +1121,7 @@ function normalizeApiLogs(rawLogs) {
             const d = l.data || {};
             if (meta.energy) e.energy = (l.log === XANAX_LOG) ? 250 : parseInt(d.energy_increased || 0);
             if (meta.energyLost) e.energyLost = parseInt(d.energy_decreased ?? 0);
+            if (meta.happyLost) e.happyLost = parseInt(d.happy_decreased ?? 0);
             if (meta.happy) e.happy = parseInt(d.happy_increased || 0);
             if (meta.stat) {
                 // Stat enhancers carry their gain under <stat>_increased; detect which stat.
@@ -1248,7 +1256,7 @@ function computeAchievements(s) {
     const energyItemTotals = {};
     ENERGY_LOGS.forEach(id => { energyItemTotals[id] = { count: 0, energy: 0 }; });
     const odItemTotals = {};
-    OD_LOGS.forEach(id => { odItemTotals[id] = { count: 0, energyLost: 0 }; });
+    OD_LOGS.forEach(id => { odItemTotals[id] = { count: 0, energyLost: 0, happyLost: 0 }; });
     const statEnhByStat = { str: { count: 0, gain: 0 }, def: { count: 0, gain: 0 }, spd: { count: 0, gain: 0 }, dex: { count: 0, gain: 0 } };
     const weekE = {},
         weekG = {},
@@ -1351,6 +1359,9 @@ function computeAchievements(s) {
             if (e.type === 'item' && e.energyLost != null && odItemTotals[e.logId]) {
                 odItemTotals[e.logId].energyLost += e.energyLost;
             }
+            if (e.type === 'item' && e.happyLost != null && odItemTotals[e.logId]) {
+                odItemTotals[e.logId].happyLost += e.happyLost;
+            }
             if (e.type === 'item' && e.statKey && statEnhByStat[e.statKey]) {
                 statEnhByStat[e.statKey].count++;
                 statEnhByStat[e.statKey].gain = Math.round((statEnhByStat[e.statKey].gain + (e.statGain || 0)) * 100) / 100;
@@ -1409,7 +1420,7 @@ function computeAchievements(s) {
             const wc = computeWeekCompletion(weekDayMap[wk], hjDaySet, hjWeekData[wk] || 0);
             if (wc.isGold) goldWeeks++;
             else if (wc.isCompleted) greenWeeks++;
-            if (wc.totDiamond >= GAME.WEEKLY_GOAL) diamondWeeks++;
+            if (wc.isDiamond) diamondWeeks++;
         }
     });
     const _zg = () => ({
@@ -2104,6 +2115,7 @@ function achBuildPage2(d) {
 
     let helpersHTML = '';
     if (d.happyItemTotals) {
+        const hhOrder = { 2180: 1, 2210: 2, 2020: 3, 8983: 4 };
         const helpers = HAPPY_LOGS.map(id => {
             const rec = d.happyItemTotals[id] || { count: 0, happy: 0 };
             return {
@@ -2113,13 +2125,29 @@ function achBuildPage2(d) {
                 count: rec.count,
                 happy: rec.happy
             };
-        }).filter(h => h.count > 0).sort((a, b) => b.count - a.count || b.happy - a.happy);
+        }).filter(h => h.count > 0).sort((a, b) => (hhOrder[a.id] || 99) - (hhOrder[b.id] || 99));
 
         if (helpers.length > 0) {
             const helperRow = (h) => {
                 const tip = `${achEsc(h.label)} | Happy Gained`;
                 const clipVal = `${h.label}: ${h.count} (${Formatter.number(h.happy)} Happy)`;
-                return `<div class="bbgl-ach-row" data-tooltip="${achEsc(tip)}" data-ach-key="happy-helper-${h.id}" data-clip="${achEsc(clipVal)}"><div class="ach-row-main"><div class="ach-k-stack"><span class="ach-k"><span class="ach-title-long">${achEsc(h.label)}</span><span class="ach-title-short">${achEsc(h.short)}</span>:</span></div><div class="ach-v-wrap"><span class="ach-value">${Formatter.number(h.count)}</span><span class="ach-value ach-happy-col">+${achEsc(achFmtGain(h.happy))} <span class="ach-happy-word">Happy</span></span></div></div></div>`;
+                let html = `<div class="bbgl-ach-row" data-tooltip="${achEsc(tip)}" data-ach-key="happy-helper-${h.id}" data-clip="${achEsc(clipVal)}"><div class="ach-row-main"><div class="ach-k-stack"><span class="ach-k"><span class="ach-title-long">${achEsc(h.label)}</span><span class="ach-title-short">${achEsc(h.short)}</span>:</span></div><div class="ach-v-wrap"><span class="ach-value">${Formatter.number(h.count)}</span><span class="ach-value ach-happy-col">+${achEsc(achFmtGain(h.happy))} <span class="ach-happy-word">H</span></span></div></div></div>`;
+                if (h.id === 2210 && d.odItemTotals && d.odItemTotals[EX_OD_LOG] && d.odItemTotals[EX_OD_LOG].count > 0) {
+                    const exRec = d.odItemTotals[EX_OD_LOG];
+                    const countHtml = achEsc(Formatter.number(exRec.count));
+                    const lostNum = exRec.happyLost > 0 ? `-${achEsc(Formatter.number(exRec.happyLost))}` : '<span class="ach-null">—</span>';
+                    const eLostNum = exRec.energyLost > 0 ? `-${achEsc(Formatter.number(exRec.energyLost))}` : '<span class="ach-null">—</span>';
+                    
+                    const gainedHtml = `<div style="display:flex; flex-direction:column; align-items:flex-end; gap:4px; line-height:1.2;">
+                        <div>${lostNum} <span class="ach-happy-word ach-od-happy-word">H</span></div>
+                        <div>${eLostNum} <span class="ach-enh-e-label" style="color:#c06060;">E</span></div>
+                    </div>`;
+                    
+                    const exTip = `${achEsc(ITEM_LOG_META[EX_OD_LOG].label)} | Happy / Energy Lost`;
+                    const exClip = `${ITEM_LOG_META[EX_OD_LOG].label}: ${exRec.count} (-${Formatter.number(exRec.happyLost)} H, -${Formatter.number(exRec.energyLost)} E)`;
+                    html += `<div class="bbgl-ach-row bbgl-ach-od-row bbgl-subgroup-row bbgl-subgroup-row-last" data-tooltip="${achEsc(exTip)}" data-ach-key="happy-od-${EX_OD_LOG}" data-clip="${achEsc(exClip)}"><div class="ach-row-main" style="align-items:flex-start;"><div class="ach-k-stack"><span class="ach-k"><span class="ach-title-long">ODs:</span><span class="ach-title-short">ODs:</span></span></div><div class="ach-v-wrap" style="align-items:flex-start;"><span class="ach-value" style="padding-top:1px;">${countHtml}</span><span class="ach-value ach-happy-col ach-enh-od">${gainedHtml}</span></div></div></div>`;
+                }
+                return html;
             };
 
             const colCount = 2;
@@ -2145,7 +2173,7 @@ function computeEnhancersForPeriod(sl) {
     const energyItemTotals = {};
     ENERGY_LOGS.forEach(id => { energyItemTotals[id] = { count: 0, energy: 0 }; });
     const odItemTotals = {};
-    OD_LOGS.forEach(id => { odItemTotals[id] = { count: 0, energyLost: 0 }; });
+    OD_LOGS.forEach(id => { odItemTotals[id] = { count: 0, energyLost: 0, happyLost: 0 }; });
     const statEnhByStat = {
         str: { count: 0, gain: 0 }, def: { count: 0, gain: 0 },
         spd: { count: 0, gain: 0 }, dex: { count: 0, gain: 0 }
@@ -2170,6 +2198,8 @@ function computeEnhancersForPeriod(sl) {
                 energyItemTotals[e.logId].energy += e.energy;
             if (e.type === 'item' && e.energyLost != null && odItemTotals[e.logId])
                 odItemTotals[e.logId].energyLost += e.energyLost;
+            if (e.type === 'item' && e.happyLost != null && odItemTotals[e.logId])
+                odItemTotals[e.logId].happyLost += e.happyLost;
             if (e.type === 'item' && e.statKey && statEnhByStat[e.statKey]) {
                 statEnhByStat[e.statKey].count++;
                 statEnhByStat[e.statKey].gain = Math.round((statEnhByStat[e.statKey].gain + (e.statGain || 0)) * 100) / 100;

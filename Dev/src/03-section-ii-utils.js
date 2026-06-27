@@ -176,7 +176,21 @@
             const h = t.getAttribute('data-tooltip-html'),
                 txt = t.getAttribute('data-tooltip');
             const side = t.getAttribute('data-tooltip-side') || undefined;
-            if (h) this.show(h, t.getBoundingClientRect(), side);
+            const anchorSel = t.getAttribute('data-tooltip-anchor');
+            let rect;
+            if (anchorSel) {
+                const anchor = t.closest('.bbgl-weekly-anchor')?.querySelector(anchorSel);
+                if (anchor) {
+                    const r = anchor.getBoundingClientRect();
+                    const activeH = parseFloat(getComputedStyle(anchor).getPropertyValue('--bbgl-handle-active-h')) || 32;
+                    rect = { left: r.left, width: r.width, bottom: r.bottom, top: r.bottom - activeH, height: activeH };
+                } else {
+                    rect = t.getBoundingClientRect();
+                }
+            } else {
+                rect = t.getBoundingClientRect();
+            }
+            if (h) this.show(h, rect, side);
             else if (txt) this.show('<div style="text-align:center; color:#ddd;">' + txt + '</div>', t.getBoundingClientRect(), side);
             else this.hide();
         }
@@ -282,39 +296,70 @@
         return 1 + Math.round(((date.getTime() - w1.getTime()) / 86400000 - 3 + (w1.getUTCDay() + 6) % 7) / 7);
     }
 
-    function computeWeekCompletion(days, hjDaySet = null, hjCount = 0) {
-        let totGreen = 0,
-            totGold = 0,
-            totDiamond = 0;
+    // Classify a single day into a capsule tier by energy spent (+ Happy Jump rules).
+    // Returns 'diamond' | 'gold' | 'green' | null (null = not capsule-worthy).
+    function classifyDay(d, hjDaySet = null, jumpGold = false) {
+        const e = d.eSpent ? d.eSpent.total : 0;
+        const isHJ = hjDaySet ? hjDaySet.has(d.date) : false;
+        if (isHJ) {
+            if (e >= 2000) return 'diamond';
+            if (jumpGold || e >= 1500) return 'gold';
+            return 'green';
+        }
+        if (e >= 2000) return 'diamond';
+        if (e >= 1500) return 'gold';
+        if (e >= 1000) return 'green';
+        return null;
+    }
 
-        const jumpGold = hjCount >= GAME.GOLD_WEEK_JUMPS;
+    // Overflow ranking — a higher tier overwrites a lower one. diamond > gold > green.
+    const CAPSULE_RANK = { green: 1, gold: 2, diamond: 3 };
 
-        days.forEach(d => {
-            const e = d.eSpent ? d.eSpent.total : 0;
-            const isHJ = hjDaySet ? hjDaySet.has(d.date) : false;
-
-            if (isHJ) {
-                if (e >= 2000) { totDiamond += GAME.POINTS_DIAMOND; return; }
-                if (jumpGold || e >= 1500) { totGold += GAME.POINTS_HJ_GOLD; return; }
-                totGreen += GAME.POINTS_HJ_GREEN;
+    // Place one capsule unit of `color` into the 5-slot array.
+    //  - Fill phase: drop into the leftmost empty slot (chronological append).
+    //  - Overflow (no empty slots): overwrite the leftmost slot strictly lower in rank; a
+    //    displaced higher tier (e.g. a gold bumped by a diamond) cascades down and re-seeks the
+    //    next lower slot rather than vanishing — so the lowest tier always takes the loss.
+    function placeCapsuleUnit(slots, color) {
+        const empty = slots.indexOf(null);
+        if (empty !== -1) { slots[empty] = color; return; }
+        for (let i = 0; i < slots.length; i++) {
+            if (CAPSULE_RANK[slots[i]] < CAPSULE_RANK[color]) {
+                const displaced = slots[i];
+                slots[i] = color;
+                placeCapsuleUnit(slots, displaced); // cascade the bumped tier downward
                 return;
             }
+        }
+        // nothing lower to overwrite (green overflow, or week already all-equal/higher) → dropped
+    }
 
-            if (e >= 2000) totDiamond += GAME.POINTS_DIAMOND;
-            else if (e >= 1500) totGold += GAME.POINTS_GOLD;
-            else if (e >= 1000) totGreen += GAME.POINTS_GREEN;
+    // Build the 5 capsule slots for a week, chronologically.
+    // green/gold = 1 unit, diamond = 2 units. Returns ['green'|'gold'|'diamond'|null] x5.
+    function computeWeekCapsules(days, hjDaySet = null, hjCount = 0) {
+        const jumpGold = hjCount >= GAME.GOLD_WEEK_JUMPS;
+        const slots = [null, null, null, null, null];
+        days.forEach(d => {
+            const tier = classifyDay(d, hjDaySet, jumpGold);
+            if (!tier) return;
+            placeCapsuleUnit(slots, tier);
+            if (tier === 'diamond') placeCapsuleUnit(slots, tier);
         });
-        
-        const total = totGreen + totGold + totDiamond;
-        const goldOrBetter = totGold + totDiamond;
-        return {
-            isCompleted: total >= GAME.WEEKLY_GOAL,
-            isGold: goldOrBetter >= GAME.WEEKLY_GOAL,
-            totGreen,
-            totGold,
-            totDiamond,
-            total
-        };
+        return slots;
+    }
+
+    // Week completion, derived purely from the capsule slots (the single source of truth that
+    // also feeds sticker awards and weekly bonus EXP):
+    //   isCompleted — all 5 capsules filled (1 sticker, green weekly bonus)
+    //   isGold      — all 5 are gold-or-diamond (2 stickers, gold weekly bonus)
+    //   isDiamond   — all 5 are diamond (diamond weekly bonus / diamond-week stat)
+    function computeWeekCompletion(days, hjDaySet = null, hjCount = 0) {
+        const capsules = computeWeekCapsules(days, hjDaySet, hjCount);
+        const filled = capsules.filter(c => c !== null);
+        const isCompleted = filled.length === capsules.length;
+        const isGold = isCompleted && filled.every(c => c === 'gold' || c === 'diamond');
+        const isDiamond = isCompleted && filled.every(c => c === 'diamond');
+        return { capsules, isCompleted, isGold, isDiamond };
     }
 
     // ─── LEVELING MATH ENGINE ────────────────────────────────────────────────

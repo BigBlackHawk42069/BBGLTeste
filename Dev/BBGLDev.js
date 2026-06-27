@@ -130,12 +130,6 @@
         }
     };
     const GAME = {
-        WEEKLY_GOAL: 1000,
-        POINTS_GREEN: 200,
-        POINTS_GOLD: 200,
-        POINTS_DIAMOND: 500,
-        POINTS_HJ_GREEN: 500,
-        POINTS_HJ_GOLD: 500,
         GOLD_WEEK_JUMPS: 3,
         HJ_WINDOW_SECONDS: 300,
         STAT_MAP: {
@@ -153,6 +147,7 @@
     //   happy:true      -> data.happy_increased  (happy items)
     //   stat:true       -> data.<stat>_increased (stat enhancers; stat auto-detected)
     //   energyLost:true -> data.energy_decreased (ODs; stored as positive, treated as loss)
+    //   happyLost:true  -> data.happy_decreased  (happy-draining ODs, e.g. ecstasy)
     // Quantity-only codes carry no flag. ITEM_LOGS is derived so the API normalizer, the request
     // groups, the export totals, and the ledger counters all agree.
     const ITEM_LOG_META = {
@@ -171,7 +166,8 @@
         2210: { label: 'Ecstasy Taken', group: 'happy', happy: true },
         8983: { label: 'Yellow Egg Used', group: 'happy', happy: true },
         2291: { label: 'Xanax OD', group: 'od', energyLost: true, short: 'Xan OD' },
-        2231: { label: 'LSD OD', group: 'od', energyLost: true, short: 'LSD OD' }
+        2231: { label: 'LSD OD', group: 'od', energyLost: true, short: 'LSD OD' },
+        2211: { label: 'Ecstasy OD', group: 'od', happyLost: true, energyLost: true, short: 'Ex OD' }
     };
     const ITEM_GROUP_LABELS = { energy: 'Energy Items', stat: 'Stat Items', happy: 'Happy Items', od: 'OD Items' };
     const ITEM_LOGS = Object.keys(ITEM_LOG_META).map(Number);
@@ -182,28 +178,31 @@
     // own call (it can't share a request with `log`), and any one `log=` call may carry at most 10
     // log types — so items are split across the train-click call (energy) and the heartbeat /
     // reconciliation calls (stat + happy + od). Backfill ignores these and paginates one type at a time.
-    const ENERGY_LOGS = itemLogsByGroup('energy'); // 6
-    const STAT_LOGS = itemLogsByGroup('stat');     // 4
-    const HAPPY_LOGS = itemLogsByGroup('happy');   // 4
-    const OD_LOGS = itemLogsByGroup('od');         // 2
-    const TRAIN_ENERGY_PARAM = [...TRAIN_LOGS, ...ENERGY_LOGS].join(',');          // reconcile call (10)
-    const STAT_HAPPY_PARAM = [...STAT_LOGS, ...HAPPY_LOGS, ...OD_LOGS].join(','); // reconcile call (10)
-    const ENERGY_PARAM = ENERGY_LOGS.join(',');                                    // train-click rider (6)
-    // Backfill batches its backward scan into these two grouped `log=` calls (<=10 types each),
-    // reusing the live reconcile groups so the scan spends one request per group per page instead
-    // of one per log code. BACKFILL_GROUP_OF maps every individual code back to its group so the
-    // origin floor can reason about per-group completeness.
+    const ENERGY_LOGS = itemLogsByGroup('energy');   // 6
+    const STAT_LOGS = itemLogsByGroup('stat');        // 4
+    const HAPPY_LOGS = itemLogsByGroup('happy');      // 4
+    const OD_LOGS = itemLogsByGroup('od');            // 3 (xan, lsd, ex)
+    const TRAIN_ENERGY_PARAM = [...TRAIN_LOGS, ...ENERGY_LOGS].join(',');   // reconcile call (10)
+    const STAT_HAPPY_PARAM = [...HAPPY_LOGS, ...OD_LOGS].join(',');         // reconcile call (7)
+    const STAT_ENHANCER_PARAM = STAT_LOGS.join(',');                        // conditional call (4)
+    const ENERGY_PARAM = ENERGY_LOGS.join(',');                             // train-click rider (6)
+    // Backfill batches its backward scan into grouped `log=` calls (<=10 types each). Stat enhancers
+    // get their own group since they are excluded from the live STAT_HAPPY_PARAM call and must still
+    // be scanned historically. BACKFILL_GROUP_OF maps every code back to its group.
     const BACKFILL_GROUPS = {
         trainEnergy: TRAIN_ENERGY_PARAM,
-        statHappy: STAT_HAPPY_PARAM
+        statHappy: STAT_HAPPY_PARAM,
+        statEnhancers: STAT_ENHANCER_PARAM
     };
     const BACKFILL_GROUP_KEYS = Object.keys(BACKFILL_GROUPS);
     const BACKFILL_GROUP_OF = {};
     [...TRAIN_LOGS, ...ENERGY_LOGS].forEach(c => { BACKFILL_GROUP_OF[String(c)] = 'trainEnergy'; });
-    [...STAT_LOGS, ...HAPPY_LOGS, ...OD_LOGS].forEach(c => { BACKFILL_GROUP_OF[String(c)] = 'statHappy'; });
+    [...HAPPY_LOGS, ...OD_LOGS].forEach(c => { BACKFILL_GROUP_OF[String(c)] = 'statHappy'; });
+    STAT_LOGS.forEach(c => { BACKFILL_GROUP_OF[String(c)] = 'statEnhancers'; });
     const XANAX_LOG = 2290,
         XANAX_OD_LOG = 2291,
         LSD_OD_LOG = 2231,
+        EX_OD_LOG = 2211,
         ECAN_LOG = 2040;
     // Overlap buffer (seconds) subtracted from a group's last-success time to form its `from=` bound.
     // Comfortably exceeds the 2h heartbeat so a single missed beat still re-covers the gap; dedup
@@ -683,7 +682,21 @@
             const h = t.getAttribute('data-tooltip-html'),
                 txt = t.getAttribute('data-tooltip');
             const side = t.getAttribute('data-tooltip-side') || undefined;
-            if (h) this.show(h, t.getBoundingClientRect(), side);
+            const anchorSel = t.getAttribute('data-tooltip-anchor');
+            let rect;
+            if (anchorSel) {
+                const anchor = t.closest('.bbgl-weekly-anchor')?.querySelector(anchorSel);
+                if (anchor) {
+                    const r = anchor.getBoundingClientRect();
+                    const activeH = parseFloat(getComputedStyle(anchor).getPropertyValue('--bbgl-handle-active-h')) || 32;
+                    rect = { left: r.left, width: r.width, bottom: r.bottom, top: r.bottom - activeH, height: activeH };
+                } else {
+                    rect = t.getBoundingClientRect();
+                }
+            } else {
+                rect = t.getBoundingClientRect();
+            }
+            if (h) this.show(h, rect, side);
             else if (txt) this.show('<div style="text-align:center; color:#ddd;">' + txt + '</div>', t.getBoundingClientRect(), side);
             else this.hide();
         }
@@ -789,39 +802,70 @@
         return 1 + Math.round(((date.getTime() - w1.getTime()) / 86400000 - 3 + (w1.getUTCDay() + 6) % 7) / 7);
     }
 
-    function computeWeekCompletion(days, hjDaySet = null, hjCount = 0) {
-        let totGreen = 0,
-            totGold = 0,
-            totDiamond = 0;
+    // Classify a single day into a capsule tier by energy spent (+ Happy Jump rules).
+    // Returns 'diamond' | 'gold' | 'green' | null (null = not capsule-worthy).
+    function classifyDay(d, hjDaySet = null, jumpGold = false) {
+        const e = d.eSpent ? d.eSpent.total : 0;
+        const isHJ = hjDaySet ? hjDaySet.has(d.date) : false;
+        if (isHJ) {
+            if (e >= 2000) return 'diamond';
+            if (jumpGold || e >= 1500) return 'gold';
+            return 'green';
+        }
+        if (e >= 2000) return 'diamond';
+        if (e >= 1500) return 'gold';
+        if (e >= 1000) return 'green';
+        return null;
+    }
 
-        const jumpGold = hjCount >= GAME.GOLD_WEEK_JUMPS;
+    // Overflow ranking — a higher tier overwrites a lower one. diamond > gold > green.
+    const CAPSULE_RANK = { green: 1, gold: 2, diamond: 3 };
 
-        days.forEach(d => {
-            const e = d.eSpent ? d.eSpent.total : 0;
-            const isHJ = hjDaySet ? hjDaySet.has(d.date) : false;
-
-            if (isHJ) {
-                if (e >= 2000) { totDiamond += GAME.POINTS_DIAMOND; return; }
-                if (jumpGold || e >= 1500) { totGold += GAME.POINTS_HJ_GOLD; return; }
-                totGreen += GAME.POINTS_HJ_GREEN;
+    // Place one capsule unit of `color` into the 5-slot array.
+    //  - Fill phase: drop into the leftmost empty slot (chronological append).
+    //  - Overflow (no empty slots): overwrite the leftmost slot strictly lower in rank; a
+    //    displaced higher tier (e.g. a gold bumped by a diamond) cascades down and re-seeks the
+    //    next lower slot rather than vanishing — so the lowest tier always takes the loss.
+    function placeCapsuleUnit(slots, color) {
+        const empty = slots.indexOf(null);
+        if (empty !== -1) { slots[empty] = color; return; }
+        for (let i = 0; i < slots.length; i++) {
+            if (CAPSULE_RANK[slots[i]] < CAPSULE_RANK[color]) {
+                const displaced = slots[i];
+                slots[i] = color;
+                placeCapsuleUnit(slots, displaced); // cascade the bumped tier downward
                 return;
             }
+        }
+        // nothing lower to overwrite (green overflow, or week already all-equal/higher) → dropped
+    }
 
-            if (e >= 2000) totDiamond += GAME.POINTS_DIAMOND;
-            else if (e >= 1500) totGold += GAME.POINTS_GOLD;
-            else if (e >= 1000) totGreen += GAME.POINTS_GREEN;
+    // Build the 5 capsule slots for a week, chronologically.
+    // green/gold = 1 unit, diamond = 2 units. Returns ['green'|'gold'|'diamond'|null] x5.
+    function computeWeekCapsules(days, hjDaySet = null, hjCount = 0) {
+        const jumpGold = hjCount >= GAME.GOLD_WEEK_JUMPS;
+        const slots = [null, null, null, null, null];
+        days.forEach(d => {
+            const tier = classifyDay(d, hjDaySet, jumpGold);
+            if (!tier) return;
+            placeCapsuleUnit(slots, tier);
+            if (tier === 'diamond') placeCapsuleUnit(slots, tier);
         });
-        
-        const total = totGreen + totGold + totDiamond;
-        const goldOrBetter = totGold + totDiamond;
-        return {
-            isCompleted: total >= GAME.WEEKLY_GOAL,
-            isGold: goldOrBetter >= GAME.WEEKLY_GOAL,
-            totGreen,
-            totGold,
-            totDiamond,
-            total
-        };
+        return slots;
+    }
+
+    // Week completion, derived purely from the capsule slots (the single source of truth that
+    // also feeds sticker awards and weekly bonus EXP):
+    //   isCompleted — all 5 capsules filled (1 sticker, green weekly bonus)
+    //   isGold      — all 5 are gold-or-diamond (2 stickers, gold weekly bonus)
+    //   isDiamond   — all 5 are diamond (diamond weekly bonus / diamond-week stat)
+    function computeWeekCompletion(days, hjDaySet = null, hjCount = 0) {
+        const capsules = computeWeekCapsules(days, hjDaySet, hjCount);
+        const filled = capsules.filter(c => c !== null);
+        const isCompleted = filled.length === capsules.length;
+        const isGold = isCompleted && filled.every(c => c === 'gold' || c === 'diamond');
+        const isDiamond = isCompleted && filled.every(c => c === 'diamond');
+        return { capsules, isCompleted, isGold, isDiamond };
     }
 
     // ─── LEVELING MATH ENGINE ────────────────────────────────────────────────
@@ -1613,6 +1657,14 @@
                         --bbgl-f-top-mb: clamp(2px, calc(2px + 2px * var(--bbgl-page-t)), 4px);
                         --bbgl-bot-minh: clamp(12px, calc(12px + 4px * var(--bbgl-page-t)), 16px);
                         --bbgl-col-gap: clamp(6px, calc(6px + 20px * var(--bbgl-page-t)), 26px);
+                    }
+
+                    #bbgl-panel.bbgl-mode-page .bbgl-weekly-anchor {
+                        --bbgl-track-h: clamp(12px, calc(12px + 3px * var(--bbgl-page-t)), 15px);
+                        height: var(--bbgl-track-h);
+                    }
+                    #bbgl-panel.bbgl-mode-page .bbgl-weekly-track {
+                        height: var(--bbgl-track-h);
                     }
 
                     .bbgl-mode-page .bbgl-header {
@@ -2457,7 +2509,7 @@
 
                     .bbgl-expanded.bbgl-tall #bbgl-graph-toggle {
                         width: 16px;
-                        height: 16px;
+                        height: 15px;
                         left: clamp(56px, calc(51.6px + 1.45cqi), 60px);
                     }
 
@@ -2469,7 +2521,7 @@
 
                     .bbgl-expanded.bbgl-tall #bbgl-sticker-toggle {
                         width: 16px;
-                        height: 16px;
+                        height: 15px;
                         left: clamp(104px, calc(90.8px + 4.35cqi), 116px);
                     }
 
@@ -3750,8 +3802,8 @@
                     }
 
                     #bbgl-panel.bbgl-mode-page .title-stack {
-                        gap: clamp(0px, calc(0px + 2px * var(--bbgl-page-t)), 2px);
-                        margin-top: clamp(-4px, calc(-4px - 4px * var(--bbgl-page-t)), -8px);
+                        gap: clamp(4px, calc(4px + 2px * var(--bbgl-page-t)), 6px);
+                        margin-top: clamp(-8px, calc(-8px - 4px * var(--bbgl-page-t)), -12px);
                     }
                     #bbgl-panel.bbgl-mode-page .title-group {
                         gap: clamp(6px, calc(8px - 2px * var(--bbgl-page-t)), 8px);
@@ -3817,45 +3869,69 @@
                         top: -2px;
                     }
 
-                    #bbgl-panel.bbgl-mode-page .title-stack > .header-row:nth-child(1) {
-                        margin-bottom: clamp(-2px, calc(-2px + 2px * var(--bbgl-page-t)), 0px);
-                        top: -2px;
-                    }
 
-                    #bbgl-panel.bbgl-mode-page .title-stack > .header-row:nth-child(2) {
-                        top: clamp(-1px, calc(3px - 4px * var(--bbgl-page-t)), 3px);
-                    }
 
 .stats-btn {
                         display: flex;
                         align-items: flex-end;
                         justify-content: center;
-                        cursor: pointer;
+                        pointer-events: none;
                         opacity: .95;
                         transition: all .2s;
                         align-self: flex-end;
-                        transform: translateY(-2px);
+                        transform: translate(-2px, -2px);
                     }
 
                     .stats-btn:hover, .stats-btn.active {
                         opacity: 1;
-                        transform: translateY(-2px) scale(1.25);
+                        transform: translate(-2px, -4px) scale(1.25);
                         filter: drop-shadow(0 0 6px rgba(216, 150, 224, 0.9)) drop-shadow(0 0 2px rgba(171, 71, 188, 1));
                     }
                     #year-stats-btn:hover, #year-stats-btn.active {
-                        transform: translateY(-3px) scale(1.25);
+                        transform: translate(-2px, -3px) scale(1.25);
+                    }
+
+                    #bbgl-panel:not(.bbgl-mode-page) .stats-btn {
+                        transform: translate(-2px, -4px);
+                    }
+                    #bbgl-panel:not(.bbgl-mode-page) .stats-btn:hover,
+                    #bbgl-panel:not(.bbgl-mode-page) .stats-btn.active {
+                        transform: translate(-2px, -6px) scale(1.25);
+                    }
+                    #bbgl-panel:not(.bbgl-mode-page) #year-stats-btn {
+                        transform: translate(-2px, -3px);
+                    }
+                    #bbgl-panel:not(.bbgl-mode-page) #year-stats-btn:hover,
+                    #bbgl-panel:not(.bbgl-mode-page) #year-stats-btn.active {
+                        transform: translate(-2px, -5px) scale(1.25);
+                    }
+
+                    #bbgl-panel:not(.bbgl-expanded):not(.bbgl-mode-page) .header-trigger {
+                        transform: translateY(-4px);
+                    }
+                    #bbgl-panel:not(.bbgl-expanded):not(.bbgl-mode-page) .stats-btn {
+                        transform: translate(-2px, -5px);
+                    }
+                    #bbgl-panel:not(.bbgl-expanded):not(.bbgl-mode-page) .stats-btn:hover,
+                    #bbgl-panel:not(.bbgl-expanded):not(.bbgl-mode-page) .stats-btn.active {
+                        transform: translate(-2px, -7px) scale(1.25);
+                    }
+                    #bbgl-panel:not(.bbgl-expanded):not(.bbgl-mode-page) #year-stats-btn {
+                        transform: translate(-2px, -4px);
+                    }
+                    #bbgl-panel:not(.bbgl-expanded):not(.bbgl-mode-page) #year-stats-btn:hover,
+                    #bbgl-panel:not(.bbgl-expanded):not(.bbgl-mode-page) #year-stats-btn.active {
+                        transform: translate(-2px, -6px) scale(1.25);
                     }
 
                     .stats-btn svg {
                         width: 100%;
                         height: 78%;
+                        pointer-events: auto;
+                        cursor: pointer;
                     }
 
                     #bbgl-panel.bbgl-mode-page .stats-btn svg {
-                        height: 85%;
-                    }
-
-                    #bbgl-panel.bbgl-mode-page #month-stats-btn svg {
                         height: 100%;
                     }
 
@@ -3869,6 +3945,7 @@
                         text-shadow: 0 2px 4px #000;
                         transition: font-size .3s;
                         line-height: 1;
+                        transform: translateY(-3px);
                     }
 
                     .header-trigger:hover {
@@ -3903,6 +3980,16 @@
                         font-size: 14px;
                     }
 
+                    #all-time-trigger {
+                        font-size: 20px;
+                    }
+                    #bbgl-panel:not(.bbgl-mode-page) #all-time-trigger {
+                        transform: translateY(0);
+                    }
+                    #all-time-trigger::after {
+                        display: none;
+                    }
+
                     #bbgl-panel.bbgl-expanded #year-trigger {
                         font-size: 14px;
                     }
@@ -3911,25 +3998,37 @@
                         font-size: 20px;
                     }
 
-                    #year-stats-btn { width: 14px; height: 14px; transform: translateY(-1px); }
-                    #month-stats-btn { width: 16px; height: 16px; }
+                    #bbgl-panel.bbgl-expanded #all-time-trigger {
+                        font-size: 28px;
+                    }
 
-                    #bbgl-panel.bbgl-expanded #year-stats-btn { width: 13px; height: 13px; }
-                    #bbgl-panel.bbgl-expanded #month-stats-btn { width: 21px; height: 21px; }
+                    #year-stats-btn { width: 17px; height: 16px; transform: translate(-2px, -1px); }
+                    #month-stats-btn, #all-time-btn { width: 17px; height: 16px; }
+
+                    #bbgl-panel.bbgl-expanded #year-stats-btn { width: 21px; height: 21px; }
+                    #bbgl-panel.bbgl-expanded #month-stats-btn, #bbgl-panel.bbgl-expanded #all-time-btn { width: 21px; height: 21px; }
 
                     #bbgl-panel.bbgl-mode-page #year-trigger {
                         font-size: clamp(13px, calc(13px + 7px * var(--bbgl-page-t)), 20px);
+                    }
+
+                    #bbgl-panel.bbgl-mode-page .header-trigger {
+                        transform: none;
                     }
 
                     #bbgl-panel.bbgl-mode-page #month-trigger {
                         font-size: clamp(18px, calc(18px + 11px * var(--bbgl-page-t)), 29px);
                     }
 
-                    #bbgl-panel.bbgl-mode-page #year-stats-btn {
-                        width: clamp(17px, calc(17px + 10px * var(--bbgl-page-t)), 27px);
-                        height: clamp(17px, calc(17px + 10px * var(--bbgl-page-t)), 27px);
+                    #bbgl-panel.bbgl-mode-page #all-time-trigger {
+                        font-size: clamp(24px, calc(24px + 10px * var(--bbgl-page-t)), 34px);
                     }
-                    #bbgl-panel.bbgl-mode-page #month-stats-btn {
+
+                    #bbgl-panel.bbgl-mode-page #year-stats-btn {
+                        width: clamp(20px, calc(20px + 6px * var(--bbgl-page-t)), 26px);
+                        height: clamp(20px, calc(20px + 6px * var(--bbgl-page-t)), 26px);
+                    }
+                    #bbgl-panel.bbgl-mode-page #month-stats-btn, #bbgl-panel.bbgl-mode-page #all-time-btn {
                         width: clamp(20px, calc(20px + 6px * var(--bbgl-page-t)), 26px);
                         height: clamp(20px, calc(20px + 6px * var(--bbgl-page-t)), 26px);
                     }
@@ -4099,28 +4198,27 @@
                         pointer-events: none;
                     }
 
-                    /* Foundational text-only calendar markers (War Start / War End / OD). */
-                    .bbgl-cal-markers {
+                    /* Event post-it notes — War and OD visual indicators on calendar cells. */
+                    .bbgl-event-post-it {
                         position: absolute;
-                        left: 1px;
-                        right: 1px;
-                        bottom: 1px;
-                        display: flex;
-                        flex-direction: column;
-                        align-items: center;
-                        gap: 1px;
+                        top: 4%;
+                        left: 4%;
+                        width: 92%;
+                        height: 92%;
+                        background: no-repeat center / contain;
+                        z-index: 17;
+                        filter: drop-shadow(-2px 4px 5px rgba(0, 0, 0, .4));
+                        transform-origin: top right;
+                        transition: transform .35s ease-out;
                         pointer-events: none;
-                        z-index: 3;
+                        transform: rotate(calc(-4deg + var(--ei, 0) * -3deg));
                     }
 
-                    .bbgl-cal-marker {
-                        font-size: clamp(5px, 1.3cqi, 8px);
-                        line-height: 1;
-                        font-weight: 700;
-                        letter-spacing: .02em;
-                        color: #ef5350;
-                        text-shadow: 0 1px 2px rgba(0, 0, 0, .9);
-                        white-space: nowrap;
+                    body:not(.is-touch-device) .bbgl-day-cell:not(.empty):hover .bbgl-event-post-it,
+                    .bbgl-day-cell.is-scrub-hovered .bbgl-event-post-it,
+                    .bbgl-day-cell.is-viewing .bbgl-event-post-it {
+                        transform: translateX(110%) translateY(-20%) rotate(20deg);
+                        transition: transform .25s ease-in;
                     }
 
                     .bbgl-day-cell.is-plate {
@@ -4527,106 +4625,61 @@
 
                     .bbgl-weekly-anchor {
                         width: 100%;
-                        height: 6px;
+                        height: 15px;
                         position: relative;
                         z-index: 20;
+                        --bbgl-tab-w: 44px;
+                        --bbgl-track-h: 15px;
+                    }
+
+                    #bbgl-panel:not(.bbgl-expanded):not(.bbgl-mode-page) .bbgl-weekly-anchor {
+                        height: 12px;
+                        --bbgl-tab-w: 28px;
+                        --bbgl-track-h: 12px;
+                    }
+
+                    #bbgl-panel.bbgl-expanded .bbgl-weekly-anchor {
+                        --bbgl-tab-w: clamp(32px, 7.5cqi, 44px);
+                    }
+
+                    #bbgl-panel.bbgl-mode-page .bbgl-weekly-anchor {
+                        --bbgl-tab-w: clamp(32px, calc(32px + 12px * var(--bbgl-page-t)), 44px);
                     }
 
                     .bbgl-weekly-track {
                         position: absolute;
                         bottom: 0;
-                        left: 0;
-                        width: 100%;
-                        height: 10px;
+                        left: calc(var(--bbgl-tab-w) - 2px);
+                        width: calc(100% - var(--bbgl-tab-w) + 2px);
+                        height: 15px;
                         display: flex;
                         cursor: pointer;
-                        transition: height .2s cubic-bezier(.18, .89, .32, 1.28);
                         border-radius: 0 4px 4px 0;
                         overflow: hidden;
                         pointer-events: auto;
                         background: repeating-linear-gradient(90deg, transparent 0, transparent 1px, rgba(255, 255, 255, .03) 1px, rgba(255, 255, 255, .03) 2px), linear-gradient(180deg, #1a1a1a 0%, #2a2a2a 100%);
-                        box-shadow: inset 0 2px 5px rgba(0, 0, 0, .8), inset 0 -1px 0 rgba(255, 255, 255, .05), 0 0 1px #000;
+                        box-shadow: inset 0 2px 5px rgba(0, 0, 0, .8), inset 0 -1px 0 rgba(255, 255, 255, .05);
                     }
 
-                    body:not(.is-touch-device) .bbgl-weekly-track:hover,
-                    .bbgl-weekly-track.is-scrub-hovered {
-                        height: 16px;
-                        z-index: 100;
-                    }
-
-                    .bbgl-weekly-track.is-viewing {
-                        height: 16px;
-                        z-index: 80;
-                        box-shadow: 0 0 5px rgba(255, 255, 255, .3), inset 0 2px 5px rgba(0, 0, 0, .8);
-                    }
-
-                    body:not(.is-touch-device) #bbgl-panel.bbgl-compact .bbgl-weekly-track:hover,
-                    #bbgl-panel.bbgl-compact .bbgl-weekly-track.is-scrub-hovered,
-                    #bbgl-panel.bbgl-compact .bbgl-weekly-track.is-viewing {
+                    #bbgl-panel:not(.bbgl-expanded):not(.bbgl-mode-page) .bbgl-weekly-track {
                         height: 12px;
                     }
 
-                    #bbgl-panel.bbgl-mode-page .bbgl-weekly-track {
-                        height: 14px;
+                    #bbgl-panel:not(.bbgl-expanded):not(.bbgl-mode-page) .bbgl-weekly-anchor {
+                        height: 12px;
                     }
 
-                    body:not(.is-touch-device) #bbgl-panel.bbgl-mode-page .bbgl-weekly-track:hover,
-                    #bbgl-panel.bbgl-mode-page .bbgl-weekly-track.is-scrub-hovered,
-                    #bbgl-panel.bbgl-mode-page .bbgl-weekly-track.is-viewing {
-                        height: 22px;
-                    }
-
-                    .bbgl-weekly-track.track-solidified {
-                        background: repeating-linear-gradient(90deg, transparent 0, transparent 1px, rgba(0, 0, 0, .15) 1px, rgba(0, 0, 0, .15) 2px), linear-gradient(180deg, #333 0%, #555 30%, #999 60%, #555 70%, #222 100%);
-                        box-shadow: inset 0 0 2px rgba(255, 255, 255, .2), 0 1px 2px rgba(0, 0, 0, .8);
-                        border-top: 1px solid rgba(255, 255, 255, .1);
-                        z-index: 1;
-                    }
-
-                    .bbgl-weekly-track.track-solidified .bbgl-seg {
-                        box-shadow: none;
+                    .bbgl-weekly-track.is-viewing {
+                        box-shadow: 0 0 5px rgba(255, 255, 255, .3), inset 0 2px 5px rgba(0, 0, 0, .8);
                     }
 
                     .bbgl-weekly-track.track-polished {
                         box-shadow: 0 1px 3px rgba(0, 0, 0, .5);
                     }
 
-                    .bbgl-weekly-track.track-polished::after {
-                        content: "";
-                        position: absolute;
-                        top: 0;
-                        bottom: 0;
-                        left: 0;
-                        width: 100%;
-                        background: linear-gradient(90deg, transparent, rgba(255, 255, 255, .5), transparent);
-                        opacity: .7;
-                        pointer-events: none;
-                        z-index: 50;
-                        animation: bbgl-sheen-loop 7s linear infinite;
-                    }
-
-                    @keyframes bbgl-sheen-loop {
-                        0% {
-                            transform: skewX(-20deg) translateX(-150%)
-                        }
-
-                        21% {
-                            transform: skewX(-20deg) translateX(250%)
-                        }
-
-                        21.01%,
-                        100% {
-                            transform: skewX(-20deg) translateX(-150%)
-                        }
-                    }
-
                     #bbgl-panel.bbgl-no-animations .bbgl-day-cell.is-viewing :is(.jewel-type-gold .jewel-shine, .jewel-type-green .jewel-shine, .jewel-type-green .jewel-shine-over, .jewel-type-diamond .jewel-shine, .jewel-type-diamond .jewel-shine-over, .sticker-shine) {
                         animation: none !important;
                         opacity: 0 !important;
-                    }
-
-                    #bbgl-panel.bbgl-no-animations .bbgl-weekly-track.track-polished::after {
-                        display: none;
                     }
 
                     #bbgl-panel.bbgl-no-rates .g-pill[data-val="rates"] {
@@ -4642,103 +4695,125 @@
                         min-height: 0;
                     }
 
-                    .bbgl-seg {
+                    .bbgl-cap-svg {
+                        display: block;
+                        width: 100%;
                         height: 100%;
-                        box-sizing: border-box;
-                        position: relative;
-                        border: none;
-                    }
-
-                    .bbgl-seg.seg-rounded-end {
-                        border-top-right-radius: 10px;
-                        border-bottom-right-radius: 10px;
-                        box-shadow: 2px 0 3px rgba(0, 0, 0, .5);
-                        z-index: 5;
-                    }
-
-                    .seg-brushed-green,
-                    .seg-brushed-gold,
-                    .seg-brushed-diamond {
-                        box-shadow: inset 0 0 2px rgba(0, 0, 0, .5);
-                        border-top: 1px solid rgba(255, 255, 255, .1);
-                    }
-
-                    .seg-brushed-green {
-                        background: repeating-linear-gradient(90deg, transparent 0, transparent 1px, rgba(0, 0, 0, .15) 1px, rgba(0, 0, 0, .15) 2px), linear-gradient(180deg, #203a10 0%, #355e1a 30%, #609438 60%, #355e1a 70%, #15290a 100%);
-                    }
-
-                    .seg-brushed-gold {
-                        background: repeating-linear-gradient(90deg, transparent 0, transparent 1px, rgba(0, 0, 0, .15) 1px, rgba(0, 0, 0, .15) 2px), linear-gradient(180deg, #3e2b05 0%, #6b4c0a 30%, #aa8530 60%, #6b4c0a 70%, #2e1f02 100%);
-                    }
-
-                    .seg-brushed-diamond {
-                        background: repeating-linear-gradient(90deg, transparent 0, transparent 1px, rgba(0, 0, 0, .2) 1px, rgba(0, 0, 0, .2) 2px), linear-gradient(110deg, rgba(255, 100, 180, .6) 0%, rgba(100, 255, 180, .6) 33%, rgba(100, 180, 255, .6) 66%, rgba(200, 100, 255, .6) 100%), linear-gradient(180deg, #111 0%, #555 35%, #bbb 45%, #bbb 55%, #555 65%, #111 100%);
-                        background-blend-mode: normal, overlay, normal;
-                    }
-
-                    .seg-polished-green {
-                        background: linear-gradient(180deg, #0d2b05 0%, #3a7a13 35%, #aaff66 45%, #3a7a13 65%, #0d2b05 100%);
-                    }
-
-                    .seg-polished-gold {
-                        background: linear-gradient(180deg, #3d2200 0%, #8f6205 35%, #fff7cc 45%, #fff7cc 55%, #8f6205 65%, #3d2200 100%);
-                    }
-
-                    .seg-polished-diamond {
-                        background: linear-gradient(110deg, rgba(255, 80, 180, .9) 0%, rgba(80, 255, 180, .9) 33%, rgba(80, 180, 255, .9) 66%, rgba(200, 80, 255, .9) 100%), linear-gradient(180deg, #111 0%, #777 35%, #fff 45%, #fff 55%, #777 65%, #111 100%);
-                        background-blend-mode: overlay, normal;
-                    }
-
-                    .seg-silver {
-                        background: linear-gradient(180deg, #222 0%, #555 35%, #aaa 45%, #aaa 55%, #555 65%, #1a1a1a 100%);
-                        box-shadow: inset 0 1px 2px rgba(0, 0, 0, .4);
                     }
 
                     /* ─── Weekly Bar Handle ─────────────────────────────────── */
                     .bbgl-bar-handle {
                         position: absolute;
-                        bottom: -2px;
-                        width: 34px;
-                        height: 14px;
+                        bottom: 0;
+                        left: 0;
+                        width: var(--bbgl-tab-w);
+                        height: 24px;
                         z-index: 110;
-                        pointer-events: none;
-                        background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 34 12' preserveAspectRatio='none'%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0' y1='0' x2='0' y2='1'%3E%3Cstop offset='0' stop-color='%232a2a2a'/%3E%3Cstop offset='.25' stop-color='%23555'/%3E%3Cstop offset='.5' stop-color='%23999'/%3E%3Cstop offset='.75' stop-color='%23555'/%3E%3Cstop offset='1' stop-color='%231e1e1e'/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect width='34' height='12' fill='url(%23g)'/%3E%3Cpolygon points='17.3,4.3 21.8,9.3 19.8,9.3 17.3,6.5 14.8,9.3 12.8,9.3' fill='%23000' fill-opacity='.4'/%3E%3Cpolygon points='17,3.5 21.5,8.5 19.5,8.5 17,5.7 14.5,8.5 12.5,8.5' fill='%23fff'/%3E%3C/svg%3E");
-                        background-size: 100% 100%;
+                        pointer-events: auto;
+                        cursor: pointer;
+                        border-radius: 5px 5px 0 0;
+                        box-sizing: border-box;
+                        padding: 3px 5px 3px;
+                        background-color: #202020;
+                        background-image: linear-gradient(180deg, #202020 0%, #363636 40%, #404040 50%, #363636 60%, #181818 100%);
+                        background-size: 100% var(--bbgl-track-h);
+                        background-position: bottom center;
                         background-repeat: no-repeat;
-                        box-shadow: inset 1px 0 0 rgba(255, 255, 255, .12), inset -1px 0 0 rgba(0, 0, 0, .4), inset 0 1px 0 rgba(255, 255, 255, .18), inset 0 -1px 0 rgba(0, 0, 0, .5), 0 1px 3px rgba(0, 0, 0, .7);
-                        transition: height .2s cubic-bezier(.18, .89, .32, 1.28), box-shadow .15s ease, filter .15s ease;
+                        /* 3D edge highlights on raised tab — no right-edge shadow to avoid junction seam */
+                        box-shadow: inset 0 1px 0 rgba(255,255,255,.22), inset 1px 0 0 rgba(255,255,255,.14);
+                        transition: height .2s cubic-bezier(.18, .89, .32, 1.28), box-shadow .15s ease;
                     }
 
-                    .bbgl-bar-handle[data-pos="left"]   { left: 0; }
-                    .bbgl-bar-handle[data-pos="center"] { left: 50%; transform: translateX(-50%); }
-                    .bbgl-bar-handle[data-pos="right"]  { right: 0; }
+                    .bbgl-bar-handle svg {
+                        display: block;
+                        width: 100%;
+                        height: 100%;
+                        overflow: hidden;
+                    }
+
+                    /* Compact: shorter tab */
+                    #bbgl-panel:not(.bbgl-expanded):not(.bbgl-mode-page) .bbgl-bar-handle {
+                        height: 20px;
+                        padding: 2px 4px 2px;
+                    }
+
+                    /* Expanded: clamp height with panel width */
+                    #bbgl-panel.bbgl-expanded .bbgl-bar-handle {
+                        height: clamp(20px, 4.2cqi, 24px);
+                    }
+
+                    /* Page mode: clamp height with --bbgl-page-t */
+                    #bbgl-panel.bbgl-mode-page .bbgl-bar-handle {
+                        height: clamp(22px, calc(22px + 4px * var(--bbgl-page-t)), 26px);
+                    }
 
                     body:not(.is-touch-device) .bbgl-weekly-track:hover ~ .bbgl-bar-handle,
                     .bbgl-weekly-track.is-scrub-hovered ~ .bbgl-bar-handle,
-                    .bbgl-weekly-track.is-viewing ~ .bbgl-bar-handle {
-                        height: 20px;
-                        box-shadow: inset 1px 0 0 rgba(255, 255, 255, .12), inset -1px 0 0 rgba(0, 0, 0, .4), inset 0 1px 0 rgba(255, 255, 255, .18), inset 0 -1px 0 rgba(0, 0, 0, .5), 0 0 8px rgba(200, 200, 255, .3), 0 1px 3px rgba(0, 0, 0, .7);
-                        filter: brightness(1.2);
+                    .bbgl-weekly-track.is-viewing ~ .bbgl-bar-handle,
+                    body:not(.is-touch-device) .bbgl-bar-handle:hover {
+                        height: 32px;
+                        --bbgl-handle-active-h: 32px;
+                        box-shadow: inset 0 1px 0 rgba(255,255,255,.38), inset 1px 0 0 rgba(255,255,255,.25);
                     }
 
-                    body:not(.is-touch-device) #bbgl-panel.bbgl-compact .bbgl-weekly-track:hover ~ .bbgl-bar-handle,
-                    #bbgl-panel.bbgl-compact .bbgl-weekly-track.is-scrub-hovered ~ .bbgl-bar-handle,
-                    #bbgl-panel.bbgl-compact .bbgl-weekly-track.is-viewing ~ .bbgl-bar-handle {
-                        height: 16px;
+                    body:not(.is-touch-device) .bbgl-weekly-track:hover ~ .bbgl-bar-handle::before,
+                    .bbgl-weekly-track.is-scrub-hovered ~ .bbgl-bar-handle::before,
+                    .bbgl-weekly-track.is-viewing ~ .bbgl-bar-handle::before,
+                    body:not(.is-touch-device) .bbgl-bar-handle:hover::before {
+                        opacity: 1;
                     }
 
-                    #bbgl-panel.bbgl-mode-page .bbgl-bar-handle {
-                        height: 18px;
+                    .bbgl-bar-handle::before {
+                        content: '';
+                        position: absolute;
+                        top: 0;
+                        left: 0;
+                        right: 0;
+                        height: 100%;
+                        border-radius: 5px 5px 0 0;
+                        background: radial-gradient(circle at top left, rgba(255,255,255,.25) 0%, transparent 70%);
+                        box-shadow: none;
+                        opacity: 0;
+                        pointer-events: none;
+                        transition: opacity .15s ease;
+                    }
+
+                    /* Left-edge glow on the track bleeds from the tab on hover — both sides light up together */
+                    body:not(.is-touch-device) .bbgl-weekly-track:hover,
+                    .bbgl-weekly-track.is-scrub-hovered,
+                    .bbgl-weekly-track.is-viewing {
+                        background: linear-gradient(90deg, rgba(255,255,255,.08) 0%, transparent 12%),
+                                    repeating-linear-gradient(90deg, transparent 0, transparent 1px, rgba(255, 255, 255, .03) 1px, rgba(255, 255, 255, .03) 2px),
+                                    linear-gradient(180deg, #1a1a1a 0%, #2a2a2a 100%);
+                    }
+
+                    body:not(.is-touch-device) #bbgl-panel:not(.bbgl-expanded):not(.bbgl-mode-page) .bbgl-weekly-track:hover ~ .bbgl-bar-handle,
+                    #bbgl-panel:not(.bbgl-expanded):not(.bbgl-mode-page) .bbgl-weekly-track.is-scrub-hovered ~ .bbgl-bar-handle,
+                    #bbgl-panel:not(.bbgl-expanded):not(.bbgl-mode-page) .bbgl-weekly-track.is-viewing ~ .bbgl-bar-handle,
+                    body:not(.is-touch-device) #bbgl-panel:not(.bbgl-expanded):not(.bbgl-mode-page) .bbgl-bar-handle:hover {
+                        height: 26px;
+                        --bbgl-handle-active-h: 26px;
+                    }
+
+                    body:not(.is-touch-device) #bbgl-panel.bbgl-expanded .bbgl-weekly-track:hover ~ .bbgl-bar-handle,
+                    #bbgl-panel.bbgl-expanded .bbgl-weekly-track.is-scrub-hovered ~ .bbgl-bar-handle,
+                    #bbgl-panel.bbgl-expanded .bbgl-weekly-track.is-viewing ~ .bbgl-bar-handle,
+                    body:not(.is-touch-device) #bbgl-panel.bbgl-expanded .bbgl-bar-handle:hover {
+                        height: clamp(26px, 5.6cqi, 32px);
+                        --bbgl-handle-active-h: clamp(26px, 5.6cqi, 32px);
                     }
 
                     body:not(.is-touch-device) #bbgl-panel.bbgl-mode-page .bbgl-weekly-track:hover ~ .bbgl-bar-handle,
                     #bbgl-panel.bbgl-mode-page .bbgl-weekly-track.is-scrub-hovered ~ .bbgl-bar-handle,
-                    #bbgl-panel.bbgl-mode-page .bbgl-weekly-track.is-viewing ~ .bbgl-bar-handle {
-                        height: 26px;
+                    #bbgl-panel.bbgl-mode-page .bbgl-weekly-track.is-viewing ~ .bbgl-bar-handle,
+                    body:not(.is-touch-device) #bbgl-panel.bbgl-mode-page .bbgl-bar-handle:hover {
+                        height: clamp(30px, calc(30px + 6px * var(--bbgl-page-t)), 36px);
+                        --bbgl-handle-active-h: clamp(30px, calc(30px + 6px * var(--bbgl-page-t)), 36px);
                     }
 
-                    body:not(.is-touch-device) .bbgl-weekly-track:active ~ .bbgl-bar-handle {
-                        filter: brightness(.85);
+                    body:not(.is-touch-device) .bbgl-weekly-track:active ~ .bbgl-bar-handle,
+                    body:not(.is-touch-device) .bbgl-bar-handle:active {
+                        box-shadow: inset 0 1px 0 rgba(255,255,255,.1), inset 0 0 10px rgba(0,0,0,.3);
                     }
 
                     #bbgl-panel.bbgl-no-animations .bbgl-bar-handle {
@@ -5051,13 +5126,17 @@
                     /* OD sub-rows: indent the label past the subgroup connector line. The
                        energy-section row padding shorthand (above) outranks the generic
                        .bbgl-subgroup-row padding-left, so restore the indent at higher specificity. */
-                    .bbgl-ach-section-energy .bbgl-ach-row.bbgl-ach-od-row {
+                    .bbgl-ach-section-energy .bbgl-ach-row.bbgl-ach-od-row,
+                    .bbgl-ach-section-hh .bbgl-ach-row.bbgl-ach-od-row {
                         padding-left: 24px;
                     }
 
                     .ach-happy-word {
                         color: #f5c518;
                         font-weight: 600;
+                    }
+                    .ach-od-happy-word {
+                        color: #c06060;
                     }
                     /* ─────────────────────────────────────────────────────── */
 
@@ -5423,10 +5502,10 @@
                         }
 
                         #bbgl-panel.bbgl-expanded:not(.bbgl-mode-page) #year-stats-btn {
-                            width: 13px !important;
-                            height: 13px !important;
+                            width: 21px !important;
+                            height: 21px !important;
                         }
-                        #bbgl-panel.bbgl-expanded:not(.bbgl-mode-page) #month-stats-btn {
+                        #bbgl-panel.bbgl-expanded:not(.bbgl-mode-page) #month-stats-btn, #bbgl-panel.bbgl-expanded:not(.bbgl-mode-page) #all-time-btn {
                             width: 21px !important;
                             height: 21px !important;
                         }
@@ -5556,6 +5635,9 @@
                     #bbgl-panel.bbgl-expanded:not(.bbgl-mode-page) #month-trigger {
                         font-size: clamp(20px, 3.99cqi, 23px) !important;
                     }
+                    #bbgl-panel.bbgl-expanded:not(.bbgl-mode-page) #all-time-trigger {
+                        font-size: clamp(28px, 5.58cqi, 32px) !important;
+                    }
 
                     #bbgl-panel.bbgl-expanded:not(.bbgl-mode-page) .ui-floating-label,
                     #bbgl-panel.bbgl-expanded:not(.bbgl-mode-page) .ui-floating-summary {
@@ -5568,10 +5650,10 @@
                     }
 
                     #bbgl-panel.bbgl-expanded:not(.bbgl-mode-page) #year-stats-btn {
-                        width: clamp(13px, 4.00cqi, 23px) !important;
-                        height: clamp(13px, 4.00cqi, 23px) !important;
+                        width: clamp(21px, 4.86cqi, 28px) !important;
+                        height: clamp(21px, 4.86cqi, 28px) !important;
                     }
-                    #bbgl-panel.bbgl-expanded:not(.bbgl-mode-page) #month-stats-btn {
+                    #bbgl-panel.bbgl-expanded:not(.bbgl-mode-page) #month-stats-btn, #bbgl-panel.bbgl-expanded:not(.bbgl-mode-page) #all-time-btn {
                         width: clamp(21px, 4.86cqi, 28px) !important;
                         height: clamp(21px, 4.86cqi, 28px) !important;
                     }
@@ -6189,6 +6271,7 @@
                     #bbgl-panel.bbgl-expanded .bbgl-ach-row .ach-value.ach-happy-col,
                     #bbgl-panel.bbgl-mode-page .bbgl-ach-row .ach-value.ach-happy-col {
                         display: inline-flex;
+                        min-width: 5.5em;
                     }
 
                     .bbgl-ach-row .ach-value.ach-enh-gained {
@@ -6768,7 +6851,7 @@
                         line-height: 1.4;
                     }
 
-                    .bbgl-ach-section-hh .bbgl-ach-row:last-of-type,
+                    .bbgl-ach-hh-group .bbgl-ach-row:last-of-type,
                     .bbgl-ach-hh-best-row:last-of-type {
                         border-bottom: none;
                     }
@@ -7415,9 +7498,9 @@
     }
 
     async function fetchWars(manual) {
-        const TWELVE_HOURS = 12 * 60 * 60 * 1000;
+        const TWENTY_FOUR_HOURS = 24 * 60 * 60 * 1000;
         const lastSync = parseInt(localStorage.getItem(KEYS.WARS_SYNC) || '0');
-        if (!manual && (Date.now() - lastSync) < TWELVE_HOURS) return;
+        if (!manual && (Date.now() - lastSync) < TWENTY_FOUR_HOURS) return;
         try {
             incrementApiCount(1);
             const res = await fetch(`https://api.torn.com/faction/?selections=rankedwars,basic&key=${userConfig.apiKey}`);
@@ -7451,7 +7534,8 @@
             suppressed: true
         };
         const {
-            specId = null
+            specId = null,
+            manualWars = false
         } = options;
 
         if (!userConfig.apiKey || userConfig.apiKey.length < 16) {
@@ -7495,6 +7579,10 @@
 
         incrementApiCount(reqs.length);
 
+        // Wars runs in parallel with the main calls for FULL_SYNC — it has its own gate and
+        // error handling so a failure cannot affect the main sync result.
+        if (mission === 'FULL_SYNC') fetchWars(manualWars);
+
         try {
             // This safely performs the official Torn API request using your provided key.
             const res = await Promise.all(reqs.map(c => fetch(c.url).then(r => {
@@ -7526,7 +7614,31 @@
                 localStorage.setItem(KEYS.LAST_SYNC, ts.toString());
                 localStorage.setItem(KEYS.BS_SYNC, ts.toString());
             }
+
+            // Stat enhancer check: if battlestats shows higher values than the last recorded
+            // endBreakdown, stat-enhancing items were used since the last sync. Only then do we
+            // fire the extra call — almost always a no-op.
+            const _s = getActiveHistory();
+            const needsEnhancers = mission === 'FULL_SYNC' && bs &&
+                BS_STAT_ROWS.some(row => (bs[row.api] || 0) > (_s.today.endBreakdown[row.abbr] || 0));
+
             await DataController.processDataPayload(logs, bs);
+
+            if (needsEnhancers) {
+                try {
+                    incrementApiCount(1);
+                    const eRes = await fetch(
+                        `https://api.torn.com/user/?selections=log&log=${STAT_ENHANCER_PARAM}&key=${userConfig.apiKey}${fromFor('statEnhancers')}&timestamp=${Date.now()}`
+                    );
+                    if (eRes.ok) {
+                        const eData = await eRes.json();
+                        if (!eData.error) {
+                            meta.syncFloor.statEnhancers = tsSec;
+                            await DataController.processDataPayload(eData.log || {}, null);
+                        }
+                    }
+                } catch (e) { Log.warn('Stat enhancer fetch failed', e); }
+            }
 
             return {
                 ok: true
@@ -7555,10 +7667,9 @@
             btn.innerText = "Syncing...";
         }
 
-        const result = await universalFetch(mission, options);
+        const result = await universalFetch(mission, { ...options, manualWars: mission !== 'TRAIN_SINGLE' });
 
         if (result.ok) {
-            if (mission !== 'TRAIN_SINGLE') fetchWars(true);
             scheduleHeartbeat();
             if (btn) {
                 btn.innerText = "Refreshed!";
@@ -7588,7 +7699,6 @@
         runtime.bgSyncId = setTimeout(async function bgSyncTick() {
             runtime.bgSyncId = null;
             await universalFetch('FULL_SYNC');
-            fetchWars(false);
             scheduleHeartbeat();
         }, delay);
     }
@@ -7721,6 +7831,13 @@
                             logId: l.logId
                         };
                         if (l.energy) entry.energy = l.energy;
+                        if (l.energyLost != null) entry.energyLost = l.energyLost;
+                        if (l.happyLost != null) entry.happyLost = l.happyLost;
+                        if (l.happy) entry.happy = l.happy;
+                        if (l.statKey) {
+                            entry.statKey = l.statKey;
+                            entry.statGain = l.statGain;
+                        }
                         stored.series.push(entry);
                     }
                     return;
@@ -8196,10 +8313,10 @@ const DataController = {
             const {
                 isCompleted,
                 isGold,
-                totDiamond
+                isDiamond
             } = computeWeekCompletion(days, hjDaySet, hjWeek[wk] || 0);
             if (!runtime.demoMode) {
-                careerLevelExp += weeklyBonusExp(isCompleted, isGold, totDiamond >= GAME.WEEKLY_GOAL);
+                careerLevelExp += weeklyBonusExp(isCompleted, isGold, isDiamond);
             }
             const numFeatured = isGold ? 2 : (isCompleted ? 1 : 0);
             const splitIdx = Math.max(0, stickerworthyDays.length - numFeatured);
@@ -8526,18 +8643,22 @@ const DataController = {
         const items = {};
         let itemEnergy = 0;
         let odEnergyLost = 0;
+        let odHappyLost = 0;
         itemDays.forEach(d => {
             if (d && d.items) Object.keys(d.items).forEach(id => {
                 items[id] = (items[id] || 0) + d.items[id];
             });
             if (d) itemEnergy += (d.itemEnergy || 0);
             if (d) odEnergyLost += (d.itemEnergyLost || 0);
+            if (d) odHappyLost += (d.itemHappyLost || 0);
         });
         r.items = items;
         r.xanax = items[XANAX_LOG] || 0;
         r.xanaxODs = items[XANAX_OD_LOG] || 0;
         r.lsdODs = items[LSD_OD_LOG] || 0;
+        r.exODs = items[EX_OD_LOG] || 0;
         r.odEnergyLost = odEnergyLost;
+        r.exHappyLost = odHappyLost;
         r.ecans = items[ECAN_LOG] || 0;
         r.ecanEnergy = itemEnergy;
         r.dayCount = sDay ? 1 : (dList ? dList.length : 0);
@@ -8736,6 +8857,7 @@ const DataController = {
                 // ONLY energy-can energy — not Xanax/LSD/refill/coupon/egg energy.
                 if (l.logId === ECAN_LOG && l.energy) s.today.itemEnergy = (s.today.itemEnergy || 0) + l.energy;
                 if (l.energyLost != null) s.today.itemEnergyLost = (s.today.itemEnergyLost || 0) + l.energyLost;
+                if (l.happyLost != null) s.today.itemHappyLost = (s.today.itemHappyLost || 0) + l.happyLost;
                 if (l.happy) s.today.itemHappy = (s.today.itemHappy || 0) + l.happy;
             }
             const entry = {
@@ -8746,6 +8868,7 @@ const DataController = {
             };
             if (l.energy) entry.energy = l.energy;
             if (l.energyLost != null) entry.energyLost = l.energyLost;
+            if (l.happyLost != null) entry.happyLost = l.happyLost;
             if (l.happy) entry.happy = l.happy;
             if (l.statKey) {
                 entry.statKey = l.statKey;
@@ -8811,6 +8934,7 @@ const DataController = {
                     days[dateKey].items[e.logId] = (days[dateKey].items[e.logId] || 0) + 1;
                     if (e.logId === ECAN_LOG && e.energy) days[dateKey].itemEnergy = (days[dateKey].itemEnergy || 0) + e.energy;
                     if (e.energyLost != null) days[dateKey].itemEnergyLost = (days[dateKey].itemEnergyLost || 0) + e.energyLost;
+                    if (e.happyLost != null) days[dateKey].itemHappyLost = (days[dateKey].itemHappyLost || 0) + e.happyLost;
                     if (e.happy) days[dateKey].itemHappy = (days[dateKey].itemHappy || 0) + e.happy;
                 }
                 if (!e.synthetic) days[dateKey].series.push(e);
@@ -9153,6 +9277,7 @@ function normalizeApiLogs(rawLogs) {
             const d = l.data || {};
             if (meta.energy) e.energy = (l.log === XANAX_LOG) ? 250 : parseInt(d.energy_increased || 0);
             if (meta.energyLost) e.energyLost = parseInt(d.energy_decreased ?? 0);
+            if (meta.happyLost) e.happyLost = parseInt(d.happy_decreased ?? 0);
             if (meta.happy) e.happy = parseInt(d.happy_increased || 0);
             if (meta.stat) {
                 // Stat enhancers carry their gain under <stat>_increased; detect which stat.
@@ -9287,7 +9412,7 @@ function computeAchievements(s) {
     const energyItemTotals = {};
     ENERGY_LOGS.forEach(id => { energyItemTotals[id] = { count: 0, energy: 0 }; });
     const odItemTotals = {};
-    OD_LOGS.forEach(id => { odItemTotals[id] = { count: 0, energyLost: 0 }; });
+    OD_LOGS.forEach(id => { odItemTotals[id] = { count: 0, energyLost: 0, happyLost: 0 }; });
     const statEnhByStat = { str: { count: 0, gain: 0 }, def: { count: 0, gain: 0 }, spd: { count: 0, gain: 0 }, dex: { count: 0, gain: 0 } };
     const weekE = {},
         weekG = {},
@@ -9390,6 +9515,9 @@ function computeAchievements(s) {
             if (e.type === 'item' && e.energyLost != null && odItemTotals[e.logId]) {
                 odItemTotals[e.logId].energyLost += e.energyLost;
             }
+            if (e.type === 'item' && e.happyLost != null && odItemTotals[e.logId]) {
+                odItemTotals[e.logId].happyLost += e.happyLost;
+            }
             if (e.type === 'item' && e.statKey && statEnhByStat[e.statKey]) {
                 statEnhByStat[e.statKey].count++;
                 statEnhByStat[e.statKey].gain = Math.round((statEnhByStat[e.statKey].gain + (e.statGain || 0)) * 100) / 100;
@@ -9448,7 +9576,7 @@ function computeAchievements(s) {
             const wc = computeWeekCompletion(weekDayMap[wk], hjDaySet, hjWeekData[wk] || 0);
             if (wc.isGold) goldWeeks++;
             else if (wc.isCompleted) greenWeeks++;
-            if (wc.totDiamond >= GAME.WEEKLY_GOAL) diamondWeeks++;
+            if (wc.isDiamond) diamondWeeks++;
         }
     });
     const _zg = () => ({
@@ -10143,6 +10271,7 @@ function achBuildPage2(d) {
 
     let helpersHTML = '';
     if (d.happyItemTotals) {
+        const hhOrder = { 2180: 1, 2210: 2, 2020: 3, 8983: 4 };
         const helpers = HAPPY_LOGS.map(id => {
             const rec = d.happyItemTotals[id] || { count: 0, happy: 0 };
             return {
@@ -10152,13 +10281,29 @@ function achBuildPage2(d) {
                 count: rec.count,
                 happy: rec.happy
             };
-        }).filter(h => h.count > 0).sort((a, b) => b.count - a.count || b.happy - a.happy);
+        }).filter(h => h.count > 0).sort((a, b) => (hhOrder[a.id] || 99) - (hhOrder[b.id] || 99));
 
         if (helpers.length > 0) {
             const helperRow = (h) => {
                 const tip = `${achEsc(h.label)} | Happy Gained`;
                 const clipVal = `${h.label}: ${h.count} (${Formatter.number(h.happy)} Happy)`;
-                return `<div class="bbgl-ach-row" data-tooltip="${achEsc(tip)}" data-ach-key="happy-helper-${h.id}" data-clip="${achEsc(clipVal)}"><div class="ach-row-main"><div class="ach-k-stack"><span class="ach-k"><span class="ach-title-long">${achEsc(h.label)}</span><span class="ach-title-short">${achEsc(h.short)}</span>:</span></div><div class="ach-v-wrap"><span class="ach-value">${Formatter.number(h.count)}</span><span class="ach-value ach-happy-col">+${achEsc(achFmtGain(h.happy))} <span class="ach-happy-word">Happy</span></span></div></div></div>`;
+                let html = `<div class="bbgl-ach-row" data-tooltip="${achEsc(tip)}" data-ach-key="happy-helper-${h.id}" data-clip="${achEsc(clipVal)}"><div class="ach-row-main"><div class="ach-k-stack"><span class="ach-k"><span class="ach-title-long">${achEsc(h.label)}</span><span class="ach-title-short">${achEsc(h.short)}</span>:</span></div><div class="ach-v-wrap"><span class="ach-value">${Formatter.number(h.count)}</span><span class="ach-value ach-happy-col">+${achEsc(achFmtGain(h.happy))} <span class="ach-happy-word">H</span></span></div></div></div>`;
+                if (h.id === 2210 && d.odItemTotals && d.odItemTotals[EX_OD_LOG] && d.odItemTotals[EX_OD_LOG].count > 0) {
+                    const exRec = d.odItemTotals[EX_OD_LOG];
+                    const countHtml = achEsc(Formatter.number(exRec.count));
+                    const lostNum = exRec.happyLost > 0 ? `-${achEsc(Formatter.number(exRec.happyLost))}` : '<span class="ach-null">—</span>';
+                    const eLostNum = exRec.energyLost > 0 ? `-${achEsc(Formatter.number(exRec.energyLost))}` : '<span class="ach-null">—</span>';
+                    
+                    const gainedHtml = `<div style="display:flex; flex-direction:column; align-items:flex-end; gap:4px; line-height:1.2;">
+                        <div>${lostNum} <span class="ach-happy-word ach-od-happy-word">H</span></div>
+                        <div>${eLostNum} <span class="ach-enh-e-label" style="color:#c06060;">E</span></div>
+                    </div>`;
+                    
+                    const exTip = `${achEsc(ITEM_LOG_META[EX_OD_LOG].label)} | Happy / Energy Lost`;
+                    const exClip = `${ITEM_LOG_META[EX_OD_LOG].label}: ${exRec.count} (-${Formatter.number(exRec.happyLost)} H, -${Formatter.number(exRec.energyLost)} E)`;
+                    html += `<div class="bbgl-ach-row bbgl-ach-od-row bbgl-subgroup-row bbgl-subgroup-row-last" data-tooltip="${achEsc(exTip)}" data-ach-key="happy-od-${EX_OD_LOG}" data-clip="${achEsc(exClip)}"><div class="ach-row-main" style="align-items:flex-start;"><div class="ach-k-stack"><span class="ach-k"><span class="ach-title-long">ODs:</span><span class="ach-title-short">ODs:</span></span></div><div class="ach-v-wrap" style="align-items:flex-start;"><span class="ach-value" style="padding-top:1px;">${countHtml}</span><span class="ach-value ach-happy-col ach-enh-od">${gainedHtml}</span></div></div></div>`;
+                }
+                return html;
             };
 
             const colCount = 2;
@@ -10184,7 +10329,7 @@ function computeEnhancersForPeriod(sl) {
     const energyItemTotals = {};
     ENERGY_LOGS.forEach(id => { energyItemTotals[id] = { count: 0, energy: 0 }; });
     const odItemTotals = {};
-    OD_LOGS.forEach(id => { odItemTotals[id] = { count: 0, energyLost: 0 }; });
+    OD_LOGS.forEach(id => { odItemTotals[id] = { count: 0, energyLost: 0, happyLost: 0 }; });
     const statEnhByStat = {
         str: { count: 0, gain: 0 }, def: { count: 0, gain: 0 },
         spd: { count: 0, gain: 0 }, dex: { count: 0, gain: 0 }
@@ -10209,6 +10354,8 @@ function computeEnhancersForPeriod(sl) {
                 energyItemTotals[e.logId].energy += e.energy;
             if (e.type === 'item' && e.energyLost != null && odItemTotals[e.logId])
                 odItemTotals[e.logId].energyLost += e.energyLost;
+            if (e.type === 'item' && e.happyLost != null && odItemTotals[e.logId])
+                odItemTotals[e.logId].happyLost += e.happyLost;
             if (e.type === 'item' && e.statKey && statEnhByStat[e.statKey]) {
                 statEnhByStat[e.statKey].count++;
                 statEnhByStat[e.statKey].gain = Math.round((statEnhByStat[e.statKey].gain + (e.statGain || 0)) * 100) / 100;
@@ -11495,22 +11642,165 @@ const BestGymController = {
         return `<svg viewBox="0 0 24 24" fill="none">${bgLines.join('')}${lines.join('')}</svg>`;
     }
 
-    function buildAllTimeChartSVG(sl) {
-        const stats = sl && sl.stats;
-        const keys = ['str', 'def', 'spd', 'dex'];
-        const colors = ['#4a6070', '#7a3d36', '#8a6530', '#486644'];
-        const xs = [8, 18, 29, 39];
-        const maxH = 36, minH = 2;
-        const vals = keys.map(k => (stats && stats[k] ? stats[k].end : 0));
-        const maxVal = Math.max(...vals);
-        const hs = vals.map(v => maxVal > 0 ? Math.max((v / maxVal) * maxH, minH) : maxH * 0.25);
-        const lines = keys.map((k, i) => {
-            return `<line x1="${xs[i]}" y1="40" x2="${xs[i]}" y2="${(40 - hs[i]).toFixed(2)}" stroke="${colors[i]}" stroke-width="9" stroke-linecap="round"/>`;
-        });
-        const bgLines = keys.map((k, i) =>
-            `<line x1="${xs[i]}" y1="40" x2="${xs[i]}" y2="${(40 - hs[i]).toFixed(2)}" stroke="#000" stroke-width="11" stroke-linecap="round"/>`
-        );
-        return `<svg viewBox="0 -1.5 46 63" fill="none">${bgLines.join('')}${lines.join('')}<text x="23" y="60" text-anchor="middle" font-family="'Fjalla One', Arial Narrow, sans-serif" font-size="12" fill="#e6e6e6">All-Time</text></svg>`;
+
+
+    // Weekly capsule reservoir bar.
+    // The bay IS the capsule — no floating object. Empty bays: dark recess + gray terminal plates
+    // at each end. Filled bays: same structure, but the middle section between the terminals
+    // fills with the colour + a thin gray border encasing just the glass window area.
+    // slots: ['green'|'gold'|'diamond'|'silver'|null] x5. lit=true → bright colours (complete week).
+    // animated=true → per-window inner radiance glow (SVG animate, staggered across capsules).
+    function buildCapsuleBar(slots, lit, animated) {
+        const W = 500, H = 100, n = 5;
+        const padX = 8, padY = 18, gap = 7;
+        const slotW = (W - 2 * padX - (n - 1) * gap) / n;
+        const slotH = H - 2 * padY;
+        const termW = 10; // terminal plate width at each end of the bay
+
+        const defs =
+            `<defs>` +
+            `<pattern id="bbc-hatch" width="8" height="8" patternUnits="userSpaceOnUse">` +
+            `<line x1="0" y1="8" x2="8" y2="0" stroke="#fff" stroke-opacity=".1" stroke-width="1"/>` +
+            `<line x1="-2" y1="2" x2="2" y2="-2" stroke="#fff" stroke-opacity=".1" stroke-width="1"/>` +
+            `<line x1="6" y1="10" x2="10" y2="6" stroke="#fff" stroke-opacity=".1" stroke-width="1"/>` +
+            `</pattern>` +
+            `<linearGradient id="bbc-housing" x1="0" y1="0" x2="0" y2="1">` +
+            `<stop offset="0" stop-color="#202020"/><stop offset=".4" stop-color="#363636"/>` +
+            `<stop offset=".5" stop-color="#404040"/><stop offset=".6" stop-color="#363636"/>` +
+            `<stop offset="1" stop-color="#181818"/></linearGradient>` +
+            `<linearGradient id="bbc-term" x1="0" y1="${padY}" x2="0" y2="${padY + (H - 2 * padY)}" gradientUnits="userSpaceOnUse">` +
+            `<stop offset="0" stop-color="#1e1e1e"/><stop offset=".25" stop-color="#484848"/>` +
+            `<stop offset=".5" stop-color="#606060"/><stop offset=".75" stop-color="#484848"/>` +
+            `<stop offset="1" stop-color="#161616"/></linearGradient>` +
+            `<linearGradient id="bbc-recess-shadow" x1="0" y1="0" x2="0" y2="1">` +
+            `<stop offset="0" stop-color="#000" stop-opacity=".6"/><stop offset=".5" stop-color="#000" stop-opacity=".1"/><stop offset="1" stop-color="#000" stop-opacity="0"/></linearGradient>` +
+            `<linearGradient id="bbc-recess-shine" x1="0" y1="0" x2="0" y2="1">` +
+            `<stop offset="0" stop-color="#fff" stop-opacity="0"/><stop offset=".7" stop-color="#fff" stop-opacity="0"/><stop offset="1" stop-color="#fff" stop-opacity=".35"/></linearGradient>` +
+            `<linearGradient id="bbc-gD" x1="0" y1="1" x2="1" y2="0">` +
+            `<stop offset="0" stop-color="#004422"/><stop offset=".33" stop-color="#336611"/>` +
+            `<stop offset=".66" stop-color="#006644"/><stop offset="1" stop-color="#2d5c00"/></linearGradient>` +
+            `<linearGradient id="bbc-gL" x1="0" y1="1" x2="1" y2="0">` +
+            `<stop offset="0" stop-color="#008844"/><stop offset=".33" stop-color="#66bb22"/>` +
+            `<stop offset=".66" stop-color="#00cc88"/><stop offset="1" stop-color="#44aa00"/></linearGradient>` +
+            `<linearGradient id="bbc-oD" x1="0" y1="1" x2="1" y2="0">` +
+            `<stop offset="0" stop-color="#886600"/><stop offset=".33" stop-color="#aa7700"/>` +
+            `<stop offset=".66" stop-color="#ddbb66"/><stop offset="1" stop-color="#774400"/></linearGradient>` +
+            `<linearGradient id="bbc-oL" x1="0" y1="1" x2="1" y2="0">` +
+            `<stop offset="0" stop-color="#ffcc00"/><stop offset=".33" stop-color="#ffdd44"/>` +
+            `<stop offset=".66" stop-color="#fff8cc"/><stop offset="1" stop-color="#cc8800"/></linearGradient>` +
+            `<linearGradient id="bbc-dD" x1="0" y1="1" x2="1" y2="0">` +
+            `<stop offset="0" stop-color="#882299"/><stop offset=".33" stop-color="#3366aa"/>` +
+            `<stop offset=".66" stop-color="#339966"/><stop offset="1" stop-color="#993366"/></linearGradient>` +
+            `<linearGradient id="bbc-dL" x1="0" y1="1" x2="1" y2="0">` +
+            `<stop offset="0" stop-color="#ee77ff"/><stop offset=".33" stop-color="#88bbff"/>` +
+            `<stop offset=".66" stop-color="#77ffcc"/><stop offset="1" stop-color="#ff77cc"/></linearGradient>` +
+            `<filter id="bbc-tube-glow" x="-20%" y="-30%" width="140%" height="160%" color-interpolation-filters="sRGB">` +
+            `<feGaussianBlur stdDeviation="4" result="blur"/>` +
+            `<feMerge><feMergeNode in="blur"/><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>` +
+            `</filter>` +
+            `<linearGradient id="bbc-gBr" x1="0" y1="0" x2="1" y2="0">` +
+            `<stop offset="0" stop-color="#44ff00" stop-opacity="0"/>` +
+            `<stop offset=".25" stop-color="#88ff33" stop-opacity=".95"/>` +
+            `<stop offset=".5" stop-color="#eeffcc" stop-opacity="1"/>` +
+            `<stop offset=".75" stop-color="#88ff33" stop-opacity=".95"/>` +
+            `<stop offset="1" stop-color="#44ff00" stop-opacity="0"/></linearGradient>` +
+            `<linearGradient id="bbc-oBr" x1="0" y1="0" x2="1" y2="0">` +
+            `<stop offset="0" stop-color="#ffaa00" stop-opacity="0"/>` +
+            `<stop offset=".25" stop-color="#ffcc44" stop-opacity=".95"/>` +
+            `<stop offset=".5" stop-color="#fffff0" stop-opacity="1"/>` +
+            `<stop offset=".75" stop-color="#ffcc44" stop-opacity=".95"/>` +
+            `<stop offset="1" stop-color="#ffaa00" stop-opacity="0"/></linearGradient>` +
+            `<linearGradient id="bbc-dBr" x1="0" y1="0" x2="1" y2="0">` +
+            `<stop offset="0" stop-color="#aa44ff" stop-opacity="0"/>` +
+            `<stop offset=".25" stop-color="#cc88ff" stop-opacity=".95"/>` +
+            `<stop offset=".5" stop-color="#eeeeff" stop-opacity="1"/>` +
+            `<stop offset=".75" stop-color="#88ccff" stop-opacity=".95"/>` +
+            `<stop offset="1" stop-color="#44aaff" stop-opacity="0"/></linearGradient>` +
+            `<linearGradient id="bbc-s" x1="0" y1="0" x2="0" y2="1">` +
+            `<stop offset="0" stop-color="#1e1e1e"/><stop offset=".35" stop-color="#484848"/>` +
+            `<stop offset=".5" stop-color="#686868"/><stop offset=".65" stop-color="#484848"/>` +
+            `<stop offset="1" stop-color="#161616"/></linearGradient>` +
+            `</defs>`;
+
+        const colorKey = { green: 'g', gold: 'o', diamond: 'd', silver: 's' };
+        const f = (v) => v.toFixed(2);
+        let out = `<rect width="${W}" height="${H}" fill="url(#bbc-housing)"/>`;
+
+        for (let i = 0; i < n; i++) {
+            const bx = padX + i * (slotW + gap);
+            const by = padY;
+
+            // Bay recess (empty state: same material as housing but with inner shadow to look recessed)
+            // Darken the background to push it deeper, then add shadows.
+            out += `<rect x="${f(bx)}" y="${by}" width="${f(slotW)}" height="${slotH}" fill="#000" fill-opacity=".5"/>`;
+            out += `<rect x="${f(bx)}" y="${by}" width="${f(slotW)}" height="${slotH}" fill="url(#bbc-recess-shadow)"/>`;
+            // Inner shadow on top edge to give depth to the empty housing recess
+            out += `<rect x="${f(bx)}" y="${by}" width="${f(slotW)}" height="3" fill="#000" fill-opacity=".6"/>`;
+            // Subtle highlight on the bottom inner edge to define the bottom lip of the housing
+            out += `<rect x="${f(bx)}" y="${f(by + slotH - 1.5)}" width="${f(slotW)}" height="1.5" fill="#fff" fill-opacity=".15"/>`;
+
+            const color = slots[i];
+            if (!color) continue;
+
+            // Terminal plates — part of the capsule, only rendered when a capsule is present
+            out += `<rect x="${f(bx)}" y="${by}" width="${termW}" height="${slotH}" fill="url(#bbc-term)"/>`;
+            out += `<rect x="${f(bx)}" y="${by}" width="${termW}" height="${slotH}" fill="url(#bbc-hatch)"/>`;
+            out += `<rect x="${f(bx + slotW - termW)}" y="${by}" width="${termW}" height="${slotH}" fill="url(#bbc-term)"/>`;
+            out += `<rect x="${f(bx + slotW - termW)}" y="${by}" width="${termW}" height="${slotH}" fill="url(#bbc-hatch)"/>`;
+
+            // Inner shadow on capsule top edge only (bottom uses recess shine on the fill)
+            out += `<rect x="${f(bx)}" y="${by}" width="${f(slotW)}" height="2.5" fill="#000" fill-opacity=".4"/>`;
+
+            // Glass window — fills the middle section between the two terminal plates
+            const gx = bx + termW, gw = slotW - 2 * termW;
+            const gy = by, gh = slotH;
+            // railH: thickness of top/bottom metal rails (scaled for thicker housing)
+            const railH = 18;
+            // Viewing window: the gap between the two rails
+            const winY = gy + railH, winH = gh - railH * 2;
+            // Fill tube sits inside the viewing window, further inset by fillInset
+            const fillInset = 3;
+            const fy = winY + fillInset, fh = winH - fillInset * 2;
+
+            const fid = colorKey[color];
+            const fillId = fid === 's' ? 's' : (fid + (lit ? 'L' : 'D'));
+
+            // Rails drawn first so fill+glow bleeds over them on completed weeks (same as end-caps)
+            out += `<rect x="${f(gx)}" y="${gy}" width="${f(gw)}" height="${railH}" fill="url(#bbc-term)"/>`;
+            out += `<rect x="${f(gx)}" y="${gy}" width="${f(gw)}" height="${railH}" fill="url(#bbc-hatch)"/>`;
+            out += `<rect x="${f(gx)}" y="${f(gy + gh - railH)}" width="${f(gw)}" height="${railH}" fill="url(#bbc-term)"/>`;
+            out += `<rect x="${f(gx)}" y="${f(gy + gh - railH)}" width="${f(gw)}" height="${railH}" fill="url(#bbc-hatch)"/>`;
+
+            // Colour fill — completed tubes get a glow bloom that bleeds past the tube edges
+            if (lit && color !== 'silver') out += `<g filter="url(#bbc-tube-glow)">`;
+            out += `<rect x="${f(gx)}" y="${fy}" width="${f(gw)}" height="${fh}" fill="url(#bbc-${fillId})"/>`;
+            // Recess shadow — lighter on completed weeks so lit colors read brighter
+            out += `<rect x="${f(gx)}" y="${fy}" width="${f(gw)}" height="${fh}" fill="url(#bbc-recess-shadow)" opacity="${lit ? 0.4 : 1}"/>`;
+            // Recess shine — faint bright line at very bottom edge (reflected ambient light)
+            out += `<rect x="${f(gx)}" y="${fy}" width="${f(gw)}" height="${fh}" fill="url(#bbc-recess-shine)"/>`;
+            if (lit && color !== 'silver') out += `</g>`;
+            // Inner sweep — wave travels left→right across the full bar; each capsule's clip window
+            // sees it pass through at the right moment by position, no stagger needed.
+            if (animated && color !== 'silver') {
+                const brightId = color === 'green' ? 'bbc-gBr' : color === 'gold' ? 'bbc-oBr' : 'bbc-dBr';
+                const sweepClipId = `bbc-scp${i}`;
+                out += `<clipPath id="${sweepClipId}"><rect x="${f(gx)}" y="${fy}" width="${f(gw)}" height="${fh}"/></clipPath>`;
+                out += `<g clip-path="url(#${sweepClipId})">` +
+                    `<rect x="0" y="${fy}" width="${W}" height="${fh}" fill="url(#${brightId})" transform="translate(${-W},0)">` +
+                    `<animateTransform attributeName="transform" type="translate" ` +
+                    `values="${-W},0; ${W},0; ${-W},0; ${-W},0" ` +
+                    `keyTimes="0; 0.25; 0.251; 1" ` +
+                    `keySplines=".3 0 .7 1; 0 0 1 1; 0 0 1 1" ` +
+                    `calcMode="spline" dur="8s" begin="0s" repeatCount="indefinite"/>` +
+                    `<animate attributeName="opacity" ` +
+                    `values="1; 1; 0; 0" ` +
+                    `keyTimes="0; 0.249; 0.25; 1" ` +
+                    `calcMode="linear" dur="8s" begin="0s" repeatCount="indefinite"/>` +
+                    `</rect></g>`;
+            }
+        }
+
+        return `<svg class="bbgl-cap-svg" viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" xmlns="http://www.w3.org/2000/svg">${defs}${out}</svg>`;
     }
 
     function updateSummaryCharts() {
@@ -11521,8 +11811,12 @@ const BestGymController = {
         mBtn.innerHTML = buildChartSVG(DataController.getSlice('MONTH', CONSTANTS.MONTHS[m], y));
         yBtn.innerHTML = buildChartSVG(DataController.getSlice('YEAR', String(y)));
         const aBtn = document.getElementById('all-time-btn');
-        if (aBtn) aBtn.innerHTML = buildAllTimeChartSVG(DataController.getSlice('ALL', 'All-Time'));
+        if (aBtn) aBtn.innerHTML = buildChartSVG(DataController.getSlice('ALL', 'All-Time'));
         
+        mBtn.setAttribute('data-tooltip-html', generateRichTooltip(DataController.getSlice('MONTH', CONSTANTS.MONTHS[m], y)));
+        yBtn.setAttribute('data-tooltip-html', generateRichTooltip(DataController.getSlice('YEAR', String(y))));
+        if (aBtn) aBtn.setAttribute('data-tooltip-html', generateRichTooltip(DataController.getSlice('ALL', 'All-Time')));
+
         const activeL = viewState.activeViewLabel;
         mBtn.classList.toggle('active', activeL === CONSTANTS.MONTHS[m]);
         yBtn.classList.toggle('active', activeL === String(y));
@@ -11629,8 +11923,6 @@ const BestGymController = {
         }
         if (!calendarState.selectedData) renderStats(DataController.getSlice('DAY', Formatter.dateLogical()), Formatter.dateLogical());
         else renderStats(calendarState.selectedData, calendarState.selectedLabel);
-        dom.monthTrigger.setAttribute('data-tooltip-html', generateRichTooltip(DataController.getSlice('MONTH', CONSTANTS.MONTHS[m], y)));
-        yt.setAttribute('data-tooltip-html', generateRichTooltip(DataController.getSlice('YEAR', String(y))));
         Perf.end('renderPanel');
         updateLevelBar();
         updateSummaryCharts();
@@ -11731,20 +12023,23 @@ const BestGymController = {
         ns.className = 'day-num';
         ns.innerText = d;
         cell.appendChild(ns);
-        // Foundational text markers (War Start / War End / OD). Plain text for now to verify the
-        // tracking lands on the right days before real visual markers are designed.
-        const markerLabels = [];
-        const wm = getWarMarkers()[ds];
-        if (wm && wm.warStart) markerLabels.push('War Start');
-        if (wm && wm.warWon) markerLabels.push('War Won');
-        if (wm && wm.warLost) markerLabels.push('War Lost');
-        if (wm && wm.warEnd) markerLabels.push('War End');
-        if (((sl.xanaxODs || 0) + (sl.lsdODs || 0)) > 0) markerLabels.push('OD');
-        if (markerLabels.length) {
-            const mk = document.createElement('div');
-            mk.className = 'bbgl-cal-markers';
-            mk.innerHTML = markerLabels.map(t => `<span class="bbgl-cal-marker">${t}</span>`).join('');
-            cell.appendChild(mk);
+        if (isFlipped) {
+            const BASE = 'https://raw.githubusercontent.com/BigBlackHawk42069/asdfaskijdnfawef/refs/heads/main/ScrptImgs/Calendar/';
+            const wm = getWarMarkers()[ds];
+            const eventImgs = [];
+            if ((sl.lsdODs || 0) > 0) eventImgs.push(BASE + 'lsd-od.png');
+            if ((sl.xanaxODs || 0) > 0) eventImgs.push(BASE + 'xan-od.png');
+            if ((sl.exODs || 0) > 0) eventImgs.push('PLACEHOLDER_EX_OD_URL');
+            if (wm && wm.warStart) eventImgs.push(BASE + 'war-strt.png');
+            if (wm && wm.warWon) eventImgs.push(BASE + 'war-win.png');
+            if (wm && wm.warLost) eventImgs.push(BASE + 'war-lost.png');
+            eventImgs.forEach((url, i) => {
+                const ep = document.createElement('div');
+                ep.className = 'bbgl-event-post-it';
+                ep.style.backgroundImage = `url('${url}')`;
+                ep.style.setProperty('--ei', i);
+                cell.appendChild(ep);
+            });
         }
         if (isFlipped && sl.meta.tier > 0) {
             const item = DataController.getStickerMap().get(ds);
@@ -11822,142 +12117,37 @@ const BestGymController = {
         tr.className = 'bbgl-weekly-track';
         tr.dataset.label = sl.label;
         tr.onclick = (e) => { e.stopPropagation(); openHistory(sl, sl.label); };
-        tr.setAttribute('data-tooltip-html', generateRichTooltip(sl));
         if (calendarState.selectedLabel === sl.label) tr.classList.add('is-viewing');
         const installWeekKey = runtime.demoMode ? null : getInstallWeekKey();
+        const addCenterTab = (slice) => {
+            const tab = document.createElement('div');
+            tab.className = 'bbgl-bar-handle';
+            tab.dataset.pos = 'start';
+            const tooltipHtml = generateRichTooltip(slice);
+            tab.setAttribute('data-tooltip-html', tooltipHtml);
+            tab.setAttribute('data-tooltip-anchor', '.bbgl-bar-handle');
+            tr.setAttribute('data-tooltip-html', tooltipHtml);
+            tr.setAttribute('data-tooltip-anchor', '.bbgl-bar-handle');
+            tab.onclick = (e) => { e.stopPropagation(); openHistory(slice, slice.label); };
+            tab.addEventListener('mouseenter', () => tr.classList.add('is-scrub-hovered'));
+            tab.addEventListener('mouseleave', () => tr.classList.remove('is-scrub-hovered'));
+            tab.innerHTML = buildChartSVG(slice);
+            anchor.appendChild(tab);
+        };
+        // Archived / pre-install weeks: five silver placeholder capsules (no real reward data).
         if (installWeekKey && _wk < installWeekKey) {
-            const d = document.createElement('div');
-            d.className = 'bbgl-seg seg-silver';
-            d.style.position = 'absolute';
-            d.style.left = '0';
-            d.style.width = '100%';
-            tr.appendChild(d);
+            tr.innerHTML = buildCapsuleBar(['silver', 'silver', 'silver', 'silver', 'silver'], false, false);
             anchor.appendChild(tr);
-            ['left', 'center', 'right'].forEach(pos => {
-                const _h = document.createElement('div');
-                _h.className = 'bbgl-bar-handle';
-                _h.dataset.pos = pos;
-                _h.setAttribute('aria-hidden', 'true');
-                anchor.appendChild(_h);
-            });
+            addCenterTab(sl);
             cont.appendChild(anchor);
             if (viewState.activeViewLabel === sl.label && calendarState.selectedLabel !== sl.label) openHistory(sl, sl.label);
             return;
         }
-        const {
-            totGreen,
-            totGold,
-            totDiamond
-        } = computeWeekCompletion(sl._dailyList, hjDaySet, hjWeek[_wk] || 0);
-        const tot = totGreen + totGold + totDiamond;
-        const goal = tot >= GAME.WEEKLY_GOAL;
-        if (goal && userConfig.animations) tr.classList.add('track-polished');
-        const todayStr = Formatter.dateLogical();
-        const closed = sl._dailyList[sl._dailyList.length - 1].date < todayStr;
-        const solid = closed && !goal;
-        if (solid) tr.classList.add('track-solidified');
-        let pctDiamond = Math.min(100, totDiamond / 10);
-        let pctGold = Math.min(100 - pctDiamond, totGold / 10);
-        let pctGreen = Math.min(100 - pctDiamond - pctGold, totGreen / 10);
-        
-        let sum = pctGreen + pctGold + pctDiamond;
-        if (goal && sum < 100) {
-            const deficit = 100 - sum;
-            if (pctDiamond > 0) pctDiamond += deficit;
-            else if (pctGold > 0) pctGold += deficit;
-            else pctGreen += deficit;
-        }
-
-        let dLeft = 50 - pctDiamond / 2;
-        let dRight = 50 + pctDiamond / 2;
-        let goLeft = 100 - pctGold;
-
-        if (dRight > goLeft) {
-            dRight = goLeft;
-            dLeft = dRight - pctDiamond;
-        }
-
-        if (dLeft < 0) {
-            dLeft = 0;
-            dRight = pctDiamond;
-            goLeft = dRight;
-            pctGold = 100 - goLeft;
-        }
-
-        // Green pushes diamond right, but only into empty space (not into gold)
-        if (pctDiamond > 0 && pctGreen > dLeft) {
-            const pushNeeded = pctGreen - dLeft;
-            const emptyRight = goLeft - dRight;
-            const pushAllowed = Math.min(pushNeeded, Math.max(0, emptyRight));
-            dLeft += pushAllowed;
-            dRight += pushAllowed;
-            if (pushAllowed < pushNeeded) pctGreen = dLeft;
-        } else if (pctDiamond === 0 && pctGreen > goLeft) {
-            pctGreen = goLeft;
-        }
-
-        let actualDLeft = dLeft;
-        let gRight = pctGreen;
-        
-        let greenTouchesNext = false;
-        let goldTouchesPrev = false;
-        if (pctDiamond > 0) {
-            if (Math.abs(gRight - dLeft) < 0.01) greenTouchesNext = true;
-            if (Math.abs(dRight - goLeft) < 0.01) goldTouchesPrev = true;
-        } else {
-            if (Math.abs(gRight - goLeft) < 0.01) {
-                greenTouchesNext = true;
-                goldTouchesPrev = true;
-            }
-        }
-        if (pctGreen > 0) {
-            const d = document.createElement('div');
-            d.className = `bbgl-seg ${goal ? 'seg-polished' : 'seg-brushed'}-green`;
-            d.style.position = 'absolute';
-            d.style.left = '0';
-            d.style.width = `${pctGreen}%`;
-            if (!greenTouchesNext) {
-                d.style.borderTopRightRadius = '10px';
-                d.style.borderBottomRightRadius = '10px';
-            }
-            tr.appendChild(d);
-        }
-        if (pctGold > 0) {
-            const d = document.createElement('div');
-            d.className = `bbgl-seg ${goal ? 'seg-polished' : 'seg-brushed'}-gold`;
-            d.style.position = 'absolute';
-            d.style.right = '0';
-            d.style.width = `${pctGold}%`;
-            if (!goldTouchesPrev) {
-                d.style.borderTopLeftRadius = '10px';
-                d.style.borderBottomLeftRadius = '10px';
-            }
-            tr.appendChild(d);
-        }
-        if (pctDiamond > 0) {
-            const d = document.createElement('div');
-            d.className = `bbgl-seg ${goal ? 'seg-polished' : 'seg-brushed'}-diamond`;
-            d.style.position = 'absolute';
-            d.style.left = `${actualDLeft}%`;
-            d.style.width = `${pctDiamond}%`;
-            if (!greenTouchesNext) {
-                d.style.borderTopLeftRadius = '10px';
-                d.style.borderBottomLeftRadius = '10px';
-            }
-            if (!goldTouchesPrev) {
-                d.style.borderTopRightRadius = '10px';
-                d.style.borderBottomRightRadius = '10px';
-            }
-            tr.appendChild(d);
-        }
+        const { capsules, isCompleted } = computeWeekCompletion(sl._dailyList, hjDaySet, hjWeek[_wk] || 0);
+        if (isCompleted) tr.classList.add('track-polished');
+        tr.innerHTML = buildCapsuleBar(capsules, isCompleted, isCompleted && userConfig.animations);
         anchor.appendChild(tr);
-        ['left', 'center', 'right'].forEach(pos => {
-            const handle = document.createElement('div');
-            handle.className = 'bbgl-bar-handle';
-            handle.dataset.pos = pos;
-            handle.setAttribute('aria-hidden', 'true');
-            anchor.appendChild(handle);
-        });
+        addCenterTab(sl);
         cont.appendChild(anchor);
         if (viewState.activeViewLabel === sl.label && calendarState.selectedLabel !== sl.label) openHistory(sl, sl.label);
     }
@@ -13346,7 +13536,7 @@ const BestGymController = {
     function getDashboardHTML() {
         const weekDays = userConfig.weekStartMode === 'mon' ? ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'] : ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
         const weekRowHTML = weekDays.map(d => `<span>${d}</span>`).join('');
-        return `<div class="bbgl-header" id="bbgl-header-bar"><div class="bbgl-header-left">${ICONS.LOGO}<span class="bbgl-header-text"><span class="bbgl-short-title">Big Black Log</span><span class="bbgl-long-title">Big Black Gym Log</span></span></div><div class="bbgl-header-right"><span id="bbgl-demo-exit-btn" class="close-settings-btn bbgl-close-purple" style="display:${runtime.demoMode ? 'flex' : 'none'};" data-tooltip-html="${TOOLTIPS.DEMO_EXIT_HTML}"><span class="bbgl-demo-x-label">Demo</span>${ICONS.CLOSE}</span><span id="bbgl-settings-btn" class="bbgl-custom-icon">⚙</span><span id="bbgl-close-btn" class="bbgl-native-icon">${ICONS.MINIMIZE}</span><span id="bbgl-pop-btn" class="bbgl-native-icon">${viewState.expanded ? ICONS.COMPRESS : ICONS.POPOUT}</span></div></div><div id="bbgl-content-wrapper"><div id="bbgl-top-panel"><div id="bbgl-tall-toggle">${viewState.isTall ? '–' : '+'}</div><div id="bbgl-ledger-toggle" data-tooltip="${TOOLTIPS.LEDGER_VIEW}">${ICONS.LEDGER}</div><div id="bbgl-graph-toggle" data-tooltip="${TOOLTIPS.GRAPH_VIEW}">${ICONS.GRAPH}</div><div id="bbgl-achievements-toggle" data-tooltip="${TOOLTIPS.ACHIEVEMENTS}">${ICONS.ACHIEVEMENTS}</div><div id="bbgl-sticker-toggle" data-tooltip="${TOOLTIPS.STICKERBOOK}">${ICONS.STICKERBOOK}</div><div id="bbgl-item-counters"></div><div id="bbgl-copy-btn" class="copy-hist-btn" data-tooltip="${TOOLTIPS.COPY_SESSION}">${ICONS.CLIPBOARD}</div><div id="bbgl-sticker-title"></div><div class="ui-floating-label" id="bbgl-date-label">LOADING...</div><div class="ui-floating-summary" id="bbgl-summary-label"></div><div id="bbgl-ledger-view" class="ledger-content"></div><div id="bbgl-graph-container"><div class="g-hud"><div class="g-toggles"><div class="g-pill active" data-type="mode" data-val="values">Gains</div><div class="g-pill" data-type="mode" data-val="rates">Rates</div></div><div class="g-toggles"><div class="g-pill p-str active" data-type="stat" data-val="str">STR</div><div class="g-pill p-def" data-type="stat" data-val="def">DEF</div><div class="g-pill p-spd active" data-type="stat" data-val="spd">SPD</div><div class="g-pill p-dex" data-type="stat" data-val="dex">DEX</div><div class="g-pill p-tot" data-type="stat" data-val="total">TOT</div></div></div><svg id="bbgl-graph-svg"></svg></div><div id="bbgl-achievements-container" class="ledger-content"><div class="bbgl-ach-scroll"><div id="bbgl-ach-pages"></div></div><div id="bbgl-ach-footer" class="bbgl-ach-footer"><div class="bbgl-ach-footer-side bbgl-ach-footer-left"><button type="button" class="bbgl-ach-nav bbgl-ach-prev" aria-label="Previous achievements page">\u276e</button></div><div id="bbgl-ach-pageindicator"></div><div class="bbgl-ach-footer-side bbgl-ach-footer-right"><button type="button" class="bbgl-ach-nav bbgl-ach-next" aria-label="Next achievements page">\u276f</button></div></div></div><div id="bbgl-sticker-bg"></div><div id="bbgl-sticker-container"><div id="sticker-sponsor-btn" class="sticker-nav-btn disabled">❮</div><div id="sticker-prev-btn" class="sticker-nav-btn">❮</div><div id="sticker-next-btn" class="sticker-nav-btn">❯</div><div id="bbgl-sticker-grid"></div><div id="bbgl-sticker-pagination"></div></div><div class="glass-overlay"></div></div><div id="bbgl-bottom-panel"><div class="bbgl-header-wrapper"><div class="bbgl-month-header"><div class="title-group"><div id="all-time-btn" class="all-time-btn" data-tooltip="${TOOLTIPS.ALL_TIME_SUMMARY}">${ICONS.CHART_ALL}</div><div class="title-stack"><div class="header-row"><div class="header-trigger" id="year-trigger"></div><div class="stats-btn" id="year-stats-btn" data-tooltip="${TOOLTIPS.YEARLY_SUMMARY}">${ICONS.CHART}</div><div id="bbgl-year-dropdown" class="bbgl-dropdown-menu"></div></div><div class="header-row"><div class="header-trigger" id="month-trigger"></div><div class="stats-btn" id="month-stats-btn" data-tooltip="${TOOLTIPS.MONTHLY_SUMMARY}">${ICONS.CHART}</div><div id="bbgl-month-dropdown" class="bbgl-dropdown-menu"></div></div></div></div><button class="arrow-btn" id="prev-month-btn">❮</button><button class="arrow-btn" id="next-month-btn">❯</button></div><div id="bbgl-level-container"><span id="bbgl-level-num">Lv 1</span><div id="bbgl-level-track"><div id="bbgl-level-fill"></div></div></div></div><div id="bbgl-demo-exit" style="display: ${runtime.demoMode ? 'flex' : 'none'};" data-tooltip="${TOOLTIPS.DEMO_EXIT}" data-tooltip-html="${TOOLTIPS.DEMO_EXIT_HTML}">DEMO MODE</div><div class="bbgl-grid-container"><div class="bbgl-week-row">${weekRowHTML}</div><div class="calendar-wrapper" id="swipe-area"><div id="bbgl-cal-container" class="bbgl-cal-container"></div></div></div></div><div id="bbgl-item-viewer"><div class="viewer-window"><div class="viewer-stage"><div class="viewer-pedestal" id="vi-pedestal-wrapper"><div class="viewer-obj" id="vi-obj-target"><div class="layer-front"></div><div class="layer-back"></div></div></div></div></div><div class="viewer-info-overlay"><div class="vi-name" id="vi-name-target">Item Name</div></div></div><div id="bbgl-settings-view">${getSettingsHTML()}</div><div id="bbgl-welcome-view"></div></div>`;
+        return `<div class="bbgl-header" id="bbgl-header-bar"><div class="bbgl-header-left">${ICONS.LOGO}<span class="bbgl-header-text"><span class="bbgl-short-title">Big Black Log</span><span class="bbgl-long-title">Big Black Gym Log</span></span></div><div class="bbgl-header-right"><span id="bbgl-demo-exit-btn" class="close-settings-btn bbgl-close-purple" style="display:${runtime.demoMode ? 'flex' : 'none'};" data-tooltip-html="${TOOLTIPS.DEMO_EXIT_HTML}"><span class="bbgl-demo-x-label">Demo</span>${ICONS.CLOSE}</span><span id="bbgl-settings-btn" class="bbgl-custom-icon">⚙</span><span id="bbgl-close-btn" class="bbgl-native-icon">${ICONS.MINIMIZE}</span><span id="bbgl-pop-btn" class="bbgl-native-icon">${viewState.expanded ? ICONS.COMPRESS : ICONS.POPOUT}</span></div></div><div id="bbgl-content-wrapper"><div id="bbgl-top-panel"><div id="bbgl-tall-toggle">${viewState.isTall ? '–' : '+'}</div><div id="bbgl-ledger-toggle" data-tooltip="${TOOLTIPS.LEDGER_VIEW}">${ICONS.LEDGER}</div><div id="bbgl-graph-toggle" data-tooltip="${TOOLTIPS.GRAPH_VIEW}">${ICONS.GRAPH}</div><div id="bbgl-achievements-toggle" data-tooltip="${TOOLTIPS.ACHIEVEMENTS}">${ICONS.ACHIEVEMENTS}</div><div id="bbgl-sticker-toggle" data-tooltip="${TOOLTIPS.STICKERBOOK}">${ICONS.STICKERBOOK}</div><div id="bbgl-item-counters"></div><div id="bbgl-copy-btn" class="copy-hist-btn" data-tooltip="${TOOLTIPS.COPY_SESSION}">${ICONS.CLIPBOARD}</div><div id="bbgl-sticker-title"></div><div class="ui-floating-label" id="bbgl-date-label">LOADING...</div><div class="ui-floating-summary" id="bbgl-summary-label"></div><div id="bbgl-ledger-view" class="ledger-content"></div><div id="bbgl-graph-container"><div class="g-hud"><div class="g-toggles"><div class="g-pill active" data-type="mode" data-val="values">Gains</div><div class="g-pill" data-type="mode" data-val="rates">Rates</div></div><div class="g-toggles"><div class="g-pill p-str active" data-type="stat" data-val="str">STR</div><div class="g-pill p-def" data-type="stat" data-val="def">DEF</div><div class="g-pill p-spd active" data-type="stat" data-val="spd">SPD</div><div class="g-pill p-dex" data-type="stat" data-val="dex">DEX</div><div class="g-pill p-tot" data-type="stat" data-val="total">TOT</div></div></div><svg id="bbgl-graph-svg"></svg></div><div id="bbgl-achievements-container" class="ledger-content"><div class="bbgl-ach-scroll"><div id="bbgl-ach-pages"></div></div><div id="bbgl-ach-footer" class="bbgl-ach-footer"><div class="bbgl-ach-footer-side bbgl-ach-footer-left"><button type="button" class="bbgl-ach-nav bbgl-ach-prev" aria-label="Previous achievements page">\u276e</button></div><div id="bbgl-ach-pageindicator"></div><div class="bbgl-ach-footer-side bbgl-ach-footer-right"><button type="button" class="bbgl-ach-nav bbgl-ach-next" aria-label="Next achievements page">\u276f</button></div></div></div><div id="bbgl-sticker-bg"></div><div id="bbgl-sticker-container"><div id="sticker-sponsor-btn" class="sticker-nav-btn disabled">❮</div><div id="sticker-prev-btn" class="sticker-nav-btn">❮</div><div id="sticker-next-btn" class="sticker-nav-btn">❯</div><div id="bbgl-sticker-grid"></div><div id="bbgl-sticker-pagination"></div></div><div class="glass-overlay"></div></div><div id="bbgl-bottom-panel"><div class="bbgl-header-wrapper"><div class="bbgl-month-header"><div class="title-group"><div class="title-stack"><div class="header-row"><div class="stats-btn" id="all-time-btn">${ICONS.CHART}</div><div class="header-trigger" id="all-time-trigger">∞</div></div><div class="header-row"><div class="stats-btn" id="year-stats-btn">${ICONS.CHART}</div><div class="header-trigger" id="year-trigger"></div><div id="bbgl-year-dropdown" class="bbgl-dropdown-menu"></div></div><div class="header-row"><div class="stats-btn" id="month-stats-btn">${ICONS.CHART}</div><div class="header-trigger" id="month-trigger"></div><div id="bbgl-month-dropdown" class="bbgl-dropdown-menu"></div></div></div></div><button class="arrow-btn" id="prev-month-btn">❮</button><button class="arrow-btn" id="next-month-btn">❯</button></div><div id="bbgl-level-container"><span id="bbgl-level-num">Lv 1</span><div id="bbgl-level-track"><div id="bbgl-level-fill"></div></div></div></div><div id="bbgl-demo-exit" style="display: ${runtime.demoMode ? 'flex' : 'none'};" data-tooltip="${TOOLTIPS.DEMO_EXIT}" data-tooltip-html="${TOOLTIPS.DEMO_EXIT_HTML}">DEMO MODE</div><div class="bbgl-grid-container"><div class="bbgl-week-row">${weekRowHTML}</div><div class="calendar-wrapper" id="swipe-area"><div id="bbgl-cal-container" class="bbgl-cal-container"></div></div></div></div><div id="bbgl-item-viewer"><div class="viewer-window"><div class="viewer-stage"><div class="viewer-pedestal" id="vi-pedestal-wrapper"><div class="viewer-obj" id="vi-obj-target"><div class="layer-front"></div><div class="layer-back"></div></div></div></div></div><div class="viewer-info-overlay"><div class="vi-name" id="vi-name-target">Item Name</div></div></div><div id="bbgl-settings-view">${getSettingsHTML()}</div><div id="bbgl-welcome-view"></div></div>`;
     }
 
     /**

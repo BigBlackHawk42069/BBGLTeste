@@ -340,9 +340,9 @@
     }
 
     async function fetchWars(manual) {
-        const TWELVE_HOURS = 12 * 60 * 60 * 1000;
+        const TWENTY_FOUR_HOURS = 24 * 60 * 60 * 1000;
         const lastSync = parseInt(localStorage.getItem(KEYS.WARS_SYNC) || '0');
-        if (!manual && (Date.now() - lastSync) < TWELVE_HOURS) return;
+        if (!manual && (Date.now() - lastSync) < TWENTY_FOUR_HOURS) return;
         try {
             incrementApiCount(1);
             const res = await fetch(`https://api.torn.com/faction/?selections=rankedwars,basic&key=${userConfig.apiKey}`);
@@ -376,7 +376,8 @@
             suppressed: true
         };
         const {
-            specId = null
+            specId = null,
+            manualWars = false
         } = options;
 
         if (!userConfig.apiKey || userConfig.apiKey.length < 16) {
@@ -420,6 +421,10 @@
 
         incrementApiCount(reqs.length);
 
+        // Wars runs in parallel with the main calls for FULL_SYNC — it has its own gate and
+        // error handling so a failure cannot affect the main sync result.
+        if (mission === 'FULL_SYNC') fetchWars(manualWars);
+
         try {
             // This safely performs the official Torn API request using your provided key.
             const res = await Promise.all(reqs.map(c => fetch(c.url).then(r => {
@@ -451,7 +456,31 @@
                 localStorage.setItem(KEYS.LAST_SYNC, ts.toString());
                 localStorage.setItem(KEYS.BS_SYNC, ts.toString());
             }
+
+            // Stat enhancer check: if battlestats shows higher values than the last recorded
+            // endBreakdown, stat-enhancing items were used since the last sync. Only then do we
+            // fire the extra call — almost always a no-op.
+            const _s = getActiveHistory();
+            const needsEnhancers = mission === 'FULL_SYNC' && bs &&
+                BS_STAT_ROWS.some(row => (bs[row.api] || 0) > (_s.today.endBreakdown[row.abbr] || 0));
+
             await DataController.processDataPayload(logs, bs);
+
+            if (needsEnhancers) {
+                try {
+                    incrementApiCount(1);
+                    const eRes = await fetch(
+                        `https://api.torn.com/user/?selections=log&log=${STAT_ENHANCER_PARAM}&key=${userConfig.apiKey}${fromFor('statEnhancers')}&timestamp=${Date.now()}`
+                    );
+                    if (eRes.ok) {
+                        const eData = await eRes.json();
+                        if (!eData.error) {
+                            meta.syncFloor.statEnhancers = tsSec;
+                            await DataController.processDataPayload(eData.log || {}, null);
+                        }
+                    }
+                } catch (e) { Log.warn('Stat enhancer fetch failed', e); }
+            }
 
             return {
                 ok: true
@@ -480,10 +509,9 @@
             btn.innerText = "Syncing...";
         }
 
-        const result = await universalFetch(mission, options);
+        const result = await universalFetch(mission, { ...options, manualWars: mission !== 'TRAIN_SINGLE' });
 
         if (result.ok) {
-            if (mission !== 'TRAIN_SINGLE') fetchWars(true);
             scheduleHeartbeat();
             if (btn) {
                 btn.innerText = "Refreshed!";
@@ -513,7 +541,6 @@
         runtime.bgSyncId = setTimeout(async function bgSyncTick() {
             runtime.bgSyncId = null;
             await universalFetch('FULL_SYNC');
-            fetchWars(false);
             scheduleHeartbeat();
         }, delay);
     }
@@ -646,6 +673,13 @@
                             logId: l.logId
                         };
                         if (l.energy) entry.energy = l.energy;
+                        if (l.energyLost != null) entry.energyLost = l.energyLost;
+                        if (l.happyLost != null) entry.happyLost = l.happyLost;
+                        if (l.happy) entry.happy = l.happy;
+                        if (l.statKey) {
+                            entry.statKey = l.statKey;
+                            entry.statGain = l.statGain;
+                        }
                         stored.series.push(entry);
                     }
                     return;

@@ -708,6 +708,14 @@
                         --bbgl-col-gap: clamp(6px, calc(6px + 20px * var(--bbgl-page-t)), 26px);
                     }
 
+                    #bbgl-panel.bbgl-mode-page .bbgl-weekly-anchor {
+                        --bbgl-track-h: clamp(12px, calc(12px + 3px * var(--bbgl-page-t)), 15px);
+                        height: var(--bbgl-track-h);
+                    }
+                    #bbgl-panel.bbgl-mode-page .bbgl-weekly-track {
+                        height: var(--bbgl-track-h);
+                    }
+
                     .bbgl-mode-page .bbgl-header {
                         display: none !important;
                     }
@@ -1550,7 +1558,7 @@
 
                     .bbgl-expanded.bbgl-tall #bbgl-graph-toggle {
                         width: 16px;
-                        height: 16px;
+                        height: 15px;
                         left: clamp(56px, calc(51.6px + 1.45cqi), 60px);
                     }
 
@@ -1562,7 +1570,7 @@
 
                     .bbgl-expanded.bbgl-tall #bbgl-sticker-toggle {
                         width: 16px;
-                        height: 16px;
+                        height: 15px;
                         left: clamp(104px, calc(90.8px + 4.35cqi), 116px);
                     }
 
@@ -2843,8 +2851,8 @@
                     }
 
                     #bbgl-panel.bbgl-mode-page .title-stack {
-                        gap: clamp(0px, calc(0px + 2px * var(--bbgl-page-t)), 2px);
-                        margin-top: clamp(-4px, calc(-4px - 4px * var(--bbgl-page-t)), -8px);
+                        gap: clamp(4px, calc(4px + 2px * var(--bbgl-page-t)), 6px);
+                        margin-top: clamp(-8px, calc(-8px - 4px * var(--bbgl-page-t)), -12px);
                     }
                     #bbgl-panel.bbgl-mode-page .title-group {
                         gap: clamp(6px, calc(8px - 2px * var(--bbgl-page-t)), 8px);
@@ -2910,45 +2918,69 @@
                         top: -2px;
                     }
 
-                    #bbgl-panel.bbgl-mode-page .title-stack > .header-row:nth-child(1) {
-                        margin-bottom: clamp(-2px, calc(-2px + 2px * var(--bbgl-page-t)), 0px);
-                        top: -2px;
-                    }
 
-                    #bbgl-panel.bbgl-mode-page .title-stack > .header-row:nth-child(2) {
-                        top: clamp(-1px, calc(3px - 4px * var(--bbgl-page-t)), 3px);
-                    }
 
 .stats-btn {
                         display: flex;
                         align-items: flex-end;
                         justify-content: center;
-                        cursor: pointer;
+                        pointer-events: none;
                         opacity: .95;
                         transition: all .2s;
                         align-self: flex-end;
-                        transform: translateY(-2px);
+                        transform: translate(-2px, -2px);
                     }
 
                     .stats-btn:hover, .stats-btn.active {
                         opacity: 1;
-                        transform: translateY(-2px) scale(1.25);
+                        transform: translate(-2px, -4px) scale(1.25);
                         filter: drop-shadow(0 0 6px rgba(216, 150, 224, 0.9)) drop-shadow(0 0 2px rgba(171, 71, 188, 1));
                     }
                     #year-stats-btn:hover, #year-stats-btn.active {
-                        transform: translateY(-3px) scale(1.25);
+                        transform: translate(-2px, -3px) scale(1.25);
+                    }
+
+                    #bbgl-panel:not(.bbgl-mode-page) .stats-btn {
+                        transform: translate(-2px, -4px);
+                    }
+                    #bbgl-panel:not(.bbgl-mode-page) .stats-btn:hover,
+                    #bbgl-panel:not(.bbgl-mode-page) .stats-btn.active {
+                        transform: translate(-2px, -6px) scale(1.25);
+                    }
+                    #bbgl-panel:not(.bbgl-mode-page) #year-stats-btn {
+                        transform: translate(-2px, -3px);
+                    }
+                    #bbgl-panel:not(.bbgl-mode-page) #year-stats-btn:hover,
+                    #bbgl-panel:not(.bbgl-mode-page) #year-stats-btn.active {
+                        transform: translate(-2px, -5px) scale(1.25);
+                    }
+
+                    #bbgl-panel:not(.bbgl-expanded):not(.bbgl-mode-page) .header-trigger {
+                        transform: translateY(-4px);
+                    }
+                    #bbgl-panel:not(.bbgl-expanded):not(.bbgl-mode-page) .stats-btn {
+                        transform: translate(-2px, -5px);
+                    }
+                    #bbgl-panel:not(.bbgl-expanded):not(.bbgl-mode-page) .stats-btn:hover,
+                    #bbgl-panel:not(.bbgl-expanded):not(.bbgl-mode-page) .stats-btn.active {
+                        transform: translate(-2px, -7px) scale(1.25);
+                    }
+                    #bbgl-panel:not(.bbgl-expanded):not(.bbgl-mode-page) #year-stats-btn {
+                        transform: translate(-2px, -4px);
+                    }
+                    #bbgl-panel:not(.bbgl-expanded):not(.bbgl-mode-page) #year-stats-btn:hover,
+                    #bbgl-panel:not(.bbgl-expanded):not(.bbgl-mode-page) #year-stats-btn.active {
+                        transform: translate(-2px, -6px) scale(1.25);
                     }
 
                     .stats-btn svg {
                         width: 100%;
                         height: 78%;
+                        pointer-events: auto;
+                        cursor: pointer;
                     }
 
                     #bbgl-panel.bbgl-mode-page .stats-btn svg {
-                        height: 85%;
-                    }
-
-                    #bbgl-panel.bbgl-mode-page #month-stats-btn svg {
                         height: 100%;
                     }
 
@@ -2962,6 +2994,7 @@
                         text-shadow: 0 2px 4px #000;
                         transition: font-size .3s;
                         line-height: 1;
+                        transform: translateY(-3px);
                     }
 
                     .header-trigger:hover {
@@ -2996,6 +3029,16 @@
                         font-size: 14px;
                     }
 
+                    #all-time-trigger {
+                        font-size: 20px;
+                    }
+                    #bbgl-panel:not(.bbgl-mode-page) #all-time-trigger {
+                        transform: translateY(0);
+                    }
+                    #all-time-trigger::after {
+                        display: none;
+                    }
+
                     #bbgl-panel.bbgl-expanded #year-trigger {
                         font-size: 14px;
                     }
@@ -3004,25 +3047,37 @@
                         font-size: 20px;
                     }
 
-                    #year-stats-btn { width: 14px; height: 14px; transform: translateY(-1px); }
-                    #month-stats-btn { width: 16px; height: 16px; }
+                    #bbgl-panel.bbgl-expanded #all-time-trigger {
+                        font-size: 28px;
+                    }
 
-                    #bbgl-panel.bbgl-expanded #year-stats-btn { width: 13px; height: 13px; }
-                    #bbgl-panel.bbgl-expanded #month-stats-btn { width: 21px; height: 21px; }
+                    #year-stats-btn { width: 17px; height: 16px; transform: translate(-2px, -1px); }
+                    #month-stats-btn, #all-time-btn { width: 17px; height: 16px; }
+
+                    #bbgl-panel.bbgl-expanded #year-stats-btn { width: 21px; height: 21px; }
+                    #bbgl-panel.bbgl-expanded #month-stats-btn, #bbgl-panel.bbgl-expanded #all-time-btn { width: 21px; height: 21px; }
 
                     #bbgl-panel.bbgl-mode-page #year-trigger {
                         font-size: clamp(13px, calc(13px + 7px * var(--bbgl-page-t)), 20px);
+                    }
+
+                    #bbgl-panel.bbgl-mode-page .header-trigger {
+                        transform: none;
                     }
 
                     #bbgl-panel.bbgl-mode-page #month-trigger {
                         font-size: clamp(18px, calc(18px + 11px * var(--bbgl-page-t)), 29px);
                     }
 
-                    #bbgl-panel.bbgl-mode-page #year-stats-btn {
-                        width: clamp(17px, calc(17px + 10px * var(--bbgl-page-t)), 27px);
-                        height: clamp(17px, calc(17px + 10px * var(--bbgl-page-t)), 27px);
+                    #bbgl-panel.bbgl-mode-page #all-time-trigger {
+                        font-size: clamp(24px, calc(24px + 10px * var(--bbgl-page-t)), 34px);
                     }
-                    #bbgl-panel.bbgl-mode-page #month-stats-btn {
+
+                    #bbgl-panel.bbgl-mode-page #year-stats-btn {
+                        width: clamp(20px, calc(20px + 6px * var(--bbgl-page-t)), 26px);
+                        height: clamp(20px, calc(20px + 6px * var(--bbgl-page-t)), 26px);
+                    }
+                    #bbgl-panel.bbgl-mode-page #month-stats-btn, #bbgl-panel.bbgl-mode-page #all-time-btn {
                         width: clamp(20px, calc(20px + 6px * var(--bbgl-page-t)), 26px);
                         height: clamp(20px, calc(20px + 6px * var(--bbgl-page-t)), 26px);
                     }
@@ -3192,28 +3247,27 @@
                         pointer-events: none;
                     }
 
-                    /* Foundational text-only calendar markers (War Start / War End / OD). */
-                    .bbgl-cal-markers {
+                    /* Event post-it notes — War and OD visual indicators on calendar cells. */
+                    .bbgl-event-post-it {
                         position: absolute;
-                        left: 1px;
-                        right: 1px;
-                        bottom: 1px;
-                        display: flex;
-                        flex-direction: column;
-                        align-items: center;
-                        gap: 1px;
+                        top: 4%;
+                        left: 4%;
+                        width: 92%;
+                        height: 92%;
+                        background: no-repeat center / contain;
+                        z-index: 17;
+                        filter: drop-shadow(-2px 4px 5px rgba(0, 0, 0, .4));
+                        transform-origin: top right;
+                        transition: transform .35s ease-out;
                         pointer-events: none;
-                        z-index: 3;
+                        transform: rotate(calc(-4deg + var(--ei, 0) * -3deg));
                     }
 
-                    .bbgl-cal-marker {
-                        font-size: clamp(5px, 1.3cqi, 8px);
-                        line-height: 1;
-                        font-weight: 700;
-                        letter-spacing: .02em;
-                        color: #ef5350;
-                        text-shadow: 0 1px 2px rgba(0, 0, 0, .9);
-                        white-space: nowrap;
+                    body:not(.is-touch-device) .bbgl-day-cell:not(.empty):hover .bbgl-event-post-it,
+                    .bbgl-day-cell.is-scrub-hovered .bbgl-event-post-it,
+                    .bbgl-day-cell.is-viewing .bbgl-event-post-it {
+                        transform: translateX(110%) translateY(-20%) rotate(20deg);
+                        transition: transform .25s ease-in;
                     }
 
                     .bbgl-day-cell.is-plate {
@@ -3620,106 +3674,61 @@
 
                     .bbgl-weekly-anchor {
                         width: 100%;
-                        height: 6px;
+                        height: 15px;
                         position: relative;
                         z-index: 20;
+                        --bbgl-tab-w: 44px;
+                        --bbgl-track-h: 15px;
+                    }
+
+                    #bbgl-panel:not(.bbgl-expanded):not(.bbgl-mode-page) .bbgl-weekly-anchor {
+                        height: 12px;
+                        --bbgl-tab-w: 28px;
+                        --bbgl-track-h: 12px;
+                    }
+
+                    #bbgl-panel.bbgl-expanded .bbgl-weekly-anchor {
+                        --bbgl-tab-w: clamp(32px, 7.5cqi, 44px);
+                    }
+
+                    #bbgl-panel.bbgl-mode-page .bbgl-weekly-anchor {
+                        --bbgl-tab-w: clamp(32px, calc(32px + 12px * var(--bbgl-page-t)), 44px);
                     }
 
                     .bbgl-weekly-track {
                         position: absolute;
                         bottom: 0;
-                        left: 0;
-                        width: 100%;
-                        height: 10px;
+                        left: calc(var(--bbgl-tab-w) - 2px);
+                        width: calc(100% - var(--bbgl-tab-w) + 2px);
+                        height: 15px;
                         display: flex;
                         cursor: pointer;
-                        transition: height .2s cubic-bezier(.18, .89, .32, 1.28);
                         border-radius: 0 4px 4px 0;
                         overflow: hidden;
                         pointer-events: auto;
                         background: repeating-linear-gradient(90deg, transparent 0, transparent 1px, rgba(255, 255, 255, .03) 1px, rgba(255, 255, 255, .03) 2px), linear-gradient(180deg, #1a1a1a 0%, #2a2a2a 100%);
-                        box-shadow: inset 0 2px 5px rgba(0, 0, 0, .8), inset 0 -1px 0 rgba(255, 255, 255, .05), 0 0 1px #000;
+                        box-shadow: inset 0 2px 5px rgba(0, 0, 0, .8), inset 0 -1px 0 rgba(255, 255, 255, .05);
                     }
 
-                    body:not(.is-touch-device) .bbgl-weekly-track:hover,
-                    .bbgl-weekly-track.is-scrub-hovered {
-                        height: 16px;
-                        z-index: 100;
-                    }
-
-                    .bbgl-weekly-track.is-viewing {
-                        height: 16px;
-                        z-index: 80;
-                        box-shadow: 0 0 5px rgba(255, 255, 255, .3), inset 0 2px 5px rgba(0, 0, 0, .8);
-                    }
-
-                    body:not(.is-touch-device) #bbgl-panel.bbgl-compact .bbgl-weekly-track:hover,
-                    #bbgl-panel.bbgl-compact .bbgl-weekly-track.is-scrub-hovered,
-                    #bbgl-panel.bbgl-compact .bbgl-weekly-track.is-viewing {
+                    #bbgl-panel:not(.bbgl-expanded):not(.bbgl-mode-page) .bbgl-weekly-track {
                         height: 12px;
                     }
 
-                    #bbgl-panel.bbgl-mode-page .bbgl-weekly-track {
-                        height: 14px;
+                    #bbgl-panel:not(.bbgl-expanded):not(.bbgl-mode-page) .bbgl-weekly-anchor {
+                        height: 12px;
                     }
 
-                    body:not(.is-touch-device) #bbgl-panel.bbgl-mode-page .bbgl-weekly-track:hover,
-                    #bbgl-panel.bbgl-mode-page .bbgl-weekly-track.is-scrub-hovered,
-                    #bbgl-panel.bbgl-mode-page .bbgl-weekly-track.is-viewing {
-                        height: 22px;
-                    }
-
-                    .bbgl-weekly-track.track-solidified {
-                        background: repeating-linear-gradient(90deg, transparent 0, transparent 1px, rgba(0, 0, 0, .15) 1px, rgba(0, 0, 0, .15) 2px), linear-gradient(180deg, #333 0%, #555 30%, #999 60%, #555 70%, #222 100%);
-                        box-shadow: inset 0 0 2px rgba(255, 255, 255, .2), 0 1px 2px rgba(0, 0, 0, .8);
-                        border-top: 1px solid rgba(255, 255, 255, .1);
-                        z-index: 1;
-                    }
-
-                    .bbgl-weekly-track.track-solidified .bbgl-seg {
-                        box-shadow: none;
+                    .bbgl-weekly-track.is-viewing {
+                        box-shadow: 0 0 5px rgba(255, 255, 255, .3), inset 0 2px 5px rgba(0, 0, 0, .8);
                     }
 
                     .bbgl-weekly-track.track-polished {
                         box-shadow: 0 1px 3px rgba(0, 0, 0, .5);
                     }
 
-                    .bbgl-weekly-track.track-polished::after {
-                        content: "";
-                        position: absolute;
-                        top: 0;
-                        bottom: 0;
-                        left: 0;
-                        width: 100%;
-                        background: linear-gradient(90deg, transparent, rgba(255, 255, 255, .5), transparent);
-                        opacity: .7;
-                        pointer-events: none;
-                        z-index: 50;
-                        animation: bbgl-sheen-loop 7s linear infinite;
-                    }
-
-                    @keyframes bbgl-sheen-loop {
-                        0% {
-                            transform: skewX(-20deg) translateX(-150%)
-                        }
-
-                        21% {
-                            transform: skewX(-20deg) translateX(250%)
-                        }
-
-                        21.01%,
-                        100% {
-                            transform: skewX(-20deg) translateX(-150%)
-                        }
-                    }
-
                     #bbgl-panel.bbgl-no-animations .bbgl-day-cell.is-viewing :is(.jewel-type-gold .jewel-shine, .jewel-type-green .jewel-shine, .jewel-type-green .jewel-shine-over, .jewel-type-diamond .jewel-shine, .jewel-type-diamond .jewel-shine-over, .sticker-shine) {
                         animation: none !important;
                         opacity: 0 !important;
-                    }
-
-                    #bbgl-panel.bbgl-no-animations .bbgl-weekly-track.track-polished::after {
-                        display: none;
                     }
 
                     #bbgl-panel.bbgl-no-rates .g-pill[data-val="rates"] {
@@ -3735,103 +3744,125 @@
                         min-height: 0;
                     }
 
-                    .bbgl-seg {
+                    .bbgl-cap-svg {
+                        display: block;
+                        width: 100%;
                         height: 100%;
-                        box-sizing: border-box;
-                        position: relative;
-                        border: none;
-                    }
-
-                    .bbgl-seg.seg-rounded-end {
-                        border-top-right-radius: 10px;
-                        border-bottom-right-radius: 10px;
-                        box-shadow: 2px 0 3px rgba(0, 0, 0, .5);
-                        z-index: 5;
-                    }
-
-                    .seg-brushed-green,
-                    .seg-brushed-gold,
-                    .seg-brushed-diamond {
-                        box-shadow: inset 0 0 2px rgba(0, 0, 0, .5);
-                        border-top: 1px solid rgba(255, 255, 255, .1);
-                    }
-
-                    .seg-brushed-green {
-                        background: repeating-linear-gradient(90deg, transparent 0, transparent 1px, rgba(0, 0, 0, .15) 1px, rgba(0, 0, 0, .15) 2px), linear-gradient(180deg, #203a10 0%, #355e1a 30%, #609438 60%, #355e1a 70%, #15290a 100%);
-                    }
-
-                    .seg-brushed-gold {
-                        background: repeating-linear-gradient(90deg, transparent 0, transparent 1px, rgba(0, 0, 0, .15) 1px, rgba(0, 0, 0, .15) 2px), linear-gradient(180deg, #3e2b05 0%, #6b4c0a 30%, #aa8530 60%, #6b4c0a 70%, #2e1f02 100%);
-                    }
-
-                    .seg-brushed-diamond {
-                        background: repeating-linear-gradient(90deg, transparent 0, transparent 1px, rgba(0, 0, 0, .2) 1px, rgba(0, 0, 0, .2) 2px), linear-gradient(110deg, rgba(255, 100, 180, .6) 0%, rgba(100, 255, 180, .6) 33%, rgba(100, 180, 255, .6) 66%, rgba(200, 100, 255, .6) 100%), linear-gradient(180deg, #111 0%, #555 35%, #bbb 45%, #bbb 55%, #555 65%, #111 100%);
-                        background-blend-mode: normal, overlay, normal;
-                    }
-
-                    .seg-polished-green {
-                        background: linear-gradient(180deg, #0d2b05 0%, #3a7a13 35%, #aaff66 45%, #3a7a13 65%, #0d2b05 100%);
-                    }
-
-                    .seg-polished-gold {
-                        background: linear-gradient(180deg, #3d2200 0%, #8f6205 35%, #fff7cc 45%, #fff7cc 55%, #8f6205 65%, #3d2200 100%);
-                    }
-
-                    .seg-polished-diamond {
-                        background: linear-gradient(110deg, rgba(255, 80, 180, .9) 0%, rgba(80, 255, 180, .9) 33%, rgba(80, 180, 255, .9) 66%, rgba(200, 80, 255, .9) 100%), linear-gradient(180deg, #111 0%, #777 35%, #fff 45%, #fff 55%, #777 65%, #111 100%);
-                        background-blend-mode: overlay, normal;
-                    }
-
-                    .seg-silver {
-                        background: linear-gradient(180deg, #222 0%, #555 35%, #aaa 45%, #aaa 55%, #555 65%, #1a1a1a 100%);
-                        box-shadow: inset 0 1px 2px rgba(0, 0, 0, .4);
                     }
 
                     /* ─── Weekly Bar Handle ─────────────────────────────────── */
                     .bbgl-bar-handle {
                         position: absolute;
-                        bottom: -2px;
-                        width: 34px;
-                        height: 14px;
+                        bottom: 0;
+                        left: 0;
+                        width: var(--bbgl-tab-w);
+                        height: 24px;
                         z-index: 110;
-                        pointer-events: none;
-                        background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 34 12' preserveAspectRatio='none'%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0' y1='0' x2='0' y2='1'%3E%3Cstop offset='0' stop-color='%232a2a2a'/%3E%3Cstop offset='.25' stop-color='%23555'/%3E%3Cstop offset='.5' stop-color='%23999'/%3E%3Cstop offset='.75' stop-color='%23555'/%3E%3Cstop offset='1' stop-color='%231e1e1e'/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect width='34' height='12' fill='url(%23g)'/%3E%3Cpolygon points='17.3,4.3 21.8,9.3 19.8,9.3 17.3,6.5 14.8,9.3 12.8,9.3' fill='%23000' fill-opacity='.4'/%3E%3Cpolygon points='17,3.5 21.5,8.5 19.5,8.5 17,5.7 14.5,8.5 12.5,8.5' fill='%23fff'/%3E%3C/svg%3E");
-                        background-size: 100% 100%;
+                        pointer-events: auto;
+                        cursor: pointer;
+                        border-radius: 5px 5px 0 0;
+                        box-sizing: border-box;
+                        padding: 3px 5px 3px;
+                        background-color: #202020;
+                        background-image: linear-gradient(180deg, #202020 0%, #363636 40%, #404040 50%, #363636 60%, #181818 100%);
+                        background-size: 100% var(--bbgl-track-h);
+                        background-position: bottom center;
                         background-repeat: no-repeat;
-                        box-shadow: inset 1px 0 0 rgba(255, 255, 255, .12), inset -1px 0 0 rgba(0, 0, 0, .4), inset 0 1px 0 rgba(255, 255, 255, .18), inset 0 -1px 0 rgba(0, 0, 0, .5), 0 1px 3px rgba(0, 0, 0, .7);
-                        transition: height .2s cubic-bezier(.18, .89, .32, 1.28), box-shadow .15s ease, filter .15s ease;
+                        /* 3D edge highlights on raised tab — no right-edge shadow to avoid junction seam */
+                        box-shadow: inset 0 1px 0 rgba(255,255,255,.22), inset 1px 0 0 rgba(255,255,255,.14);
+                        transition: height .2s cubic-bezier(.18, .89, .32, 1.28), box-shadow .15s ease;
                     }
 
-                    .bbgl-bar-handle[data-pos="left"]   { left: 0; }
-                    .bbgl-bar-handle[data-pos="center"] { left: 50%; transform: translateX(-50%); }
-                    .bbgl-bar-handle[data-pos="right"]  { right: 0; }
+                    .bbgl-bar-handle svg {
+                        display: block;
+                        width: 100%;
+                        height: 100%;
+                        overflow: hidden;
+                    }
+
+                    /* Compact: shorter tab */
+                    #bbgl-panel:not(.bbgl-expanded):not(.bbgl-mode-page) .bbgl-bar-handle {
+                        height: 20px;
+                        padding: 2px 4px 2px;
+                    }
+
+                    /* Expanded: clamp height with panel width */
+                    #bbgl-panel.bbgl-expanded .bbgl-bar-handle {
+                        height: clamp(20px, 4.2cqi, 24px);
+                    }
+
+                    /* Page mode: clamp height with --bbgl-page-t */
+                    #bbgl-panel.bbgl-mode-page .bbgl-bar-handle {
+                        height: clamp(22px, calc(22px + 4px * var(--bbgl-page-t)), 26px);
+                    }
 
                     body:not(.is-touch-device) .bbgl-weekly-track:hover ~ .bbgl-bar-handle,
                     .bbgl-weekly-track.is-scrub-hovered ~ .bbgl-bar-handle,
-                    .bbgl-weekly-track.is-viewing ~ .bbgl-bar-handle {
-                        height: 20px;
-                        box-shadow: inset 1px 0 0 rgba(255, 255, 255, .12), inset -1px 0 0 rgba(0, 0, 0, .4), inset 0 1px 0 rgba(255, 255, 255, .18), inset 0 -1px 0 rgba(0, 0, 0, .5), 0 0 8px rgba(200, 200, 255, .3), 0 1px 3px rgba(0, 0, 0, .7);
-                        filter: brightness(1.2);
+                    .bbgl-weekly-track.is-viewing ~ .bbgl-bar-handle,
+                    body:not(.is-touch-device) .bbgl-bar-handle:hover {
+                        height: 32px;
+                        --bbgl-handle-active-h: 32px;
+                        box-shadow: inset 0 1px 0 rgba(255,255,255,.38), inset 1px 0 0 rgba(255,255,255,.25);
                     }
 
-                    body:not(.is-touch-device) #bbgl-panel.bbgl-compact .bbgl-weekly-track:hover ~ .bbgl-bar-handle,
-                    #bbgl-panel.bbgl-compact .bbgl-weekly-track.is-scrub-hovered ~ .bbgl-bar-handle,
-                    #bbgl-panel.bbgl-compact .bbgl-weekly-track.is-viewing ~ .bbgl-bar-handle {
-                        height: 16px;
+                    body:not(.is-touch-device) .bbgl-weekly-track:hover ~ .bbgl-bar-handle::before,
+                    .bbgl-weekly-track.is-scrub-hovered ~ .bbgl-bar-handle::before,
+                    .bbgl-weekly-track.is-viewing ~ .bbgl-bar-handle::before,
+                    body:not(.is-touch-device) .bbgl-bar-handle:hover::before {
+                        opacity: 1;
                     }
 
-                    #bbgl-panel.bbgl-mode-page .bbgl-bar-handle {
-                        height: 18px;
+                    .bbgl-bar-handle::before {
+                        content: '';
+                        position: absolute;
+                        top: 0;
+                        left: 0;
+                        right: 0;
+                        height: 100%;
+                        border-radius: 5px 5px 0 0;
+                        background: radial-gradient(circle at top left, rgba(255,255,255,.25) 0%, transparent 70%);
+                        box-shadow: none;
+                        opacity: 0;
+                        pointer-events: none;
+                        transition: opacity .15s ease;
+                    }
+
+                    /* Left-edge glow on the track bleeds from the tab on hover — both sides light up together */
+                    body:not(.is-touch-device) .bbgl-weekly-track:hover,
+                    .bbgl-weekly-track.is-scrub-hovered,
+                    .bbgl-weekly-track.is-viewing {
+                        background: linear-gradient(90deg, rgba(255,255,255,.08) 0%, transparent 12%),
+                                    repeating-linear-gradient(90deg, transparent 0, transparent 1px, rgba(255, 255, 255, .03) 1px, rgba(255, 255, 255, .03) 2px),
+                                    linear-gradient(180deg, #1a1a1a 0%, #2a2a2a 100%);
+                    }
+
+                    body:not(.is-touch-device) #bbgl-panel:not(.bbgl-expanded):not(.bbgl-mode-page) .bbgl-weekly-track:hover ~ .bbgl-bar-handle,
+                    #bbgl-panel:not(.bbgl-expanded):not(.bbgl-mode-page) .bbgl-weekly-track.is-scrub-hovered ~ .bbgl-bar-handle,
+                    #bbgl-panel:not(.bbgl-expanded):not(.bbgl-mode-page) .bbgl-weekly-track.is-viewing ~ .bbgl-bar-handle,
+                    body:not(.is-touch-device) #bbgl-panel:not(.bbgl-expanded):not(.bbgl-mode-page) .bbgl-bar-handle:hover {
+                        height: 26px;
+                        --bbgl-handle-active-h: 26px;
+                    }
+
+                    body:not(.is-touch-device) #bbgl-panel.bbgl-expanded .bbgl-weekly-track:hover ~ .bbgl-bar-handle,
+                    #bbgl-panel.bbgl-expanded .bbgl-weekly-track.is-scrub-hovered ~ .bbgl-bar-handle,
+                    #bbgl-panel.bbgl-expanded .bbgl-weekly-track.is-viewing ~ .bbgl-bar-handle,
+                    body:not(.is-touch-device) #bbgl-panel.bbgl-expanded .bbgl-bar-handle:hover {
+                        height: clamp(26px, 5.6cqi, 32px);
+                        --bbgl-handle-active-h: clamp(26px, 5.6cqi, 32px);
                     }
 
                     body:not(.is-touch-device) #bbgl-panel.bbgl-mode-page .bbgl-weekly-track:hover ~ .bbgl-bar-handle,
                     #bbgl-panel.bbgl-mode-page .bbgl-weekly-track.is-scrub-hovered ~ .bbgl-bar-handle,
-                    #bbgl-panel.bbgl-mode-page .bbgl-weekly-track.is-viewing ~ .bbgl-bar-handle {
-                        height: 26px;
+                    #bbgl-panel.bbgl-mode-page .bbgl-weekly-track.is-viewing ~ .bbgl-bar-handle,
+                    body:not(.is-touch-device) #bbgl-panel.bbgl-mode-page .bbgl-bar-handle:hover {
+                        height: clamp(30px, calc(30px + 6px * var(--bbgl-page-t)), 36px);
+                        --bbgl-handle-active-h: clamp(30px, calc(30px + 6px * var(--bbgl-page-t)), 36px);
                     }
 
-                    body:not(.is-touch-device) .bbgl-weekly-track:active ~ .bbgl-bar-handle {
-                        filter: brightness(.85);
+                    body:not(.is-touch-device) .bbgl-weekly-track:active ~ .bbgl-bar-handle,
+                    body:not(.is-touch-device) .bbgl-bar-handle:active {
+                        box-shadow: inset 0 1px 0 rgba(255,255,255,.1), inset 0 0 10px rgba(0,0,0,.3);
                     }
 
                     #bbgl-panel.bbgl-no-animations .bbgl-bar-handle {
@@ -4144,13 +4175,17 @@
                     /* OD sub-rows: indent the label past the subgroup connector line. The
                        energy-section row padding shorthand (above) outranks the generic
                        .bbgl-subgroup-row padding-left, so restore the indent at higher specificity. */
-                    .bbgl-ach-section-energy .bbgl-ach-row.bbgl-ach-od-row {
+                    .bbgl-ach-section-energy .bbgl-ach-row.bbgl-ach-od-row,
+                    .bbgl-ach-section-hh .bbgl-ach-row.bbgl-ach-od-row {
                         padding-left: 24px;
                     }
 
                     .ach-happy-word {
                         color: #f5c518;
                         font-weight: 600;
+                    }
+                    .ach-od-happy-word {
+                        color: #c06060;
                     }
                     /* ─────────────────────────────────────────────────────── */
 
@@ -4516,10 +4551,10 @@
                         }
 
                         #bbgl-panel.bbgl-expanded:not(.bbgl-mode-page) #year-stats-btn {
-                            width: 13px !important;
-                            height: 13px !important;
+                            width: 21px !important;
+                            height: 21px !important;
                         }
-                        #bbgl-panel.bbgl-expanded:not(.bbgl-mode-page) #month-stats-btn {
+                        #bbgl-panel.bbgl-expanded:not(.bbgl-mode-page) #month-stats-btn, #bbgl-panel.bbgl-expanded:not(.bbgl-mode-page) #all-time-btn {
                             width: 21px !important;
                             height: 21px !important;
                         }
@@ -4649,6 +4684,9 @@
                     #bbgl-panel.bbgl-expanded:not(.bbgl-mode-page) #month-trigger {
                         font-size: clamp(20px, 3.99cqi, 23px) !important;
                     }
+                    #bbgl-panel.bbgl-expanded:not(.bbgl-mode-page) #all-time-trigger {
+                        font-size: clamp(28px, 5.58cqi, 32px) !important;
+                    }
 
                     #bbgl-panel.bbgl-expanded:not(.bbgl-mode-page) .ui-floating-label,
                     #bbgl-panel.bbgl-expanded:not(.bbgl-mode-page) .ui-floating-summary {
@@ -4661,10 +4699,10 @@
                     }
 
                     #bbgl-panel.bbgl-expanded:not(.bbgl-mode-page) #year-stats-btn {
-                        width: clamp(13px, 4.00cqi, 23px) !important;
-                        height: clamp(13px, 4.00cqi, 23px) !important;
+                        width: clamp(21px, 4.86cqi, 28px) !important;
+                        height: clamp(21px, 4.86cqi, 28px) !important;
                     }
-                    #bbgl-panel.bbgl-expanded:not(.bbgl-mode-page) #month-stats-btn {
+                    #bbgl-panel.bbgl-expanded:not(.bbgl-mode-page) #month-stats-btn, #bbgl-panel.bbgl-expanded:not(.bbgl-mode-page) #all-time-btn {
                         width: clamp(21px, 4.86cqi, 28px) !important;
                         height: clamp(21px, 4.86cqi, 28px) !important;
                     }
@@ -5282,6 +5320,7 @@
                     #bbgl-panel.bbgl-expanded .bbgl-ach-row .ach-value.ach-happy-col,
                     #bbgl-panel.bbgl-mode-page .bbgl-ach-row .ach-value.ach-happy-col {
                         display: inline-flex;
+                        min-width: 5.5em;
                     }
 
                     .bbgl-ach-row .ach-value.ach-enh-gained {
@@ -5861,7 +5900,7 @@
                         line-height: 1.4;
                     }
 
-                    .bbgl-ach-section-hh .bbgl-ach-row:last-of-type,
+                    .bbgl-ach-hh-group .bbgl-ach-row:last-of-type,
                     .bbgl-ach-hh-best-row:last-of-type {
                         border-bottom: none;
                     }

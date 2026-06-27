@@ -23,22 +23,165 @@
         return `<svg viewBox="0 0 24 24" fill="none">${bgLines.join('')}${lines.join('')}</svg>`;
     }
 
-    function buildAllTimeChartSVG(sl) {
-        const stats = sl && sl.stats;
-        const keys = ['str', 'def', 'spd', 'dex'];
-        const colors = ['#4a6070', '#7a3d36', '#8a6530', '#486644'];
-        const xs = [8, 18, 29, 39];
-        const maxH = 36, minH = 2;
-        const vals = keys.map(k => (stats && stats[k] ? stats[k].end : 0));
-        const maxVal = Math.max(...vals);
-        const hs = vals.map(v => maxVal > 0 ? Math.max((v / maxVal) * maxH, minH) : maxH * 0.25);
-        const lines = keys.map((k, i) => {
-            return `<line x1="${xs[i]}" y1="40" x2="${xs[i]}" y2="${(40 - hs[i]).toFixed(2)}" stroke="${colors[i]}" stroke-width="9" stroke-linecap="round"/>`;
-        });
-        const bgLines = keys.map((k, i) =>
-            `<line x1="${xs[i]}" y1="40" x2="${xs[i]}" y2="${(40 - hs[i]).toFixed(2)}" stroke="#000" stroke-width="11" stroke-linecap="round"/>`
-        );
-        return `<svg viewBox="0 -1.5 46 63" fill="none">${bgLines.join('')}${lines.join('')}<text x="23" y="60" text-anchor="middle" font-family="'Fjalla One', Arial Narrow, sans-serif" font-size="12" fill="#e6e6e6">All-Time</text></svg>`;
+
+
+    // Weekly capsule reservoir bar.
+    // The bay IS the capsule — no floating object. Empty bays: dark recess + gray terminal plates
+    // at each end. Filled bays: same structure, but the middle section between the terminals
+    // fills with the colour + a thin gray border encasing just the glass window area.
+    // slots: ['green'|'gold'|'diamond'|'silver'|null] x5. lit=true → bright colours (complete week).
+    // animated=true → per-window inner radiance glow (SVG animate, staggered across capsules).
+    function buildCapsuleBar(slots, lit, animated) {
+        const W = 500, H = 100, n = 5;
+        const padX = 8, padY = 18, gap = 7;
+        const slotW = (W - 2 * padX - (n - 1) * gap) / n;
+        const slotH = H - 2 * padY;
+        const termW = 10; // terminal plate width at each end of the bay
+
+        const defs =
+            `<defs>` +
+            `<pattern id="bbc-hatch" width="8" height="8" patternUnits="userSpaceOnUse">` +
+            `<line x1="0" y1="8" x2="8" y2="0" stroke="#fff" stroke-opacity=".1" stroke-width="1"/>` +
+            `<line x1="-2" y1="2" x2="2" y2="-2" stroke="#fff" stroke-opacity=".1" stroke-width="1"/>` +
+            `<line x1="6" y1="10" x2="10" y2="6" stroke="#fff" stroke-opacity=".1" stroke-width="1"/>` +
+            `</pattern>` +
+            `<linearGradient id="bbc-housing" x1="0" y1="0" x2="0" y2="1">` +
+            `<stop offset="0" stop-color="#202020"/><stop offset=".4" stop-color="#363636"/>` +
+            `<stop offset=".5" stop-color="#404040"/><stop offset=".6" stop-color="#363636"/>` +
+            `<stop offset="1" stop-color="#181818"/></linearGradient>` +
+            `<linearGradient id="bbc-term" x1="0" y1="${padY}" x2="0" y2="${padY + (H - 2 * padY)}" gradientUnits="userSpaceOnUse">` +
+            `<stop offset="0" stop-color="#1e1e1e"/><stop offset=".25" stop-color="#484848"/>` +
+            `<stop offset=".5" stop-color="#606060"/><stop offset=".75" stop-color="#484848"/>` +
+            `<stop offset="1" stop-color="#161616"/></linearGradient>` +
+            `<linearGradient id="bbc-recess-shadow" x1="0" y1="0" x2="0" y2="1">` +
+            `<stop offset="0" stop-color="#000" stop-opacity=".6"/><stop offset=".5" stop-color="#000" stop-opacity=".1"/><stop offset="1" stop-color="#000" stop-opacity="0"/></linearGradient>` +
+            `<linearGradient id="bbc-recess-shine" x1="0" y1="0" x2="0" y2="1">` +
+            `<stop offset="0" stop-color="#fff" stop-opacity="0"/><stop offset=".7" stop-color="#fff" stop-opacity="0"/><stop offset="1" stop-color="#fff" stop-opacity=".35"/></linearGradient>` +
+            `<linearGradient id="bbc-gD" x1="0" y1="1" x2="1" y2="0">` +
+            `<stop offset="0" stop-color="#004422"/><stop offset=".33" stop-color="#336611"/>` +
+            `<stop offset=".66" stop-color="#006644"/><stop offset="1" stop-color="#2d5c00"/></linearGradient>` +
+            `<linearGradient id="bbc-gL" x1="0" y1="1" x2="1" y2="0">` +
+            `<stop offset="0" stop-color="#008844"/><stop offset=".33" stop-color="#66bb22"/>` +
+            `<stop offset=".66" stop-color="#00cc88"/><stop offset="1" stop-color="#44aa00"/></linearGradient>` +
+            `<linearGradient id="bbc-oD" x1="0" y1="1" x2="1" y2="0">` +
+            `<stop offset="0" stop-color="#886600"/><stop offset=".33" stop-color="#aa7700"/>` +
+            `<stop offset=".66" stop-color="#ddbb66"/><stop offset="1" stop-color="#774400"/></linearGradient>` +
+            `<linearGradient id="bbc-oL" x1="0" y1="1" x2="1" y2="0">` +
+            `<stop offset="0" stop-color="#ffcc00"/><stop offset=".33" stop-color="#ffdd44"/>` +
+            `<stop offset=".66" stop-color="#fff8cc"/><stop offset="1" stop-color="#cc8800"/></linearGradient>` +
+            `<linearGradient id="bbc-dD" x1="0" y1="1" x2="1" y2="0">` +
+            `<stop offset="0" stop-color="#882299"/><stop offset=".33" stop-color="#3366aa"/>` +
+            `<stop offset=".66" stop-color="#339966"/><stop offset="1" stop-color="#993366"/></linearGradient>` +
+            `<linearGradient id="bbc-dL" x1="0" y1="1" x2="1" y2="0">` +
+            `<stop offset="0" stop-color="#ee77ff"/><stop offset=".33" stop-color="#88bbff"/>` +
+            `<stop offset=".66" stop-color="#77ffcc"/><stop offset="1" stop-color="#ff77cc"/></linearGradient>` +
+            `<filter id="bbc-tube-glow" x="-20%" y="-30%" width="140%" height="160%" color-interpolation-filters="sRGB">` +
+            `<feGaussianBlur stdDeviation="4" result="blur"/>` +
+            `<feMerge><feMergeNode in="blur"/><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>` +
+            `</filter>` +
+            `<linearGradient id="bbc-gBr" x1="0" y1="0" x2="1" y2="0">` +
+            `<stop offset="0" stop-color="#44ff00" stop-opacity="0"/>` +
+            `<stop offset=".25" stop-color="#88ff33" stop-opacity=".95"/>` +
+            `<stop offset=".5" stop-color="#eeffcc" stop-opacity="1"/>` +
+            `<stop offset=".75" stop-color="#88ff33" stop-opacity=".95"/>` +
+            `<stop offset="1" stop-color="#44ff00" stop-opacity="0"/></linearGradient>` +
+            `<linearGradient id="bbc-oBr" x1="0" y1="0" x2="1" y2="0">` +
+            `<stop offset="0" stop-color="#ffaa00" stop-opacity="0"/>` +
+            `<stop offset=".25" stop-color="#ffcc44" stop-opacity=".95"/>` +
+            `<stop offset=".5" stop-color="#fffff0" stop-opacity="1"/>` +
+            `<stop offset=".75" stop-color="#ffcc44" stop-opacity=".95"/>` +
+            `<stop offset="1" stop-color="#ffaa00" stop-opacity="0"/></linearGradient>` +
+            `<linearGradient id="bbc-dBr" x1="0" y1="0" x2="1" y2="0">` +
+            `<stop offset="0" stop-color="#aa44ff" stop-opacity="0"/>` +
+            `<stop offset=".25" stop-color="#cc88ff" stop-opacity=".95"/>` +
+            `<stop offset=".5" stop-color="#eeeeff" stop-opacity="1"/>` +
+            `<stop offset=".75" stop-color="#88ccff" stop-opacity=".95"/>` +
+            `<stop offset="1" stop-color="#44aaff" stop-opacity="0"/></linearGradient>` +
+            `<linearGradient id="bbc-s" x1="0" y1="0" x2="0" y2="1">` +
+            `<stop offset="0" stop-color="#1e1e1e"/><stop offset=".35" stop-color="#484848"/>` +
+            `<stop offset=".5" stop-color="#686868"/><stop offset=".65" stop-color="#484848"/>` +
+            `<stop offset="1" stop-color="#161616"/></linearGradient>` +
+            `</defs>`;
+
+        const colorKey = { green: 'g', gold: 'o', diamond: 'd', silver: 's' };
+        const f = (v) => v.toFixed(2);
+        let out = `<rect width="${W}" height="${H}" fill="url(#bbc-housing)"/>`;
+
+        for (let i = 0; i < n; i++) {
+            const bx = padX + i * (slotW + gap);
+            const by = padY;
+
+            // Bay recess (empty state: same material as housing but with inner shadow to look recessed)
+            // Darken the background to push it deeper, then add shadows.
+            out += `<rect x="${f(bx)}" y="${by}" width="${f(slotW)}" height="${slotH}" fill="#000" fill-opacity=".5"/>`;
+            out += `<rect x="${f(bx)}" y="${by}" width="${f(slotW)}" height="${slotH}" fill="url(#bbc-recess-shadow)"/>`;
+            // Inner shadow on top edge to give depth to the empty housing recess
+            out += `<rect x="${f(bx)}" y="${by}" width="${f(slotW)}" height="3" fill="#000" fill-opacity=".6"/>`;
+            // Subtle highlight on the bottom inner edge to define the bottom lip of the housing
+            out += `<rect x="${f(bx)}" y="${f(by + slotH - 1.5)}" width="${f(slotW)}" height="1.5" fill="#fff" fill-opacity=".15"/>`;
+
+            const color = slots[i];
+            if (!color) continue;
+
+            // Terminal plates — part of the capsule, only rendered when a capsule is present
+            out += `<rect x="${f(bx)}" y="${by}" width="${termW}" height="${slotH}" fill="url(#bbc-term)"/>`;
+            out += `<rect x="${f(bx)}" y="${by}" width="${termW}" height="${slotH}" fill="url(#bbc-hatch)"/>`;
+            out += `<rect x="${f(bx + slotW - termW)}" y="${by}" width="${termW}" height="${slotH}" fill="url(#bbc-term)"/>`;
+            out += `<rect x="${f(bx + slotW - termW)}" y="${by}" width="${termW}" height="${slotH}" fill="url(#bbc-hatch)"/>`;
+
+            // Inner shadow on capsule top edge only (bottom uses recess shine on the fill)
+            out += `<rect x="${f(bx)}" y="${by}" width="${f(slotW)}" height="2.5" fill="#000" fill-opacity=".4"/>`;
+
+            // Glass window — fills the middle section between the two terminal plates
+            const gx = bx + termW, gw = slotW - 2 * termW;
+            const gy = by, gh = slotH;
+            // railH: thickness of top/bottom metal rails (scaled for thicker housing)
+            const railH = 18;
+            // Viewing window: the gap between the two rails
+            const winY = gy + railH, winH = gh - railH * 2;
+            // Fill tube sits inside the viewing window, further inset by fillInset
+            const fillInset = 3;
+            const fy = winY + fillInset, fh = winH - fillInset * 2;
+
+            const fid = colorKey[color];
+            const fillId = fid === 's' ? 's' : (fid + (lit ? 'L' : 'D'));
+
+            // Rails drawn first so fill+glow bleeds over them on completed weeks (same as end-caps)
+            out += `<rect x="${f(gx)}" y="${gy}" width="${f(gw)}" height="${railH}" fill="url(#bbc-term)"/>`;
+            out += `<rect x="${f(gx)}" y="${gy}" width="${f(gw)}" height="${railH}" fill="url(#bbc-hatch)"/>`;
+            out += `<rect x="${f(gx)}" y="${f(gy + gh - railH)}" width="${f(gw)}" height="${railH}" fill="url(#bbc-term)"/>`;
+            out += `<rect x="${f(gx)}" y="${f(gy + gh - railH)}" width="${f(gw)}" height="${railH}" fill="url(#bbc-hatch)"/>`;
+
+            // Colour fill — completed tubes get a glow bloom that bleeds past the tube edges
+            if (lit && color !== 'silver') out += `<g filter="url(#bbc-tube-glow)">`;
+            out += `<rect x="${f(gx)}" y="${fy}" width="${f(gw)}" height="${fh}" fill="url(#bbc-${fillId})"/>`;
+            // Recess shadow — lighter on completed weeks so lit colors read brighter
+            out += `<rect x="${f(gx)}" y="${fy}" width="${f(gw)}" height="${fh}" fill="url(#bbc-recess-shadow)" opacity="${lit ? 0.4 : 1}"/>`;
+            // Recess shine — faint bright line at very bottom edge (reflected ambient light)
+            out += `<rect x="${f(gx)}" y="${fy}" width="${f(gw)}" height="${fh}" fill="url(#bbc-recess-shine)"/>`;
+            if (lit && color !== 'silver') out += `</g>`;
+            // Inner sweep — wave travels left→right across the full bar; each capsule's clip window
+            // sees it pass through at the right moment by position, no stagger needed.
+            if (animated && color !== 'silver') {
+                const brightId = color === 'green' ? 'bbc-gBr' : color === 'gold' ? 'bbc-oBr' : 'bbc-dBr';
+                const sweepClipId = `bbc-scp${i}`;
+                out += `<clipPath id="${sweepClipId}"><rect x="${f(gx)}" y="${fy}" width="${f(gw)}" height="${fh}"/></clipPath>`;
+                out += `<g clip-path="url(#${sweepClipId})">` +
+                    `<rect x="0" y="${fy}" width="${W}" height="${fh}" fill="url(#${brightId})" transform="translate(${-W},0)">` +
+                    `<animateTransform attributeName="transform" type="translate" ` +
+                    `values="${-W},0; ${W},0; ${-W},0; ${-W},0" ` +
+                    `keyTimes="0; 0.25; 0.251; 1" ` +
+                    `keySplines=".3 0 .7 1; 0 0 1 1; 0 0 1 1" ` +
+                    `calcMode="spline" dur="8s" begin="0s" repeatCount="indefinite"/>` +
+                    `<animate attributeName="opacity" ` +
+                    `values="1; 1; 0; 0" ` +
+                    `keyTimes="0; 0.249; 0.25; 1" ` +
+                    `calcMode="linear" dur="8s" begin="0s" repeatCount="indefinite"/>` +
+                    `</rect></g>`;
+            }
+        }
+
+        return `<svg class="bbgl-cap-svg" viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" xmlns="http://www.w3.org/2000/svg">${defs}${out}</svg>`;
     }
 
     function updateSummaryCharts() {
@@ -49,8 +192,12 @@
         mBtn.innerHTML = buildChartSVG(DataController.getSlice('MONTH', CONSTANTS.MONTHS[m], y));
         yBtn.innerHTML = buildChartSVG(DataController.getSlice('YEAR', String(y)));
         const aBtn = document.getElementById('all-time-btn');
-        if (aBtn) aBtn.innerHTML = buildAllTimeChartSVG(DataController.getSlice('ALL', 'All-Time'));
+        if (aBtn) aBtn.innerHTML = buildChartSVG(DataController.getSlice('ALL', 'All-Time'));
         
+        mBtn.setAttribute('data-tooltip-html', generateRichTooltip(DataController.getSlice('MONTH', CONSTANTS.MONTHS[m], y)));
+        yBtn.setAttribute('data-tooltip-html', generateRichTooltip(DataController.getSlice('YEAR', String(y))));
+        if (aBtn) aBtn.setAttribute('data-tooltip-html', generateRichTooltip(DataController.getSlice('ALL', 'All-Time')));
+
         const activeL = viewState.activeViewLabel;
         mBtn.classList.toggle('active', activeL === CONSTANTS.MONTHS[m]);
         yBtn.classList.toggle('active', activeL === String(y));
@@ -157,8 +304,6 @@
         }
         if (!calendarState.selectedData) renderStats(DataController.getSlice('DAY', Formatter.dateLogical()), Formatter.dateLogical());
         else renderStats(calendarState.selectedData, calendarState.selectedLabel);
-        dom.monthTrigger.setAttribute('data-tooltip-html', generateRichTooltip(DataController.getSlice('MONTH', CONSTANTS.MONTHS[m], y)));
-        yt.setAttribute('data-tooltip-html', generateRichTooltip(DataController.getSlice('YEAR', String(y))));
         Perf.end('renderPanel');
         updateLevelBar();
         updateSummaryCharts();
@@ -259,20 +404,23 @@
         ns.className = 'day-num';
         ns.innerText = d;
         cell.appendChild(ns);
-        // Foundational text markers (War Start / War End / OD). Plain text for now to verify the
-        // tracking lands on the right days before real visual markers are designed.
-        const markerLabels = [];
-        const wm = getWarMarkers()[ds];
-        if (wm && wm.warStart) markerLabels.push('War Start');
-        if (wm && wm.warWon) markerLabels.push('War Won');
-        if (wm && wm.warLost) markerLabels.push('War Lost');
-        if (wm && wm.warEnd) markerLabels.push('War End');
-        if (((sl.xanaxODs || 0) + (sl.lsdODs || 0)) > 0) markerLabels.push('OD');
-        if (markerLabels.length) {
-            const mk = document.createElement('div');
-            mk.className = 'bbgl-cal-markers';
-            mk.innerHTML = markerLabels.map(t => `<span class="bbgl-cal-marker">${t}</span>`).join('');
-            cell.appendChild(mk);
+        if (isFlipped) {
+            const BASE = 'https://raw.githubusercontent.com/BigBlackHawk42069/asdfaskijdnfawef/refs/heads/main/ScrptImgs/Calendar/';
+            const wm = getWarMarkers()[ds];
+            const eventImgs = [];
+            if ((sl.lsdODs || 0) > 0) eventImgs.push(BASE + 'lsd-od.png');
+            if ((sl.xanaxODs || 0) > 0) eventImgs.push(BASE + 'xan-od.png');
+            if ((sl.exODs || 0) > 0) eventImgs.push('PLACEHOLDER_EX_OD_URL');
+            if (wm && wm.warStart) eventImgs.push(BASE + 'war-strt.png');
+            if (wm && wm.warWon) eventImgs.push(BASE + 'war-win.png');
+            if (wm && wm.warLost) eventImgs.push(BASE + 'war-lost.png');
+            eventImgs.forEach((url, i) => {
+                const ep = document.createElement('div');
+                ep.className = 'bbgl-event-post-it';
+                ep.style.backgroundImage = `url('${url}')`;
+                ep.style.setProperty('--ei', i);
+                cell.appendChild(ep);
+            });
         }
         if (isFlipped && sl.meta.tier > 0) {
             const item = DataController.getStickerMap().get(ds);
@@ -350,142 +498,37 @@
         tr.className = 'bbgl-weekly-track';
         tr.dataset.label = sl.label;
         tr.onclick = (e) => { e.stopPropagation(); openHistory(sl, sl.label); };
-        tr.setAttribute('data-tooltip-html', generateRichTooltip(sl));
         if (calendarState.selectedLabel === sl.label) tr.classList.add('is-viewing');
         const installWeekKey = runtime.demoMode ? null : getInstallWeekKey();
+        const addCenterTab = (slice) => {
+            const tab = document.createElement('div');
+            tab.className = 'bbgl-bar-handle';
+            tab.dataset.pos = 'start';
+            const tooltipHtml = generateRichTooltip(slice);
+            tab.setAttribute('data-tooltip-html', tooltipHtml);
+            tab.setAttribute('data-tooltip-anchor', '.bbgl-bar-handle');
+            tr.setAttribute('data-tooltip-html', tooltipHtml);
+            tr.setAttribute('data-tooltip-anchor', '.bbgl-bar-handle');
+            tab.onclick = (e) => { e.stopPropagation(); openHistory(slice, slice.label); };
+            tab.addEventListener('mouseenter', () => tr.classList.add('is-scrub-hovered'));
+            tab.addEventListener('mouseleave', () => tr.classList.remove('is-scrub-hovered'));
+            tab.innerHTML = buildChartSVG(slice);
+            anchor.appendChild(tab);
+        };
+        // Archived / pre-install weeks: five silver placeholder capsules (no real reward data).
         if (installWeekKey && _wk < installWeekKey) {
-            const d = document.createElement('div');
-            d.className = 'bbgl-seg seg-silver';
-            d.style.position = 'absolute';
-            d.style.left = '0';
-            d.style.width = '100%';
-            tr.appendChild(d);
+            tr.innerHTML = buildCapsuleBar(['silver', 'silver', 'silver', 'silver', 'silver'], false, false);
             anchor.appendChild(tr);
-            ['left', 'center', 'right'].forEach(pos => {
-                const _h = document.createElement('div');
-                _h.className = 'bbgl-bar-handle';
-                _h.dataset.pos = pos;
-                _h.setAttribute('aria-hidden', 'true');
-                anchor.appendChild(_h);
-            });
+            addCenterTab(sl);
             cont.appendChild(anchor);
             if (viewState.activeViewLabel === sl.label && calendarState.selectedLabel !== sl.label) openHistory(sl, sl.label);
             return;
         }
-        const {
-            totGreen,
-            totGold,
-            totDiamond
-        } = computeWeekCompletion(sl._dailyList, hjDaySet, hjWeek[_wk] || 0);
-        const tot = totGreen + totGold + totDiamond;
-        const goal = tot >= GAME.WEEKLY_GOAL;
-        if (goal && userConfig.animations) tr.classList.add('track-polished');
-        const todayStr = Formatter.dateLogical();
-        const closed = sl._dailyList[sl._dailyList.length - 1].date < todayStr;
-        const solid = closed && !goal;
-        if (solid) tr.classList.add('track-solidified');
-        let pctDiamond = Math.min(100, totDiamond / 10);
-        let pctGold = Math.min(100 - pctDiamond, totGold / 10);
-        let pctGreen = Math.min(100 - pctDiamond - pctGold, totGreen / 10);
-        
-        let sum = pctGreen + pctGold + pctDiamond;
-        if (goal && sum < 100) {
-            const deficit = 100 - sum;
-            if (pctDiamond > 0) pctDiamond += deficit;
-            else if (pctGold > 0) pctGold += deficit;
-            else pctGreen += deficit;
-        }
-
-        let dLeft = 50 - pctDiamond / 2;
-        let dRight = 50 + pctDiamond / 2;
-        let goLeft = 100 - pctGold;
-
-        if (dRight > goLeft) {
-            dRight = goLeft;
-            dLeft = dRight - pctDiamond;
-        }
-
-        if (dLeft < 0) {
-            dLeft = 0;
-            dRight = pctDiamond;
-            goLeft = dRight;
-            pctGold = 100 - goLeft;
-        }
-
-        // Green pushes diamond right, but only into empty space (not into gold)
-        if (pctDiamond > 0 && pctGreen > dLeft) {
-            const pushNeeded = pctGreen - dLeft;
-            const emptyRight = goLeft - dRight;
-            const pushAllowed = Math.min(pushNeeded, Math.max(0, emptyRight));
-            dLeft += pushAllowed;
-            dRight += pushAllowed;
-            if (pushAllowed < pushNeeded) pctGreen = dLeft;
-        } else if (pctDiamond === 0 && pctGreen > goLeft) {
-            pctGreen = goLeft;
-        }
-
-        let actualDLeft = dLeft;
-        let gRight = pctGreen;
-        
-        let greenTouchesNext = false;
-        let goldTouchesPrev = false;
-        if (pctDiamond > 0) {
-            if (Math.abs(gRight - dLeft) < 0.01) greenTouchesNext = true;
-            if (Math.abs(dRight - goLeft) < 0.01) goldTouchesPrev = true;
-        } else {
-            if (Math.abs(gRight - goLeft) < 0.01) {
-                greenTouchesNext = true;
-                goldTouchesPrev = true;
-            }
-        }
-        if (pctGreen > 0) {
-            const d = document.createElement('div');
-            d.className = `bbgl-seg ${goal ? 'seg-polished' : 'seg-brushed'}-green`;
-            d.style.position = 'absolute';
-            d.style.left = '0';
-            d.style.width = `${pctGreen}%`;
-            if (!greenTouchesNext) {
-                d.style.borderTopRightRadius = '10px';
-                d.style.borderBottomRightRadius = '10px';
-            }
-            tr.appendChild(d);
-        }
-        if (pctGold > 0) {
-            const d = document.createElement('div');
-            d.className = `bbgl-seg ${goal ? 'seg-polished' : 'seg-brushed'}-gold`;
-            d.style.position = 'absolute';
-            d.style.right = '0';
-            d.style.width = `${pctGold}%`;
-            if (!goldTouchesPrev) {
-                d.style.borderTopLeftRadius = '10px';
-                d.style.borderBottomLeftRadius = '10px';
-            }
-            tr.appendChild(d);
-        }
-        if (pctDiamond > 0) {
-            const d = document.createElement('div');
-            d.className = `bbgl-seg ${goal ? 'seg-polished' : 'seg-brushed'}-diamond`;
-            d.style.position = 'absolute';
-            d.style.left = `${actualDLeft}%`;
-            d.style.width = `${pctDiamond}%`;
-            if (!greenTouchesNext) {
-                d.style.borderTopLeftRadius = '10px';
-                d.style.borderBottomLeftRadius = '10px';
-            }
-            if (!goldTouchesPrev) {
-                d.style.borderTopRightRadius = '10px';
-                d.style.borderBottomRightRadius = '10px';
-            }
-            tr.appendChild(d);
-        }
+        const { capsules, isCompleted } = computeWeekCompletion(sl._dailyList, hjDaySet, hjWeek[_wk] || 0);
+        if (isCompleted) tr.classList.add('track-polished');
+        tr.innerHTML = buildCapsuleBar(capsules, isCompleted, isCompleted && userConfig.animations);
         anchor.appendChild(tr);
-        ['left', 'center', 'right'].forEach(pos => {
-            const handle = document.createElement('div');
-            handle.className = 'bbgl-bar-handle';
-            handle.dataset.pos = pos;
-            handle.setAttribute('aria-hidden', 'true');
-            anchor.appendChild(handle);
-        });
+        addCenterTab(sl);
         cont.appendChild(anchor);
         if (viewState.activeViewLabel === sl.label && calendarState.selectedLabel !== sl.label) openHistory(sl, sl.label);
     }
@@ -1874,7 +1917,7 @@
     function getDashboardHTML() {
         const weekDays = userConfig.weekStartMode === 'mon' ? ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'] : ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
         const weekRowHTML = weekDays.map(d => `<span>${d}</span>`).join('');
-        return `<div class="bbgl-header" id="bbgl-header-bar"><div class="bbgl-header-left">${ICONS.LOGO}<span class="bbgl-header-text"><span class="bbgl-short-title">Big Black Log</span><span class="bbgl-long-title">Big Black Gym Log</span></span></div><div class="bbgl-header-right"><span id="bbgl-demo-exit-btn" class="close-settings-btn bbgl-close-purple" style="display:${runtime.demoMode ? 'flex' : 'none'};" data-tooltip-html="${TOOLTIPS.DEMO_EXIT_HTML}"><span class="bbgl-demo-x-label">Demo</span>${ICONS.CLOSE}</span><span id="bbgl-settings-btn" class="bbgl-custom-icon">⚙</span><span id="bbgl-close-btn" class="bbgl-native-icon">${ICONS.MINIMIZE}</span><span id="bbgl-pop-btn" class="bbgl-native-icon">${viewState.expanded ? ICONS.COMPRESS : ICONS.POPOUT}</span></div></div><div id="bbgl-content-wrapper"><div id="bbgl-top-panel"><div id="bbgl-tall-toggle">${viewState.isTall ? '–' : '+'}</div><div id="bbgl-ledger-toggle" data-tooltip="${TOOLTIPS.LEDGER_VIEW}">${ICONS.LEDGER}</div><div id="bbgl-graph-toggle" data-tooltip="${TOOLTIPS.GRAPH_VIEW}">${ICONS.GRAPH}</div><div id="bbgl-achievements-toggle" data-tooltip="${TOOLTIPS.ACHIEVEMENTS}">${ICONS.ACHIEVEMENTS}</div><div id="bbgl-sticker-toggle" data-tooltip="${TOOLTIPS.STICKERBOOK}">${ICONS.STICKERBOOK}</div><div id="bbgl-item-counters"></div><div id="bbgl-copy-btn" class="copy-hist-btn" data-tooltip="${TOOLTIPS.COPY_SESSION}">${ICONS.CLIPBOARD}</div><div id="bbgl-sticker-title"></div><div class="ui-floating-label" id="bbgl-date-label">LOADING...</div><div class="ui-floating-summary" id="bbgl-summary-label"></div><div id="bbgl-ledger-view" class="ledger-content"></div><div id="bbgl-graph-container"><div class="g-hud"><div class="g-toggles"><div class="g-pill active" data-type="mode" data-val="values">Gains</div><div class="g-pill" data-type="mode" data-val="rates">Rates</div></div><div class="g-toggles"><div class="g-pill p-str active" data-type="stat" data-val="str">STR</div><div class="g-pill p-def" data-type="stat" data-val="def">DEF</div><div class="g-pill p-spd active" data-type="stat" data-val="spd">SPD</div><div class="g-pill p-dex" data-type="stat" data-val="dex">DEX</div><div class="g-pill p-tot" data-type="stat" data-val="total">TOT</div></div></div><svg id="bbgl-graph-svg"></svg></div><div id="bbgl-achievements-container" class="ledger-content"><div class="bbgl-ach-scroll"><div id="bbgl-ach-pages"></div></div><div id="bbgl-ach-footer" class="bbgl-ach-footer"><div class="bbgl-ach-footer-side bbgl-ach-footer-left"><button type="button" class="bbgl-ach-nav bbgl-ach-prev" aria-label="Previous achievements page">\u276e</button></div><div id="bbgl-ach-pageindicator"></div><div class="bbgl-ach-footer-side bbgl-ach-footer-right"><button type="button" class="bbgl-ach-nav bbgl-ach-next" aria-label="Next achievements page">\u276f</button></div></div></div><div id="bbgl-sticker-bg"></div><div id="bbgl-sticker-container"><div id="sticker-sponsor-btn" class="sticker-nav-btn disabled">❮</div><div id="sticker-prev-btn" class="sticker-nav-btn">❮</div><div id="sticker-next-btn" class="sticker-nav-btn">❯</div><div id="bbgl-sticker-grid"></div><div id="bbgl-sticker-pagination"></div></div><div class="glass-overlay"></div></div><div id="bbgl-bottom-panel"><div class="bbgl-header-wrapper"><div class="bbgl-month-header"><div class="title-group"><div id="all-time-btn" class="all-time-btn" data-tooltip="${TOOLTIPS.ALL_TIME_SUMMARY}">${ICONS.CHART_ALL}</div><div class="title-stack"><div class="header-row"><div class="header-trigger" id="year-trigger"></div><div class="stats-btn" id="year-stats-btn" data-tooltip="${TOOLTIPS.YEARLY_SUMMARY}">${ICONS.CHART}</div><div id="bbgl-year-dropdown" class="bbgl-dropdown-menu"></div></div><div class="header-row"><div class="header-trigger" id="month-trigger"></div><div class="stats-btn" id="month-stats-btn" data-tooltip="${TOOLTIPS.MONTHLY_SUMMARY}">${ICONS.CHART}</div><div id="bbgl-month-dropdown" class="bbgl-dropdown-menu"></div></div></div></div><button class="arrow-btn" id="prev-month-btn">❮</button><button class="arrow-btn" id="next-month-btn">❯</button></div><div id="bbgl-level-container"><span id="bbgl-level-num">Lv 1</span><div id="bbgl-level-track"><div id="bbgl-level-fill"></div></div></div></div><div id="bbgl-demo-exit" style="display: ${runtime.demoMode ? 'flex' : 'none'};" data-tooltip="${TOOLTIPS.DEMO_EXIT}" data-tooltip-html="${TOOLTIPS.DEMO_EXIT_HTML}">DEMO MODE</div><div class="bbgl-grid-container"><div class="bbgl-week-row">${weekRowHTML}</div><div class="calendar-wrapper" id="swipe-area"><div id="bbgl-cal-container" class="bbgl-cal-container"></div></div></div></div><div id="bbgl-item-viewer"><div class="viewer-window"><div class="viewer-stage"><div class="viewer-pedestal" id="vi-pedestal-wrapper"><div class="viewer-obj" id="vi-obj-target"><div class="layer-front"></div><div class="layer-back"></div></div></div></div></div><div class="viewer-info-overlay"><div class="vi-name" id="vi-name-target">Item Name</div></div></div><div id="bbgl-settings-view">${getSettingsHTML()}</div><div id="bbgl-welcome-view"></div></div>`;
+        return `<div class="bbgl-header" id="bbgl-header-bar"><div class="bbgl-header-left">${ICONS.LOGO}<span class="bbgl-header-text"><span class="bbgl-short-title">Big Black Log</span><span class="bbgl-long-title">Big Black Gym Log</span></span></div><div class="bbgl-header-right"><span id="bbgl-demo-exit-btn" class="close-settings-btn bbgl-close-purple" style="display:${runtime.demoMode ? 'flex' : 'none'};" data-tooltip-html="${TOOLTIPS.DEMO_EXIT_HTML}"><span class="bbgl-demo-x-label">Demo</span>${ICONS.CLOSE}</span><span id="bbgl-settings-btn" class="bbgl-custom-icon">⚙</span><span id="bbgl-close-btn" class="bbgl-native-icon">${ICONS.MINIMIZE}</span><span id="bbgl-pop-btn" class="bbgl-native-icon">${viewState.expanded ? ICONS.COMPRESS : ICONS.POPOUT}</span></div></div><div id="bbgl-content-wrapper"><div id="bbgl-top-panel"><div id="bbgl-tall-toggle">${viewState.isTall ? '–' : '+'}</div><div id="bbgl-ledger-toggle" data-tooltip="${TOOLTIPS.LEDGER_VIEW}">${ICONS.LEDGER}</div><div id="bbgl-graph-toggle" data-tooltip="${TOOLTIPS.GRAPH_VIEW}">${ICONS.GRAPH}</div><div id="bbgl-achievements-toggle" data-tooltip="${TOOLTIPS.ACHIEVEMENTS}">${ICONS.ACHIEVEMENTS}</div><div id="bbgl-sticker-toggle" data-tooltip="${TOOLTIPS.STICKERBOOK}">${ICONS.STICKERBOOK}</div><div id="bbgl-item-counters"></div><div id="bbgl-copy-btn" class="copy-hist-btn" data-tooltip="${TOOLTIPS.COPY_SESSION}">${ICONS.CLIPBOARD}</div><div id="bbgl-sticker-title"></div><div class="ui-floating-label" id="bbgl-date-label">LOADING...</div><div class="ui-floating-summary" id="bbgl-summary-label"></div><div id="bbgl-ledger-view" class="ledger-content"></div><div id="bbgl-graph-container"><div class="g-hud"><div class="g-toggles"><div class="g-pill active" data-type="mode" data-val="values">Gains</div><div class="g-pill" data-type="mode" data-val="rates">Rates</div></div><div class="g-toggles"><div class="g-pill p-str active" data-type="stat" data-val="str">STR</div><div class="g-pill p-def" data-type="stat" data-val="def">DEF</div><div class="g-pill p-spd active" data-type="stat" data-val="spd">SPD</div><div class="g-pill p-dex" data-type="stat" data-val="dex">DEX</div><div class="g-pill p-tot" data-type="stat" data-val="total">TOT</div></div></div><svg id="bbgl-graph-svg"></svg></div><div id="bbgl-achievements-container" class="ledger-content"><div class="bbgl-ach-scroll"><div id="bbgl-ach-pages"></div></div><div id="bbgl-ach-footer" class="bbgl-ach-footer"><div class="bbgl-ach-footer-side bbgl-ach-footer-left"><button type="button" class="bbgl-ach-nav bbgl-ach-prev" aria-label="Previous achievements page">\u276e</button></div><div id="bbgl-ach-pageindicator"></div><div class="bbgl-ach-footer-side bbgl-ach-footer-right"><button type="button" class="bbgl-ach-nav bbgl-ach-next" aria-label="Next achievements page">\u276f</button></div></div></div><div id="bbgl-sticker-bg"></div><div id="bbgl-sticker-container"><div id="sticker-sponsor-btn" class="sticker-nav-btn disabled">❮</div><div id="sticker-prev-btn" class="sticker-nav-btn">❮</div><div id="sticker-next-btn" class="sticker-nav-btn">❯</div><div id="bbgl-sticker-grid"></div><div id="bbgl-sticker-pagination"></div></div><div class="glass-overlay"></div></div><div id="bbgl-bottom-panel"><div class="bbgl-header-wrapper"><div class="bbgl-month-header"><div class="title-group"><div class="title-stack"><div class="header-row"><div class="stats-btn" id="all-time-btn">${ICONS.CHART}</div><div class="header-trigger" id="all-time-trigger">∞</div></div><div class="header-row"><div class="stats-btn" id="year-stats-btn">${ICONS.CHART}</div><div class="header-trigger" id="year-trigger"></div><div id="bbgl-year-dropdown" class="bbgl-dropdown-menu"></div></div><div class="header-row"><div class="stats-btn" id="month-stats-btn">${ICONS.CHART}</div><div class="header-trigger" id="month-trigger"></div><div id="bbgl-month-dropdown" class="bbgl-dropdown-menu"></div></div></div></div><button class="arrow-btn" id="prev-month-btn">❮</button><button class="arrow-btn" id="next-month-btn">❯</button></div><div id="bbgl-level-container"><span id="bbgl-level-num">Lv 1</span><div id="bbgl-level-track"><div id="bbgl-level-fill"></div></div></div></div><div id="bbgl-demo-exit" style="display: ${runtime.demoMode ? 'flex' : 'none'};" data-tooltip="${TOOLTIPS.DEMO_EXIT}" data-tooltip-html="${TOOLTIPS.DEMO_EXIT_HTML}">DEMO MODE</div><div class="bbgl-grid-container"><div class="bbgl-week-row">${weekRowHTML}</div><div class="calendar-wrapper" id="swipe-area"><div id="bbgl-cal-container" class="bbgl-cal-container"></div></div></div></div><div id="bbgl-item-viewer"><div class="viewer-window"><div class="viewer-stage"><div class="viewer-pedestal" id="vi-pedestal-wrapper"><div class="viewer-obj" id="vi-obj-target"><div class="layer-front"></div><div class="layer-back"></div></div></div></div></div><div class="viewer-info-overlay"><div class="vi-name" id="vi-name-target">Item Name</div></div></div><div id="bbgl-settings-view">${getSettingsHTML()}</div><div id="bbgl-welcome-view"></div></div>`;
     }
 
     /**
