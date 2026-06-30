@@ -112,7 +112,8 @@
         CHANGELOG_VER: 'bbgl_changelog_seen_ver',
         CHANGELOG_NOTIF: 'bbgl_changelog_notif',
         WARS_SYNC: 'bbgl_wars_last_sync_v1',
-        WARS_DATA: 'bbgl_wars_data_v1'
+        WARS_DATA: 'bbgl_wars_data_v1',
+        FACTION_HISTORY: 'bbgl_faction_history_v1'
     };
     // [TEMP — delete before full release]
     const REQUIRED_CONFIG_VERSION = 1;
@@ -943,9 +944,9 @@
     // eligible for weeks with key >= this. Respects the user's day-start and week-start modes.
     // Returns null if unknown (no gating) — but init() self-heals privacyAgreed so this is rare.
     function getInstallWeekKey() {
-        const ms = userConfig.privacyAgreed ? Date.parse(userConfig.privacyAgreed) : NaN;
-        if (isNaN(ms)) return null;
-        return getWeekKey(Formatter.dateLogical(ms));
+        const rewardStartDate = getActiveHistory().meta.rewardStartDate;
+        if (!rewardStartDate) return null;
+        return getWeekKey(Formatter.dateLogical(rewardStartDate * 1000));
     }
 
     /**
@@ -4648,12 +4649,12 @@
                     .bbgl-weekly-track {
                         position: absolute;
                         bottom: 0;
-                        left: 0;
-                        width: 100%;
+                        left: var(--bbgl-tab-w);
+                        width: calc(100% - var(--bbgl-tab-w));
                         height: 15px;
                         display: flex;
                         cursor: pointer;
-                        border-radius: 4px;
+                        border-radius: 0 4px 4px 0;
                         overflow: hidden;
                         pointer-events: auto;
                         background: repeating-linear-gradient(90deg, transparent 0, transparent 1px, rgba(255, 255, 255, .03) 1px, rgba(255, 255, 255, .03) 2px), linear-gradient(180deg, #1a1a1a 0%, #2a2a2a 100%);
@@ -4810,11 +4811,6 @@
                         --bbgl-handle-active-h: clamp(30px, calc(30px + 6px * var(--bbgl-page-t)), 36px);
                     }
 
-                    body:not(.is-touch-device) .bbgl-weekly-track:active ~ .bbgl-bar-handle,
-                    body:not(.is-touch-device) .bbgl-bar-handle:active {
-                        box-shadow: inset 0 1px 0 rgba(255,255,255,.1), inset 0 0 10px rgba(0,0,0,.3);
-                    }
-
                     #bbgl-panel.bbgl-no-animations .bbgl-bar-handle {
                         transition: none;
                     }
@@ -4911,9 +4907,15 @@
                     }
 
                     @keyframes bbgl-lvl-flash-bar {
-                        0% { filter: brightness(1); box-shadow: 0 0 0 rgba(255,255,255,0); }
-                        20% { filter: brightness(1.5); box-shadow: 0 0 15px rgba(217, 160, 255, 0.8); }
-                        100% { filter: brightness(1); box-shadow: 0 0 0 rgba(255,255,255,0); }
+                        0% { filter: brightness(1); }
+                        20% { filter: brightness(1.8); }
+                        100% { filter: brightness(1); }
+                    }
+
+                    @keyframes bbgl-lvl-flash-track {
+                        0%   { filter: none; }
+                        20%  { filter: brightness(1.3) drop-shadow(0 0 10px rgba(217, 160, 255, 1)) drop-shadow(0 0 22px rgba(180, 100, 255, 0.6)); }
+                        100% { filter: none; }
                     }
 
                     .bbgl-level-up-flash::before {
@@ -4926,6 +4928,11 @@
 
                     .bbgl-level-up-flash #bbgl-level-fill {
                         animation: bbgl-lvl-flash-bar 0.8s ease-out;
+                    }
+
+                    .bbgl-level-up-flash #bbgl-level-track,
+                    .bbgl-level-up-flash #bbgl-gym-level-track {
+                        animation: bbgl-lvl-flash-track 0.8s ease-out;
                     }
 
                     #bbgl-panel.bbgl-expanded #bbgl-level-container {
@@ -7509,8 +7516,12 @@
             const wars = data.rankedwars || {};
             if (data.ID) {
                 Object.values(wars).forEach(w => {
-                    if (!w || !w.war || !w.war.end || w.war.winner == null) return;
-                    w.outcome = w.war.winner === data.ID ? 'won' : 'lost';
+                    if (!w || !w.war) return;
+                    if (w.war.end && w.war.winner != null) {
+                        w.outcome = w.war.winner === data.ID ? 'won' : 'lost';
+                    }
+                    // Tag each war with the faction it belongs to for membership filtering.
+                    w.factionId = data.ID;
                 });
             }
             localStorage.setItem(KEYS.WARS_DATA, JSON.stringify(wars));
@@ -7518,6 +7529,77 @@
         } catch (e) {
             Log.error('Wars fetch failed', e);
         }
+    }
+
+    // Fetches log 6253 ("faction application accept receive") and stores a membership timeline.
+    // Only called once at the start of backfill — historical data, not needed on every sync.
+    async function fetchFactionHistory() {
+        try {
+            incrementApiCount(1);
+            const res = await fetch(`https://api.torn.com/user/?selections=log&log=6253&key=${userConfig.apiKey}`);
+            if (!res.ok) return;
+            const data = await res.json();
+            if (data.error) return;
+            const joinEvents = Object.values(data.log || {})
+                .filter(e => e && e.data && e.data.faction && e.timestamp)
+                .sort((a, b) => a.timestamp - b.timestamp);
+            const factionHistory = joinEvents.map((e, i) => ({
+                factionId: e.data.faction,
+                joinedAt: e.timestamp,
+                leftAt: joinEvents[i + 1] ? joinEvents[i + 1].timestamp : null
+            }));
+            localStorage.setItem(KEYS.FACTION_HISTORY, JSON.stringify(factionHistory));
+        } catch (e) {
+            Log.warn('Faction history fetch failed', e);
+        }
+    }
+
+    // Parses and returns the stored faction membership timeline, or null if absent/malformed.
+    function getFactionHistory() {
+        try {
+            const raw = localStorage.getItem(KEYS.FACTION_HISTORY);
+            return raw ? JSON.parse(raw) : null;
+        } catch (e) { return null; }
+    }
+
+    // Fetches ranked war history for each past faction in the membership timeline and merges
+    // it into WARS_DATA. Called once per backfill — current faction is handled by fetchWars.
+    async function fetchPastFactionWars() {
+        const factionHistory = getFactionHistory();
+        if (!factionHistory || !factionHistory.length) return;
+        const pastFactions = factionHistory.filter(m => m.leftAt !== null);
+        if (!pastFactions.length) return;
+        let wars = {};
+        try { const e = localStorage.getItem(KEYS.WARS_DATA); if (e) wars = JSON.parse(e); } catch (e) { /* start fresh */ }
+        for (const membership of pastFactions) {
+            try {
+                incrementApiCount(1);
+                const res = await fetch(`https://api.torn.com/faction/${membership.factionId}?selections=rankedwars&key=${userConfig.apiKey}`);
+                if (!res.ok) continue;
+                const data = await res.json();
+                if (data.error) continue;
+                Object.entries(data.rankedwars || {}).forEach(([id, w]) => {
+                    if (!w || !w.war) return;
+                    if (w.war.end && w.war.winner != null)
+                        w.outcome = w.war.winner === membership.factionId ? 'won' : 'lost';
+                    w.factionId = membership.factionId;
+                    wars[id] = w;
+                });
+            } catch (e) {
+                Log.warn('Past faction wars fetch failed for ' + membership.factionId, e);
+            }
+        }
+        localStorage.setItem(KEYS.WARS_DATA, JSON.stringify(wars));
+    }
+
+    // Returns true if the user was a member of the given factionId when the war ended.
+    // Unknown factionIds (not in history) are allowed through — they are factions joined
+    // after backfill ran, so logStartDate already floors any pre-join wars for them.
+    function wasInFactionDuringWar(factionHistory, factionId, warEnd) {
+        if (!factionHistory) return true;
+        const intervals = factionHistory.filter(m => m.factionId === factionId);
+        if (!intervals.length) return true;
+        return intervals.some(m => m.joinedAt <= warEnd && (m.leftAt === null || m.leftAt > warEnd));
     }
 
     // This is the ONLY function that connects to the internet with your API key.
@@ -7963,6 +8045,11 @@
         ds.lastResult = 'partial';
         ds.lock = Date.now();
         await persistBackfillState(ds);
+
+        // Build the faction membership timeline, then fetch ranked war history for each past
+        // faction. Sequential: past faction wars depend on the history being stored first.
+        await fetchFactionHistory();
+        await fetchPastFactionWars();
 
         runtime.backfilling = true;
         if (btn) {
@@ -8665,13 +8752,6 @@ const DataController = {
         let s = getActiveHistory();
         const fullApiLogs = normalizeApiLogs(apiLogs);
         let cleanLogs = fullApiLogs;
-        if (!s.meta.logStartDate) {
-            if (s.history.length > 0 || (s.today && s.today.lastLogTimestamp > 0)) {
-                const oldestTs = s.history.length > 0 ? Formatter.parse(s.history[0].date).getTime() / 1000 : s.today.lastLogTimestamp;
-                const agreedTs = Math.floor(Date.parse(userConfig.privacyAgreed) / 1000);
-                s.meta.logStartDate = agreedTs > 0 ? Math.min(oldestTs, agreedTs) : oldestTs;
-            }
-        }
         if (s.meta.logStartDate) {
             cleanLogs = cleanLogs.filter(l => l.ts >= s.meta.logStartDate);
 
@@ -8759,8 +8839,10 @@ const DataController = {
             s = getActiveHistory();
         }
         if (!s.meta.logStartDate) {
-            // Forward-only init: baseline = current battlestats, origin = install time.
-            // No historical reconstruction — history only comes from explicit Backfill.
+            // Forward-only init: baseline = current battlestats, origin = NOW (this sync).
+            // No historical reconstruction — history only comes from explicit Backfill or
+            // import. Anchoring to "now" (not privacyAgreed, which survives Clear Log) makes
+            // a cleared log behave like a fresh install: nothing before this moment counts.
             if (apiBattlestats) {
                 s.meta.baselineBreakdown = {
                     str: apiBattlestats.strength || 0,
@@ -8769,7 +8851,14 @@ const DataController = {
                     dex: apiBattlestats.dexterity || 0
                 };
             }
-            s.meta.logStartDate = Math.floor(Date.parse(userConfig.privacyAgreed) / 1000);
+            const nowTs = Math.floor(Date.now() / 1000);
+            s.meta.logStartDate = nowTs;
+            // rewardStartDate is the fixed rewards gate — set once at install/clear, never
+            // moved by backfill. logStartDate can be pushed back; rewardStartDate stays here.
+            s.meta.rewardStartDate = nowTs;
+            // Drop anything older than the cutoff so the API's default window (last ~week)
+            // is never ingested by the daily grind below.
+            cleanLogs = cleanLogs.filter(l => l.ts >= s.meta.logStartDate);
             s.today = initializeDayObject(Formatter.dateLogical(), { ...s.meta.baselineBreakdown });
         }
         this._runDailyGrind(cleanLogs, apiBattlestats, s);
@@ -11227,12 +11316,17 @@ async function exportData() {
         const warsRaw = localStorage.getItem(KEYS.WARS_DATA);
         if (warsRaw) {
             const wars = JSON.parse(warsRaw);
-            rankedWars = Object.entries(wars).map(([id, w]) => ({
-                id,
-                start: w.war && w.war.start,
-                end: w.war && w.war.end,
-                winner: w.war && w.war.winner
-            }));
+            const logCutoff = exportStorage.meta && exportStorage.meta.logStartDate ? exportStorage.meta.logStartDate : 0;
+            const factionHistory = getFactionHistory();
+            rankedWars = Object.entries(wars)
+                .filter(([, w]) => w.war && w.war.end && w.war.end >= logCutoff &&
+                    wasInFactionDuringWar(factionHistory, w.factionId, w.war.end))
+                .map(([id, w]) => ({
+                    id,
+                    start: w.war && w.war.start,
+                    end: w.war && w.war.end,
+                    winner: w.war && w.war.winner
+                }));
         }
     } catch (e) { /* skip */ }
     let content = JSON.stringify({
@@ -11443,7 +11537,10 @@ function importDataFromWelcome(f) {
 async function clearData() {
     if (confirm("⚠️ CLEAR LOG HISTORY? ⚠️\n\nThis will permanently delete your training data.\n\nUse 'Export Log' before proceeding to preserve it.")) {
         await DBManager.clearStorage();
-        const keep = [KEYS.CONFIG, KEYS.STATE];
+        // Clear Log behaves like a fresh install but must NOT re-prompt onboarding: keep the
+        // API key (KEYS.CONFIG) and the 'bbgl_initialized' flag so the welcome screen stays
+        // skipped. (privacyAgreed lives in CONFIG and is auto-stamped on boot regardless.)
+        const keep = [KEYS.CONFIG, KEYS.STATE, 'bbgl_initialized'];
         for (let i = localStorage.length - 1; i >= 0; i--) {
             const k = localStorage.key(i);
             if (k && k.startsWith('bbgl_') && k !== KEYS.STORAGE && !keep.includes(k)) localStorage.removeItem(k);
@@ -11457,6 +11554,10 @@ async function clearData() {
         viewState.activeViewLabel = null;
         runtime.apiCallTotal = 0;
         runtime.stickerSlots = [];
+        runtime.careerLevelExp = 0;
+        runtime._lastLevelExp = undefined;
+        runtime._targetLevelExp = undefined;
+        runtime._isAnimatingLevel = false;
         renderPanelContent();
         alert("History cleared.");
     }
@@ -11929,31 +12030,34 @@ const BestGymController = {
     // recomputes when the stored war data actually changes. Foundation for real markers later.
     // `raw` starts as a sentinel (false) that no localStorage value can equal — otherwise an
     // absent key (getItem -> null) would match an initial null and return the uninitialized map.
-    let _warMarkerCache = { raw: false, map: {} };
+    let _warMarkerCache = { raw: false, cutoff: -1, map: {} };
     function getWarMarkers() {
         const raw = localStorage.getItem(KEYS.WARS_DATA);
-        if (raw === _warMarkerCache.raw) return _warMarkerCache.map || {};
+        const meta = getActiveHistory().meta;
+        const cutoff = meta && meta.logStartDate ? meta.logStartDate : 0;
+        if (raw === _warMarkerCache.raw && cutoff === _warMarkerCache.cutoff) return _warMarkerCache.map || {};
+        const factionHistory = getFactionHistory();
         const map = {};
         if (raw) {
             try {
                 const wars = JSON.parse(raw);
                 Object.values(wars).forEach(w => {
-                    if (!w || !w.war) return;
-                    if (w.war.start) {
+                    if (!w || !w.war || !w.war.end) return;
+                    if (w.war.end < cutoff) return;
+                    if (!wasInFactionDuringWar(factionHistory, w.factionId, w.war.end)) return;
+                    if (w.war.start && w.war.start >= cutoff) {
                         const ds = Formatter.dateLogical(w.war.start * 1000);
                         (map[ds] = map[ds] || {}).warStart = true;
                     }
-                    if (w.war.end) {
-                        const ds = Formatter.dateLogical(w.war.end * 1000);
-                        const entry = (map[ds] = map[ds] || {});
-                        if (w.outcome === 'won') entry.warWon = true;
-                        else if (w.outcome === 'lost') entry.warLost = true;
-                        else entry.warEnd = true;
-                    }
+                    const ds = Formatter.dateLogical(w.war.end * 1000);
+                    const entry = (map[ds] = map[ds] || {});
+                    if (w.outcome === 'won') entry.warWon = true;
+                    else if (w.outcome === 'lost') entry.warLost = true;
+                    else entry.warEnd = true;
                 });
             } catch (e) { /* malformed war data — no markers */ }
         }
-        _warMarkerCache = { raw, map };
+        _warMarkerCache = { raw, cutoff, map };
         return map;
     }
 
@@ -12188,24 +12292,6 @@ const BestGymController = {
         if (!bars.length) return;
         const totalExp = getLiveLevelExp();
 
-        // TEMPORARY TEST FUNCTION
-        if (!runtime._levelDebugInit) {
-            runtime._levelDebugInit = true;
-            const dbg = bars[0].num;
-            dbg.style.cursor = 'pointer';
-            dbg.style.pointerEvents = 'auto'; // Fix for container pointer-events: none
-            dbg.addEventListener('click', () => {
-                const levelsToAdd = Math.floor(Math.random() * 10) + 1;
-                let simExp = runtime._lastLevelExp || totalExp;
-                for (let i = 0; i < levelsToAdd; i++) {
-                    const prog = calculateLevelProgress(simExp);
-                    simExp += (prog.expToNext - prog.expInLevel);
-                }
-                runtime.careerLevelExp = (runtime.careerLevelExp || 0) + (simExp - totalExp);
-                updateLevelBar();
-            });
-        }
-
         if (runtime._lastLevelExp === undefined) {
             runtime._lastLevelExp = totalExp;
             bars.forEach(b => renderLevelBar(b, totalExp));
@@ -12217,6 +12303,13 @@ const BestGymController = {
             if (!runtime._isAnimatingLevel) {
                 runLevelAnimationQueue();
             }
+        } else if (!runtime._isAnimatingLevel) {
+            // Exp is unchanged but bars may be newly created (e.g. panel just opened for the
+            // first time this session while training was happening). Only render bars that have
+            // never been initialized (empty fill width) — already-correct bars cost nothing.
+            bars.forEach(b => {
+                if (!b.fill.style.width) renderLevelBar(b, runtime._lastLevelExp);
+            });
         }
 
         async function runLevelAnimationQueue() {

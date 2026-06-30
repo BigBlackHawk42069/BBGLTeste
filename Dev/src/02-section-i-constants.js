@@ -46,7 +46,8 @@
         CHANGELOG_VER: 'bbgl_changelog_seen_ver',
         CHANGELOG_NOTIF: 'bbgl_changelog_notif',
         WARS_SYNC: 'bbgl_wars_last_sync_v1',
-        WARS_DATA: 'bbgl_wars_data_v1'
+        WARS_DATA: 'bbgl_wars_data_v1',
+        FACTION_HISTORY: 'bbgl_faction_history_v1'
     };
     // [TEMP — delete before full release]
     const REQUIRED_CONFIG_VERSION = 1;

@@ -510,13 +510,6 @@ const DataController = {
         let s = getActiveHistory();
         const fullApiLogs = normalizeApiLogs(apiLogs);
         let cleanLogs = fullApiLogs;
-        if (!s.meta.logStartDate) {
-            if (s.history.length > 0 || (s.today && s.today.lastLogTimestamp > 0)) {
-                const oldestTs = s.history.length > 0 ? Formatter.parse(s.history[0].date).getTime() / 1000 : s.today.lastLogTimestamp;
-                const agreedTs = Math.floor(Date.parse(userConfig.privacyAgreed) / 1000);
-                s.meta.logStartDate = agreedTs > 0 ? Math.min(oldestTs, agreedTs) : oldestTs;
-            }
-        }
         if (s.meta.logStartDate) {
             cleanLogs = cleanLogs.filter(l => l.ts >= s.meta.logStartDate);
 
@@ -604,8 +597,10 @@ const DataController = {
             s = getActiveHistory();
         }
         if (!s.meta.logStartDate) {
-            // Forward-only init: baseline = current battlestats, origin = install time.
-            // No historical reconstruction — history only comes from explicit Backfill.
+            // Forward-only init: baseline = current battlestats, origin = NOW (this sync).
+            // No historical reconstruction — history only comes from explicit Backfill or
+            // import. Anchoring to "now" (not privacyAgreed, which survives Clear Log) makes
+            // a cleared log behave like a fresh install: nothing before this moment counts.
             if (apiBattlestats) {
                 s.meta.baselineBreakdown = {
                     str: apiBattlestats.strength || 0,
@@ -614,7 +609,14 @@ const DataController = {
                     dex: apiBattlestats.dexterity || 0
                 };
             }
-            s.meta.logStartDate = Math.floor(Date.parse(userConfig.privacyAgreed) / 1000);
+            const nowTs = Math.floor(Date.now() / 1000);
+            s.meta.logStartDate = nowTs;
+            // rewardStartDate is the fixed rewards gate — set once at install/clear, never
+            // moved by backfill. logStartDate can be pushed back; rewardStartDate stays here.
+            s.meta.rewardStartDate = nowTs;
+            // Drop anything older than the cutoff so the API's default window (last ~week)
+            // is never ingested by the daily grind below.
+            cleanLogs = cleanLogs.filter(l => l.ts >= s.meta.logStartDate);
             s.today = initializeDayObject(Formatter.dateLogical(), { ...s.meta.baselineBreakdown });
         }
         this._runDailyGrind(cleanLogs, apiBattlestats, s);
@@ -3072,12 +3074,17 @@ async function exportData() {
         const warsRaw = localStorage.getItem(KEYS.WARS_DATA);
         if (warsRaw) {
             const wars = JSON.parse(warsRaw);
-            rankedWars = Object.entries(wars).map(([id, w]) => ({
-                id,
-                start: w.war && w.war.start,
-                end: w.war && w.war.end,
-                winner: w.war && w.war.winner
-            }));
+            const logCutoff = exportStorage.meta && exportStorage.meta.logStartDate ? exportStorage.meta.logStartDate : 0;
+            const factionHistory = getFactionHistory();
+            rankedWars = Object.entries(wars)
+                .filter(([, w]) => w.war && w.war.end && w.war.end >= logCutoff &&
+                    wasInFactionDuringWar(factionHistory, w.factionId, w.war.end))
+                .map(([id, w]) => ({
+                    id,
+                    start: w.war && w.war.start,
+                    end: w.war && w.war.end,
+                    winner: w.war && w.war.winner
+                }));
         }
     } catch (e) { /* skip */ }
     let content = JSON.stringify({
@@ -3288,7 +3295,10 @@ function importDataFromWelcome(f) {
 async function clearData() {
     if (confirm("⚠️ CLEAR LOG HISTORY? ⚠️\n\nThis will permanently delete your training data.\n\nUse 'Export Log' before proceeding to preserve it.")) {
         await DBManager.clearStorage();
-        const keep = [KEYS.CONFIG, KEYS.STATE];
+        // Clear Log behaves like a fresh install but must NOT re-prompt onboarding: keep the
+        // API key (KEYS.CONFIG) and the 'bbgl_initialized' flag so the welcome screen stays
+        // skipped. (privacyAgreed lives in CONFIG and is auto-stamped on boot regardless.)
+        const keep = [KEYS.CONFIG, KEYS.STATE, 'bbgl_initialized'];
         for (let i = localStorage.length - 1; i >= 0; i--) {
             const k = localStorage.key(i);
             if (k && k.startsWith('bbgl_') && k !== KEYS.STORAGE && !keep.includes(k)) localStorage.removeItem(k);
@@ -3302,6 +3312,10 @@ async function clearData() {
         viewState.activeViewLabel = null;
         runtime.apiCallTotal = 0;
         runtime.stickerSlots = [];
+        runtime.careerLevelExp = 0;
+        runtime._lastLevelExp = undefined;
+        runtime._targetLevelExp = undefined;
+        runtime._isAnimatingLevel = false;
         renderPanelContent();
         alert("History cleared.");
     }

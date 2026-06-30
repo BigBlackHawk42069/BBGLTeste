@@ -314,31 +314,34 @@
     // recomputes when the stored war data actually changes. Foundation for real markers later.
     // `raw` starts as a sentinel (false) that no localStorage value can equal — otherwise an
     // absent key (getItem -> null) would match an initial null and return the uninitialized map.
-    let _warMarkerCache = { raw: false, map: {} };
+    let _warMarkerCache = { raw: false, cutoff: -1, map: {} };
     function getWarMarkers() {
         const raw = localStorage.getItem(KEYS.WARS_DATA);
-        if (raw === _warMarkerCache.raw) return _warMarkerCache.map || {};
+        const meta = getActiveHistory().meta;
+        const cutoff = meta && meta.logStartDate ? meta.logStartDate : 0;
+        if (raw === _warMarkerCache.raw && cutoff === _warMarkerCache.cutoff) return _warMarkerCache.map || {};
+        const factionHistory = getFactionHistory();
         const map = {};
         if (raw) {
             try {
                 const wars = JSON.parse(raw);
                 Object.values(wars).forEach(w => {
-                    if (!w || !w.war) return;
-                    if (w.war.start) {
+                    if (!w || !w.war || !w.war.end) return;
+                    if (w.war.end < cutoff) return;
+                    if (!wasInFactionDuringWar(factionHistory, w.factionId, w.war.end)) return;
+                    if (w.war.start && w.war.start >= cutoff) {
                         const ds = Formatter.dateLogical(w.war.start * 1000);
                         (map[ds] = map[ds] || {}).warStart = true;
                     }
-                    if (w.war.end) {
-                        const ds = Formatter.dateLogical(w.war.end * 1000);
-                        const entry = (map[ds] = map[ds] || {});
-                        if (w.outcome === 'won') entry.warWon = true;
-                        else if (w.outcome === 'lost') entry.warLost = true;
-                        else entry.warEnd = true;
-                    }
+                    const ds = Formatter.dateLogical(w.war.end * 1000);
+                    const entry = (map[ds] = map[ds] || {});
+                    if (w.outcome === 'won') entry.warWon = true;
+                    else if (w.outcome === 'lost') entry.warLost = true;
+                    else entry.warEnd = true;
                 });
             } catch (e) { /* malformed war data — no markers */ }
         }
-        _warMarkerCache = { raw, map };
+        _warMarkerCache = { raw, cutoff, map };
         return map;
     }
 
@@ -573,24 +576,6 @@
         if (!bars.length) return;
         const totalExp = getLiveLevelExp();
 
-        // TEMPORARY TEST FUNCTION
-        if (!runtime._levelDebugInit) {
-            runtime._levelDebugInit = true;
-            const dbg = bars[0].num;
-            dbg.style.cursor = 'pointer';
-            dbg.style.pointerEvents = 'auto'; // Fix for container pointer-events: none
-            dbg.addEventListener('click', () => {
-                const levelsToAdd = Math.floor(Math.random() * 10) + 1;
-                let simExp = runtime._lastLevelExp || totalExp;
-                for (let i = 0; i < levelsToAdd; i++) {
-                    const prog = calculateLevelProgress(simExp);
-                    simExp += (prog.expToNext - prog.expInLevel);
-                }
-                runtime.careerLevelExp = (runtime.careerLevelExp || 0) + (simExp - totalExp);
-                updateLevelBar();
-            });
-        }
-
         if (runtime._lastLevelExp === undefined) {
             runtime._lastLevelExp = totalExp;
             bars.forEach(b => renderLevelBar(b, totalExp));
@@ -602,6 +587,13 @@
             if (!runtime._isAnimatingLevel) {
                 runLevelAnimationQueue();
             }
+        } else if (!runtime._isAnimatingLevel) {
+            // Exp is unchanged but bars may be newly created (e.g. panel just opened for the
+            // first time this session while training was happening). Only render bars that have
+            // never been initialized (empty fill width) — already-correct bars cost nothing.
+            bars.forEach(b => {
+                if (!b.fill.style.width) renderLevelBar(b, runtime._lastLevelExp);
+            });
         }
 
         async function runLevelAnimationQueue() {

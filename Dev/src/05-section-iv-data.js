@@ -352,8 +352,12 @@
             const wars = data.rankedwars || {};
             if (data.ID) {
                 Object.values(wars).forEach(w => {
-                    if (!w || !w.war || !w.war.end || w.war.winner == null) return;
-                    w.outcome = w.war.winner === data.ID ? 'won' : 'lost';
+                    if (!w || !w.war) return;
+                    if (w.war.end && w.war.winner != null) {
+                        w.outcome = w.war.winner === data.ID ? 'won' : 'lost';
+                    }
+                    // Tag each war with the faction it belongs to for membership filtering.
+                    w.factionId = data.ID;
                 });
             }
             localStorage.setItem(KEYS.WARS_DATA, JSON.stringify(wars));
@@ -361,6 +365,77 @@
         } catch (e) {
             Log.error('Wars fetch failed', e);
         }
+    }
+
+    // Fetches log 6253 ("faction application accept receive") and stores a membership timeline.
+    // Only called once at the start of backfill — historical data, not needed on every sync.
+    async function fetchFactionHistory() {
+        try {
+            incrementApiCount(1);
+            const res = await fetch(`https://api.torn.com/user/?selections=log&log=6253&key=${userConfig.apiKey}`);
+            if (!res.ok) return;
+            const data = await res.json();
+            if (data.error) return;
+            const joinEvents = Object.values(data.log || {})
+                .filter(e => e && e.data && e.data.faction && e.timestamp)
+                .sort((a, b) => a.timestamp - b.timestamp);
+            const factionHistory = joinEvents.map((e, i) => ({
+                factionId: e.data.faction,
+                joinedAt: e.timestamp,
+                leftAt: joinEvents[i + 1] ? joinEvents[i + 1].timestamp : null
+            }));
+            localStorage.setItem(KEYS.FACTION_HISTORY, JSON.stringify(factionHistory));
+        } catch (e) {
+            Log.warn('Faction history fetch failed', e);
+        }
+    }
+
+    // Parses and returns the stored faction membership timeline, or null if absent/malformed.
+    function getFactionHistory() {
+        try {
+            const raw = localStorage.getItem(KEYS.FACTION_HISTORY);
+            return raw ? JSON.parse(raw) : null;
+        } catch (e) { return null; }
+    }
+
+    // Fetches ranked war history for each past faction in the membership timeline and merges
+    // it into WARS_DATA. Called once per backfill — current faction is handled by fetchWars.
+    async function fetchPastFactionWars() {
+        const factionHistory = getFactionHistory();
+        if (!factionHistory || !factionHistory.length) return;
+        const pastFactions = factionHistory.filter(m => m.leftAt !== null);
+        if (!pastFactions.length) return;
+        let wars = {};
+        try { const e = localStorage.getItem(KEYS.WARS_DATA); if (e) wars = JSON.parse(e); } catch (e) { /* start fresh */ }
+        for (const membership of pastFactions) {
+            try {
+                incrementApiCount(1);
+                const res = await fetch(`https://api.torn.com/faction/${membership.factionId}?selections=rankedwars&key=${userConfig.apiKey}`);
+                if (!res.ok) continue;
+                const data = await res.json();
+                if (data.error) continue;
+                Object.entries(data.rankedwars || {}).forEach(([id, w]) => {
+                    if (!w || !w.war) return;
+                    if (w.war.end && w.war.winner != null)
+                        w.outcome = w.war.winner === membership.factionId ? 'won' : 'lost';
+                    w.factionId = membership.factionId;
+                    wars[id] = w;
+                });
+            } catch (e) {
+                Log.warn('Past faction wars fetch failed for ' + membership.factionId, e);
+            }
+        }
+        localStorage.setItem(KEYS.WARS_DATA, JSON.stringify(wars));
+    }
+
+    // Returns true if the user was a member of the given factionId when the war ended.
+    // Unknown factionIds (not in history) are allowed through — they are factions joined
+    // after backfill ran, so logStartDate already floors any pre-join wars for them.
+    function wasInFactionDuringWar(factionHistory, factionId, warEnd) {
+        if (!factionHistory) return true;
+        const intervals = factionHistory.filter(m => m.factionId === factionId);
+        if (!intervals.length) return true;
+        return intervals.some(m => m.joinedAt <= warEnd && (m.leftAt === null || m.leftAt > warEnd));
     }
 
     // This is the ONLY function that connects to the internet with your API key.
@@ -806,6 +881,11 @@
         ds.lastResult = 'partial';
         ds.lock = Date.now();
         await persistBackfillState(ds);
+
+        // Build the faction membership timeline, then fetch ranked war history for each past
+        // faction. Sequential: past faction wars depend on the history being stored first.
+        await fetchFactionHistory();
+        await fetchPastFactionWars();
 
         runtime.backfilling = true;
         if (btn) {

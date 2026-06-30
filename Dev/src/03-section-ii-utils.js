@@ -437,8 +437,8 @@
     // eligible for weeks with key >= this. Respects the user's day-start and week-start modes.
     // Returns null if unknown (no gating) — but init() self-heals privacyAgreed so this is rare.
     function getInstallWeekKey() {
-        const ms = userConfig.privacyAgreed ? Date.parse(userConfig.privacyAgreed) : NaN;
-        if (isNaN(ms)) return null;
-        return getWeekKey(Formatter.dateLogical(ms));
+        const rewardStartDate = getActiveHistory().meta.rewardStartDate;
+        if (!rewardStartDate) return null;
+        return getWeekKey(Formatter.dateLogical(rewardStartDate * 1000));
     }
 

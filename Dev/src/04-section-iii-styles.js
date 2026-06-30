@@ -3698,12 +3698,12 @@
                     .bbgl-weekly-track {
                         position: absolute;
                         bottom: 0;
-                        left: 0;
-                        width: 100%;
+                        left: var(--bbgl-tab-w);
+                        width: calc(100% - var(--bbgl-tab-w));
                         height: 15px;
                         display: flex;
                         cursor: pointer;
-                        border-radius: 4px;
+                        border-radius: 0 4px 4px 0;
                         overflow: hidden;
                         pointer-events: auto;
                         background: repeating-linear-gradient(90deg, transparent 0, transparent 1px, rgba(255, 255, 255, .03) 1px, rgba(255, 255, 255, .03) 2px), linear-gradient(180deg, #1a1a1a 0%, #2a2a2a 100%);
@@ -3860,11 +3860,6 @@
                         --bbgl-handle-active-h: clamp(30px, calc(30px + 6px * var(--bbgl-page-t)), 36px);
                     }
 
-                    body:not(.is-touch-device) .bbgl-weekly-track:active ~ .bbgl-bar-handle,
-                    body:not(.is-touch-device) .bbgl-bar-handle:active {
-                        box-shadow: inset 0 1px 0 rgba(255,255,255,.1), inset 0 0 10px rgba(0,0,0,.3);
-                    }
-
                     #bbgl-panel.bbgl-no-animations .bbgl-bar-handle {
                         transition: none;
                     }
@@ -3961,9 +3956,15 @@
                     }
 
                     @keyframes bbgl-lvl-flash-bar {
-                        0% { filter: brightness(1); box-shadow: 0 0 0 rgba(255,255,255,0); }
-                        20% { filter: brightness(1.5); box-shadow: 0 0 15px rgba(217, 160, 255, 0.8); }
-                        100% { filter: brightness(1); box-shadow: 0 0 0 rgba(255,255,255,0); }
+                        0% { filter: brightness(1); }
+                        20% { filter: brightness(1.8); }
+                        100% { filter: brightness(1); }
+                    }
+
+                    @keyframes bbgl-lvl-flash-track {
+                        0%   { filter: none; }
+                        20%  { filter: brightness(1.3) drop-shadow(0 0 10px rgba(217, 160, 255, 1)) drop-shadow(0 0 22px rgba(180, 100, 255, 0.6)); }
+                        100% { filter: none; }
                     }
 
                     .bbgl-level-up-flash::before {
@@ -3976,6 +3977,11 @@
 
                     .bbgl-level-up-flash #bbgl-level-fill {
                         animation: bbgl-lvl-flash-bar 0.8s ease-out;
+                    }
+
+                    .bbgl-level-up-flash #bbgl-level-track,
+                    .bbgl-level-up-flash #bbgl-gym-level-track {
+                        animation: bbgl-lvl-flash-track 0.8s ease-out;
                     }
 
                     #bbgl-panel.bbgl-expanded #bbgl-level-container {
