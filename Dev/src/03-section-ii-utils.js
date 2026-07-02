@@ -386,8 +386,10 @@
         let remaining = totalExp;
         let atrophy = 0;
         for (let a = 0; a < 3; a++) {
-            if (remaining < LEVEL_ATRO_BUDGETS[a]) { atrophy = a; break; }
-            remaining -= LEVEL_ATRO_BUDGETS[a];
+            const budget = LEVEL_ATRO_BUDGETS[a];
+            if (remaining < budget) { atrophy = a; break; }
+            if (remaining === budget && a < 2) return { atrophy: a, level: 100, expInLevel: 0, expToNext: 0 };
+            remaining -= budget;
             atrophy = a + 1;
         }
         if (atrophy >= 3) return { atrophy: 2, level: 100, expInLevel: 0, expToNext: 0 };

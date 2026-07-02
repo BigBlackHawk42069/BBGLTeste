@@ -893,8 +893,10 @@
         let remaining = totalExp;
         let atrophy = 0;
         for (let a = 0; a < 3; a++) {
-            if (remaining < LEVEL_ATRO_BUDGETS[a]) { atrophy = a; break; }
-            remaining -= LEVEL_ATRO_BUDGETS[a];
+            const budget = LEVEL_ATRO_BUDGETS[a];
+            if (remaining < budget) { atrophy = a; break; }
+            if (remaining === budget && a < 2) return { atrophy: a, level: 100, expInLevel: 0, expToNext: 0 };
+            remaining -= budget;
             atrophy = a + 1;
         }
         if (atrophy >= 3) return { atrophy: 2, level: 100, expInLevel: 0, expToNext: 0 };
@@ -967,7 +969,7 @@
         MINIMIZE: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24" class="bbgl-native-icon" aria-label="Minimize">${ASSETS.GRADIENT}<rect fill="url(#bbgl_silver_grad)" x="0" y="21" width="24" height="3"></rect></svg>`,
         POPOUT: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 18 18" width="24" height="24" class="bbgl-native-icon">${ASSETS.GRADIENT}<path fill="url(#bbgl_silver_grad)" d="M12,12H6V6h6ZM4.5,6.621V4.5H6.621L4.061,1.939,6,0H0V6L1.939,4.061ZM6.621,13.5H4.5V11.379L1.939,13.94,0,12v6H6L4.061,16.06ZM13.5,11.379V13.5H11.379l2.561,2.56L12,18h6V12l-1.94,1.94L13.5,11.379ZM12,0l1.94,1.939L11.379,4.5H13.5V6.621l2.56-2.561L18,6V0Z"></path></svg>`,
         COMPRESS: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 18 18" width="24" height="24" class="bbgl-native-icon">${ASSETS.GRADIENT}<g transform="translate(1290 304)"><path fill="url(#bbgl_silver_grad)" d="M-1277-291h6l-1.939,1.939,1.561,1.561-2.121,2.12-1.561-1.561L-1277-285Zm-9.94,4.06-1.561,1.561-2.12-2.12,1.561-1.561L-1291-291h6v6ZM-1284-292v-6h6v6Zm7-7v-6l1.939,1.94,1.561-1.561,2.121,2.121-1.561,1.561L-1271-299Zm-14,0,1.939-1.939-1.561-1.561,2.12-2.121,1.561,1.561L-1285-305v6Z"></path></g></svg>`,
-        CHART: `<svg viewBox="0 0 24 24" fill="none"><line x1="4" y1="20" x2="4" y2="12" stroke="#536e8c" stroke-width="5" stroke-linecap="round"/><line x1="9.5" y1="20" x2="9.5" y2="6" stroke="#a64d42" stroke-width="5" stroke-linecap="round"/><line x1="15" y1="20" x2="15" y2="10" stroke="#b88645" stroke-width="5" stroke-linecap="round"/><line x1="20.5" y1="20" x2="20.5" y2="14" stroke="#547d51" stroke-width="5" stroke-linecap="round"/></svg>`,
+        CHART: `<svg viewBox="0 0 24 24" fill="none"><line x1="4" y1="21.5" x2="4" y2="10.5" stroke="#536e8c" stroke-width="5" stroke-linecap="round"/><line x1="9.5" y1="21.5" x2="9.5" y2="2.5" stroke="#a64d42" stroke-width="5" stroke-linecap="round"/><line x1="15" y1="21.5" x2="15" y2="8" stroke="#b88645" stroke-width="5" stroke-linecap="round"/><line x1="20.5" y1="21.5" x2="20.5" y2="13.5" stroke="#547d51" stroke-width="5" stroke-linecap="round"/></svg>`,
         CHART_ALL: `<svg viewBox="0 -0.5 46 60" fill="none"><line x1="8" y1="40" x2="8" y2="30" stroke="#536e8c" stroke-width="9" stroke-linecap="round"/><line x1="18" y1="40" x2="18" y2="30" stroke="#a64d42" stroke-width="9" stroke-linecap="round"/><line x1="29" y1="40" x2="29" y2="30" stroke="#b88645" stroke-width="9" stroke-linecap="round"/><line x1="39" y1="40" x2="39" y2="30" stroke="#547d51" stroke-width="9" stroke-linecap="round"/><text x="23" y="57" text-anchor="middle" font-family="'Fjalla One', Arial Narrow, sans-serif" font-size="12" fill="#e6e6e6">All-Time</text></svg>`,
         LEDGER: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="2" width="18" height="20" rx="2" fill="none"/><line x1="7" y1="8" x2="17" y2="8"/><line x1="7" y1="12" x2="17" y2="12"/><line x1="7" y1="16" x2="17" y2="16"/></svg>`,
         GRAPH: `<svg viewBox="0 0 24 24"><path d="M3,12 L7,16 L13,6 L18,14 L22,8" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg>`,
@@ -3782,6 +3784,11 @@
                         z-index: 30;
                     }
 
+                    /* gap is the single source of row-to-row spacing, shared across
+                       modes by default so every row-pair gap matches. Only override
+                       it (paired with a compensating margin-top so the bottom row
+                       doesn't move) when a mode genuinely needs a different value —
+                       see .bbgl-compact below. */
                     .title-stack {
                         display: flex;
                         flex-direction: column;
@@ -3790,7 +3797,6 @@
                     }
 
                     #bbgl-panel.bbgl-expanded .title-stack {
-                        gap: 6px;
                         margin-top: -4px;
                     }
                     #bbgl-panel.bbgl-expanded .title-group {
@@ -3801,72 +3807,112 @@
                         gap: 1px;
                     }
 
+                    /* Gap reduced 1px (3px -> 2px) for both row-pairs; margin-top
+                       pushes the whole stack down by 2px (1px per shrunk gap,
+                       compounding down to the bottom row) so the month row — the
+                       last one — stays exactly where it was before this change. */
+                    #bbgl-panel.bbgl-compact .title-stack {
+                        gap: 2px;
+                        margin-top: 2px;
+                    }
+
+                    /* Gap now fluid: 7px at min panel width -> 15px at max (was a
+                       flat 11px, which is why it looked unchanged at max size).
+                       margin-top compensates 2px per px of gap growth (both gaps,
+                       compounding down to the bottom row) against the true 3px
+                       original gap, so month stays anchored across the whole
+                       width range, not just at the two ends. NOTE: the original
+                       -8px/-12px bounds here were already a dead clamp (backwards
+                       min/max order == always evaluates to -8px flat) predating
+                       this change — left as-is, just accounted for correctly. */
                     #bbgl-panel.bbgl-mode-page .title-stack {
-                        gap: clamp(4px, calc(4px + 2px * var(--bbgl-page-t)), 6px);
-                        margin-top: clamp(-8px, calc(-8px - 4px * var(--bbgl-page-t)), -12px);
+                        gap: clamp(7px, calc(7px + 8px * var(--bbgl-page-t)), 15px);
+                        margin-top: clamp(-32px, calc(-16px - 16px * var(--bbgl-page-t)), -16px);
                     }
                     #bbgl-panel.bbgl-mode-page .title-group {
                         gap: clamp(6px, calc(8px - 2px * var(--bbgl-page-t)), 8px);
                     }
 
-                    .all-time-btn {
-                        height: 30px;
-                        margin-bottom: 0px;
-                        cursor: pointer;
-                        display: flex;
-                        align-items: center;
-                        justify-content: center;
-                        transition: all .2s;
-                        align-self: flex-start;
-                    }
+                    /* NOTE: #all-time-btn only ever carries class="stats-btn" — a
+                       former .all-time-btn class rule set here never matched
+                       anything and was removed. Sizing/hover for the all-time
+                       icon comes entirely from the shared .stats-btn rules below. */
 
-                    .bbgl-expanded .all-time-btn {
-                        height: 43px;
-                    }
-
-                    #bbgl-panel.bbgl-mode-page .all-time-btn {
-                        height: clamp(30px, calc(30px + 13px * var(--bbgl-page-t)), 43px);
-                    }
-
-                    .all-time-btn:hover, .all-time-btn.active {
-                        transform: scale(1.1);
-                        transform-origin: center bottom;
-                        filter: drop-shadow(0 0 8px rgba(216, 150, 224, 0.9)) drop-shadow(0 0 3px rgba(171, 71, 188, 1));
-                    }
-
-                    .all-time-btn svg {
-                        height: 100%;
-                        width: auto;
-                        filter: drop-shadow(0 1px 2px rgba(0, 0, 0, .8));
-                    }
-
-
+                    /* Row height is pinned to the icon's own height (identical in
+                       every row), NOT the label's — labels vary wildly in size
+                       (9px-34px) and would otherwise make row height, and thus the
+                       gap between icons, inconsistent per row. The icon therefore
+                       always exactly fills its row; a label taller than the row
+                       overflows upward, which is harmless. align-items:flex-end
+                       (not center) because .stats-btn's SVG is only 78% of its own
+                       box and bottom-aligned within it — the box's visual bottom
+                       matches its box-bottom exactly, but its visual top doesn't,
+                       so bottom-alignment is what actually lines up the visible
+                       icon and label; centering the boxes would not center the
+                       visible content. .stats-btn / .header-trigger both add the
+                       same hardcoded -6px settled offset so they move together.
+                       --trigger-lift / --btn-lift: live per-element tuning knobs
+                       (delta from the settled -6px baseline), default 0 = no change.
+                       --btn-hover-adjust: per-row hover-jump correction. */
                     .header-row {
                         display: flex;
                         align-items: flex-end;
                         gap: 2px;
                         position: relative;
+                        height: 16px;
+                        --trigger-lift: 0px;
+                        --btn-lift: 0px;
+                        --btn-hover-adjust: 0px;
                     }
 
                     #bbgl-panel.bbgl-expanded .header-row {
                         gap: 6px;
+                        height: clamp(20px, calc(4.86cqi - 1px), 27px);
                     }
 
                     #bbgl-panel.bbgl-mode-page .header-row {
                         gap: clamp(3px, calc(3px + 3px * var(--bbgl-page-t)), 6px);
+                        height: clamp(21px, calc(21px + 10px * var(--bbgl-page-t)), 31px);
                     }
 
-                    #bbgl-panel:not(.bbgl-mode-page) .title-stack > .header-row:nth-child(1) {
-                        margin-bottom: 2px;
+                    /* Row-to-row spacing comes ONLY from .title-stack's gap above —
+                       every row is a fixed, identical height (icon-sized), so the
+                       gap between any two adjacent rows is guaranteed equal in
+                       every panel mode, both mathematically and visually. */
+
+                    .header-row--year {
+                        --btn-hover-adjust: 1px;
+                        --trigger-lift: 2px;
                     }
 
-                    #bbgl-panel:not(.bbgl-expanded) .title-stack > .header-row:nth-child(2) {
-                        top: -3px;
+                    /* Year label only: vertically centered against the row/icon,
+                       independent of month/all-time which stay bottom-aligned.
+                       --trigger-lift is left at its default 0px (NOT cancelled) so
+                       the label keeps the same shared -6px shift the icon has —
+                       align-self:center centers their pre-transform layout boxes
+                       against each other, then both move up together, preserving
+                       that centered relationship at the actual rendered position. */
+                    #year-trigger {
+                        align-self: center;
                     }
 
-                    #bbgl-panel.bbgl-expanded:not(.bbgl-mode-page) .title-stack > .header-row:nth-child(1) {
-                        margin-bottom: -10px;
-                        top: -2px;
+                    /* Page mode only: year reverts to the same bottom-alignment as
+                       month/all-time (both the align-self override above and the
+                       centered-tuning --trigger-lift are undone here). */
+                    #bbgl-panel.bbgl-mode-page .header-row--year {
+                        --trigger-lift: 0px;
+                    }
+                    #bbgl-panel.bbgl-mode-page #year-trigger {
+                        align-self: flex-end;
+                    }
+
+                    /* #all-time-trigger's font is by far the largest of the three
+                       (20-34px vs 9-29px), so line-height:1's descent reservation
+                       is proportionally biggest here — nudge the label down to
+                       compensate. Starting estimate, not measured against a live
+                       render; adjust as needed. */
+                    .header-row--alltime {
+                        --trigger-lift: 3px;
                     }
 
 
@@ -3879,60 +3925,31 @@
                         opacity: .95;
                         transition: all .2s;
                         align-self: flex-end;
-                        transform: translate(-2px, -2px);
+                        transform-origin: center bottom;
+                        transform: translate(-2px, calc(-6px + var(--btn-lift, 0px)));
                     }
 
+                    /* Hover jump is a per-mode absolute (not a delta from rest):
+                       page -4px, expanded -6px, compact -7px; --btn-hover-adjust
+                       (set per-row, e.g. .header-row--year) shifts it +1px shallower. */
                     .stats-btn:hover, .stats-btn.active {
                         opacity: 1;
-                        transform: translate(-2px, -4px) scale(1.25);
+                        transform: translate(-2px, calc(var(--btn-hover-jump, -6px) + var(--btn-hover-adjust, 0px))) scale(1.15);
                         filter: drop-shadow(0 0 6px rgba(216, 150, 224, 0.9)) drop-shadow(0 0 2px rgba(171, 71, 188, 1));
                     }
-                    #year-stats-btn:hover, #year-stats-btn.active {
-                        transform: translate(-2px, -3px) scale(1.25);
-                    }
 
-                    #bbgl-panel:not(.bbgl-mode-page) .stats-btn {
-                        transform: translate(-2px, -4px);
+                    #bbgl-panel:not(.bbgl-expanded):not(.bbgl-mode-page) .header-row {
+                        --btn-hover-jump: -7px;
                     }
-                    #bbgl-panel:not(.bbgl-mode-page) .stats-btn:hover,
-                    #bbgl-panel:not(.bbgl-mode-page) .stats-btn.active {
-                        transform: translate(-2px, -6px) scale(1.25);
-                    }
-                    #bbgl-panel:not(.bbgl-mode-page) #year-stats-btn {
-                        transform: translate(-2px, -3px);
-                    }
-                    #bbgl-panel:not(.bbgl-mode-page) #year-stats-btn:hover,
-                    #bbgl-panel:not(.bbgl-mode-page) #year-stats-btn.active {
-                        transform: translate(-2px, -5px) scale(1.25);
-                    }
-
-                    #bbgl-panel:not(.bbgl-expanded):not(.bbgl-mode-page) .header-trigger {
-                        transform: translateY(-4px);
-                    }
-                    #bbgl-panel:not(.bbgl-expanded):not(.bbgl-mode-page) .stats-btn {
-                        transform: translate(-2px, -5px);
-                    }
-                    #bbgl-panel:not(.bbgl-expanded):not(.bbgl-mode-page) .stats-btn:hover,
-                    #bbgl-panel:not(.bbgl-expanded):not(.bbgl-mode-page) .stats-btn.active {
-                        transform: translate(-2px, -7px) scale(1.25);
-                    }
-                    #bbgl-panel:not(.bbgl-expanded):not(.bbgl-mode-page) #year-stats-btn {
-                        transform: translate(-2px, -4px);
-                    }
-                    #bbgl-panel:not(.bbgl-expanded):not(.bbgl-mode-page) #year-stats-btn:hover,
-                    #bbgl-panel:not(.bbgl-expanded):not(.bbgl-mode-page) #year-stats-btn.active {
-                        transform: translate(-2px, -6px) scale(1.25);
+                    #bbgl-panel.bbgl-mode-page .header-row {
+                        --btn-hover-jump: -4px;
                     }
 
                     .stats-btn svg {
                         width: 100%;
-                        height: 78%;
+                        height: 100%;
                         pointer-events: auto;
                         cursor: pointer;
-                    }
-
-                    #bbgl-panel.bbgl-mode-page .stats-btn svg {
-                        height: 100%;
                     }
 
                     .header-trigger {
@@ -3945,7 +3962,7 @@
                         text-shadow: 0 2px 4px #000;
                         transition: font-size .3s;
                         line-height: 1;
-                        transform: translateY(-3px);
+                        transform: translateY(calc(-6px + var(--trigger-lift, 0px)));
                     }
 
                     .header-trigger:hover {
@@ -3973,7 +3990,7 @@
 
                     /**/
                     #year-trigger {
-                        font-size: 10px;
+                        font-size: 9px;
                     }
 
                     #month-trigger {
@@ -3983,37 +4000,17 @@
                     #all-time-trigger {
                         font-size: 20px;
                     }
-                    #bbgl-panel:not(.bbgl-mode-page) #all-time-trigger {
-                        transform: translateY(0);
-                    }
                     #all-time-trigger::after {
                         display: none;
                     }
 
-                    #bbgl-panel.bbgl-expanded #year-trigger {
-                        font-size: 14px;
+                    #year-stats-btn, #month-stats-btn, #all-time-btn {
+                        width: 15px;
+                        height: 14px;
                     }
-
-                    #bbgl-panel.bbgl-expanded #month-trigger {
-                        font-size: 20px;
-                    }
-
-                    #bbgl-panel.bbgl-expanded #all-time-trigger {
-                        font-size: 28px;
-                    }
-
-                    #year-stats-btn { width: 17px; height: 16px; transform: translate(-2px, -1px); }
-                    #month-stats-btn, #all-time-btn { width: 17px; height: 16px; }
-
-                    #bbgl-panel.bbgl-expanded #year-stats-btn { width: 21px; height: 21px; }
-                    #bbgl-panel.bbgl-expanded #month-stats-btn, #bbgl-panel.bbgl-expanded #all-time-btn { width: 21px; height: 21px; }
 
                     #bbgl-panel.bbgl-mode-page #year-trigger {
-                        font-size: clamp(13px, calc(13px + 7px * var(--bbgl-page-t)), 20px);
-                    }
-
-                    #bbgl-panel.bbgl-mode-page .header-trigger {
-                        transform: none;
+                        font-size: clamp(12px, calc(12px + 7px * var(--bbgl-page-t)), 19px);
                     }
 
                     #bbgl-panel.bbgl-mode-page #month-trigger {
@@ -4024,13 +4021,11 @@
                         font-size: clamp(24px, calc(24px + 10px * var(--bbgl-page-t)), 34px);
                     }
 
-                    #bbgl-panel.bbgl-mode-page #year-stats-btn {
-                        width: clamp(20px, calc(20px + 6px * var(--bbgl-page-t)), 26px);
-                        height: clamp(20px, calc(20px + 6px * var(--bbgl-page-t)), 26px);
-                    }
-                    #bbgl-panel.bbgl-mode-page #month-stats-btn, #bbgl-panel.bbgl-mode-page #all-time-btn {
-                        width: clamp(20px, calc(20px + 6px * var(--bbgl-page-t)), 26px);
-                        height: clamp(20px, calc(20px + 6px * var(--bbgl-page-t)), 26px);
+                    #bbgl-panel.bbgl-mode-page #year-stats-btn,
+                    #bbgl-panel.bbgl-mode-page #month-stats-btn,
+                    #bbgl-panel.bbgl-mode-page #all-time-btn {
+                        width: clamp(20px, calc(20px + 10px * var(--bbgl-page-t)), 30px);
+                        height: clamp(21px, calc(21px + 10px * var(--bbgl-page-t)), 31px);
                     }
 
                     #bbgl-panel.bbgl-mode-page .arrow-btn {
@@ -4815,83 +4810,90 @@
                         transition: none;
                     }
 
-                    /* ─── Level EXP Bar ─────────────────────────────────── */
+                    /* ─── Level EXP Bar — Structural ────────────────────── */
                     #bbgl-level-container {
                         position: absolute;
                         bottom: 0;
                         left: 0;
                         right: 0;
                         height: 18px;
+                        /* Track height for this mode, shared by the flag-clip cut line and the
+                           A2 diamond's bottom anchor so they stay in sync. Overridden per mode. */
+                        --bbgl-track-h: 9px;
                         display: flex;
                         flex-direction: column;
                         align-items: center;
                         justify-content: flex-end;
                         pointer-events: none;
                         z-index: 10;
-                        --dmnd-s: clamp(60px, 16cqi, 76px);
-                        --dmnd-b: calc(var(--dmnd-s) * -0.25);
                     }
 
-                    #bbgl-level-container::before {
-                        content: '';
+                    /* Sibling of #bbgl-level-container, painted behind it, holding the housing
+                       SVG. Never clipped. */
+                    #bbgl-level-bg {
                         position: absolute;
-                        bottom: var(--dmnd-b);
-                        left: 50%;
-                        transform-origin: 50% calc(100% + var(--dmnd-b));
-                        transform: translateX(-50%);
-                        width: var(--dmnd-s);
-                        height: var(--dmnd-s);
-                        clip-path: inset(0 0 calc(var(--dmnd-b) * -1 + 2px) 0);
-                        background: url('https://raw.githubusercontent.com/BigBlackHawk42069/asdfaskijdnfawef/refs/heads/main/ScrptImgs/Calendar/lvl-dmnd.png') center / contain no-repeat;
-                        z-index: 1;
+                        bottom: 0;
+                        left: 0;
+                        right: 0;
+                        height: 9px;
                         pointer-events: none;
+                    }
+
+                    /* Wraps the tucking badge — both the text flag (#bbgl-level-num) and, for
+                       A2, the diamond crown (::before). A normal, non-transformed flex item
+                       whose bottom edge sits at the top of the bar (track height above the
+                       container bottom). The NEGATIVE clip bottom-inset pushes the cut line
+                       DOWN from there to about halfway into the bar, so the badge rests fully
+                       visible on top of the bar and only gets sliced once it has tucked down
+                       past the midpoint. Left/right insets are opened up (-9999px) so the wide
+                       diamond isn't clipped on its sides — only the bottom cut matters. Because
+                       this wrapper never transforms, that cut line is screen-fixed: the badge
+                       translateY()s through it during the crown-tuck/rise animation, instead of
+                       the clip boundary sliding along with the badge (which is what happens if
+                       the clip is on the transformed badge itself). */
+                    #bbgl-level-flag-clip {
+                        position: relative;
+                        z-index: 3;
+                        flex-shrink: 0;
+                        clip-path: inset(-9999px -9999px calc(var(--bbgl-track-h) * -0.5) -9999px);
                     }
 
                     #bbgl-level-num {
                         font-family: 'Fjalla One', 'Arial Narrow', sans-serif;
                         font-size: clamp(7px, 1.8cqi, 10px);
                         font-weight: 700;
-                        color: #b3ffb3;
-                        text-shadow: 0 0 2px #33cc00, 0 0 6px #199900, 0 0 12px #199900;
                         letter-spacing: 0.5px;
                         line-height: 1;
                         white-space: nowrap;
                         position: relative;
-                        z-index: 3;
-                        flex-shrink: 0;
-                        margin-bottom: 7px;
+                        display: block;
                         transform-origin: bottom center;
                     }
 
-                    #bbgl-level-track {
+                    #bbgl-level-track,
+                    #bbgl-gym-level-track {
                         position: relative;
                         z-index: 2;
                         width: 100%;
-                        height: 6px;
+                        height: 9px;
                         flex-shrink: 0;
                         border-radius: 0;
                         overflow: hidden;
-                        background: linear-gradient(180deg, rgba(140, 80, 220, 0.25) 0%, rgba(90, 30, 160, 0.4) 30%, rgba(50, 15, 100, 0.5) 50%, rgba(80, 20, 140, 0.4) 70%, rgba(30, 5, 60, 0.8) 100%);
-                        box-shadow: inset 0 1px 1px rgba(255, 255, 255, 0.2), inset 0 -1px 2px rgba(255, 255, 255, 0.15), inset 0 -2px 4px rgba(0, 0, 0, 0.7);
-                        backdrop-filter: blur(2px);
+                        background: none;
+                        box-shadow: none;
                     }
 
-                    #bbgl-level-fill {
+                    #bbgl-level-fill,
+                    #bbgl-gym-level-fill {
                         position: absolute;
-                        top: 0;
-                        left: 0;
-                        height: 100%;
+                        top: 18%;
+                        left: 1.6%;
+                        height: 64%;
                         width: 0%;
-                        background: linear-gradient(180deg, #512296 0%, #7b2fd4 35%, #d9a0ff 45%, #d9a0ff 55%, #7b2fd4 65%, #2d0a5e 100%);
-                        border-top-right-radius: 10px;
-                        border-bottom-right-radius: 10px;
+                        z-index: 2;
+                        border-radius: 0;
                         transition: width .8s cubic-bezier(.25, 1, .5, 1);
                         will-change: width;
-                    }
-
-                    #bbgl-level-fill.level-full {
-                        border-top-right-radius: 0;
-                        border-bottom-right-radius: 0;
                     }
 
                     @keyframes bbgl-lvl-flash-dmnd {
@@ -4901,9 +4903,9 @@
                     }
 
                     @keyframes bbgl-lvl-flash-text {
-                        0% { transform: scale(1) translateY(0); }
-                        20% { color: #ffffff; text-shadow: 0 0 10px #ffffff, 0 0 20px #ffffff, 0 0 30px #ffffff, 0 0 40px #66ff33, 0 0 60px #66ff33; transform: scale(1.4) translateY(-15%); }
-                        100% { transform: scale(1) translateY(0); }
+                        0% { transform: scale(1); }
+                        20% { color: #ffffff; text-shadow: 0 0 10px #ffffff, 0 0 20px #ffffff, 0 0 30px #ffffff, 0 0 40px #66ff33, 0 0 60px #66ff33; transform: scale(1.4); }
+                        100% { transform: scale(1); }
                     }
 
                     @keyframes bbgl-lvl-flash-bar {
@@ -4918,7 +4920,137 @@
                         100% { filter: none; }
                     }
 
-                    .bbgl-level-up-flash::before {
+                    @keyframes bbgl-lvl-flash-track-a0 {
+                        0%   { filter: none; }
+                        20%  { filter: brightness(1.3) drop-shadow(0 0 10px rgba(100, 255, 60, 1)) drop-shadow(0 0 22px rgba(60, 200, 20, 0.6)); }
+                        100% { filter: none; }
+                    }
+
+                    @keyframes bbgl-lvl-flash-track-a0-white {
+                        0%   { filter: none; }
+                        20%  { filter: brightness(1.5) drop-shadow(0 0 12px rgba(255, 255, 255, 1)) drop-shadow(0 0 24px rgba(255, 255, 255, 0.8)); }
+                        100% { filter: none; }
+                    }
+
+                    @keyframes bbgl-lvl-flash-text-white {
+                        0% { transform: scale(1); }
+                        20% { color: #ffffff; text-shadow: 0 0 10px #ffffff, 0 0 20px #ffffff, 0 0 30px #ffffff, 0 0 40px #cccccc, 0 0 60px #cccccc; transform: scale(1.4); }
+                        100% { transform: scale(1); }
+                    }
+
+                    /* ─── Atrophy Tier-Complete Sequence ────────────────────
+                       Crown tucks away (mole-in-hole pop), the next tier's crown rises
+                       into place (podium reveal + spotlight), then "Atrophied!" flashes. */
+                    /* No opacity fade here on purpose — the container's clip-path (see
+                       #bbgl-level-container) gives a hard cutoff at the bottom of the exp bar
+                       as the flag translates past it, so it reads as sliding behind an edge
+                       rather than fading out. */
+                    @keyframes bbgl-crown-tuck-kf {
+                        0%   { transform: translateX(-50%) translateY(0); }
+                        35%  { transform: translateX(-50%) translateY(-16%); }
+                        100% { transform: translateX(-50%) translateY(130%); }
+                    }
+
+                    @keyframes bbgl-crown-rise-kf {
+                        0%   { transform: translateX(-50%) translateY(130%); filter: brightness(1) drop-shadow(0 0 0 rgba(255,255,255,0)); }
+                        70%  { transform: translateX(-50%) translateY(-8%); filter: brightness(1.7) drop-shadow(0 0 14px rgba(255,255,255,0.7)); }
+                        100% { transform: translateX(-50%) translateY(0); filter: brightness(1) drop-shadow(0 0 0 rgba(255,255,255,0)); }
+                    }
+
+                    /* Same tuck/rise motion, for the current text-badge flags (A0/A1) which are
+                       real DOM elements (not the ::before image slot), so no translateX(-50%)
+                       centering hack is needed — they're already centered via flexbox. */
+                    @keyframes bbgl-flag-tuck-kf {
+                        0%   { transform: translateY(0); }
+                        35%  { transform: translateY(-16%); }
+                        100% { transform: translateY(130%); }
+                    }
+
+                    @keyframes bbgl-flag-rise-kf {
+                        0%   { transform: translateY(130%); filter: brightness(1) drop-shadow(0 0 0 rgba(255,255,255,0)); }
+                        70%  { transform: translateY(-8%); filter: brightness(1.7) drop-shadow(0 0 14px rgba(255,255,255,0.7)); }
+                        100% { transform: translateY(0); filter: brightness(1) drop-shadow(0 0 0 rgba(255,255,255,0)); }
+                    }
+
+                    @keyframes bbgl-atrophied-flash-kf {
+                        0%   { opacity: 0; transform: translateX(-50%) scale(0.6); }
+                        30%  { opacity: 1; transform: translateX(-50%) scale(1.15); }
+                        55%  { opacity: 1; transform: translateX(-50%) scale(1); }
+                        85%  { opacity: 1; }
+                        100% { opacity: 0; transform: translateX(-50%) scale(1); }
+                    }
+
+                    /* The container (flag + track + fill) sits at z-index:10, above
+                       .bbgl-grid-container (auto/0), so it always paints in front of the
+                       calendar. To let the flag actually dip *behind* the calendar rather than
+                       just sliding down over it, drop the whole container below the grid for the
+                       middle of the tuck/rise motion, then restore it once the flag is settled
+                       (or mid-reveal for the rise) so the bar and the "Atrophied!" flash still
+                       read in front as normal. */
+                    @keyframes bbgl-tier-tuck-z-kf {
+                        0%   { z-index: 10; }
+                        35%  { z-index: 10; }
+                        36%  { z-index: 0; }
+                        100% { z-index: 0; }
+                    }
+
+                    @keyframes bbgl-tier-rise-z-kf {
+                        0%   { z-index: 0; }
+                        69%  { z-index: 0; }
+                        70%  { z-index: 10; }
+                        100% { z-index: 10; }
+                    }
+
+                    .bbgl-crown-tuck {
+                        animation: bbgl-tier-tuck-z-kf 0.35s steps(1, end) forwards;
+                    }
+
+                    .bbgl-crown-rise {
+                        animation: bbgl-tier-rise-z-kf 0.9s steps(1, end) forwards;
+                    }
+
+                    /* Diamond tuck/rise. The tuck class is on the container; gym's diamond is
+                       the container's own ::before, main panel's is the flag-clip wrapper's
+                       ::before, so both are targeted. */
+                    .bbgl-crown-tuck::before,
+                    .bbgl-crown-tuck #bbgl-level-flag-clip::before {
+                        animation: bbgl-crown-tuck-kf 0.35s ease-in-out forwards;
+                    }
+
+                    .bbgl-crown-rise::before,
+                    .bbgl-crown-rise #bbgl-level-flag-clip::before {
+                        animation: bbgl-crown-rise-kf 0.9s ease-out forwards;
+                    }
+
+                    .bbgl-crown-tuck #bbgl-level-num,
+                    .bbgl-crown-tuck #bbgl-gym-level-num {
+                        animation: bbgl-flag-tuck-kf 0.35s ease-in-out forwards;
+                    }
+
+                    .bbgl-crown-rise #bbgl-level-num,
+                    .bbgl-crown-rise #bbgl-gym-level-num {
+                        animation: bbgl-flag-rise-kf 0.9s ease-out forwards;
+                    }
+
+                    .bbgl-atrophied-flash::after {
+                        content: 'Atrophied!';
+                        position: absolute;
+                        bottom: calc(100% + 4px);
+                        left: 50%;
+                        white-space: nowrap;
+                        pointer-events: none;
+                        z-index: 4;
+                        font-family: 'Fjalla One', 'Arial Narrow', sans-serif;
+                        font-weight: 800;
+                        font-size: clamp(11px, 2.4cqi, 16px);
+                        letter-spacing: 0.5px;
+                        color: #fff;
+                        text-shadow: 0 0 6px #ffee66, 0 0 14px #ffcc00, 0 0 24px #ff8800;
+                        animation: bbgl-atrophied-flash-kf 0.7s ease-out forwards;
+                    }
+
+                    .bbgl-level-up-flash::before,
+                    .bbgl-level-up-flash #bbgl-level-flag-clip::before {
                         animation: bbgl-lvl-flash-dmnd 0.8s ease-out;
                     }
 
@@ -4937,34 +5069,33 @@
 
                     #bbgl-panel.bbgl-expanded #bbgl-level-container {
                         height: 22px;
-                        --dmnd-s: clamp(70px, 19cqi, 88px);
-                        --dmnd-b: calc(var(--dmnd-s) * -0.23);
+                        --bbgl-track-h: 14px;
                     }
 
+                    #bbgl-panel.bbgl-expanded #bbgl-level-bg,
                     #bbgl-panel.bbgl-expanded #bbgl-level-track {
-                        height: 9px;
+                        height: 14px;
                     }
 
                     #bbgl-panel.bbgl-expanded #bbgl-level-num {
                         font-size: clamp(9px, 1.8cqi, 11px);
-                        margin-bottom: 10px;
                     }
 
                     #bbgl-panel.bbgl-mode-page #bbgl-level-container {
                         height: clamp(18px, calc(18px + 8px * var(--bbgl-page-t)), 26px);
-                        --dmnd-s: calc(clamp(60px, 16cqi, 76px) + 28px * var(--bbgl-page-t));
-                        --dmnd-b: calc(var(--dmnd-s) * (-0.25 + 0.02 * var(--bbgl-page-t)));
+                        --bbgl-track-h: clamp(8px, calc(8px + 6px * var(--bbgl-page-t)), 14px);
                     }
 
+                    #bbgl-panel.bbgl-mode-page #bbgl-level-bg,
                     #bbgl-panel.bbgl-mode-page #bbgl-level-track {
-                        height: clamp(6px, calc(6px + 6px * var(--bbgl-page-t)), 12px);
+                        height: clamp(8px, calc(8px + 6px * var(--bbgl-page-t)), 14px);
                     }
 
                     #bbgl-panel.bbgl-mode-page #bbgl-level-num {
                         font-size: clamp(7px, calc(7px + 5px * var(--bbgl-page-t)), 12px);
-                        margin-bottom: clamp(7px, calc(7px + 2px * var(--bbgl-page-t)), 9px);
                     }
-                    /* ─── Gym Page Level Bar ────────────────────────────── */
+
+                    /* ─── Gym Page Level Bar — Structural ───────────────── */
                     #bbgl-gym-level-container {
                         position: relative;
                         width: 100%;
@@ -4974,11 +5105,200 @@
                         flex-direction: column;
                         align-items: center;
                         container-type: inline-size;
+                        clip-path: inset(-9999px 0 0 0);
+                    }
+
+                    #bbgl-gym-level-num {
+                        font-family: 'Fjalla One', 'Arial Narrow', sans-serif;
+                        font-size: clamp(9px, 1.5cqi, 12px);
+                        font-weight: 700;
+                        letter-spacing: 0.5px;
+                        line-height: 1;
+                        white-space: nowrap;
+                        position: relative;
+                        z-index: 3;
+                    }
+
+
+
+                    .bbgl-level-up-flash #bbgl-gym-level-num {
+                        animation: bbgl-lvl-flash-text 0.8s ease-out;
+                    }
+
+                    .bbgl-level-up-flash #bbgl-gym-level-fill {
+                        animation: bbgl-lvl-flash-bar 0.8s ease-out;
+                    }
+
+                    /* ─── Level Bar — A0: Torn Native (Metal) ──────── */
+                    #bbgl-panel[data-atrophy="0"] #bbgl-level-num,
+                    #bbgl-gym-level-container[data-atrophy="0"] #bbgl-gym-level-num {
+                        --f-r: clamp(5px, 1.3cqi, 8px);
+                        color: #f0f0f0;
+                        text-shadow: 0 0 2px #cccccc, 0 0 6px #888888, 0 0 12px #555555;
+                        padding: 3px clamp(8px, 2cqi, 14px);
+                        border-top: 1px solid rgba(160, 160, 160, 0.7);
+                        border-left: none;
+                        border-right: none;
+                        border-bottom: none;
+                        border-radius: 5px 5px 0 0;
+                        background: linear-gradient(180deg, rgba(90, 90, 90, 0.8) 0%, rgba(30, 30, 30, 0.9) 100%);
+                        backdrop-filter: blur(4px);
+                        -webkit-backdrop-filter: blur(4px);
+                        box-shadow: inset 0 1px 1px rgba(255, 255, 255, 0.25), 0 -1px 3px rgba(0, 0, 0, 0.4);
+                        margin-bottom: -1px;
+                        z-index: 1;
+                    }
+
+                    #bbgl-panel[data-atrophy="0"] #bbgl-level-num::before,
+                    #bbgl-gym-level-container[data-atrophy="0"] #bbgl-gym-level-num::before {
+                        content: '';
+                        position: absolute;
+                        bottom: 0;
+                        left: calc(-1 * var(--f-r) + 1px);
+                        right: calc(-1 * var(--f-r) + 1px);
+                        height: var(--f-r);
+                        z-index: -1;
+                        pointer-events: none;
+                        --f-r-in: calc(var(--f-r) - 1px);
+                        --f-bdr: rgba(160, 160, 160, 0.7);
+                        --f-bg: rgba(30, 30, 30, 0.9);
+                        background:
+                            radial-gradient(circle at 0 0, transparent var(--f-r-in), var(--f-bdr) var(--f-r-in), var(--f-bdr) var(--f-r), var(--f-bg) var(--f-r)) left bottom / var(--f-r) var(--f-r) no-repeat,
+                            radial-gradient(circle at 100% 0, transparent var(--f-r-in), var(--f-bdr) var(--f-r-in), var(--f-bdr) var(--f-r), var(--f-bg) var(--f-r)) right bottom / var(--f-r) var(--f-r) no-repeat;
+                    }
+
+                    /* ─── Level Bar — A1: Green ──────── */
+                    #bbgl-panel[data-atrophy="1"] #bbgl-level-num,
+                    #bbgl-gym-level-container[data-atrophy="1"] #bbgl-gym-level-num {
+                        --f-r: clamp(5px, 1.3cqi, 8px);
+                        color: #b3ffb3;
+                        text-shadow: 0 0 2px #33cc00, 0 0 6px #199900, 0 0 12px #199900;
+                        padding: 3px clamp(8px, 2cqi, 14px);
+                        border-top: 1px solid rgba(30, 80, 10, 0.7);
+                        border-left: none;
+                        border-right: none;
+                        border-bottom: none;
+                        border-radius: 5px 5px 0 0;
+                        background: linear-gradient(180deg, rgba(20, 60, 5, 0.75) 0%, rgba(5, 20, 0, 0.9) 100%);
+                        backdrop-filter: blur(4px);
+                        -webkit-backdrop-filter: blur(4px);
+                        box-shadow: inset 0 1px 1px rgba(150, 255, 100, 0.15), 0 -1px 3px rgba(0, 0, 0, 0.4);
+                        margin-bottom: -1px;
+                        z-index: 1;
+                    }
+
+                    #bbgl-panel[data-atrophy="1"] #bbgl-level-num::before,
+                    #bbgl-gym-level-container[data-atrophy="1"] #bbgl-gym-level-num::before {
+                        content: '';
+                        position: absolute;
+                        bottom: 0;
+                        left: calc(-1 * var(--f-r) + 1px);
+                        right: calc(-1 * var(--f-r) + 1px);
+                        height: var(--f-r);
+                        z-index: -1;
+                        pointer-events: none;
+                        --f-r-in: calc(var(--f-r) - 1px);
+                        --f-bdr: rgba(30, 80, 10, 0.7);
+                        --f-bg: rgba(5, 20, 0, 0.9);
+                        background:
+                            radial-gradient(circle at 0 0, transparent var(--f-r-in), var(--f-bdr) var(--f-r-in), var(--f-bdr) var(--f-r), var(--f-bg) var(--f-r)) left bottom / var(--f-r) var(--f-r) no-repeat,
+                            radial-gradient(circle at 100% 0, transparent var(--f-r-in), var(--f-bdr) var(--f-r-in), var(--f-bdr) var(--f-r), var(--f-bg) var(--f-r)) right bottom / var(--f-r) var(--f-r) no-repeat;
+                    }
+
+                    #bbgl-panel[data-atrophy="0"] #bbgl-level-track,
+                    #bbgl-gym-level-container[data-atrophy="0"] #bbgl-gym-level-track {
+                        backdrop-filter: none;
+                        -webkit-backdrop-filter: none;
+                    }
+
+                    #bbgl-panel[data-atrophy="0"] #bbgl-level-fill,
+                    #bbgl-gym-level-container[data-atrophy="0"] #bbgl-gym-level-fill {
+                        background: linear-gradient(180deg,
+                            #404040 0%,
+                            #808080 22%,
+                            #a8a8a8 38%,
+                            #c0c0c0 48%,
+                            #b0b0b0 52%,
+                            #888888 70%,
+                            #484848 100%
+                        );
+                        box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.2), inset 0 -1px 0 rgba(0, 0, 0, 0.3);
+                    }
+
+                    #bbgl-panel[data-atrophy="1"] .bbgl-level-up-flash #bbgl-level-track,
+                    #bbgl-gym-level-container[data-atrophy="1"].bbgl-level-up-flash #bbgl-gym-level-track {
+                        animation: bbgl-lvl-flash-track-a0 0.8s ease-out;
+                    }
+
+                    #bbgl-panel[data-atrophy="0"] .bbgl-level-up-flash #bbgl-level-track,
+                    #bbgl-gym-level-container[data-atrophy="0"].bbgl-level-up-flash #bbgl-gym-level-track {
+                        animation: bbgl-lvl-flash-track-a0-white 0.8s ease-out;
+                    }
+
+                    #bbgl-panel[data-atrophy="0"] .bbgl-level-up-flash #bbgl-level-num,
+                    #bbgl-gym-level-container[data-atrophy="0"].bbgl-level-up-flash #bbgl-gym-level-num {
+                        animation: bbgl-lvl-flash-text-white 0.8s ease-out;
+                    }
+
+                    /* ─── Level Bar — A1: Green ──────────────────────────── */
+                    #bbgl-panel[data-atrophy="1"] #bbgl-level-fill,
+                    #bbgl-gym-level-container[data-atrophy="1"] #bbgl-gym-level-fill {
+                        background: linear-gradient(180deg,
+                            #003322 0%,
+                            #008844 25%,
+                            #66bb22 40%,
+                            #ccffcc 50%,
+                            #00cc88 62%,
+                            #44aa00 78%,
+                            #001a0d 100%
+                        );
+                        box-shadow: inset 0 1px 0 rgba(255,255,255,0.2), inset 0 -1px 0 rgba(0,0,0,0.3);
+                    }
+
+                    /* ─── Level Bar — A2: Diamond ───────────────────────── */
+                    #bbgl-panel[data-atrophy="2"] #bbgl-level-container {
+                        --dmnd-s: clamp(60px, 16cqi, 76px);
+                        --dmnd-b: calc(var(--dmnd-s) * -0.25);
+                    }
+
+                    #bbgl-gym-level-container[data-atrophy="2"] {
                         --dmnd-s: clamp(76px, 12cqi, 90px);
                         --dmnd-b: calc(var(--dmnd-s) * -0.25);
                     }
 
-                    #bbgl-gym-level-container::before {
+                    #bbgl-panel[data-atrophy="2"].bbgl-expanded #bbgl-level-container {
+                        --dmnd-s: clamp(70px, 19cqi, 88px);
+                        --dmnd-b: calc(var(--dmnd-s) * -0.23);
+                    }
+
+                    #bbgl-panel[data-atrophy="2"].bbgl-mode-page #bbgl-level-container {
+                        --dmnd-s: calc(clamp(60px, 16cqi, 76px) + 28px * var(--bbgl-page-t));
+                        --dmnd-b: calc(var(--dmnd-s) * (-0.25 + 0.02 * var(--bbgl-page-t)));
+                    }
+
+                    /* Main panel diamond — lives on the flag-clip wrapper so it shares the
+                       wrapper's screen-fixed cut line and tucks behind the bar like the text
+                       flag. Its offset parent (the wrapper) sits --bbgl-track-h above the
+                       container bottom, so the bottom anchor subtracts that to land the diamond
+                       at the same spot the old container-relative anchor did. No self-clip — the
+                       wrapper does the clipping. z-index:-1 keeps the number text in front. */
+                    #bbgl-panel[data-atrophy="2"] #bbgl-level-flag-clip::before {
+                        content: '';
+                        position: absolute;
+                        bottom: calc(var(--dmnd-b) - var(--bbgl-track-h));
+                        left: 50%;
+                        transform-origin: 50% calc(100% + var(--dmnd-b));
+                        transform: translateX(-50%);
+                        width: var(--dmnd-s);
+                        height: var(--dmnd-s);
+                        background: url('https://raw.githubusercontent.com/BigBlackHawk42069/asdfaskijdnfawef/refs/heads/main/ScrptImgs/Calendar/lvl-dmnd.png') center / contain no-repeat;
+                        z-index: -1;
+                        pointer-events: none;
+                    }
+
+                    /* Gym page diamond — old structure (no flag-clip wrapper), keeps its own
+                       self-clip. */
+                    #bbgl-gym-level-container[data-atrophy="2"]::before {
                         content: '';
                         position: absolute;
                         bottom: var(--dmnd-b);
@@ -4993,58 +5313,63 @@
                         pointer-events: none;
                     }
 
-                    #bbgl-gym-level-num {
-                        font-family: 'Fjalla One', 'Arial Narrow', sans-serif;
-                        font-size: clamp(9px, 1.5cqi, 12px);
-                        font-weight: 700;
+                    #bbgl-panel[data-atrophy="2"] #bbgl-level-num,
+                    #bbgl-gym-level-container[data-atrophy="2"] #bbgl-gym-level-num {
                         color: #b3ffb3;
                         text-shadow: 0 0 2px #33cc00, 0 0 6px #199900, 0 0 12px #199900;
-                        letter-spacing: 0.5px;
-                        line-height: 1;
-                        white-space: nowrap;
                         margin-bottom: 7px;
-                        position: relative;
-                        z-index: 3;
                     }
 
-                    #bbgl-gym-level-track {
-                        position: relative;
-                        z-index: 2;
-                        width: 100%;
-                        height: 8px;
-                        flex-shrink: 0;
-                        border-radius: 0;
-                        overflow: hidden;
-                        background: linear-gradient(180deg, rgba(140, 80, 220, 0.25) 0%, rgba(90, 30, 160, 0.4) 30%, rgba(50, 15, 100, 0.5) 50%, rgba(80, 20, 140, 0.4) 70%, rgba(30, 5, 60, 0.8) 100%);
-                        box-shadow: inset 0 1px 1px rgba(255, 255, 255, 0.2), inset 0 -1px 2px rgba(255, 255, 255, 0.15), inset 0 -2px 4px rgba(0, 0, 0, 0.7);
-                        backdrop-filter: blur(2px);
+                    #bbgl-panel[data-atrophy="2"].bbgl-expanded #bbgl-level-num {
+                        margin-bottom: 10px;
                     }
 
-                    #bbgl-gym-level-fill {
-                        position: absolute;
-                        top: 0;
-                        left: 0;
-                        height: 100%;
-                        width: 0%;
-                        background: linear-gradient(180deg, #512296 0%, #7b2fd4 35%, #d9a0ff 45%, #d9a0ff 55%, #7b2fd4 65%, #2d0a5e 100%);
-                        border-top-right-radius: 10px;
-                        border-bottom-right-radius: 10px;
-                        transition: width .8s cubic-bezier(.25, 1, .5, 1);
-                        will-change: width;
+                    #bbgl-panel[data-atrophy="2"].bbgl-mode-page #bbgl-level-num {
+                        margin-bottom: clamp(7px, calc(7px + 2px * var(--bbgl-page-t)), 9px);
                     }
 
-                    #bbgl-gym-level-fill.level-full {
-                        border-top-right-radius: 0;
-                        border-bottom-right-radius: 0;
+                    #bbgl-panel[data-atrophy="2"] #bbgl-level-fill,
+                    #bbgl-gym-level-container[data-atrophy="2"] #bbgl-gym-level-fill {
+                        background: linear-gradient(180deg,
+                            #442200 0%,
+                            #cc8800 25%,
+                            #ffcc00 40%,
+                            #fffff0 50%,
+                            #ffdd44 62%,
+                            #cc8800 78%,
+                            #221100 100%
+                        );
+                        box-shadow: inset 0 1px 0 rgba(255,255,255,0.2), inset 0 -1px 0 rgba(0,0,0,0.3);
                     }
 
-                    .bbgl-level-up-flash #bbgl-gym-level-num {
-                        animation: bbgl-lvl-flash-text 0.8s ease-out;
+                    #bbgl-panel[data-atrophy="2"] #bbgl-level-fill.level-full,
+                    #bbgl-gym-level-container[data-atrophy="2"] #bbgl-gym-level-fill.level-full {
+                        background: linear-gradient(180deg,
+                            #552200 0%,
+                            #dd9900 25%,
+                            #ffdd00 40%,
+                            #ffffff 50%,
+                            #ffee66 62%,
+                            #dd9900 78%,
+                            #221100 100%
+                        );
+                        box-shadow: inset 0 1px 0 rgba(255,255,255,0.4), inset 0 -1px 0 rgba(0,0,0,0.3);
                     }
 
-                    .bbgl-level-up-flash #bbgl-gym-level-fill {
-                        animation: bbgl-lvl-flash-bar 0.8s ease-out;
+                    #bbgl-panel[data-atrophy="2"][data-level="100"] #bbgl-level-fill.level-full,
+                    #bbgl-gym-level-container[data-atrophy="2"][data-level="100"] #bbgl-gym-level-fill.level-full {
+                        background: linear-gradient(180deg,
+                            #220033 0%,
+                            #882299 25%,
+                            #ee77ff 40%,
+                            #eeeeff 50%,
+                            #88bbff 62%,
+                            #77ffcc 78%,
+                            #001122 100%
+                        );
+                        box-shadow: inset 0 1px 0 rgba(255,255,255,0.25), inset 0 -1px 0 rgba(0,0,0,0.3);
                     }
+
                     /* ─────────────────────────────────────────────────────── */
 
                     /* ─── Endocrine Enhancers Page ──────────────────────── */
@@ -5507,15 +5832,6 @@
                             font-size: 9px !important;
                         }
 
-                        #bbgl-panel.bbgl-expanded:not(.bbgl-mode-page) #year-stats-btn {
-                            width: 21px !important;
-                            height: 21px !important;
-                        }
-                        #bbgl-panel.bbgl-expanded:not(.bbgl-mode-page) #month-stats-btn, #bbgl-panel.bbgl-expanded:not(.bbgl-mode-page) #all-time-btn {
-                            width: 21px !important;
-                            height: 21px !important;
-                        }
-
                         #bbgl-panel.bbgl-expanded:not(.bbgl-mode-page) #bbgl-ledger-toggle,
                         #bbgl-panel.bbgl-expanded:not(.bbgl-mode-page) #bbgl-achievements-toggle,
                         #bbgl-panel.bbgl-expanded:not(.bbgl-mode-page) #bbgl-copy-btn {
@@ -5635,7 +5951,7 @@
                     }
 
 #bbgl-panel.bbgl-expanded:not(.bbgl-mode-page) #year-trigger {
-                        font-size: clamp(14px, 2.78cqi, 16px) !important;
+                        font-size: clamp(13px, calc(2.78cqi - 1px), 15px) !important;
                     }
 
                     #bbgl-panel.bbgl-expanded:not(.bbgl-mode-page) #month-trigger {
@@ -5655,18 +5971,12 @@
                         font-size: 10.5px !important;
                     }
 
-                    #bbgl-panel.bbgl-expanded:not(.bbgl-mode-page) #year-stats-btn {
-                        width: clamp(21px, 4.86cqi, 28px) !important;
-                        height: clamp(21px, 4.86cqi, 28px) !important;
+                    #bbgl-panel.bbgl-expanded:not(.bbgl-mode-page) #year-stats-btn,
+                    #bbgl-panel.bbgl-expanded:not(.bbgl-mode-page) #month-stats-btn,
+                    #bbgl-panel.bbgl-expanded:not(.bbgl-mode-page) #all-time-btn {
+                        width: clamp(17px, calc(4.86cqi - 4px), 24px) !important;
+                        height: clamp(18px, calc(4.86cqi - 3px), 25px) !important;
                     }
-                    #bbgl-panel.bbgl-expanded:not(.bbgl-mode-page) #month-stats-btn, #bbgl-panel.bbgl-expanded:not(.bbgl-mode-page) #all-time-btn {
-                        width: clamp(21px, 4.86cqi, 28px) !important;
-                        height: clamp(21px, 4.86cqi, 28px) !important;
-                    }
-                    #bbgl-panel.bbgl-expanded:not(.bbgl-mode-page) .all-time-btn {
-                        height: clamp(35px, 7.47cqi, 43px) !important;
-                    }
-
                     /* Expanded panel graph view: fluid scaling to replace hard 620px breakpoint ---------------------*/
                     #bbgl-panel.bbgl-expanded:not(.bbgl-mode-page) #bbgl-graph-container .g-pill {
                         font-size: clamp(8.45px, 1.62cqi, 10px) !important;
@@ -8358,8 +8668,8 @@ const DataController = {
         };
         return this._cache.hjData;
     },
-    getStickerMap() {
-        if (this._cache.stickerMap) return this._cache.stickerMap;
+    buildProgressionCache() {
+        if (this._cache.stickerMap) return;
         const today = Formatter.dateLogical();
         const todayWeekKey = getWeekKey(today);
         const weekMap = {};
@@ -8383,10 +8693,9 @@ const DataController = {
         // no stickers here. Demo mode is exempt (keeps its 1-sticker showcase behavior).
         const installWeekKey = runtime.demoMode ? null : getInstallWeekKey();
         Object.keys(weekMap).sort().forEach(wk => {
-            if (wk >= todayWeekKey) return;
             if (installWeekKey && wk < installWeekKey) return;
             const days = weekMap[wk].sort((a, b) => a.date.localeCompare(b.date));
-            // Daily level EXP: all days regardless of sticker eligibility.
+            // Daily level EXP: include current week's past days (today excluded by weekMap).
             if (!runtime.demoMode) {
                 days.forEach(day => {
                     const e = day.eSpent ? (day.eSpent.total || 0) : 0;
@@ -8394,6 +8703,7 @@ const DataController = {
                     careerLevelExp += computeDailyLevelExp(e, hasTrainLog, hjDaySet.has(day.date));
                 });
             }
+            if (wk >= todayWeekKey) return;
             const stickerworthyDays = days.filter(d => d.eSpent && d.eSpent.total >= 1000);
             if (!stickerworthyDays.length) return;
             const {
@@ -8445,7 +8755,22 @@ const DataController = {
                 _historyCache.meta.stickers = freshStates;
             }
         }
-        return stickerMap;
+    },
+    getStickerMap() {
+        this.buildProgressionCache();
+        return this._cache.stickerMap;
+    },
+    getCareerLevelExp() {
+        this.buildProgressionCache();
+        return runtime.careerLevelExp || 0;
+    },
+    getUnlockedCount() {
+        this.buildProgressionCache();
+        return this._cache.unlockedCount || 0;
+    },
+    getFeaturedDays() {
+        this.buildProgressionCache();
+        return this._cache.featuredDays;
     },
     getTimeline() {
         if (this._cache.timeline) return this._cache.timeline;
@@ -9900,8 +10225,7 @@ function computeAchievements(s) {
         mxWkG = maxOf(weekG, 'weekOf'),
         mxMnE = maxOf(monthE, 'month'),
         mxMnG = maxOf(monthG, 'month');
-    DataController.getStickerMap();
-    const stickersUnlocked = DataController._cache.unlockedCount || 0;
+    const stickersUnlocked = DataController.getUnlockedCount();
     const lastDay = allDays[allDays.length - 1];
     const curBD = (lastDay && lastDay.endBreakdown) ? lastDay.endBreakdown : null;
     const currentStats = curBD ? {
@@ -11179,7 +11503,7 @@ async function exportData() {
     const day = TimeManager.date(now);
     const year = TimeManager.year(now);
     const filename = `BBGymLogData - ${month} ${day}_${year}.json`;
-    DataController.getStickerMap();
+    DataController.buildProgressionCache();
     if (_historyCache && _historyCache.meta && _historyCache.meta.stickers) {
         if (!s.meta) s.meta = {};
         s.meta.stickers = _historyCache.meta.stickers;
@@ -12254,7 +12578,7 @@ const BestGymController = {
 
     // career EXP + today's in-progress EXP — the live total both level bars display.
     function getLiveLevelExp() {
-        let totalExp = runtime.careerLevelExp || 0;
+        let totalExp = DataController.getCareerLevelExp();
         if (!runtime.demoMode) {
             const h = getActiveHistory();
             if (h && h.today) {
@@ -12280,23 +12604,31 @@ const BestGymController = {
     }
 
     function renderLevelBar(bar, expVal) {
-        const { level, expInLevel, expToNext } = calculateLevelProgress(expVal);
+        const { atrophy, level, expInLevel, expToNext } = calculateLevelProgress(expVal);
         const pct = expToNext > 0 ? Math.min(100, (expInLevel / expToNext) * 100) : (level >= 100 ? 100 : 0);
         bar.num.textContent = 'Lv ' + level;
-        bar.fill.style.width = pct.toFixed(2) + '%';
+        bar.fill.style.width = ((pct / 100) * 96.8).toFixed(2) + '%';
         bar.fill.classList.toggle('level-full', pct >= 99.9);
+        if (dom.panel) {
+            dom.panel.dataset.atrophy = atrophy;
+            dom.panel.dataset.level = level;
+        }
+        bar.container.dataset.atrophy = atrophy;
+        bar.container.dataset.level = level;
     }
 
     function updateLevelBar() {
-        const bars = getLevelBars();
-        if (!bars.length) return;
         const totalExp = getLiveLevelExp();
 
         if (runtime._lastLevelExp === undefined) {
             runtime._lastLevelExp = totalExp;
+            const bars = getLevelBars();
             bars.forEach(b => renderLevelBar(b, totalExp));
             return;
         }
+
+        const bars = getLevelBars();
+        if (!bars.length) return;
 
         if (totalExp !== runtime._lastLevelExp) {
             runtime._targetLevelExp = totalExp;
@@ -12315,19 +12647,31 @@ const BestGymController = {
         async function runLevelAnimationQueue() {
             runtime._isAnimatingLevel = true;
             const BASE_SPEED_MS = 1000; // 1 second for a full 100% bar
+            let forcedNextTier = null; // set right after an atrophy-crossing animation plays
 
             while (runtime._lastLevelExp < runtime._targetLevelExp) {
-                const currentProg = calculateLevelProgress(runtime._lastLevelExp);
+                const currentProg = forcedNextTier !== null
+                    ? { atrophy: forcedNextTier, level: 1, expInLevel: 0, expToNext: computeLevelExpCost(1, forcedNextTier) }
+                    : calculateLevelProgress(runtime._lastLevelExp);
+                forcedNextTier = null;
                 const targetProg = calculateLevelProgress(runtime._targetLevelExp);
+                const currentRank = currentProg.atrophy * 100 + currentProg.level;
+                const targetRank = targetProg.atrophy * 100 + targetProg.level;
 
-                if (currentProg.level < targetProg.level) {
+                if (currentRank < targetRank && currentProg.level >= 100 && currentProg.atrophy < 2) {
+                    // Already resting at a tier-complete Lv 100 (e.g. a dev/testing snap) with
+                    // more exp still to apply — skip straight to the atrophy sequence instead of
+                    // replaying a fill/flash for a "Lv 101" that doesn't exist.
+                    await runAtrophyAnimation(currentProg.atrophy, bars);
+                    forcedNextTier = currentProg.atrophy + 1;
+                } else if (currentRank < targetRank) {
                     const expNeededToFill = currentProg.expToNext - currentProg.expInLevel;
                     const currentPct = parseFloat(bars[0].fill.style.width) || 0;
                     const durationMs = Math.max(150, ((100 - currentPct) / 100) * BASE_SPEED_MS);
 
                     bars.forEach(b => {
                         b.fill.style.transitionDuration = durationMs + 'ms';
-                        b.fill.style.width = '100%';
+                        b.fill.style.width = '96.8%';
                         b.fill.classList.add('level-full');
                     });
 
@@ -12335,20 +12679,28 @@ const BestGymController = {
                     bars.forEach(b => b.container.classList.add('bbgl-level-up-flash'));
 
                     await new Promise(r => setTimeout(r, 200));
-                    const nextLvlText = 'Lv ' + (currentProg.level + 1);
-                    bars.forEach(b => { b.num.textContent = nextLvlText; });
+                    const nextLevel = currentProg.level + 1;
+                    bars.forEach(b => { b.num.textContent = 'Lv ' + nextLevel; });
 
                     await new Promise(r => setTimeout(r, 650));
-                    bars.forEach(b => {
-                        b.container.classList.remove('bbgl-level-up-flash');
-                        b.fill.style.transition = 'none';
-                        b.fill.style.width = '0%';
-                        b.fill.classList.remove('level-full');
-                        void b.fill.offsetWidth; // force reflow
-                        b.fill.style.transition = '';
-                    });
+                    bars.forEach(b => b.container.classList.remove('bbgl-level-up-flash'));
 
                     runtime._lastLevelExp += expNeededToFill;
+
+                    if (nextLevel >= 100 && currentProg.atrophy < 2) {
+                        // Tier complete — hand off to the atrophy sequence instead of the
+                        // ordinary "snap fill back to 0%" reset below.
+                        await runAtrophyAnimation(currentProg.atrophy, bars);
+                        forcedNextTier = currentProg.atrophy + 1;
+                    } else {
+                        bars.forEach(b => {
+                            b.fill.style.transition = 'none';
+                            b.fill.style.width = '0%';
+                            b.fill.classList.remove('level-full');
+                            void b.fill.offsetWidth; // force reflow
+                            b.fill.style.transition = '';
+                        });
+                    }
                 } else {
                     runtime._lastLevelExp = runtime._targetLevelExp;
 
@@ -12370,6 +12722,59 @@ const BestGymController = {
             runtime._lastLevelExp = runtime._targetLevelExp;
             runtime._isAnimatingLevel = false;
         }
+    }
+
+    // Plays the tier-completion sequence: the just-finished tier's crown tucks away
+    // (mole-in-hole pop), the next tier's crown rises into place (podium reveal), then
+    // "Atrophied!" flashes at the climax. Leaves level/bar reset to the new tier's Lv 1 / 0%
+    // so the caller's fill loop can continue animating any overflow exp on top of it.
+    async function runAtrophyAnimation(fromAtrophy, bars) {
+        const toAtrophy = fromAtrophy + 1;
+
+        if (!userConfig.animations) {
+            bars.forEach(b => {
+                b.container.dataset.atrophy = toAtrophy;
+                b.container.dataset.level = 1;
+                b.num.textContent = 'Lv 1';
+                b.fill.style.transition = 'none';
+                b.fill.style.width = '0%';
+                b.fill.classList.remove('level-full');
+                void b.fill.offsetWidth;
+                b.fill.style.transition = '';
+            });
+            if (dom.panel) { dom.panel.dataset.atrophy = toAtrophy; dom.panel.dataset.level = 1; }
+            return;
+        }
+
+        const TUCK_MS = 350;
+        const RISE_MS = 900;
+        const FLASH_MS = 700;
+
+        bars.forEach(b => b.container.classList.add('bbgl-crown-tuck'));
+        await new Promise(r => setTimeout(r, TUCK_MS));
+
+        bars.forEach(b => {
+            b.container.classList.remove('bbgl-crown-tuck');
+            b.container.dataset.atrophy = toAtrophy;
+            b.container.classList.add('bbgl-crown-rise');
+        });
+        if (dom.panel) dom.panel.dataset.atrophy = toAtrophy;
+        await new Promise(r => setTimeout(r, RISE_MS));
+
+        bars.forEach(b => b.container.classList.add('bbgl-atrophied-flash'));
+        await new Promise(r => setTimeout(r, FLASH_MS));
+
+        bars.forEach(b => {
+            b.container.classList.remove('bbgl-crown-rise', 'bbgl-atrophied-flash');
+            b.container.dataset.level = 1;
+            b.num.textContent = 'Lv 1';
+            b.fill.style.transition = 'none';
+            b.fill.style.width = '0%';
+            b.fill.classList.remove('level-full');
+            void b.fill.offsetWidth;
+            b.fill.style.transition = '';
+        });
+        if (dom.panel) dom.panel.dataset.level = 1;
     }
 
     function renderStats(sl, rawLbl) {
@@ -13025,13 +13430,14 @@ const BestGymController = {
         const fill = document.createElement('div');
         fill.id = 'bbgl-gym-level-fill';
 
+        track.innerHTML = buildEmptyLevelTrackSVG();
         track.appendChild(fill);
         container.appendChild(num);
         container.appendChild(track);
         gymRoot.prepend(container);
 
-        DataController.getStickerMap();
-        renderLevelBar({ num, fill }, getLiveLevelExp());
+        DataController.buildProgressionCache();
+        renderLevelBar({ num, fill, container }, getLiveLevelExp());
     }
 
     function injectFooterButton(notesBtnEl) {
@@ -13622,10 +14028,40 @@ const BestGymController = {
         return `<div class="close-settings-btn" title="Close Settings">${ICONS.CHECK}</div><div class="bbgl-settings-scroll-area">${buildSettingsFeaturesSection()}${buildSettingsLogFormatSection()}${buildSettingsApiSection()}${buildSettingsDataSection()}${buildSettingsInfoSection()}</div>`;
     }
 
+    function buildEmptyLevelTrackSVG() {
+        const W = 500, H = 100;
+        const padX = 8, padY = 18;
+        const slotW = W - 2 * padX;
+        const slotH = H - 2 * padY;
+
+        const defs =
+            `<defs>` +
+            `<linearGradient id="lvl-housing" x1="0" y1="0" x2="0" y2="1">` +
+            `<stop offset="0" stop-color="#202020"/><stop offset=".4" stop-color="#363636"/>` +
+            `<stop offset=".5" stop-color="#404040"/><stop offset=".6" stop-color="#363636"/>` +
+            `<stop offset="1" stop-color="#181818"/></linearGradient>` +
+            `<linearGradient id="lvl-recess-shadow" x1="0" y1="0" x2="0" y2="1">` +
+            `<stop offset="0" stop-color="#000" stop-opacity=".6"/><stop offset=".5" stop-color="#000" stop-opacity=".1"/><stop offset="1" stop-color="#000" stop-opacity="0"/></linearGradient>` +
+            `<linearGradient id="lvl-recess-shine" x1="0" y1="0" x2="0" y2="1">` +
+            `<stop offset="0" stop-color="#fff" stop-opacity="0"/><stop offset=".7" stop-color="#fff" stop-opacity="0"/><stop offset="1" stop-color="#fff" stop-opacity=".35"/></linearGradient>` +
+            `</defs>`;
+
+        const f = (v) => v.toFixed(2);
+        let out = `<rect width="${W}" height="${H}" fill="url(#lvl-housing)"/>`;
+        const bx = padX, by = padY;
+        
+        out += `<rect x="${f(bx)}" y="${by}" width="${f(slotW)}" height="${slotH}" fill="#000" fill-opacity=".5"/>`;
+        out += `<rect x="${f(bx)}" y="${by}" width="${f(slotW)}" height="${slotH}" fill="url(#lvl-recess-shadow)"/>`;
+        out += `<rect x="${f(bx)}" y="${by}" width="${f(slotW)}" height="3" fill="#000" fill-opacity=".6"/>`;
+        out += `<rect x="${f(bx)}" y="${f(by + slotH - 1.5)}" width="${f(slotW)}" height="1.5" fill="#fff" fill-opacity=".15"/>`;
+
+        return `<svg class="bbgl-level-svg" viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" xmlns="http://www.w3.org/2000/svg" style="position:absolute;top:0;left:0;width:100%;height:100%;z-index:1;display:block;">${defs}${out}</svg>`;
+    }
+
     function getDashboardHTML() {
         const weekDays = userConfig.weekStartMode === 'mon' ? ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'] : ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
         const weekRowHTML = weekDays.map(d => `<span>${d}</span>`).join('');
-        return `<div class="bbgl-header" id="bbgl-header-bar"><div class="bbgl-header-left">${ICONS.LOGO}<span class="bbgl-header-text"><span class="bbgl-short-title">Big Black Log</span><span class="bbgl-long-title">Big Black Gym Log</span></span></div><div class="bbgl-header-right"><span id="bbgl-demo-exit-btn" class="close-settings-btn bbgl-close-purple" style="display:${runtime.demoMode ? 'flex' : 'none'};" data-tooltip-html="${TOOLTIPS.DEMO_EXIT_HTML}"><span class="bbgl-demo-x-label">Demo</span>${ICONS.CLOSE}</span><span id="bbgl-settings-btn" class="bbgl-custom-icon">⚙</span><span id="bbgl-close-btn" class="bbgl-native-icon">${ICONS.MINIMIZE}</span><span id="bbgl-pop-btn" class="bbgl-native-icon">${viewState.expanded ? ICONS.COMPRESS : ICONS.POPOUT}</span></div></div><div id="bbgl-content-wrapper"><div id="bbgl-top-panel"><div id="bbgl-tall-toggle">${viewState.isTall ? '–' : '+'}</div><div id="bbgl-ledger-toggle" data-tooltip="${TOOLTIPS.LEDGER_VIEW}">${ICONS.LEDGER}</div><div id="bbgl-graph-toggle" data-tooltip="${TOOLTIPS.GRAPH_VIEW}">${ICONS.GRAPH}</div><div id="bbgl-achievements-toggle" data-tooltip="${TOOLTIPS.ACHIEVEMENTS}">${ICONS.ACHIEVEMENTS}</div><div id="bbgl-sticker-toggle" data-tooltip="${TOOLTIPS.STICKERBOOK}">${ICONS.STICKERBOOK}</div><div id="bbgl-item-counters"></div><div id="bbgl-copy-btn" class="copy-hist-btn" data-tooltip="${TOOLTIPS.COPY_SESSION}">${ICONS.CLIPBOARD}</div><div id="bbgl-sticker-title"></div><div class="ui-floating-label" id="bbgl-date-label">LOADING...</div><div class="ui-floating-summary" id="bbgl-summary-label"></div><div id="bbgl-ledger-view" class="ledger-content"></div><div id="bbgl-graph-container"><div class="g-hud"><div class="g-toggles"><div class="g-pill active" data-type="mode" data-val="values">Gains</div><div class="g-pill" data-type="mode" data-val="rates">Rates</div></div><div class="g-toggles"><div class="g-pill p-str active" data-type="stat" data-val="str">STR</div><div class="g-pill p-def" data-type="stat" data-val="def">DEF</div><div class="g-pill p-spd active" data-type="stat" data-val="spd">SPD</div><div class="g-pill p-dex" data-type="stat" data-val="dex">DEX</div><div class="g-pill p-tot" data-type="stat" data-val="total">TOT</div></div></div><svg id="bbgl-graph-svg"></svg></div><div id="bbgl-achievements-container" class="ledger-content"><div class="bbgl-ach-scroll"><div id="bbgl-ach-pages"></div></div><div id="bbgl-ach-footer" class="bbgl-ach-footer"><div class="bbgl-ach-footer-side bbgl-ach-footer-left"><button type="button" class="bbgl-ach-nav bbgl-ach-prev" aria-label="Previous achievements page">\u276e</button></div><div id="bbgl-ach-pageindicator"></div><div class="bbgl-ach-footer-side bbgl-ach-footer-right"><button type="button" class="bbgl-ach-nav bbgl-ach-next" aria-label="Next achievements page">\u276f</button></div></div></div><div id="bbgl-sticker-bg"></div><div id="bbgl-sticker-container"><div id="sticker-sponsor-btn" class="sticker-nav-btn disabled">❮</div><div id="sticker-prev-btn" class="sticker-nav-btn">❮</div><div id="sticker-next-btn" class="sticker-nav-btn">❯</div><div id="bbgl-sticker-grid"></div><div id="bbgl-sticker-pagination"></div></div><div class="glass-overlay"></div></div><div id="bbgl-bottom-panel"><div class="bbgl-header-wrapper"><div class="bbgl-month-header"><div class="title-group"><div class="title-stack"><div class="header-row"><div class="stats-btn" id="all-time-btn">${ICONS.CHART}</div><div class="header-trigger" id="all-time-trigger">∞</div></div><div class="header-row"><div class="stats-btn" id="year-stats-btn">${ICONS.CHART}</div><div class="header-trigger" id="year-trigger"></div><div id="bbgl-year-dropdown" class="bbgl-dropdown-menu"></div></div><div class="header-row"><div class="stats-btn" id="month-stats-btn">${ICONS.CHART}</div><div class="header-trigger" id="month-trigger"></div><div id="bbgl-month-dropdown" class="bbgl-dropdown-menu"></div></div></div></div><button class="arrow-btn" id="prev-month-btn">❮</button><button class="arrow-btn" id="next-month-btn">❯</button></div><div id="bbgl-level-container"><span id="bbgl-level-num">Lv 1</span><div id="bbgl-level-track"><div id="bbgl-level-fill"></div></div></div></div><div id="bbgl-demo-exit" style="display: ${runtime.demoMode ? 'flex' : 'none'};" data-tooltip="${TOOLTIPS.DEMO_EXIT}" data-tooltip-html="${TOOLTIPS.DEMO_EXIT_HTML}">DEMO MODE</div><div class="bbgl-grid-container"><div class="bbgl-week-row">${weekRowHTML}</div><div class="calendar-wrapper" id="swipe-area"><div id="bbgl-cal-container" class="bbgl-cal-container"></div></div></div></div><div id="bbgl-item-viewer"><div class="viewer-window"><div class="viewer-stage"><div class="viewer-pedestal" id="vi-pedestal-wrapper"><div class="viewer-obj" id="vi-obj-target"><div class="layer-front"></div><div class="layer-back"></div></div></div></div></div><div class="viewer-info-overlay"><div class="vi-name" id="vi-name-target">Item Name</div></div></div><div id="bbgl-settings-view">${getSettingsHTML()}</div><div id="bbgl-welcome-view"></div></div>`;
+        return `<div class="bbgl-header" id="bbgl-header-bar"><div class="bbgl-header-left">${ICONS.LOGO}<span class="bbgl-header-text"><span class="bbgl-short-title">Big Black Log</span><span class="bbgl-long-title">Big Black Gym Log</span></span></div><div class="bbgl-header-right"><span id="bbgl-demo-exit-btn" class="close-settings-btn bbgl-close-purple" style="display:${runtime.demoMode ? 'flex' : 'none'};" data-tooltip-html="${TOOLTIPS.DEMO_EXIT_HTML}"><span class="bbgl-demo-x-label">Demo</span>${ICONS.CLOSE}</span><span id="bbgl-settings-btn" class="bbgl-custom-icon">⚙</span><span id="bbgl-close-btn" class="bbgl-native-icon">${ICONS.MINIMIZE}</span><span id="bbgl-pop-btn" class="bbgl-native-icon">${viewState.expanded ? ICONS.COMPRESS : ICONS.POPOUT}</span></div></div><div id="bbgl-content-wrapper"><div id="bbgl-top-panel"><div id="bbgl-tall-toggle">${viewState.isTall ? '–' : '+'}</div><div id="bbgl-ledger-toggle" data-tooltip="${TOOLTIPS.LEDGER_VIEW}">${ICONS.LEDGER}</div><div id="bbgl-graph-toggle" data-tooltip="${TOOLTIPS.GRAPH_VIEW}">${ICONS.GRAPH}</div><div id="bbgl-achievements-toggle" data-tooltip="${TOOLTIPS.ACHIEVEMENTS}">${ICONS.ACHIEVEMENTS}</div><div id="bbgl-sticker-toggle" data-tooltip="${TOOLTIPS.STICKERBOOK}">${ICONS.STICKERBOOK}</div><div id="bbgl-item-counters"></div><div id="bbgl-copy-btn" class="copy-hist-btn" data-tooltip="${TOOLTIPS.COPY_SESSION}">${ICONS.CLIPBOARD}</div><div id="bbgl-sticker-title"></div><div class="ui-floating-label" id="bbgl-date-label">LOADING...</div><div class="ui-floating-summary" id="bbgl-summary-label"></div><div id="bbgl-ledger-view" class="ledger-content"></div><div id="bbgl-graph-container"><div class="g-hud"><div class="g-toggles"><div class="g-pill active" data-type="mode" data-val="values">Gains</div><div class="g-pill" data-type="mode" data-val="rates">Rates</div></div><div class="g-toggles"><div class="g-pill p-str active" data-type="stat" data-val="str">STR</div><div class="g-pill p-def" data-type="stat" data-val="def">DEF</div><div class="g-pill p-spd active" data-type="stat" data-val="spd">SPD</div><div class="g-pill p-dex" data-type="stat" data-val="dex">DEX</div><div class="g-pill p-tot" data-type="stat" data-val="total">TOT</div></div></div><svg id="bbgl-graph-svg"></svg></div><div id="bbgl-achievements-container" class="ledger-content"><div class="bbgl-ach-scroll"><div id="bbgl-ach-pages"></div></div><div id="bbgl-ach-footer" class="bbgl-ach-footer"><div class="bbgl-ach-footer-side bbgl-ach-footer-left"><button type="button" class="bbgl-ach-nav bbgl-ach-prev" aria-label="Previous achievements page">\u276e</button></div><div id="bbgl-ach-pageindicator"></div><div class="bbgl-ach-footer-side bbgl-ach-footer-right"><button type="button" class="bbgl-ach-nav bbgl-ach-next" aria-label="Next achievements page">\u276f</button></div></div></div><div id="bbgl-sticker-bg"></div><div id="bbgl-sticker-container"><div id="sticker-sponsor-btn" class="sticker-nav-btn disabled">❮</div><div id="sticker-prev-btn" class="sticker-nav-btn">❮</div><div id="sticker-next-btn" class="sticker-nav-btn">❯</div><div id="bbgl-sticker-grid"></div><div id="bbgl-sticker-pagination"></div></div><div class="glass-overlay"></div></div><div id="bbgl-bottom-panel"><div class="bbgl-header-wrapper"><div class="bbgl-month-header"><div class="title-group"><div class="title-stack"><div class="header-row header-row--alltime"><div class="stats-btn" id="all-time-btn">${ICONS.CHART}</div><div class="header-trigger" id="all-time-trigger">∞</div></div><div class="header-row header-row--year"><div class="stats-btn" id="year-stats-btn">${ICONS.CHART}</div><div class="header-trigger" id="year-trigger"></div><div id="bbgl-year-dropdown" class="bbgl-dropdown-menu"></div></div><div class="header-row header-row--month"><div class="stats-btn" id="month-stats-btn">${ICONS.CHART}</div><div class="header-trigger" id="month-trigger"></div><div id="bbgl-month-dropdown" class="bbgl-dropdown-menu"></div></div></div></div><button class="arrow-btn" id="prev-month-btn">❮</button><button class="arrow-btn" id="next-month-btn">❯</button></div><div id="bbgl-level-bg">${buildEmptyLevelTrackSVG()}</div><div id="bbgl-level-container"><div id="bbgl-level-flag-clip"><span id="bbgl-level-num">Lv 1</span></div><div id="bbgl-level-track"><div id="bbgl-level-fill"></div></div></div></div><div id="bbgl-demo-exit" style="display: ${runtime.demoMode ? 'flex' : 'none'};" data-tooltip="${TOOLTIPS.DEMO_EXIT}" data-tooltip-html="${TOOLTIPS.DEMO_EXIT_HTML}">DEMO MODE</div><div class="bbgl-grid-container"><div class="bbgl-week-row">${weekRowHTML}</div><div class="calendar-wrapper" id="swipe-area"><div id="bbgl-cal-container" class="bbgl-cal-container"></div></div></div></div><div id="bbgl-item-viewer"><div class="viewer-window"><div class="viewer-stage"><div class="viewer-pedestal" id="vi-pedestal-wrapper"><div class="viewer-obj" id="vi-obj-target"><div class="layer-front"></div><div class="layer-back"></div></div></div></div></div><div class="viewer-info-overlay"><div class="vi-name" id="vi-name-target">Item Name</div></div></div><div id="bbgl-settings-view">${getSettingsHTML()}</div><div id="bbgl-welcome-view"></div></div>`;
     }
 
     /**
@@ -15103,8 +15539,7 @@ const BestGymController = {
      */
 
     function loadStickerData() {
-        DataController.getStickerMap();
-        const unlocked = runtime.demoMode ? 1 : (DataController._cache.unlockedCount || 1);
+        const unlocked = runtime.demoMode ? 1 : DataController.getUnlockedCount() || 1;
         const it = [];
         for (let i = 1; i <= 50; i++) {
             const c = CUSTOM_STICKERS.find(s => s.id === i);
@@ -17136,6 +17571,7 @@ const BestGymController = {
             updateLevelBar();
             renderBackfillButton();
         });
+        updateLevelBar(); // initialize _lastLevelExp before first interaction
         let _domRaf = null;
         const domObs = new MutationObserver(function onDomMutationBatch() {
             if (_domRaf) return;
@@ -17186,6 +17622,130 @@ const BestGymController = {
             syncDevModeUI();
             Log.info(`Developer mode ${mode ? 'ENABLED' : 'DISABLED'}`);
         };
+        // ═══ BBGL DEV WIDGET — self-contained, delete this whole IIFE to remove ═══
+        (function injectDevWidget() {
+            const w = document.createElement('div');
+            w.style.cssText = 'position:fixed;top:100px;left:20px;background:#222;border:1px solid #555;padding:10px;z-index:999999;border-radius:6px;display:flex;flex-direction:column;gap:8px;box-shadow:0 4px 12px rgba(0,0,0,0.5);';
+            const title = document.createElement('div');
+            title.textContent = 'BBGL Dev';
+            title.style.cssText = 'color:#fff;font-family:sans-serif;font-size:12px;font-weight:bold;text-align:center;margin-bottom:4px;';
+            w.appendChild(title);
+            const btnStyle = 'background:#444;color:#fff;border:1px solid #666;padding:6px 12px;border-radius:4px;cursor:pointer;font-family:sans-serif;font-size:12px;';
+            const inputStyle = 'width:56px;background:#333;color:#fff;border:1px solid #666;border-radius:4px;padding:5px 6px;font-family:sans-serif;font-size:12px;';
+
+            // Train row: text-entry E amount (10-1500, 10E steps). Runs it through the same
+            // computeDailyLevelExp curve production uses (including HJ burst-rate on HJ days),
+            // then adds the result straight to runtime.careerLevelExp — artificial, like Level Up,
+            // so it works regardless of demoMode (the real eSpent path is ignored in demo mode).
+            const trainRow = document.createElement('div');
+            trainRow.style.cssText = 'display:flex;gap:6px;';
+            const trainInput = document.createElement('input');
+            trainInput.type = 'number';
+            trainInput.min = '10';
+            trainInput.max = '1500';
+            trainInput.step = '10';
+            trainInput.value = '150';
+            trainInput.style.cssText = inputStyle;
+            const trainBtn = document.createElement('button');
+            trainBtn.textContent = 'Train (E)';
+            trainBtn.style.cssText = btnStyle + 'flex:1;';
+            trainBtn.onclick = () => {
+                let e = parseInt(trainInput.value, 10);
+                if (!Number.isFinite(e)) e = 150;
+                e = Math.min(1500, Math.max(10, Math.round(e / 10) * 10));
+                trainInput.value = e;
+                const { hjDaySet } = DataController.getHappyJumpData();
+                const isHJ = hjDaySet.has(Formatter.dateLogical());
+                const gain = computeDailyLevelExp(e, true, isHJ);
+                runtime.careerLevelExp = (runtime.careerLevelExp || 0) + gain;
+                window.dispatchEvent(new CustomEvent('bbgl:dataUpdated'));
+            };
+            trainRow.appendChild(trainInput);
+            trainRow.appendChild(trainBtn);
+            w.appendChild(trainRow);
+
+            // Day-tier grant buttons: each adds the exact exp a real day of that tier would earn
+            // (computed via the same computeDailyLevelExp curve), straight to careerLevelExp.
+            const dayTierRow = document.createElement('div');
+            dayTierRow.style.cssText = 'display:flex;gap:4px;';
+            [
+                ['Happy Jump', () => computeDailyLevelExp(1000, true, true)],
+                ['Green Day', () => computeDailyLevelExp(1000, true, false)],
+                ['Gold Day', () => computeDailyLevelExp(1500, true, false)],
+                ['Diamond Day', () => computeDailyLevelExp(2000, true, false)]
+            ].forEach(([label, computeGain]) => {
+                const btn = document.createElement('button');
+                btn.textContent = label;
+                btn.style.cssText = btnStyle + 'flex:1;padding:6px 4px;font-size:11px;';
+                btn.onclick = () => {
+                    runtime.careerLevelExp = (runtime.careerLevelExp || 0) + computeGain();
+                    window.dispatchEvent(new CustomEvent('bbgl:dataUpdated'));
+                };
+                dayTierRow.appendChild(btn);
+            });
+            w.appendChild(dayTierRow);
+
+            const lvlUpBtn = document.createElement('button');
+            lvlUpBtn.textContent = 'Level Up';
+            lvlUpBtn.style.cssText = btnStyle;
+            lvlUpBtn.onclick = () => {
+                const cur = typeof getLiveLevelExp === 'function' ? getLiveLevelExp() : runtime.careerLevelExp || 0;
+                const prog = typeof calculateLevelProgress === 'function' ? calculateLevelProgress(cur) : { expToNext: 500, expInLevel: 0 };
+                const needed = Math.max(1, prog.expToNext - prog.expInLevel);
+                runtime.careerLevelExp = (runtime.careerLevelExp || 0) + needed;
+                window.dispatchEvent(new CustomEvent('bbgl:dataUpdated'));
+            };
+
+            // Complete Atrophy: fills whichever atrophy tier the bar is CURRENTLY SHOWING to
+            // Level 100 / max exp for that tier. Use "Start Over" to reset and test another tier
+            // from scratch.
+            // getLiveLevelExp() (what the bar displays) = runtime.careerLevelExp + today's real
+            // synced-log exp. That real leftover doesn't go away just because we rewrite
+            // careerLevelExp, so it gets re-added on top next render and overflows past the tier
+            // boundary. Net it out here so the DISPLAYED total lands exactly at Level 100, not
+            // just the artificial half.
+            const atroBtn = document.createElement('button');
+            atroBtn.textContent = 'Complete Atrophy';
+            atroBtn.style.cssText = btnStyle;
+            atroBtn.onclick = () => {
+                const displayed = typeof getLiveLevelExp === 'function' ? getLiveLevelExp() : (runtime.careerLevelExp || 0);
+                const todayReal = displayed - (runtime.careerLevelExp || 0);
+                const { atrophy } = calculateLevelProgress(displayed);
+                let base = 0;
+                for (let a = 0; a < atrophy; a++) base += LEVEL_ATRO_BUDGETS[a];
+                const target = base + LEVEL_ATRO_BUDGETS[atrophy];
+                runtime.careerLevelExp = Math.max(0, target - todayReal);
+                // Snap instantly instead of running the per-level-up animation queue — that's
+                // built for one level at a time and crawls through ~90 levels on a full jump.
+                // Pre-sync _lastLevelExp and render directly so updateLevelBar() sees no delta.
+                const newTotal = typeof getLiveLevelExp === 'function' ? getLiveLevelExp() : runtime.careerLevelExp;
+                runtime._lastLevelExp = newTotal;
+                if (typeof getLevelBars === 'function' && typeof renderLevelBar === 'function') {
+                    getLevelBars().forEach(b => renderLevelBar(b, newTotal));
+                }
+                window.dispatchEvent(new CustomEvent('bbgl:dataUpdated'));
+            };
+
+            // Start Over: back to Level 1 / Atrophy 1 / 0 exp for a clean test pass.
+            const startOverBtn = document.createElement('button');
+            startOverBtn.textContent = 'Start Over';
+            startOverBtn.style.cssText = btnStyle;
+            startOverBtn.onclick = () => {
+                runtime.careerLevelExp = 0;
+                const h = DataController.getActiveHistory();
+                if (h && h.today) {
+                    h.today.eSpent = { total: 0 };
+                    h.today.series = (h.today.series || []).filter(s => s.type !== 'gym');
+                }
+                window.dispatchEvent(new CustomEvent('bbgl:dataUpdated'));
+            };
+
+            w.appendChild(lvlUpBtn);
+            w.appendChild(atroBtn);
+            w.appendChild(startOverBtn);
+            document.body.appendChild(w);
+        })();
+        // ═══ END BBGL DEV WIDGET ═══
         const _bbglRedactConfig = () => {
             const c = {
                 ...userConfig

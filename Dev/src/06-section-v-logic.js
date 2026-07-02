@@ -116,8 +116,8 @@ const DataController = {
         };
         return this._cache.hjData;
     },
-    getStickerMap() {
-        if (this._cache.stickerMap) return this._cache.stickerMap;
+    buildProgressionCache() {
+        if (this._cache.stickerMap) return;
         const today = Formatter.dateLogical();
         const todayWeekKey = getWeekKey(today);
         const weekMap = {};
@@ -141,10 +141,9 @@ const DataController = {
         // no stickers here. Demo mode is exempt (keeps its 1-sticker showcase behavior).
         const installWeekKey = runtime.demoMode ? null : getInstallWeekKey();
         Object.keys(weekMap).sort().forEach(wk => {
-            if (wk >= todayWeekKey) return;
             if (installWeekKey && wk < installWeekKey) return;
             const days = weekMap[wk].sort((a, b) => a.date.localeCompare(b.date));
-            // Daily level EXP: all days regardless of sticker eligibility.
+            // Daily level EXP: include current week's past days (today excluded by weekMap).
             if (!runtime.demoMode) {
                 days.forEach(day => {
                     const e = day.eSpent ? (day.eSpent.total || 0) : 0;
@@ -152,6 +151,7 @@ const DataController = {
                     careerLevelExp += computeDailyLevelExp(e, hasTrainLog, hjDaySet.has(day.date));
                 });
             }
+            if (wk >= todayWeekKey) return;
             const stickerworthyDays = days.filter(d => d.eSpent && d.eSpent.total >= 1000);
             if (!stickerworthyDays.length) return;
             const {
@@ -203,7 +203,22 @@ const DataController = {
                 _historyCache.meta.stickers = freshStates;
             }
         }
-        return stickerMap;
+    },
+    getStickerMap() {
+        this.buildProgressionCache();
+        return this._cache.stickerMap;
+    },
+    getCareerLevelExp() {
+        this.buildProgressionCache();
+        return runtime.careerLevelExp || 0;
+    },
+    getUnlockedCount() {
+        this.buildProgressionCache();
+        return this._cache.unlockedCount || 0;
+    },
+    getFeaturedDays() {
+        this.buildProgressionCache();
+        return this._cache.featuredDays;
     },
     getTimeline() {
         if (this._cache.timeline) return this._cache.timeline;
@@ -1658,8 +1673,7 @@ function computeAchievements(s) {
         mxWkG = maxOf(weekG, 'weekOf'),
         mxMnE = maxOf(monthE, 'month'),
         mxMnG = maxOf(monthG, 'month');
-    DataController.getStickerMap();
-    const stickersUnlocked = DataController._cache.unlockedCount || 0;
+    const stickersUnlocked = DataController.getUnlockedCount();
     const lastDay = allDays[allDays.length - 1];
     const curBD = (lastDay && lastDay.endBreakdown) ? lastDay.endBreakdown : null;
     const currentStats = curBD ? {
@@ -2937,7 +2951,7 @@ async function exportData() {
     const day = TimeManager.date(now);
     const year = TimeManager.year(now);
     const filename = `BBGymLogData - ${month} ${day}_${year}.json`;
-    DataController.getStickerMap();
+    DataController.buildProgressionCache();
     if (_historyCache && _historyCache.meta && _historyCache.meta.stickers) {
         if (!s.meta) s.meta = {};
         s.meta.stickers = _historyCache.meta.stickers;

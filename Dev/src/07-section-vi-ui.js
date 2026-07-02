@@ -538,7 +538,7 @@
 
     // career EXP + today's in-progress EXP — the live total both level bars display.
     function getLiveLevelExp() {
-        let totalExp = runtime.careerLevelExp || 0;
+        let totalExp = DataController.getCareerLevelExp();
         if (!runtime.demoMode) {
             const h = getActiveHistory();
             if (h && h.today) {
@@ -564,23 +564,31 @@
     }
 
     function renderLevelBar(bar, expVal) {
-        const { level, expInLevel, expToNext } = calculateLevelProgress(expVal);
+        const { atrophy, level, expInLevel, expToNext } = calculateLevelProgress(expVal);
         const pct = expToNext > 0 ? Math.min(100, (expInLevel / expToNext) * 100) : (level >= 100 ? 100 : 0);
         bar.num.textContent = 'Lv ' + level;
-        bar.fill.style.width = pct.toFixed(2) + '%';
+        bar.fill.style.width = ((pct / 100) * 96.8).toFixed(2) + '%';
         bar.fill.classList.toggle('level-full', pct >= 99.9);
+        if (dom.panel) {
+            dom.panel.dataset.atrophy = atrophy;
+            dom.panel.dataset.level = level;
+        }
+        bar.container.dataset.atrophy = atrophy;
+        bar.container.dataset.level = level;
     }
 
     function updateLevelBar() {
-        const bars = getLevelBars();
-        if (!bars.length) return;
         const totalExp = getLiveLevelExp();
 
         if (runtime._lastLevelExp === undefined) {
             runtime._lastLevelExp = totalExp;
+            const bars = getLevelBars();
             bars.forEach(b => renderLevelBar(b, totalExp));
             return;
         }
+
+        const bars = getLevelBars();
+        if (!bars.length) return;
 
         if (totalExp !== runtime._lastLevelExp) {
             runtime._targetLevelExp = totalExp;
@@ -599,19 +607,31 @@
         async function runLevelAnimationQueue() {
             runtime._isAnimatingLevel = true;
             const BASE_SPEED_MS = 1000; // 1 second for a full 100% bar
+            let forcedNextTier = null; // set right after an atrophy-crossing animation plays
 
             while (runtime._lastLevelExp < runtime._targetLevelExp) {
-                const currentProg = calculateLevelProgress(runtime._lastLevelExp);
+                const currentProg = forcedNextTier !== null
+                    ? { atrophy: forcedNextTier, level: 1, expInLevel: 0, expToNext: computeLevelExpCost(1, forcedNextTier) }
+                    : calculateLevelProgress(runtime._lastLevelExp);
+                forcedNextTier = null;
                 const targetProg = calculateLevelProgress(runtime._targetLevelExp);
+                const currentRank = currentProg.atrophy * 100 + currentProg.level;
+                const targetRank = targetProg.atrophy * 100 + targetProg.level;
 
-                if (currentProg.level < targetProg.level) {
+                if (currentRank < targetRank && currentProg.level >= 100 && currentProg.atrophy < 2) {
+                    // Already resting at a tier-complete Lv 100 (e.g. a dev/testing snap) with
+                    // more exp still to apply — skip straight to the atrophy sequence instead of
+                    // replaying a fill/flash for a "Lv 101" that doesn't exist.
+                    await runAtrophyAnimation(currentProg.atrophy, bars);
+                    forcedNextTier = currentProg.atrophy + 1;
+                } else if (currentRank < targetRank) {
                     const expNeededToFill = currentProg.expToNext - currentProg.expInLevel;
                     const currentPct = parseFloat(bars[0].fill.style.width) || 0;
                     const durationMs = Math.max(150, ((100 - currentPct) / 100) * BASE_SPEED_MS);
 
                     bars.forEach(b => {
                         b.fill.style.transitionDuration = durationMs + 'ms';
-                        b.fill.style.width = '100%';
+                        b.fill.style.width = '96.8%';
                         b.fill.classList.add('level-full');
                     });
 
@@ -619,20 +639,28 @@
                     bars.forEach(b => b.container.classList.add('bbgl-level-up-flash'));
 
                     await new Promise(r => setTimeout(r, 200));
-                    const nextLvlText = 'Lv ' + (currentProg.level + 1);
-                    bars.forEach(b => { b.num.textContent = nextLvlText; });
+                    const nextLevel = currentProg.level + 1;
+                    bars.forEach(b => { b.num.textContent = 'Lv ' + nextLevel; });
 
                     await new Promise(r => setTimeout(r, 650));
-                    bars.forEach(b => {
-                        b.container.classList.remove('bbgl-level-up-flash');
-                        b.fill.style.transition = 'none';
-                        b.fill.style.width = '0%';
-                        b.fill.classList.remove('level-full');
-                        void b.fill.offsetWidth; // force reflow
-                        b.fill.style.transition = '';
-                    });
+                    bars.forEach(b => b.container.classList.remove('bbgl-level-up-flash'));
 
                     runtime._lastLevelExp += expNeededToFill;
+
+                    if (nextLevel >= 100 && currentProg.atrophy < 2) {
+                        // Tier complete — hand off to the atrophy sequence instead of the
+                        // ordinary "snap fill back to 0%" reset below.
+                        await runAtrophyAnimation(currentProg.atrophy, bars);
+                        forcedNextTier = currentProg.atrophy + 1;
+                    } else {
+                        bars.forEach(b => {
+                            b.fill.style.transition = 'none';
+                            b.fill.style.width = '0%';
+                            b.fill.classList.remove('level-full');
+                            void b.fill.offsetWidth; // force reflow
+                            b.fill.style.transition = '';
+                        });
+                    }
                 } else {
                     runtime._lastLevelExp = runtime._targetLevelExp;
 
@@ -654,6 +682,59 @@
             runtime._lastLevelExp = runtime._targetLevelExp;
             runtime._isAnimatingLevel = false;
         }
+    }
+
+    // Plays the tier-completion sequence: the just-finished tier's crown tucks away
+    // (mole-in-hole pop), the next tier's crown rises into place (podium reveal), then
+    // "Atrophied!" flashes at the climax. Leaves level/bar reset to the new tier's Lv 1 / 0%
+    // so the caller's fill loop can continue animating any overflow exp on top of it.
+    async function runAtrophyAnimation(fromAtrophy, bars) {
+        const toAtrophy = fromAtrophy + 1;
+
+        if (!userConfig.animations) {
+            bars.forEach(b => {
+                b.container.dataset.atrophy = toAtrophy;
+                b.container.dataset.level = 1;
+                b.num.textContent = 'Lv 1';
+                b.fill.style.transition = 'none';
+                b.fill.style.width = '0%';
+                b.fill.classList.remove('level-full');
+                void b.fill.offsetWidth;
+                b.fill.style.transition = '';
+            });
+            if (dom.panel) { dom.panel.dataset.atrophy = toAtrophy; dom.panel.dataset.level = 1; }
+            return;
+        }
+
+        const TUCK_MS = 350;
+        const RISE_MS = 900;
+        const FLASH_MS = 700;
+
+        bars.forEach(b => b.container.classList.add('bbgl-crown-tuck'));
+        await new Promise(r => setTimeout(r, TUCK_MS));
+
+        bars.forEach(b => {
+            b.container.classList.remove('bbgl-crown-tuck');
+            b.container.dataset.atrophy = toAtrophy;
+            b.container.classList.add('bbgl-crown-rise');
+        });
+        if (dom.panel) dom.panel.dataset.atrophy = toAtrophy;
+        await new Promise(r => setTimeout(r, RISE_MS));
+
+        bars.forEach(b => b.container.classList.add('bbgl-atrophied-flash'));
+        await new Promise(r => setTimeout(r, FLASH_MS));
+
+        bars.forEach(b => {
+            b.container.classList.remove('bbgl-crown-rise', 'bbgl-atrophied-flash');
+            b.container.dataset.level = 1;
+            b.num.textContent = 'Lv 1';
+            b.fill.style.transition = 'none';
+            b.fill.style.width = '0%';
+            b.fill.classList.remove('level-full');
+            void b.fill.offsetWidth;
+            b.fill.style.transition = '';
+        });
+        if (dom.panel) dom.panel.dataset.level = 1;
     }
 
     function renderStats(sl, rawLbl) {
@@ -1309,13 +1390,14 @@
         const fill = document.createElement('div');
         fill.id = 'bbgl-gym-level-fill';
 
+        track.innerHTML = buildEmptyLevelTrackSVG();
         track.appendChild(fill);
         container.appendChild(num);
         container.appendChild(track);
         gymRoot.prepend(container);
 
-        DataController.getStickerMap();
-        renderLevelBar({ num, fill }, getLiveLevelExp());
+        DataController.buildProgressionCache();
+        renderLevelBar({ num, fill, container }, getLiveLevelExp());
     }
 
     function injectFooterButton(notesBtnEl) {
@@ -1906,10 +1988,40 @@
         return `<div class="close-settings-btn" title="Close Settings">${ICONS.CHECK}</div><div class="bbgl-settings-scroll-area">${buildSettingsFeaturesSection()}${buildSettingsLogFormatSection()}${buildSettingsApiSection()}${buildSettingsDataSection()}${buildSettingsInfoSection()}</div>`;
     }
 
+    function buildEmptyLevelTrackSVG() {
+        const W = 500, H = 100;
+        const padX = 8, padY = 18;
+        const slotW = W - 2 * padX;
+        const slotH = H - 2 * padY;
+
+        const defs =
+            `<defs>` +
+            `<linearGradient id="lvl-housing" x1="0" y1="0" x2="0" y2="1">` +
+            `<stop offset="0" stop-color="#202020"/><stop offset=".4" stop-color="#363636"/>` +
+            `<stop offset=".5" stop-color="#404040"/><stop offset=".6" stop-color="#363636"/>` +
+            `<stop offset="1" stop-color="#181818"/></linearGradient>` +
+            `<linearGradient id="lvl-recess-shadow" x1="0" y1="0" x2="0" y2="1">` +
+            `<stop offset="0" stop-color="#000" stop-opacity=".6"/><stop offset=".5" stop-color="#000" stop-opacity=".1"/><stop offset="1" stop-color="#000" stop-opacity="0"/></linearGradient>` +
+            `<linearGradient id="lvl-recess-shine" x1="0" y1="0" x2="0" y2="1">` +
+            `<stop offset="0" stop-color="#fff" stop-opacity="0"/><stop offset=".7" stop-color="#fff" stop-opacity="0"/><stop offset="1" stop-color="#fff" stop-opacity=".35"/></linearGradient>` +
+            `</defs>`;
+
+        const f = (v) => v.toFixed(2);
+        let out = `<rect width="${W}" height="${H}" fill="url(#lvl-housing)"/>`;
+        const bx = padX, by = padY;
+        
+        out += `<rect x="${f(bx)}" y="${by}" width="${f(slotW)}" height="${slotH}" fill="#000" fill-opacity=".5"/>`;
+        out += `<rect x="${f(bx)}" y="${by}" width="${f(slotW)}" height="${slotH}" fill="url(#lvl-recess-shadow)"/>`;
+        out += `<rect x="${f(bx)}" y="${by}" width="${f(slotW)}" height="3" fill="#000" fill-opacity=".6"/>`;
+        out += `<rect x="${f(bx)}" y="${f(by + slotH - 1.5)}" width="${f(slotW)}" height="1.5" fill="#fff" fill-opacity=".15"/>`;
+
+        return `<svg class="bbgl-level-svg" viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" xmlns="http://www.w3.org/2000/svg" style="position:absolute;top:0;left:0;width:100%;height:100%;z-index:1;display:block;">${defs}${out}</svg>`;
+    }
+
     function getDashboardHTML() {
         const weekDays = userConfig.weekStartMode === 'mon' ? ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'] : ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
         const weekRowHTML = weekDays.map(d => `<span>${d}</span>`).join('');
-        return `<div class="bbgl-header" id="bbgl-header-bar"><div class="bbgl-header-left">${ICONS.LOGO}<span class="bbgl-header-text"><span class="bbgl-short-title">Big Black Log</span><span class="bbgl-long-title">Big Black Gym Log</span></span></div><div class="bbgl-header-right"><span id="bbgl-demo-exit-btn" class="close-settings-btn bbgl-close-purple" style="display:${runtime.demoMode ? 'flex' : 'none'};" data-tooltip-html="${TOOLTIPS.DEMO_EXIT_HTML}"><span class="bbgl-demo-x-label">Demo</span>${ICONS.CLOSE}</span><span id="bbgl-settings-btn" class="bbgl-custom-icon">⚙</span><span id="bbgl-close-btn" class="bbgl-native-icon">${ICONS.MINIMIZE}</span><span id="bbgl-pop-btn" class="bbgl-native-icon">${viewState.expanded ? ICONS.COMPRESS : ICONS.POPOUT}</span></div></div><div id="bbgl-content-wrapper"><div id="bbgl-top-panel"><div id="bbgl-tall-toggle">${viewState.isTall ? '–' : '+'}</div><div id="bbgl-ledger-toggle" data-tooltip="${TOOLTIPS.LEDGER_VIEW}">${ICONS.LEDGER}</div><div id="bbgl-graph-toggle" data-tooltip="${TOOLTIPS.GRAPH_VIEW}">${ICONS.GRAPH}</div><div id="bbgl-achievements-toggle" data-tooltip="${TOOLTIPS.ACHIEVEMENTS}">${ICONS.ACHIEVEMENTS}</div><div id="bbgl-sticker-toggle" data-tooltip="${TOOLTIPS.STICKERBOOK}">${ICONS.STICKERBOOK}</div><div id="bbgl-item-counters"></div><div id="bbgl-copy-btn" class="copy-hist-btn" data-tooltip="${TOOLTIPS.COPY_SESSION}">${ICONS.CLIPBOARD}</div><div id="bbgl-sticker-title"></div><div class="ui-floating-label" id="bbgl-date-label">LOADING...</div><div class="ui-floating-summary" id="bbgl-summary-label"></div><div id="bbgl-ledger-view" class="ledger-content"></div><div id="bbgl-graph-container"><div class="g-hud"><div class="g-toggles"><div class="g-pill active" data-type="mode" data-val="values">Gains</div><div class="g-pill" data-type="mode" data-val="rates">Rates</div></div><div class="g-toggles"><div class="g-pill p-str active" data-type="stat" data-val="str">STR</div><div class="g-pill p-def" data-type="stat" data-val="def">DEF</div><div class="g-pill p-spd active" data-type="stat" data-val="spd">SPD</div><div class="g-pill p-dex" data-type="stat" data-val="dex">DEX</div><div class="g-pill p-tot" data-type="stat" data-val="total">TOT</div></div></div><svg id="bbgl-graph-svg"></svg></div><div id="bbgl-achievements-container" class="ledger-content"><div class="bbgl-ach-scroll"><div id="bbgl-ach-pages"></div></div><div id="bbgl-ach-footer" class="bbgl-ach-footer"><div class="bbgl-ach-footer-side bbgl-ach-footer-left"><button type="button" class="bbgl-ach-nav bbgl-ach-prev" aria-label="Previous achievements page">\u276e</button></div><div id="bbgl-ach-pageindicator"></div><div class="bbgl-ach-footer-side bbgl-ach-footer-right"><button type="button" class="bbgl-ach-nav bbgl-ach-next" aria-label="Next achievements page">\u276f</button></div></div></div><div id="bbgl-sticker-bg"></div><div id="bbgl-sticker-container"><div id="sticker-sponsor-btn" class="sticker-nav-btn disabled">❮</div><div id="sticker-prev-btn" class="sticker-nav-btn">❮</div><div id="sticker-next-btn" class="sticker-nav-btn">❯</div><div id="bbgl-sticker-grid"></div><div id="bbgl-sticker-pagination"></div></div><div class="glass-overlay"></div></div><div id="bbgl-bottom-panel"><div class="bbgl-header-wrapper"><div class="bbgl-month-header"><div class="title-group"><div class="title-stack"><div class="header-row"><div class="stats-btn" id="all-time-btn">${ICONS.CHART}</div><div class="header-trigger" id="all-time-trigger">∞</div></div><div class="header-row"><div class="stats-btn" id="year-stats-btn">${ICONS.CHART}</div><div class="header-trigger" id="year-trigger"></div><div id="bbgl-year-dropdown" class="bbgl-dropdown-menu"></div></div><div class="header-row"><div class="stats-btn" id="month-stats-btn">${ICONS.CHART}</div><div class="header-trigger" id="month-trigger"></div><div id="bbgl-month-dropdown" class="bbgl-dropdown-menu"></div></div></div></div><button class="arrow-btn" id="prev-month-btn">❮</button><button class="arrow-btn" id="next-month-btn">❯</button></div><div id="bbgl-level-container"><span id="bbgl-level-num">Lv 1</span><div id="bbgl-level-track"><div id="bbgl-level-fill"></div></div></div></div><div id="bbgl-demo-exit" style="display: ${runtime.demoMode ? 'flex' : 'none'};" data-tooltip="${TOOLTIPS.DEMO_EXIT}" data-tooltip-html="${TOOLTIPS.DEMO_EXIT_HTML}">DEMO MODE</div><div class="bbgl-grid-container"><div class="bbgl-week-row">${weekRowHTML}</div><div class="calendar-wrapper" id="swipe-area"><div id="bbgl-cal-container" class="bbgl-cal-container"></div></div></div></div><div id="bbgl-item-viewer"><div class="viewer-window"><div class="viewer-stage"><div class="viewer-pedestal" id="vi-pedestal-wrapper"><div class="viewer-obj" id="vi-obj-target"><div class="layer-front"></div><div class="layer-back"></div></div></div></div></div><div class="viewer-info-overlay"><div class="vi-name" id="vi-name-target">Item Name</div></div></div><div id="bbgl-settings-view">${getSettingsHTML()}</div><div id="bbgl-welcome-view"></div></div>`;
+        return `<div class="bbgl-header" id="bbgl-header-bar"><div class="bbgl-header-left">${ICONS.LOGO}<span class="bbgl-header-text"><span class="bbgl-short-title">Big Black Log</span><span class="bbgl-long-title">Big Black Gym Log</span></span></div><div class="bbgl-header-right"><span id="bbgl-demo-exit-btn" class="close-settings-btn bbgl-close-purple" style="display:${runtime.demoMode ? 'flex' : 'none'};" data-tooltip-html="${TOOLTIPS.DEMO_EXIT_HTML}"><span class="bbgl-demo-x-label">Demo</span>${ICONS.CLOSE}</span><span id="bbgl-settings-btn" class="bbgl-custom-icon">⚙</span><span id="bbgl-close-btn" class="bbgl-native-icon">${ICONS.MINIMIZE}</span><span id="bbgl-pop-btn" class="bbgl-native-icon">${viewState.expanded ? ICONS.COMPRESS : ICONS.POPOUT}</span></div></div><div id="bbgl-content-wrapper"><div id="bbgl-top-panel"><div id="bbgl-tall-toggle">${viewState.isTall ? '–' : '+'}</div><div id="bbgl-ledger-toggle" data-tooltip="${TOOLTIPS.LEDGER_VIEW}">${ICONS.LEDGER}</div><div id="bbgl-graph-toggle" data-tooltip="${TOOLTIPS.GRAPH_VIEW}">${ICONS.GRAPH}</div><div id="bbgl-achievements-toggle" data-tooltip="${TOOLTIPS.ACHIEVEMENTS}">${ICONS.ACHIEVEMENTS}</div><div id="bbgl-sticker-toggle" data-tooltip="${TOOLTIPS.STICKERBOOK}">${ICONS.STICKERBOOK}</div><div id="bbgl-item-counters"></div><div id="bbgl-copy-btn" class="copy-hist-btn" data-tooltip="${TOOLTIPS.COPY_SESSION}">${ICONS.CLIPBOARD}</div><div id="bbgl-sticker-title"></div><div class="ui-floating-label" id="bbgl-date-label">LOADING...</div><div class="ui-floating-summary" id="bbgl-summary-label"></div><div id="bbgl-ledger-view" class="ledger-content"></div><div id="bbgl-graph-container"><div class="g-hud"><div class="g-toggles"><div class="g-pill active" data-type="mode" data-val="values">Gains</div><div class="g-pill" data-type="mode" data-val="rates">Rates</div></div><div class="g-toggles"><div class="g-pill p-str active" data-type="stat" data-val="str">STR</div><div class="g-pill p-def" data-type="stat" data-val="def">DEF</div><div class="g-pill p-spd active" data-type="stat" data-val="spd">SPD</div><div class="g-pill p-dex" data-type="stat" data-val="dex">DEX</div><div class="g-pill p-tot" data-type="stat" data-val="total">TOT</div></div></div><svg id="bbgl-graph-svg"></svg></div><div id="bbgl-achievements-container" class="ledger-content"><div class="bbgl-ach-scroll"><div id="bbgl-ach-pages"></div></div><div id="bbgl-ach-footer" class="bbgl-ach-footer"><div class="bbgl-ach-footer-side bbgl-ach-footer-left"><button type="button" class="bbgl-ach-nav bbgl-ach-prev" aria-label="Previous achievements page">\u276e</button></div><div id="bbgl-ach-pageindicator"></div><div class="bbgl-ach-footer-side bbgl-ach-footer-right"><button type="button" class="bbgl-ach-nav bbgl-ach-next" aria-label="Next achievements page">\u276f</button></div></div></div><div id="bbgl-sticker-bg"></div><div id="bbgl-sticker-container"><div id="sticker-sponsor-btn" class="sticker-nav-btn disabled">❮</div><div id="sticker-prev-btn" class="sticker-nav-btn">❮</div><div id="sticker-next-btn" class="sticker-nav-btn">❯</div><div id="bbgl-sticker-grid"></div><div id="bbgl-sticker-pagination"></div></div><div class="glass-overlay"></div></div><div id="bbgl-bottom-panel"><div class="bbgl-header-wrapper"><div class="bbgl-month-header"><div class="title-group"><div class="title-stack"><div class="header-row header-row--alltime"><div class="stats-btn" id="all-time-btn">${ICONS.CHART}</div><div class="header-trigger" id="all-time-trigger">∞</div></div><div class="header-row header-row--year"><div class="stats-btn" id="year-stats-btn">${ICONS.CHART}</div><div class="header-trigger" id="year-trigger"></div><div id="bbgl-year-dropdown" class="bbgl-dropdown-menu"></div></div><div class="header-row header-row--month"><div class="stats-btn" id="month-stats-btn">${ICONS.CHART}</div><div class="header-trigger" id="month-trigger"></div><div id="bbgl-month-dropdown" class="bbgl-dropdown-menu"></div></div></div></div><button class="arrow-btn" id="prev-month-btn">❮</button><button class="arrow-btn" id="next-month-btn">❯</button></div><div id="bbgl-level-bg">${buildEmptyLevelTrackSVG()}</div><div id="bbgl-level-container"><div id="bbgl-level-flag-clip"><span id="bbgl-level-num">Lv 1</span></div><div id="bbgl-level-track"><div id="bbgl-level-fill"></div></div></div></div><div id="bbgl-demo-exit" style="display: ${runtime.demoMode ? 'flex' : 'none'};" data-tooltip="${TOOLTIPS.DEMO_EXIT}" data-tooltip-html="${TOOLTIPS.DEMO_EXIT_HTML}">DEMO MODE</div><div class="bbgl-grid-container"><div class="bbgl-week-row">${weekRowHTML}</div><div class="calendar-wrapper" id="swipe-area"><div id="bbgl-cal-container" class="bbgl-cal-container"></div></div></div></div><div id="bbgl-item-viewer"><div class="viewer-window"><div class="viewer-stage"><div class="viewer-pedestal" id="vi-pedestal-wrapper"><div class="viewer-obj" id="vi-obj-target"><div class="layer-front"></div><div class="layer-back"></div></div></div></div></div><div class="viewer-info-overlay"><div class="vi-name" id="vi-name-target">Item Name</div></div></div><div id="bbgl-settings-view">${getSettingsHTML()}</div><div id="bbgl-welcome-view"></div></div>`;
     }
 
     /**

@@ -6,8 +6,7 @@
      */
 
     function loadStickerData() {
-        DataController.getStickerMap();
-        const unlocked = runtime.demoMode ? 1 : (DataController._cache.unlockedCount || 1);
+        const unlocked = runtime.demoMode ? 1 : DataController.getUnlockedCount() || 1;
         const it = [];
         for (let i = 1; i <= 50; i++) {
             const c = CUSTOM_STICKERS.find(s => s.id === i);
