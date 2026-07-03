@@ -1055,45 +1055,30 @@
                         border-color: #ddd;
                     }
 
-                    .bbgl-btn-green {
-                        background-image: linear-gradient(#0e1806 0%, #3e5e22 25%, #2b4216 60%, #2b4216 78%, #0e1806 100%) !important;
-                        border-color: #0e1806 !important;
-                    }
+                    /* Color-variant buttons share one gradient template; each variant
+                       only supplies its palette. --btn-c1/c2/c3 = edge/highlight/body,
+                       *h = hover palette, --btn-ca = active top stop. */
+                    .bbgl-btn-green { --btn-c1: #0e1806; --btn-c2: #3e5e22; --btn-c3: #2b4216; --btn-c1h: #1a2e0b; --btn-c2h: #4f782b; --btn-c3h: #3a591e; --btn-ca: #080f03; }
+                    .bbgl-btn-red { --btn-c1: #200505; --btn-c2: #701a1a; --btn-c3: #4f0e0e; --btn-c1h: #360808; --btn-c2h: #942222; --btn-c3h: #6e1313; --btn-ca: #140303; }
+                    .bbgl-btn-purple { --btn-c1: #1a0529; --btn-c2: #6a1b9a; --btn-c3: #4a1070; --btn-c1h: #2a0840; --btn-c2h: #8e24aa; --btn-c3h: #6a1b9a; --btn-ca: #0f0318; }
 
-                    .bbgl-btn-green:hover {
-                        background-image: linear-gradient(#1a2e0b 0%, #4f782b 25%, #3a591e 60%, #3a591e 78%, #1a2e0b 100%) !important;
-                    }
-
-                    .bbgl-btn-green:active {
-                        background-image: linear-gradient(#080f03 0%, #2b4216 100%) !important;
-                        border-color: #555 !important;
-                    }
-
-                    .bbgl-btn-red {
-                        background-image: linear-gradient(#200505 0%, #701a1a 25%, #4f0e0e 60%, #4f0e0e 78%, #200505 100%) !important;
-                        border-color: #200505 !important;
-                    }
-
-                    .bbgl-btn-red:hover {
-                        background-image: linear-gradient(#360808 0%, #942222 25%, #6e1313 60%, #6e1313 78%, #360808 100%) !important;
-                    }
-
-                    .bbgl-btn-red:active {
-                        background-image: linear-gradient(#140303 0%, #4f0e0e 100%) !important;
-                        border-color: #555 !important;
-                    }
-
+                    .bbgl-btn-green,
+                    .bbgl-btn-red,
                     .bbgl-btn-purple {
-                        background-image: linear-gradient(#1a0529 0%, #6a1b9a 25%, #4a1070 60%, #4a1070 78%, #1a0529 100%) !important;
-                        border-color: #1a0529 !important;
+                        background-image: linear-gradient(var(--btn-c1) 0%, var(--btn-c2) 25%, var(--btn-c3) 60%, var(--btn-c3) 78%, var(--btn-c1) 100%) !important;
+                        border-color: var(--btn-c1) !important;
                     }
 
+                    .bbgl-btn-green:hover,
+                    .bbgl-btn-red:hover,
                     .bbgl-btn-purple:hover {
-                        background-image: linear-gradient(#2a0840 0%, #8e24aa 25%, #6a1b9a 60%, #6a1b9a 78%, #2a0840 100%) !important;
+                        background-image: linear-gradient(var(--btn-c1h) 0%, var(--btn-c2h) 25%, var(--btn-c3h) 60%, var(--btn-c3h) 78%, var(--btn-c1h) 100%) !important;
                     }
 
+                    .bbgl-btn-green:active,
+                    .bbgl-btn-red:active,
                     .bbgl-btn-purple:active {
-                        background-image: linear-gradient(#0f0318 0%, #4a1070 100%) !important;
+                        background-image: linear-gradient(var(--btn-ca) 0%, var(--btn-c3) 100%) !important;
                         border-color: #555 !important;
                     }
 
@@ -1240,15 +1225,9 @@
                         transform: scale(.85);
                     }
 
-                    .bbgl-switch-purple input:checked + .slider {
-                        background-color: #6a1b9a;
-                        /**/
-                        box-shadow: 0 0 5px rgba(106, 27, 154, .6);
-                    }
-
+                    .bbgl-switch-purple input:checked + .slider,
                     #bbgl-settings-view .bbgl-switch input:checked + .slider {
                         background-color: #6a1b9a;
-                        /**/
                         box-shadow: 0 0 5px rgba(106, 27, 154, .6);
                     }
 
@@ -1457,7 +1436,6 @@
                     .bbgl-sb-notif [class*="defaultIcon___"] svg {
                         fill: #d896e0 !important;
                         stroke: #d896e0 !important;
-                        /**/
                         filter: drop-shadow(0 0 3px rgba(216, 150, 224, .6)) brightness(1.15) !important;
                     }
 
@@ -1480,7 +1458,6 @@
                         width: 100%;
                         min-height: calc(100vh - 60px);
                         height: auto;
-                        /**/
                         padding: 8px 0;
                         box-sizing: border-box;
                         container-type: inline-size;
@@ -1488,7 +1465,6 @@
                     }
 
                     .bbgl-native-header {
-                        /**/
                         display: flex;
                         align-items: center;
                         justify-content: space-between;
@@ -1510,7 +1486,6 @@
                     }
 
                     .bbgl-native-title {
-                        /**/
                         font-family: Arial;
                         font-weight: 700;
                         font-size: 22px;
@@ -1546,7 +1521,6 @@
 
                     .bbgl-native-link svg {
                         width: 20px;
-                        /**/
                         height: 20px;
                         fill: currentColor;
                     }
@@ -1566,7 +1540,6 @@
 
                     #bbgl-panel {
                         --bbgl-f-label: 10px;
-                        /**/
                         --bbgl-f-top: 10px;
                         --bbgl-f-bot: 9px;
                         --bbgl-f-top-mb: 1px;
@@ -1606,7 +1579,6 @@
                         --bbgl-label-case: none;
                         width: min(576px, calc(100vw - 20px));
                         height: 633px;
-                        /**/
                         max-height: calc(100vh - 50px) !important;
                         overflow-y: auto;
                         overflow-x: hidden;
@@ -1648,9 +1620,6 @@
                         z-index: 1 !important;
                         overflow-x: hidden !important;
                         overflow-y: visible !important;
-                    }
-
-                    #bbgl-panel.bbgl-mode-page {
                         --bbgl-label-case: none !important;
                         --bbgl-page-t: clamp(0, calc((100cqi - 350px) / 370px), 1);
                         --bbgl-f-label: clamp(10.75px, calc(10.75px + 5.25px * var(--bbgl-page-t)), 16px);
@@ -1682,7 +1651,6 @@
                         height: clamp(180px, calc(180px + 90px * var(--bbgl-page-t)), 270px) !important;
                         width: 100%;
                         margin-bottom: 0 !important;
-                        /**/
                         border: none !important;
                         border-bottom: 1px solid #444 !important;
                         border-radius: 0 !important;
@@ -1708,12 +1676,6 @@
                         gap: clamp(8px, calc(8px + 8px * var(--bbgl-page-t)), 16px);
                         margin-bottom: clamp(4px, calc(4px + 4px * var(--bbgl-page-t)), 8px);
                         padding-bottom: clamp(3px, calc(3px + 3px * var(--bbgl-page-t)), 6px);
-                    }
-
-                    @container bbgl-panel (max-width:499px) {
-                        #bbgl-panel.bbgl-mode-page {
-                            --bbgl-label-case: none !important;
-                        }
                     }
 
                     .bbgl-mode-page #bbgl-bottom-panel {
@@ -1833,7 +1795,6 @@
                         font-size: clamp(7px, calc(7px + 3px * var(--bbgl-page-t)), 10px) !important;
                     }
 
-                    /**/
                     #bbgl-panel.bbgl-mode-page .ach-date {
                         font-size: clamp(7.5px, calc(7.5px + 3.5px * var(--bbgl-page-t)), 11px) !important;
                     }
@@ -1980,7 +1941,6 @@
                         pointer-events: none;
                     }
 
-                    /**/
                     @keyframes bbgl-genie-pop {
                         0% {
                             transform: scale(0);
@@ -2011,11 +1971,9 @@
                         font-family: Arial, sans-serif;
                         font-size: 12px;
                         font-weight: 700;
-                        text-transform: Title Case;
                         padding: 0 8px;
                         border-bottom: 1px solid #000;
                         border-radius: 5px 5px 0 0;
-                        /**/
                         box-shadow: rgba(255, 255, 255, .25) 0 0 4px 0 inset, rgba(0, 0, 0, .5) 0 -2px 4px 0;
                         width: 100%;
                         height: 38px;
@@ -2343,7 +2301,6 @@
                     #bbgl-top-panel {
                         flex: 0 0 30%;
                         box-sizing: border-box;
-                        /**/
                         background-color: #2b2b2b;
                         box-shadow: inset 0 0 40px rgba(0, 0, 0, .95);
                         border-bottom: 1px solid #111;
@@ -2422,8 +2379,6 @@
                     #bbgl-sticker-toggle,
                     #bbgl-copy-btn {
                         top: 5.5px;
-                        width: 14px;
-                        height: 14px;
                         z-index: 59;
                         opacity: 0;
                         pointer-events: none;
@@ -2435,9 +2390,15 @@
                     #bbgl-achievements-toggle svg,
                     #bbgl-sticker-toggle svg,
                     #bbgl-copy-btn svg {
+                        fill: currentColor;
+                    }
+
+                    #bbgl-graph-toggle,
+                    #bbgl-graph-toggle svg,
+                    #bbgl-sticker-toggle,
+                    #bbgl-sticker-toggle svg {
                         width: 14px;
                         height: 14px;
-                        fill: currentColor;
                     }
 
                     #bbgl-ledger-toggle,
@@ -2683,7 +2644,6 @@
                         gap: 0;
                         transition: opacity .3s;
                         transform-origin: center;
-                        scrollbar-width: none;
                     }
 
                     .viewing-graph #bbgl-ledger-view,
@@ -2716,7 +2676,6 @@
                         --bbgl-bot-minh: 0;
                     }
 
-                    /**/
                     .stat-column:last-child {
                         border-right: none;
                     }
@@ -2878,7 +2837,6 @@
                     .viewing-graph #bbgl-graph-container {
                         padding: 3px calc(var(--bbgl-gx, 10px) - 2px) 1px calc(var(--bbgl-gx, 10px) - 2px);
                         z-index: 40;
-                        /**/
                         transform-origin: center;
                         touch-action: none;
                         cursor: crosshair;
@@ -3320,7 +3278,6 @@
                         gap: 10px;
                         align-items: center;
                         z-index: 60;
-                        pointer-events: none;
                         white-space: nowrap;
                         font-size: 10px;
                         font-weight: 500;
@@ -3469,7 +3426,6 @@
                     .viewer-stage {
                         width: 100%;
                         height: 100%;
-                        position: center;
                         perspective: 400px;
                         perspective-origin: center 50px;
                         cursor: grab;
@@ -3653,7 +3609,7 @@
 
                     .bbgl-mode-page #btn-close-viewer {
                         font-size: clamp(9px, calc(9px + 1px * var(--bbgl-page-t)), 10px) !important;
-                        padding: clamp(2px, calc(2px + 0 * var(--bbgl-page-t)), 2px) clamp(5px, calc(5px + 1px * var(--bbgl-page-t)), 6px) !important;
+                        padding: 2px clamp(5px, calc(5px + 1px * var(--bbgl-page-t)), 6px) !important;
                         top: clamp(4px, calc(4px + 1px * var(--bbgl-page-t)), 5px) !important;
                         right: clamp(4px, calc(4px + 1px * var(--bbgl-page-t)), 5px) !important;
                     }
@@ -3988,7 +3944,6 @@
                         display: none;
                     }
 
-                    /**/
                     #year-trigger {
                         font-size: 9px;
                     }
@@ -4147,8 +4102,6 @@
                         overflow-y: auto;
                         overflow-x: hidden;
                         position: relative;
-                        -ms-overflow-style: none;
-                        scrollbar-width: none;
                         background: #333;
                     }
 
@@ -4297,20 +4250,22 @@
                         -webkit-backface-visibility: hidden;
                     }
 
-                    .jewel-type-green .jewel-shine {
-                        transform: scale(1.18);
+                    /* Green and diamond jewels share the same shine gradients; only the
+                       transforms differ per type. */
+                    .jewel-type-green .jewel-shine,
+                    .jewel-type-diamond .jewel-shine {
                         background: linear-gradient(120deg, transparent 10%, rgba(0, 220, 110, .4) 28%, rgba(180, 255, 210, .95) 40%, rgba(255, 255, 255, 1.0) 50%, rgba(180, 255, 210, .95) 60%, rgba(0, 220, 110, .4) 72%, transparent 90%);
                         background-size: 300% auto;
                         mix-blend-mode: screen;
                         opacity: 0;
                     }
 
-                    .jewel-type-green .jewel-shine-over {
+                    .jewel-type-green .jewel-shine-over,
+                    .jewel-type-diamond .jewel-shine-over {
                         position: absolute;
                         z-index: 3;
                         width: 100%;
                         height: 100%;
-                        transform: scale(1.23);
                         background: linear-gradient(120deg, transparent 0%, rgba(120, 255, 180, .5) 41%, rgba(255, 255, 255, .7) 50%, rgba(120, 255, 180, .5) 59%, transparent 100%);
                         background-size: 300% auto;
                         mix-blend-mode: soft-light;
@@ -4323,6 +4278,14 @@
                         mask-repeat: no-repeat;
                         -webkit-mask-position: center;
                         mask-position: center;
+                    }
+
+                    .jewel-type-green .jewel-shine {
+                        transform: scale(1.18);
+                    }
+
+                    .jewel-type-green .jewel-shine-over {
+                        transform: scale(1.23);
                     }
 
                     .jewel-type-diamond .jewel-asset {
@@ -4332,34 +4295,10 @@
                         -webkit-backface-visibility: hidden;
                     }
 
-                    .jewel-type-diamond .jewel-shine {
-                        transform-origin: bottom left;
-                        transform: translate(-3%, 3%) scale(1.02, 1.00);
-                        background: linear-gradient(120deg, transparent 10%, rgba(0, 220, 110, .4) 28%, rgba(180, 255, 210, .95) 40%, rgba(255, 255, 255, 1.0) 50%, rgba(180, 255, 210, .95) 60%, rgba(0, 220, 110, .4) 72%, transparent 90%);
-                        background-size: 300% auto;
-                        mix-blend-mode: screen;
-                        opacity: 0;
-                    }
-
+                    .jewel-type-diamond .jewel-shine,
                     .jewel-type-diamond .jewel-shine-over {
-                        position: absolute;
-                        z-index: 3;
-                        width: 100%;
-                        height: 100%;
                         transform-origin: bottom left;
                         transform: translate(-3%, 3%) scale(1.02, 1.00);
-                        background: linear-gradient(120deg, transparent 0%, rgba(120, 255, 180, .5) 41%, rgba(255, 255, 255, .7) 50%, rgba(120, 255, 180, .5) 59%, transparent 100%);
-                        background-size: 300% auto;
-                        mix-blend-mode: soft-light;
-                        opacity: 0;
-                        -webkit-mask-image: var(--jewel-mask);
-                        mask-image: var(--jewel-mask);
-                        -webkit-mask-size: contain;
-                        mask-size: contain;
-                        -webkit-mask-repeat: no-repeat;
-                        mask-repeat: no-repeat;
-                        -webkit-mask-position: center;
-                        mask-position: center;
                     }
 
                     @keyframes green-flash {
@@ -4379,38 +4318,6 @@
                     }
 
                     @keyframes green-flash-over {
-                        0% {
-                            background-position: 250% 0%;
-                            opacity: 0
-                        }
-
-                        20% {
-                            opacity: .72
-                        }
-
-                        100% {
-                            background-position: 50% 0%;
-                            opacity: .95
-                        }
-                    }
-
-                    @keyframes diamond-flash {
-                        0% {
-                            background-position: 250% 0%;
-                            opacity: 0
-                        }
-
-                        20% {
-                            opacity: .9
-                        }
-
-                        100% {
-                            background-position: 50% 0%;
-                            opacity: .75
-                        }
-                    }
-
-                    @keyframes diamond-flash-over {
                         0% {
                             background-position: 250% 0%;
                             opacity: 0
@@ -4551,24 +4458,14 @@
                         animation: gold-roll 1.2s cubic-bezier(.3, 0, .55, 1) 1 forwards;
                     }
 
-                    .bbgl-day-cell:is(.shimmer-active, .is-viewing) .jewel-type-green .jewel-shine {
+                    .bbgl-day-cell:is(.shimmer-active, .is-viewing) :is(.jewel-type-green, .jewel-type-diamond) .jewel-shine {
                         opacity: 1;
                         animation: green-flash 1.7s ease-out 1 forwards;
                     }
 
-                    .bbgl-day-cell:is(.shimmer-active, .is-viewing) .jewel-type-diamond .jewel-shine {
-                        opacity: 1;
-                        animation: diamond-flash 1.7s ease-out 1 forwards;
-                    }
-
-                    .bbgl-day-cell:is(.shimmer-active, .is-viewing) .jewel-type-green .jewel-shine-over {
+                    .bbgl-day-cell:is(.shimmer-active, .is-viewing) :is(.jewel-type-green, .jewel-type-diamond) .jewel-shine-over {
                         opacity: 1;
                         animation: green-flash-over 1.7s ease-out 1 forwards;
-                    }
-
-                    .bbgl-day-cell:is(.shimmer-active, .is-viewing) .jewel-type-diamond .jewel-shine-over {
-                        opacity: 1;
-                        animation: diamond-flash-over 1.7s ease-out 1 forwards;
                     }
 
                     .bbgl-day-cell:is(.shimmer-active, .is-viewing) .sticker-shine {
@@ -4657,10 +4554,6 @@
                     }
 
                     #bbgl-panel:not(.bbgl-expanded):not(.bbgl-mode-page) .bbgl-weekly-track {
-                        height: 12px;
-                    }
-
-                    #bbgl-panel:not(.bbgl-expanded):not(.bbgl-mode-page) .bbgl-weekly-anchor {
                         height: 12px;
                     }
 
@@ -5129,65 +5022,33 @@
                         animation: bbgl-lvl-flash-bar 0.8s ease-out;
                     }
 
-                    /* ─── Level Bar — A0: Torn Native (Metal) ──────── */
+                    /* ─── Level Bar — A0/A1 flag: shared structure ──────────
+                       The metal (A0) and green (A1) flags are structurally identical;
+                       each tier only supplies its palette below: --f-bdr (border),
+                       --f-bg-top/--f-bg (background gradient), --f-hi (inner highlight). */
                     #bbgl-panel[data-atrophy="0"] #bbgl-level-num,
-                    #bbgl-gym-level-container[data-atrophy="0"] #bbgl-gym-level-num {
-                        --f-r: clamp(5px, 1.3cqi, 8px);
-                        color: #f0f0f0;
-                        text-shadow: 0 0 2px #cccccc, 0 0 6px #888888, 0 0 12px #555555;
-                        padding: 3px clamp(8px, 2cqi, 14px);
-                        border-top: 1px solid rgba(160, 160, 160, 0.7);
-                        border-left: none;
-                        border-right: none;
-                        border-bottom: none;
-                        border-radius: 5px 5px 0 0;
-                        background: linear-gradient(180deg, rgba(90, 90, 90, 0.8) 0%, rgba(30, 30, 30, 0.9) 100%);
-                        backdrop-filter: blur(4px);
-                        -webkit-backdrop-filter: blur(4px);
-                        box-shadow: inset 0 1px 1px rgba(255, 255, 255, 0.25), 0 -1px 3px rgba(0, 0, 0, 0.4);
-                        margin-bottom: -1px;
-                        z-index: 1;
-                    }
-
-                    #bbgl-panel[data-atrophy="0"] #bbgl-level-num::before,
-                    #bbgl-gym-level-container[data-atrophy="0"] #bbgl-gym-level-num::before {
-                        content: '';
-                        position: absolute;
-                        bottom: 0;
-                        left: calc(-1 * var(--f-r) + 1px);
-                        right: calc(-1 * var(--f-r) + 1px);
-                        height: var(--f-r);
-                        z-index: -1;
-                        pointer-events: none;
-                        --f-r-in: calc(var(--f-r) - 1px);
-                        --f-bdr: rgba(160, 160, 160, 0.7);
-                        --f-bg: rgba(30, 30, 30, 0.9);
-                        background:
-                            radial-gradient(circle at 0 0, transparent var(--f-r-in), var(--f-bdr) var(--f-r-in), var(--f-bdr) var(--f-r), var(--f-bg) var(--f-r)) left bottom / var(--f-r) var(--f-r) no-repeat,
-                            radial-gradient(circle at 100% 0, transparent var(--f-r-in), var(--f-bdr) var(--f-r-in), var(--f-bdr) var(--f-r), var(--f-bg) var(--f-r)) right bottom / var(--f-r) var(--f-r) no-repeat;
-                    }
-
-                    /* ─── Level Bar — A1: Green ──────── */
                     #bbgl-panel[data-atrophy="1"] #bbgl-level-num,
+                    #bbgl-gym-level-container[data-atrophy="0"] #bbgl-gym-level-num,
                     #bbgl-gym-level-container[data-atrophy="1"] #bbgl-gym-level-num {
                         --f-r: clamp(5px, 1.3cqi, 8px);
-                        color: #b3ffb3;
-                        text-shadow: 0 0 2px #33cc00, 0 0 6px #199900, 0 0 12px #199900;
                         padding: 3px clamp(8px, 2cqi, 14px);
-                        border-top: 1px solid rgba(30, 80, 10, 0.7);
+                        border-top: 1px solid var(--f-bdr);
                         border-left: none;
                         border-right: none;
                         border-bottom: none;
                         border-radius: 5px 5px 0 0;
-                        background: linear-gradient(180deg, rgba(20, 60, 5, 0.75) 0%, rgba(5, 20, 0, 0.9) 100%);
+                        background: linear-gradient(180deg, var(--f-bg-top) 0%, var(--f-bg) 100%);
                         backdrop-filter: blur(4px);
                         -webkit-backdrop-filter: blur(4px);
-                        box-shadow: inset 0 1px 1px rgba(150, 255, 100, 0.15), 0 -1px 3px rgba(0, 0, 0, 0.4);
+                        box-shadow: inset 0 1px 1px var(--f-hi), 0 -1px 3px rgba(0, 0, 0, 0.4);
                         margin-bottom: -1px;
                         z-index: 1;
                     }
 
+                    /* Rounded corner flares at the flag's feet (shared by A0/A1). */
+                    #bbgl-panel[data-atrophy="0"] #bbgl-level-num::before,
                     #bbgl-panel[data-atrophy="1"] #bbgl-level-num::before,
+                    #bbgl-gym-level-container[data-atrophy="0"] #bbgl-gym-level-num::before,
                     #bbgl-gym-level-container[data-atrophy="1"] #bbgl-gym-level-num::before {
                         content: '';
                         position: absolute;
@@ -5198,11 +5059,31 @@
                         z-index: -1;
                         pointer-events: none;
                         --f-r-in: calc(var(--f-r) - 1px);
-                        --f-bdr: rgba(30, 80, 10, 0.7);
-                        --f-bg: rgba(5, 20, 0, 0.9);
                         background:
                             radial-gradient(circle at 0 0, transparent var(--f-r-in), var(--f-bdr) var(--f-r-in), var(--f-bdr) var(--f-r), var(--f-bg) var(--f-r)) left bottom / var(--f-r) var(--f-r) no-repeat,
                             radial-gradient(circle at 100% 0, transparent var(--f-r-in), var(--f-bdr) var(--f-r-in), var(--f-bdr) var(--f-r), var(--f-bg) var(--f-r)) right bottom / var(--f-r) var(--f-r) no-repeat;
+                    }
+
+                    /* ─── Level Bar — A0: Torn Native (Metal) palette ──────── */
+                    #bbgl-panel[data-atrophy="0"] #bbgl-level-num,
+                    #bbgl-gym-level-container[data-atrophy="0"] #bbgl-gym-level-num {
+                        color: #f0f0f0;
+                        text-shadow: 0 0 2px #cccccc, 0 0 6px #888888, 0 0 12px #555555;
+                        --f-bdr: rgba(160, 160, 160, 0.7);
+                        --f-bg-top: rgba(90, 90, 90, 0.8);
+                        --f-bg: rgba(30, 30, 30, 0.9);
+                        --f-hi: rgba(255, 255, 255, 0.25);
+                    }
+
+                    /* ─── Level Bar — A1: Green palette ──────── */
+                    #bbgl-panel[data-atrophy="1"] #bbgl-level-num,
+                    #bbgl-gym-level-container[data-atrophy="1"] #bbgl-gym-level-num {
+                        color: #b3ffb3;
+                        text-shadow: 0 0 2px #33cc00, 0 0 6px #199900, 0 0 12px #199900;
+                        --f-bdr: rgba(30, 80, 10, 0.7);
+                        --f-bg-top: rgba(20, 60, 5, 0.75);
+                        --f-bg: rgba(5, 20, 0, 0.9);
+                        --f-hi: rgba(150, 255, 100, 0.15);
                     }
 
                     #bbgl-panel[data-atrophy="0"] #bbgl-level-track,
@@ -5446,10 +5327,34 @@
                         font-weight: 600;
                     }
 
-                    .ach-enh-gained .ach-stat-str { color: #3264c6; }
-                    .ach-enh-gained .ach-stat-def { color: #dc3912; }
-                    .ach-enh-gained .ach-stat-spd { color: #ff9900; }
-                    .ach-enh-gained .ach-stat-dex { color: #109618; }
+                    /* Shared stat colors — single source for every achievement context
+                       (enhancer gains, row subscripts, grid headers, HH tags). */
+                    .ach-enh-gained .ach-stat-str,
+                    .bbgl-ach-row .ach-sub.ach-stat-str,
+                    .ach-stat-header.ach-stat-str,
+                    .bbgl-ach-hh-tag.ach-stat-str { color: #3264c6; }
+
+                    .ach-enh-gained .ach-stat-def,
+                    .bbgl-ach-row .ach-sub.ach-stat-def,
+                    .ach-stat-header.ach-stat-def,
+                    .bbgl-ach-hh-tag.ach-stat-def { color: #dc3912; }
+
+                    .ach-enh-gained .ach-stat-spd,
+                    .bbgl-ach-row .ach-sub.ach-stat-spd,
+                    .ach-stat-header.ach-stat-spd,
+                    .bbgl-ach-hh-tag.ach-stat-spd { color: #ff9900; }
+
+                    .ach-enh-gained .ach-stat-dex,
+                    .bbgl-ach-row .ach-sub.ach-stat-dex,
+                    .ach-stat-header.ach-stat-dex,
+                    .bbgl-ach-hh-tag.ach-stat-dex { color: #109618; }
+
+                    .bbgl-ach-row .ach-sub.ach-stat-tot,
+                    .ach-stat-header.ach-stat-tot,
+                    .bbgl-ach-stat-cell .ach-value.ach-stat-tot { color: #9d039d; }
+
+                    /* HH total tag is deliberately neutral, not stat-purple. */
+                    .bbgl-ach-hh-tag.ach-stat-tot { color: #999; }
                     .bbgl-ach-row.bbgl-ach-od-row .ach-k,
                     .bbgl-ach-row.bbgl-ach-od-row .ach-value { color: #aaa; }
                     .bbgl-ach-row.bbgl-ach-od-row .ach-value.ach-enh-od .ach-enh-e-label { color: #c06060; }
@@ -5534,14 +5439,24 @@
                         padding: 8px;
                         width: 100%;
                         box-sizing: border-box;
+                    }
+
+                    /* Hidden-scrollbar scroll areas — single source for the pattern. */
+                    .ledger-content,
+                    .calendar-wrapper,
+                    .bbgl-settings-scroll-area,
+                    .bbgl-modal-window,
+                    .bbgl-ach-scroll,
+                    #bbgl-panel:not(.bbgl-mode-page) #bbgl-bottom-panel {
                         -ms-overflow-style: none;
                         scrollbar-width: none;
                     }
 
-                    /**/
                     .ledger-content::-webkit-scrollbar,
                     .calendar-wrapper::-webkit-scrollbar,
-                    .bbgl-settings-scroll-area::-webkit-scrollbar {
+                    .bbgl-settings-scroll-area::-webkit-scrollbar,
+                    .bbgl-modal-window::-webkit-scrollbar,
+                    .bbgl-ach-scroll::-webkit-scrollbar {
                         display: none;
                     }
 
@@ -5615,12 +5530,6 @@
                         padding: 8px;
                         box-shadow: 0 10px 30px rgba(0, 0, 0, .6);
                         box-sizing: border-box;
-                        -ms-overflow-style: none;
-                        scrollbar-width: none;
-                    }
-
-                    .bbgl-modal-window::-webkit-scrollbar {
-                        display: none;
                     }
 
                     .bbgl-modal-scrollbox {
@@ -5656,7 +5565,6 @@
                         font-weight: 700;
                     }
 
-                    /**/
                     .bbgl-modal-scrollbox > strong {
                         display: block;
                         margin-top: 6px;
@@ -5875,8 +5783,6 @@
                     #bbgl-panel:not(.bbgl-mode-page) #bbgl-bottom-panel {
                         overflow-y: auto !important;
                         overflow-x: hidden !important;
-                        scrollbar-width: none;
-                        -ms-overflow-style: none;
                     }
 
                     #bbgl-panel:not(.bbgl-mode-page) .bbgl-grid-container {
@@ -5930,7 +5836,6 @@
                     }
 
                     #bbgl-panel.bbgl-expanded:not(.bbgl-mode-page) #bbgl-ledger-toggle {
-                        /**/
                         left: 32px !important;
                     }
 
@@ -6039,7 +5944,7 @@
                     }
 
                     #bbgl-panel.bbgl-expanded:not(.bbgl-mode-page) .sticker-slot {
-                        height: min(clamp(88px, calc(75px + 2.6cqi), 88px), clamp(88px, calc(75px + 2.4cqb), 88px)) !important;
+                        height: 88px !important;
                     }
 
                     #bbgl-panel.bbgl-expanded:not(.bbgl-mode-page) .sticker-slot-sponsor {
@@ -6210,13 +6115,7 @@
                         overflow: hidden;
                         overflow-x: hidden;
                         padding: var(--bbgl-ach-scroll-pt) var(--bbgl-ach-inset-x) var(--bbgl-ach-scroll-pb);
-                        -ms-overflow-style: none;
-                        scrollbar-width: none;
                         box-sizing: border-box;
-                    }
-
-                    .bbgl-ach-scroll::-webkit-scrollbar {
-                        display: none;
                     }
 
                     #bbgl-achievements-container {
@@ -6244,7 +6143,6 @@
                     #bbgl-ach-pages {
                         container-type: inline-size;
                         container-name: bbgl-ach;
-                        /**/
                         width: 100%;
                         box-sizing: border-box;
                         flex: 1;
@@ -6353,7 +6251,6 @@
                         width: 100%;
                         box-sizing: border-box;
                         background: 0 0;
-                        border: none;
                         box-shadow: none;
                         border-radius: 0;
                         margin: 0;
@@ -6369,7 +6266,6 @@
                         transition: color .15s;
                     }
 
-                    /**/
                     .bbgl-ach-subsection-title {
                         cursor: pointer;
                         position: relative;
@@ -6392,7 +6288,6 @@
                         transition: color .15s;
                     }
 
-                    /**/
                     body:not(.is-touch-device) .bbgl-ach-section-title:hover,
                     body:not(.is-touch-device) .bbgl-ach-subsection-title:hover {
                         color: #c8c8c8;
@@ -6551,26 +6446,6 @@
                         font-weight: 550;
                     }
 
-                    .bbgl-ach-row .ach-sub.ach-stat-str {
-                        color: #3264c6;
-                    }
-
-                    .bbgl-ach-row .ach-sub.ach-stat-def {
-                        color: #dc3912;
-                    }
-
-                    .bbgl-ach-row .ach-sub.ach-stat-spd {
-                        color: #ff9900;
-                    }
-
-                    .bbgl-ach-row .ach-sub.ach-stat-dex {
-                        color: #109618;
-                    }
-
-                    .bbgl-ach-row .ach-sub.ach-stat-tot {
-                        color: #9d039d;
-                    }
-
                     .ach-null {
                         color: #444;
                     }
@@ -6584,8 +6459,7 @@
                         color: #eaeaea;
                     }
 
-                    #bbgl-panel.bbgl-expanded .bbgl-ach-row .ach-value.ach-happy-col,
-                    #bbgl-panel.bbgl-mode-page .bbgl-ach-row .ach-value.ach-happy-col {
+                    #bbgl-panel:is(.bbgl-expanded, .bbgl-mode-page) .bbgl-ach-row .ach-value.ach-happy-col {
                         display: inline-flex;
                         min-width: 5.5em;
                     }
@@ -6594,8 +6468,7 @@
                         display: none;
                     }
 
-                    #bbgl-panel.bbgl-expanded .bbgl-ach-row .ach-value.ach-enh-gained,
-                    #bbgl-panel.bbgl-mode-page .bbgl-ach-row .ach-value.ach-enh-gained {
+                    #bbgl-panel:is(.bbgl-expanded, .bbgl-mode-page) .bbgl-ach-row .ach-value.ach-enh-gained {
                         display: inline-flex;
                         min-width: 5.5em;
                     }
@@ -6606,13 +6479,11 @@
                         display: none;
                     }
 
-                    #bbgl-panel.bbgl-expanded .bbgl-ach-od-row,
-                    #bbgl-panel.bbgl-mode-page .bbgl-ach-od-row {
+                    #bbgl-panel:is(.bbgl-expanded, .bbgl-mode-page) .bbgl-ach-od-row {
                         display: flex;
                     }
 
-                    #bbgl-panel.bbgl-expanded .ach-unit,
-                    #bbgl-panel.bbgl-mode-page .ach-unit {
+                    #bbgl-panel:is(.bbgl-expanded, .bbgl-mode-page) .ach-unit {
                         display: inline;
                     }
 
@@ -6628,8 +6499,7 @@
                         letter-spacing: .01em;
                     }
 
-                    #bbgl-panel.bbgl-expanded .ach-date,
-                    #bbgl-panel.bbgl-mode-page .ach-date {
+                    #bbgl-panel:is(.bbgl-expanded, .bbgl-mode-page) .ach-date {
                         display: block;
                     }
 
@@ -6772,12 +6642,10 @@
                         text-align: left;
                     }
 
-                    /**/
                     .bbgl-ach-section-page0 .ach-grid-label-area .ach-k {
                         font-weight: 500;
                         color: #bbb;
                         font-family: var(--bbgl-ach-font);
-                        /**/
                         white-space: nowrap;
                         overflow: hidden;
                         text-overflow: ellipsis;
@@ -6803,13 +6671,11 @@
                         word-break: normal;
                     }
 
-                    #bbgl-panel.bbgl-expanded .bbgl-ach-section-page0 .bbgl-ach-grid-header .bbgl-ach-section-title,
-                    #bbgl-panel.bbgl-mode-page .bbgl-ach-section-page0 .bbgl-ach-grid-header .bbgl-ach-section-title {
+                    #bbgl-panel:is(.bbgl-expanded, .bbgl-mode-page) .bbgl-ach-section-page0 .bbgl-ach-grid-header .bbgl-ach-section-title {
                         white-space: nowrap;
                     }
 
-                    #bbgl-panel.bbgl-expanded .bbgl-ach-section-page0 .bbgl-ach-grid-header .bbgl-ach-section-hint,
-                    #bbgl-panel.bbgl-mode-page .bbgl-ach-section-page0 .bbgl-ach-grid-header .bbgl-ach-section-hint {
+                    #bbgl-panel:is(.bbgl-expanded, .bbgl-mode-page) .bbgl-ach-section-page0 .bbgl-ach-grid-header .bbgl-ach-section-hint {
                         display: -webkit-box;
                         -webkit-line-clamp: 2;
                         -webkit-box-orient: vertical;
@@ -6837,8 +6703,7 @@
                         text-transform: none;
                     }
 
-                    #bbgl-panel.bbgl-expanded .bbgl-ach-section-hint,
-                    #bbgl-panel.bbgl-mode-page .bbgl-ach-section-hint {
+                    #bbgl-panel:is(.bbgl-expanded, .bbgl-mode-page) .bbgl-ach-section-hint {
                         display: block;
                     }
 
@@ -6853,8 +6718,7 @@
                         letter-spacing: .01em;
                     }
 
-                    #bbgl-panel.bbgl-expanded .ach-paren,
-                    #bbgl-panel.bbgl-mode-page .ach-paren {
+                    #bbgl-panel:is(.bbgl-expanded, .bbgl-mode-page) .ach-paren {
                         display: block;
                     }
 
@@ -6865,22 +6729,6 @@
                         letter-spacing: .04em;
                         text-align: center;
                         line-height: 1.2;
-                    }
-
-                    .ach-stat-header.ach-stat-str {
-                        color: #3264c6;
-                    }
-
-                    .ach-stat-header.ach-stat-def {
-                        color: #dc3912;
-                    }
-
-                    .ach-stat-header.ach-stat-spd {
-                        color: #ff9900;
-                    }
-
-                    .ach-stat-header.ach-stat-dex {
-                        color: #109618;
                     }
 
                     .bbgl-ach-stat-cell {
@@ -6939,10 +6787,7 @@
                         font-variant-numeric: tabular-nums;
                     }
 
-                    #bbgl-panel.bbgl-expanded .bbgl-ach-stat-cell .ach-date,
-                    #bbgl-panel.bbgl-mode-page .bbgl-ach-stat-cell .ach-date,
-                    #bbgl-panel.bbgl-expanded .bbgl-ach-stat-cell .ach-time,
-                    #bbgl-panel.bbgl-mode-page .bbgl-ach-stat-cell .ach-time {
+                    #bbgl-panel:is(.bbgl-expanded, .bbgl-mode-page) .bbgl-ach-stat-cell :is(.ach-date, .ach-time) {
                         display: block;
                     }
 
@@ -6987,23 +6832,13 @@
                         display: inline;
                     }
 
-                    #bbgl-panel.bbgl-expanded .ach-streak-days-inline,
-                    #bbgl-panel.bbgl-mode-page .ach-streak-days-inline {
-                        /**/
+                    #bbgl-panel:is(.bbgl-expanded, .bbgl-mode-page) .ach-streak-days-inline {
                         display: none;
-                    }
-
-                    .ach-stat-header.ach-stat-tot {
-                        color: #9d039d;
                     }
 
                     .bbgl-ach-section-page1 .bbgl-ach-grid-header,
                     .bbgl-ach-section-page1 .bbgl-ach-row-multi {
                         grid-template-columns: minmax(0, 28%) repeat(5, minmax(0, 1fr));
-                    }
-
-                    .bbgl-ach-stat-cell .ach-value.ach-stat-tot {
-                        color: #9d039d;
                     }
 
                     .bbgl-ach-section-page1 .bbgl-ach-stat-cell-total .ach-value {
@@ -7022,8 +6857,7 @@
                         font-variant-numeric: tabular-nums;
                     }
 
-                    #bbgl-panel.bbgl-expanded .bbgl-ach-streak-date-inline,
-                    #bbgl-panel.bbgl-mode-page .bbgl-ach-streak-date-inline {
+                    #bbgl-panel:is(.bbgl-expanded, .bbgl-mode-page) .bbgl-ach-streak-date-inline {
                         display: none;
                     }
 
@@ -7054,14 +6888,12 @@
                         grid-column: 1 / -1;
                         justify-self: end;
                         text-align: right;
-                        /**/
                         padding: 2px 6px;
                         border-radius: 4px;
                         transition: background-color .12s;
                         font-family: var(--bbgl-ach-font);
                         font-size: clamp(10px, 2cqi, 13px);
                         color: #bbb;
-                        /**/
                         font-weight: 500;
                         letter-spacing: .02em;
                         white-space: nowrap;
@@ -7076,7 +6908,6 @@
                     .bbgl-ach-consistency-row .ach-cons-val {
                         color: #eaeaea;
                         font-family: var(--bbgl-ach-val-font);
-                        /**/
                         font-variant-numeric: tabular-nums;
                         font-weight: 600;
                     }
@@ -7084,12 +6915,10 @@
                     .bbgl-ach-consistency-row .ach-cons-days {
                         color: #888;
                         font-family: var(--bbgl-ach-val-font);
-                        /**/
                         font-variant-numeric: tabular-nums;
                     }
 
-                    #bbgl-panel.bbgl-expanded .bbgl-ach-section-page0 .ach-k,
-                    #bbgl-panel.bbgl-mode-page .bbgl-ach-section-page0 .ach-k {
+                    #bbgl-panel:is(.bbgl-expanded, .bbgl-mode-page) .bbgl-ach-section-page0 .ach-k {
                         white-space: normal;
                         overflow: visible;
                         text-overflow: clip;
@@ -7108,13 +6937,11 @@
                         display: inline;
                     }
 
-                    #bbgl-panel.bbgl-expanded .ach-title-short,
-                    #bbgl-panel.bbgl-mode-page .ach-title-short {
+                    #bbgl-panel:is(.bbgl-expanded, .bbgl-mode-page) .ach-title-short {
                         display: none;
                     }
 
-                    #bbgl-panel.bbgl-expanded .ach-title-long,
-                    #bbgl-panel.bbgl-mode-page .ach-title-long {
+                    #bbgl-panel:is(.bbgl-expanded, .bbgl-mode-page) .ach-title-long {
                         display: inline;
                     }
 
@@ -7131,13 +6958,11 @@
                         display: inline;
                     }
 
-                    #bbgl-panel.bbgl-expanded .ach-cons-short,
-                    #bbgl-panel.bbgl-mode-page .ach-cons-short {
+                    #bbgl-panel:is(.bbgl-expanded, .bbgl-mode-page) .ach-cons-short {
                         display: none;
                     }
 
-                    #bbgl-panel.bbgl-expanded .ach-cons-long,
-                    #bbgl-panel.bbgl-mode-page .ach-cons-long {
+                    #bbgl-panel:is(.bbgl-expanded, .bbgl-mode-page) .ach-cons-long {
                         display: inline;
                     }
 
@@ -7211,11 +7036,9 @@
                         flex: 1;
                     }
 
-                    #bbgl-panel.bbgl-expanded .bbgl-ach-hh-label,
-                    #bbgl-panel.bbgl-mode-page .bbgl-ach-hh-label {
+                    #bbgl-panel:is(.bbgl-expanded, .bbgl-mode-page) .bbgl-ach-hh-label {
                         flex-direction: column;
                         align-items: flex-start;
-                        /**/
                         gap: 0;
                     }
 
@@ -7240,8 +7063,7 @@
                         flex-shrink: 0;
                     }
 
-                    #bbgl-panel.bbgl-expanded .bbgl-ach-hh-cells,
-                    #bbgl-panel.bbgl-mode-page .bbgl-ach-hh-cells {
+                    #bbgl-panel:is(.bbgl-expanded, .bbgl-mode-page) .bbgl-ach-hh-cells {
                         align-items: flex-end;
                     }
 
@@ -7252,7 +7074,6 @@
                         min-width: 32px;
                     }
 
-                    /**/
                     .bbgl-ach-hh-val {
                         font-family: var(--bbgl-ach-val-font);
                         font-variant-numeric: tabular-nums;
@@ -7273,28 +7094,6 @@
                         margin-top: 1px;
                     }
 
-                    .bbgl-ach-hh-tag.ach-stat-str {
-                        color: #3264c6;
-                    }
-
-                    .bbgl-ach-hh-tag.ach-stat-def {
-                        color: #dc3912;
-                    }
-
-                    /**/
-                    .bbgl-ach-hh-tag.ach-stat-spd {
-                        color: #ff9900;
-                    }
-
-                    .bbgl-ach-hh-tag.ach-stat-dex {
-                        color: #109618;
-                    }
-
-                    /**/
-                    .bbgl-ach-hh-tag.ach-stat-tot {
-                        color: #999;
-                    }
-
                     .bbgl-ach-hh-date-line {
                         font-family: var(--bbgl-ach-val-font);
                         color: #888;
@@ -7303,8 +7102,7 @@
                         font-size: clamp(10px, 1.8cqi, 11.5px);
                     }
 
-                    #bbgl-panel.bbgl-expanded .bbgl-ach-hh-date-line,
-                    #bbgl-panel.bbgl-mode-page .bbgl-ach-hh-date-line {
+                    #bbgl-panel:is(.bbgl-expanded, .bbgl-mode-page) .bbgl-ach-hh-date-line {
                         margin-top: 1px;
                     }
 
@@ -7314,16 +7112,13 @@
                         gap: 4px;
                     }
 
-                    #bbgl-panel.bbgl-expanded .bbgl-ach-hh-cell-total,
-                    #bbgl-panel.bbgl-mode-page .bbgl-ach-hh-cell-total {
+                    #bbgl-panel:is(.bbgl-expanded, .bbgl-mode-page) .bbgl-ach-hh-cell-total {
                         flex-direction: column;
                         align-items: center;
-                        /**/
                         gap: 0;
                     }
 
-                    #bbgl-panel.bbgl-expanded .bbgl-ach-hh-cell-total .bbgl-ach-hh-tag,
-                    #bbgl-panel.bbgl-mode-page .bbgl-ach-hh-cell-total .bbgl-ach-hh-tag {
+                    #bbgl-panel:is(.bbgl-expanded, .bbgl-mode-page) .bbgl-ach-hh-cell-total .bbgl-ach-hh-tag {
                         order: 1;
                     }
 
@@ -7331,8 +7126,7 @@
                         display: none;
                     }
 
-                    #bbgl-panel.bbgl-expanded .bbgl-ach-hh-time,
-                    #bbgl-panel.bbgl-mode-page .bbgl-ach-hh-time {
+                    #bbgl-panel:is(.bbgl-expanded, .bbgl-mode-page) .bbgl-ach-hh-time {
                         display: inline;
                     }
 
@@ -7340,8 +7134,7 @@
                         display: none;
                     }
 
-                    #bbgl-panel.bbgl-expanded .bbgl-ach-hh-cell-stat,
-                    #bbgl-panel.bbgl-mode-page .bbgl-ach-hh-cell-stat {
+                    #bbgl-panel:is(.bbgl-expanded, .bbgl-mode-page) .bbgl-ach-hh-cell-stat {
                         display: flex;
                     }
 
