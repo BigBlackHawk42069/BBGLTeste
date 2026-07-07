@@ -3617,33 +3617,117 @@
                         opacity: 0 !important;
                     }
 
-                    /* Weekly-bar capsule sweep — was per-capsule SMIL (<animateTransform>/<animate>),
-                       swapped for one shared CSS animation so the compositor (not the main thread)
-                       drives every simultaneously-lit capsule across a populated calendar. */
-                    .bbgl-cap-sweep {
-                        transform-box: fill-box;
-                        will-change: transform, opacity;
-                        animation: bbgl-cap-sweep-move-kf 8s cubic-bezier(.3, 0, .7, 1) infinite,
-                                   bbgl-cap-sweep-fade-kf 8s linear infinite;
+                    /* Weekly-bar capsule sweep — was per-capsule SMIL (<animateTransform>/<animate>)
+                       inside the SVG, then a shared CSS animation on an SVG shape. Neither got a
+                       real GPU compositor layer (inline SVG shapes don't reliably get one for
+                       transform/opacity, especially combined with clip-path), so both still forced
+                       real per-frame repainting. This is now a plain HTML overlay instead: each lit
+                       capsule's fill window gets a small position:absolute, overflow:hidden div
+                       (bbgl-cap-win) placed over the SVG via percentages of the shared track (the
+                       SVG's viewBox scales the same way, so they stay aligned at any panel size),
+                       containing the animated gradient band (bbgl-cap-sweep). overflow:hidden is a
+                       reliably GPU-composited clip, unlike SVG clip-path, so the animation itself
+                       is now genuinely compositor-only. */
+                    .bbgl-cap-overlay {
+                        position: absolute;
+                        inset: 0;
+                        pointer-events: none;
                     }
 
-                    @keyframes bbgl-cap-sweep-move-kf {
+                    .bbgl-cap-win {
+                        position: absolute;
+                        overflow: hidden;
+                    }
+
+                    .bbgl-cap-sweep {
+                        position: absolute;
+                        inset: 0;
+                        opacity: 0;
+                    }
+
+                    /* Only animate while the row is actually being looked at — hovered, the
+                       currently-viewed week, or touch-scrubbed. At rest the sweep is an inert,
+                       non-animating opacity:0 div (near-zero cost); this cuts the number of
+                       simultaneously-animating sweeps from "every completed week on screen" down
+                       to "at most the one row the mouse is on". */
+                    .bbgl-weekly-track:hover .bbgl-cap-sweep,
+                    .bbgl-weekly-track.is-viewing .bbgl-cap-sweep,
+                    .bbgl-weekly-track.is-scrub-hovered .bbgl-cap-sweep {
+                        will-change: transform, opacity;
+                    }
+
+                    /* Two one-way local passes per capsule (see CAP_WIN_DELAY_FWD_S/BWD_S in
+                       buildCapsuleBar) instead of one capsule-local bounce — that's what makes the
+                       whole bar read as one band traveling to the far end and back, rather than
+                       each capsule bouncing on its own. */
+                    .bbgl-weekly-track:hover .bbgl-cap-sweep-pass-fwd,
+                    .bbgl-weekly-track.is-viewing .bbgl-cap-sweep-pass-fwd,
+                    .bbgl-weekly-track.is-scrub-hovered .bbgl-cap-sweep-pass-fwd {
+                        animation: bbgl-cap-sweep-move-fwd-kf 4s cubic-bezier(.3, 0, .7, 1) infinite,
+                                   bbgl-cap-sweep-fade-pass-kf 4s linear infinite;
+                    }
+
+                    .bbgl-weekly-track:hover .bbgl-cap-sweep-pass-bwd,
+                    .bbgl-weekly-track.is-viewing .bbgl-cap-sweep-pass-bwd,
+                    .bbgl-weekly-track.is-scrub-hovered .bbgl-cap-sweep-pass-bwd {
+                        animation: bbgl-cap-sweep-move-bwd-kf 4s cubic-bezier(.3, 0, .7, 1) infinite,
+                                   bbgl-cap-sweep-fade-pass-kf 4s linear infinite;
+                    }
+
+                    /* Wide pure-white plateau at the core (not just a point) flanked by near-white,
+                       fading through the tier's own hue at the edges — a bigger, bolder flash.
+                       Still a static background, so only transform/opacity animate and the
+                       compositor-only behavior from earlier is unaffected. */
+                    .bbgl-cap-sweep-green {
+                        background: linear-gradient(90deg, rgba(68, 255, 0, 0) 0%, rgba(120, 255, 60, .95) 15%, rgba(210, 255, 190, 1) 35%, rgba(255, 255, 255, 1) 45%, rgba(255, 255, 255, 1) 55%, rgba(210, 255, 190, 1) 65%, rgba(120, 255, 60, .95) 85%, rgba(68, 255, 0, 0) 100%);
+                    }
+
+                    .bbgl-cap-sweep-gold {
+                        background: linear-gradient(90deg, rgba(255, 170, 0, 0) 0%, rgba(255, 210, 80, .95) 15%, rgba(255, 252, 230, 1) 35%, rgba(255, 255, 255, 1) 45%, rgba(255, 255, 255, 1) 55%, rgba(255, 252, 230, 1) 65%, rgba(255, 210, 80, .95) 85%, rgba(255, 170, 0, 0) 100%);
+                    }
+
+                    .bbgl-cap-sweep-diamond {
+                        background: linear-gradient(90deg, rgba(170, 68, 255, 0) 0%, rgba(215, 160, 255, .95) 15%, rgba(245, 245, 255, 1) 35%, rgba(255, 255, 255, 1) 45%, rgba(255, 255, 255, 1) 55%, rgba(225, 245, 255, 1) 65%, rgba(160, 215, 255, .95) 85%, rgba(68, 170, 255, 0) 100%);
+                    }
+
+                    /* One-way local pass, left-to-right — this is the "outbound" leg. Each
+                       capsule's own copy is delayed by CAP_WIN_DELAY_FWD_S so the whole row of
+                       capsules lights up in left-to-right order, like a single band traveling
+                       the length of the bar rather than each capsule bouncing independently. */
+                    @keyframes bbgl-cap-sweep-move-fwd-kf {
                         0% {
                             transform: translateX(-100%)
                         }
 
-                        25%, 100% {
+                        15%, 100% {
                             transform: translateX(100%)
                         }
                     }
 
-                    @keyframes bbgl-cap-sweep-fade-kf {
-                        0%, 24.9% {
-                            opacity: 1
+                    /* The "return" leg — same shape, opposite direction. Delayed per-capsule by
+                       CAP_WIN_DELAY_BWD_S, which runs in REVERSE order (rightmost capsule first)
+                       and only starts once every capsule's forward pass has finished, so the
+                       band appears to arrive at the right end, then travel all the way back. */
+                    @keyframes bbgl-cap-sweep-move-bwd-kf {
+                        0% {
+                            transform: translateX(100%)
                         }
 
-                        25%, 100% {
+                        15%, 100% {
+                            transform: translateX(-100%)
+                        }
+                    }
+
+                    /* Shared fade shape for both legs — fade in, a real sustained plateau at full
+                       brightness (not just a fleeting peak), fade out, then invisible for the rest
+                       of that leg's own idle stretch. */
+                    @keyframes bbgl-cap-sweep-fade-pass-kf {
+                        0%, 15%, 100% {
                             opacity: 0
+                        }
+
+                        3.75%, 11.25% {
+                            opacity: 1
                         }
                     }
 

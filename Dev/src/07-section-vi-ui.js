@@ -37,87 +37,102 @@
     const CAP_SLOT_H = CAP_H - 2 * CAP_PAD_Y;
     const CAP_TERM_W = 10; // terminal plate width at each end of the bay
 
-    // Gradients/patterns/filter + the 5 sweep clip-paths are pure functions of the bar's fixed
-    // dimensions above, so they're identical on every call regardless of slots/lit/animated. Built
-    // once here (instead of re-built by string concatenation on every buildCapsuleBar() call) and
-    // inlined into each returned <svg> — paint-server url(#...) references only resolve reliably
-    // within the same inline SVG fragment, so this can't be hoisted into a separate shared <svg>
-    // the way the clip-paths' geometry could be reused; it's still only built once, and
-    // buildCapsuleBar()'s own memo cache means the string concatenation itself only runs once
-    // per distinct bar state.
-    const CAP_BAR_DEFS = (() => {
-        let clipPaths = '';
+    // Gradients/patterns are pure functions of the bar's fixed dimensions above, so they're
+    // identical on every call regardless of slots/lit/animated. Built once here (instead of
+    // re-built by string concatenation on every buildCapsuleBar() call) and inlined into each
+    // returned <svg> — paint-server url(#...) references only resolve reliably within the same
+    // inline SVG fragment, so this can't be hoisted into a separate shared <svg>; it's still only
+    // built once, and buildCapsuleBar()'s own memo cache means the string concatenation itself
+    // only runs once per distinct bar state.
+    const CAP_BAR_DEFS =
+        `<defs>` +
+        `<pattern id="bbc-hatch" width="8" height="8" patternUnits="userSpaceOnUse">` +
+        `<line x1="0" y1="8" x2="8" y2="0" stroke="#fff" stroke-opacity=".1" stroke-width="1"/>` +
+        `<line x1="-2" y1="2" x2="2" y2="-2" stroke="#fff" stroke-opacity=".1" stroke-width="1"/>` +
+        `<line x1="6" y1="10" x2="10" y2="6" stroke="#fff" stroke-opacity=".1" stroke-width="1"/>` +
+        `</pattern>` +
+        `<linearGradient id="bbc-housing" x1="0" y1="0" x2="0" y2="1">` +
+        `<stop offset="0" stop-color="#202020"/><stop offset=".4" stop-color="#363636"/>` +
+        `<stop offset=".5" stop-color="#404040"/><stop offset=".6" stop-color="#363636"/>` +
+        `<stop offset="1" stop-color="#181818"/></linearGradient>` +
+        `<linearGradient id="bbc-term" x1="0" y1="${CAP_PAD_Y}" x2="0" y2="${CAP_PAD_Y + CAP_SLOT_H}" gradientUnits="userSpaceOnUse">` +
+        `<stop offset="0" stop-color="#1e1e1e"/><stop offset=".25" stop-color="#484848"/>` +
+        `<stop offset=".5" stop-color="#606060"/><stop offset=".75" stop-color="#484848"/>` +
+        `<stop offset="1" stop-color="#161616"/></linearGradient>` +
+        `<linearGradient id="bbc-recess-shadow" x1="0" y1="0" x2="0" y2="1">` +
+        `<stop offset="0" stop-color="#000" stop-opacity=".6"/><stop offset=".5" stop-color="#000" stop-opacity=".1"/><stop offset="1" stop-color="#000" stop-opacity="0"/></linearGradient>` +
+        `<linearGradient id="bbc-recess-shine" x1="0" y1="0" x2="0" y2="1">` +
+        `<stop offset="0" stop-color="#fff" stop-opacity="0"/><stop offset=".7" stop-color="#fff" stop-opacity="0"/><stop offset="1" stop-color="#fff" stop-opacity=".35"/></linearGradient>` +
+        `<linearGradient id="bbc-gD" x1="0" y1="1" x2="1" y2="0">` +
+        `<stop offset="0" stop-color="#004422"/><stop offset=".33" stop-color="#336611"/>` +
+        `<stop offset=".66" stop-color="#006644"/><stop offset="1" stop-color="#2d5c00"/></linearGradient>` +
+        `<linearGradient id="bbc-gL" x1="0" y1="1" x2="1" y2="0">` +
+        `<stop offset="0" stop-color="#008844"/><stop offset=".33" stop-color="#66bb22"/>` +
+        `<stop offset=".66" stop-color="#00cc88"/><stop offset="1" stop-color="#44aa00"/></linearGradient>` +
+        `<linearGradient id="bbc-oD" x1="0" y1="1" x2="1" y2="0">` +
+        `<stop offset="0" stop-color="#886600"/><stop offset=".33" stop-color="#aa7700"/>` +
+        `<stop offset=".66" stop-color="#ddbb66"/><stop offset="1" stop-color="#774400"/></linearGradient>` +
+        `<linearGradient id="bbc-oL" x1="0" y1="1" x2="1" y2="0">` +
+        `<stop offset="0" stop-color="#ffcc00"/><stop offset=".33" stop-color="#ffdd44"/>` +
+        `<stop offset=".66" stop-color="#fff8cc"/><stop offset="1" stop-color="#cc8800"/></linearGradient>` +
+        `<linearGradient id="bbc-dD" x1="0" y1="1" x2="1" y2="0">` +
+        `<stop offset="0" stop-color="#882299"/><stop offset=".33" stop-color="#3366aa"/>` +
+        `<stop offset=".66" stop-color="#339966"/><stop offset="1" stop-color="#993366"/></linearGradient>` +
+        `<linearGradient id="bbc-dL" x1="0" y1="1" x2="1" y2="0">` +
+        `<stop offset="0" stop-color="#ee77ff"/><stop offset=".33" stop-color="#88bbff"/>` +
+        `<stop offset=".66" stop-color="#77ffcc"/><stop offset="1" stop-color="#ff77cc"/></linearGradient>` +
+        `<filter id="bbc-tube-glow" x="-20%" y="-30%" width="140%" height="160%" color-interpolation-filters="sRGB">` +
+        `<feGaussianBlur stdDeviation="4" result="blur"/>` +
+        `<feMerge><feMergeNode in="blur"/><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>` +
+        `</filter>` +
+        `<linearGradient id="bbc-s" x1="0" y1="0" x2="0" y2="1">` +
+        `<stop offset="0" stop-color="#1e1e1e"/><stop offset=".35" stop-color="#484848"/>` +
+        `<stop offset=".5" stop-color="#686868"/><stop offset=".65" stop-color="#484848"/>` +
+        `<stop offset="1" stop-color="#161616"/></linearGradient>` +
+        `</defs>`;
+
+    // Sweep overlay geometry (HTML, not SVG — see .bbgl-cap-sweep in CSS_STYLES for why). The
+    // SVG uses viewBox="0 0 500 100" + preserveAspectRatio="none", so it stretches to exactly
+    // fill its container; expressing each capsule's fill window as a PERCENTAGE of that same
+    // container keeps an HTML overlay perfectly aligned with the SVG art across every panel
+    // size/mode, with no JS resize tracking needed.
+    //
+    // Each capsule window plays TWO one-way local passes per cycle — a forward (L->R) one and a
+    // backward (R->L) one — instead of one capsule-local back-and-forth. That's what actually
+    // recreates "one band travels to the far end of the bar, then travels all the way back":
+    // the forward pass is staggered left-to-right across all 5 capsules (CAP_WIN_DELAY_FWD_S,
+    // small first, large last), then — only once every capsule has finished its forward pass —
+    // the backward pass starts, staggered in REVERSE (CAP_WIN_DELAY_BWD_S: the rightmost capsule
+    // goes first, the leftmost goes last), so the return trip visually starts at the right edge
+    // and travels back to the left edge, mirroring the outbound trip.
+    const CAP_WIN_LEFT_PCT = [];
+    const CAP_WIN_DELAY_FWD_S = [];
+    const CAP_WIN_DELAY_BWD_S = [];
+    let CAP_WIN_WIDTH_PCT, CAP_WIN_TOP_PCT, CAP_WIN_HEIGHT_PCT;
+    (() => {
+        // All decoupled from the keyframes' own local-pass duration (CSS_STYLES .bbgl-cap-sweep,
+        // 15% of the 4s cycle = 0.6s) on purpose. PASS_S here just needs to match that so a
+        // capsule's own pass has time to fully play (fade in, hold bright, fade out) before the
+        // cycle wraps; FORWARD_SPREAD_S/BACKWARD_SPREAD_S control how long each leg of the trip
+        // takes, kept comfortably above the ~0.2s per-capsule step (so neighbors overlap into a
+        // continuous wave, not disconnected blips) and small enough that the two legs plus their
+        // passes still fit inside the cycle with idle time left over.
+        const PASS_S = 0.6;
+        const FORWARD_SPREAD_S = 1.2;
+        const BACKWARD_SPREAD_S = 1.2;
+        const PHASE1_END_S = FORWARD_SPREAD_S + PASS_S;
         for (let i = 0; i < CAP_N; i++) {
             const bx = CAP_PAD_X + i * (CAP_SLOT_W + CAP_GAP),
                 gx = bx + CAP_TERM_W, gw = CAP_SLOT_W - 2 * CAP_TERM_W,
                 winY = CAP_PAD_Y + 18, winH = CAP_SLOT_H - 18 * 2,
                 fy = winY + 3, fh = winH - 3 * 2;
-            clipPaths += `<clipPath id="bbc-scp${i}"><rect x="${gx.toFixed(2)}" y="${fy}" width="${gw.toFixed(2)}" height="${fh}"/></clipPath>`;
+            CAP_WIN_LEFT_PCT.push(gx / CAP_W * 100);
+            CAP_WIN_DELAY_FWD_S.push(gx / CAP_W * FORWARD_SPREAD_S);
+            CAP_WIN_DELAY_BWD_S.push(PHASE1_END_S + (CAP_W - gx) / CAP_W * BACKWARD_SPREAD_S);
+            CAP_WIN_WIDTH_PCT = gw / CAP_W * 100;
+            CAP_WIN_TOP_PCT = fy / CAP_H * 100;
+            CAP_WIN_HEIGHT_PCT = fh / CAP_H * 100;
         }
-        return `<defs>` +
-            `<pattern id="bbc-hatch" width="8" height="8" patternUnits="userSpaceOnUse">` +
-            `<line x1="0" y1="8" x2="8" y2="0" stroke="#fff" stroke-opacity=".1" stroke-width="1"/>` +
-            `<line x1="-2" y1="2" x2="2" y2="-2" stroke="#fff" stroke-opacity=".1" stroke-width="1"/>` +
-            `<line x1="6" y1="10" x2="10" y2="6" stroke="#fff" stroke-opacity=".1" stroke-width="1"/>` +
-            `</pattern>` +
-            `<linearGradient id="bbc-housing" x1="0" y1="0" x2="0" y2="1">` +
-            `<stop offset="0" stop-color="#202020"/><stop offset=".4" stop-color="#363636"/>` +
-            `<stop offset=".5" stop-color="#404040"/><stop offset=".6" stop-color="#363636"/>` +
-            `<stop offset="1" stop-color="#181818"/></linearGradient>` +
-            `<linearGradient id="bbc-term" x1="0" y1="${CAP_PAD_Y}" x2="0" y2="${CAP_PAD_Y + CAP_SLOT_H}" gradientUnits="userSpaceOnUse">` +
-            `<stop offset="0" stop-color="#1e1e1e"/><stop offset=".25" stop-color="#484848"/>` +
-            `<stop offset=".5" stop-color="#606060"/><stop offset=".75" stop-color="#484848"/>` +
-            `<stop offset="1" stop-color="#161616"/></linearGradient>` +
-            `<linearGradient id="bbc-recess-shadow" x1="0" y1="0" x2="0" y2="1">` +
-            `<stop offset="0" stop-color="#000" stop-opacity=".6"/><stop offset=".5" stop-color="#000" stop-opacity=".1"/><stop offset="1" stop-color="#000" stop-opacity="0"/></linearGradient>` +
-            `<linearGradient id="bbc-recess-shine" x1="0" y1="0" x2="0" y2="1">` +
-            `<stop offset="0" stop-color="#fff" stop-opacity="0"/><stop offset=".7" stop-color="#fff" stop-opacity="0"/><stop offset="1" stop-color="#fff" stop-opacity=".35"/></linearGradient>` +
-            `<linearGradient id="bbc-gD" x1="0" y1="1" x2="1" y2="0">` +
-            `<stop offset="0" stop-color="#004422"/><stop offset=".33" stop-color="#336611"/>` +
-            `<stop offset=".66" stop-color="#006644"/><stop offset="1" stop-color="#2d5c00"/></linearGradient>` +
-            `<linearGradient id="bbc-gL" x1="0" y1="1" x2="1" y2="0">` +
-            `<stop offset="0" stop-color="#008844"/><stop offset=".33" stop-color="#66bb22"/>` +
-            `<stop offset=".66" stop-color="#00cc88"/><stop offset="1" stop-color="#44aa00"/></linearGradient>` +
-            `<linearGradient id="bbc-oD" x1="0" y1="1" x2="1" y2="0">` +
-            `<stop offset="0" stop-color="#886600"/><stop offset=".33" stop-color="#aa7700"/>` +
-            `<stop offset=".66" stop-color="#ddbb66"/><stop offset="1" stop-color="#774400"/></linearGradient>` +
-            `<linearGradient id="bbc-oL" x1="0" y1="1" x2="1" y2="0">` +
-            `<stop offset="0" stop-color="#ffcc00"/><stop offset=".33" stop-color="#ffdd44"/>` +
-            `<stop offset=".66" stop-color="#fff8cc"/><stop offset="1" stop-color="#cc8800"/></linearGradient>` +
-            `<linearGradient id="bbc-dD" x1="0" y1="1" x2="1" y2="0">` +
-            `<stop offset="0" stop-color="#882299"/><stop offset=".33" stop-color="#3366aa"/>` +
-            `<stop offset=".66" stop-color="#339966"/><stop offset="1" stop-color="#993366"/></linearGradient>` +
-            `<linearGradient id="bbc-dL" x1="0" y1="1" x2="1" y2="0">` +
-            `<stop offset="0" stop-color="#ee77ff"/><stop offset=".33" stop-color="#88bbff"/>` +
-            `<stop offset=".66" stop-color="#77ffcc"/><stop offset="1" stop-color="#ff77cc"/></linearGradient>` +
-            `<filter id="bbc-tube-glow" x="-20%" y="-30%" width="140%" height="160%" color-interpolation-filters="sRGB">` +
-            `<feGaussianBlur stdDeviation="4" result="blur"/>` +
-            `<feMerge><feMergeNode in="blur"/><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>` +
-            `</filter>` +
-            `<linearGradient id="bbc-gBr" x1="0" y1="0" x2="1" y2="0">` +
-            `<stop offset="0" stop-color="#44ff00" stop-opacity="0"/>` +
-            `<stop offset=".25" stop-color="#88ff33" stop-opacity=".95"/>` +
-            `<stop offset=".5" stop-color="#eeffcc" stop-opacity="1"/>` +
-            `<stop offset=".75" stop-color="#88ff33" stop-opacity=".95"/>` +
-            `<stop offset="1" stop-color="#44ff00" stop-opacity="0"/></linearGradient>` +
-            `<linearGradient id="bbc-oBr" x1="0" y1="0" x2="1" y2="0">` +
-            `<stop offset="0" stop-color="#ffaa00" stop-opacity="0"/>` +
-            `<stop offset=".25" stop-color="#ffcc44" stop-opacity=".95"/>` +
-            `<stop offset=".5" stop-color="#fffff0" stop-opacity="1"/>` +
-            `<stop offset=".75" stop-color="#ffcc44" stop-opacity=".95"/>` +
-            `<stop offset="1" stop-color="#ffaa00" stop-opacity="0"/></linearGradient>` +
-            `<linearGradient id="bbc-dBr" x1="0" y1="0" x2="1" y2="0">` +
-            `<stop offset="0" stop-color="#aa44ff" stop-opacity="0"/>` +
-            `<stop offset=".25" stop-color="#cc88ff" stop-opacity=".95"/>` +
-            `<stop offset=".5" stop-color="#eeeeff" stop-opacity="1"/>` +
-            `<stop offset=".75" stop-color="#88ccff" stop-opacity=".95"/>` +
-            `<stop offset="1" stop-color="#44aaff" stop-opacity="0"/></linearGradient>` +
-            `<linearGradient id="bbc-s" x1="0" y1="0" x2="0" y2="1">` +
-            `<stop offset="0" stop-color="#1e1e1e"/><stop offset=".35" stop-color="#484848"/>` +
-            `<stop offset=".5" stop-color="#686868"/><stop offset=".65" stop-color="#484848"/>` +
-            `<stop offset="1" stop-color="#161616"/></linearGradient>` +
-            clipPaths +
-            `</defs>`;
     })();
 
     // Output is a pure function of (slots, lit, animated) — memoize the built markup so
@@ -138,13 +153,13 @@
         const colorKey = { green: 'g', gold: 'o', diamond: 'd', silver: 's' };
         const f = (v) => v.toFixed(2);
         let out = `<rect width="${W}" height="${H}" fill="url(#bbc-housing)"/>`;
-        // Lit fills are collected separately so all of them share ONE bbc-tube-glow filter group
-        // instead of one filter group per capsule (up to 5 per week) — same blur, same look, but
-        // a single filter/raster surface instead of up to five. Sweeps are collected separately
-        // too so they still paint on top of the (now-batched) glow, matching the original
-        // per-capsule stacking order (rails/terminals -> glow fill -> sweep).
-        let litFills = '';
-        let sweeps = '';
+        // Sweep windows are collected separately and appended as an HTML overlay (see
+        // .bbgl-cap-overlay in CSS_STYLES) instead of SVG content — inline SVG shapes don't
+        // reliably get their own GPU compositor layer for CSS transform/opacity animation, so an
+        // animated SVG sweep forces real per-frame repainting. A plain HTML div clipped with
+        // overflow:hidden does get that layer, reliably, so that's where the only animated part
+        // of this bar lives now.
+        let overlay = '';
 
         for (let i = 0; i < n; i++) {
             const bx = padX + i * (slotW + gap);
@@ -191,36 +206,35 @@
             out += `<rect x="${f(gx)}" y="${f(gy + gh - railH)}" width="${f(gw)}" height="${railH}" fill="url(#bbc-term)"/>`;
             out += `<rect x="${f(gx)}" y="${f(gy + gh - railH)}" width="${f(gw)}" height="${railH}" fill="url(#bbc-hatch)"/>`;
 
-            // Colour fill — completed tubes get a glow bloom that bleeds past the tube edges.
-            // Lit, non-silver fills go to litFills (batched into one filter group after the loop);
-            // everything else paints inline, same as before.
-            const fillMarkup =
-                `<rect x="${f(gx)}" y="${fy}" width="${f(gw)}" height="${fh}" fill="url(#bbc-${fillId})"/>` +
-                // Recess shadow — lighter on completed weeks so lit colors read brighter
-                `<rect x="${f(gx)}" y="${fy}" width="${f(gw)}" height="${fh}" fill="url(#bbc-recess-shadow)" opacity="${lit ? 0.4 : 1}"/>` +
-                // Recess shine — faint bright line at very bottom edge (reflected ambient light)
-                `<rect x="${f(gx)}" y="${fy}" width="${f(gw)}" height="${fh}" fill="url(#bbc-recess-shine)"/>`;
-            if (lit && color !== 'silver') litFills += fillMarkup;
-            else out += fillMarkup;
-            // Inner sweep — wave travels left→right across the full bar; each capsule's clip window
-            // sees it pass through at the right moment by position, no stagger needed. Driven by
-            // the shared .bbgl-cap-sweep CSS animation (CSS_STYLES) instead of per-element SMIL —
-            // same 8s cycle/easing, but compositor-driven so it's cheap with many lit capsules at
-            // once (see bbgl-cap-sweep-move-kf / bbgl-cap-sweep-fade-kf).
+            // Colour fill — completed tubes get a glow bloom that bleeds past the tube edges. This
+            // filter is safe to keep static/per-capsule now: it's SVG content that never animates
+            // (the sweep lives in the HTML overlay below), so it's a one-time paint cost, not a
+            // per-frame one.
+            if (lit && color !== 'silver') out += `<g filter="url(#bbc-tube-glow)">`;
+            out += `<rect x="${f(gx)}" y="${fy}" width="${f(gw)}" height="${fh}" fill="url(#bbc-${fillId})"/>`;
+            // Recess shadow — lighter on completed weeks so lit colors read brighter
+            out += `<rect x="${f(gx)}" y="${fy}" width="${f(gw)}" height="${fh}" fill="url(#bbc-recess-shadow)" opacity="${lit ? 0.4 : 1}"/>`;
+            // Recess shine — faint bright line at very bottom edge (reflected ambient light)
+            out += `<rect x="${f(gx)}" y="${fy}" width="${f(gw)}" height="${fh}" fill="url(#bbc-recess-shine)"/>`;
+            if (lit && color !== 'silver') out += `</g>`;
+            // Inner sweep — one band travels all the way to the right end of the bar, then all
+            // the way back to the left. Each capsule plays its own local forward pass (delayed by
+            // CAP_WIN_DELAY_FWD_S, left-to-right order) and, once every capsule's forward pass has
+            // finished, its own local backward pass (CAP_WIN_DELAY_BWD_S, right-to-left order) —
+            // two one-way local passes per capsule instead of one capsule-local bounce, which is
+            // what actually makes it read as a single wave crossing the whole bar and returning.
             if (animated && color !== 'silver') {
-                const brightId = color === 'green' ? 'bbc-gBr' : color === 'gold' ? 'bbc-oBr' : 'bbc-dBr';
-                sweeps += `<g clip-path="url(#bbc-scp${i})">` +
-                    `<rect class="bbgl-cap-sweep" x="0" y="${fy}" width="${W}" height="${fh}" fill="url(#${brightId})"/>` +
-                    `</g>`;
+                overlay += `<div class="bbgl-cap-win" style="left:${CAP_WIN_LEFT_PCT[i].toFixed(2)}%;width:${CAP_WIN_WIDTH_PCT.toFixed(2)}%;top:${CAP_WIN_TOP_PCT.toFixed(2)}%;height:${CAP_WIN_HEIGHT_PCT.toFixed(2)}%">` +
+                    `<div class="bbgl-cap-sweep bbgl-cap-sweep-pass-fwd bbgl-cap-sweep-${color}" style="animation-delay:${CAP_WIN_DELAY_FWD_S[i].toFixed(3)}s"></div>` +
+                    `<div class="bbgl-cap-sweep bbgl-cap-sweep-pass-bwd bbgl-cap-sweep-${color}" style="animation-delay:${CAP_WIN_DELAY_BWD_S[i].toFixed(3)}s"></div>` +
+                    `</div>`;
             }
         }
 
-        if (litFills) out += `<g filter="url(#bbc-tube-glow)">${litFills}</g>`;
-        out += sweeps;
-
         const svg = `<svg class="bbgl-cap-svg" viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" xmlns="http://www.w3.org/2000/svg">${CAP_BAR_DEFS}${out}</svg>`;
-        _capBarCache.set(cacheKey, svg);
-        return svg;
+        const html = overlay ? svg + `<div class="bbgl-cap-overlay">${overlay}</div>` : svg;
+        _capBarCache.set(cacheKey, html);
+        return html;
     }
 
     function updateSummaryCharts() {
@@ -335,6 +349,15 @@
             }
         });
         c.appendChild(frag);
+        // Consume any pending persisted-selection restore (set by renderCell()/injectWeeklyBar()
+        // above) now that the built cells/bars are actually attached to the live DOM — calling
+        // openHistory() any earlier would leave updateCellSelection()'s querySelector unable to
+        // find the target, since it'd still be sitting in the detached fragment at that point.
+        if (runtime._pendingHistoryRestore) {
+            const { sl, label } = runtime._pendingHistoryRestore;
+            runtime._pendingHistoryRestore = null;
+            openHistory(sl, label);
+        }
         const tp = dom.topPanel;
         if (tp) {
             if (tp.classList.contains('viewing-graph')) GraphController.draw();
@@ -538,7 +561,13 @@
             else if (isInteractive) openHistory(sl, ds);
         };
         cont.appendChild(cell);
-        if (isInteractive && viewState.activeViewLabel === ds && calendarState.selectedLabel !== ds) openHistory(sl, ds);
+        // Restoring a persisted selection here would call openHistory() -> updateCellSelection(),
+        // which queries dom.calContainer for the matching element — but `cell` is still sitting in
+        // an unattached fragment at this point (frag isn't appended to the live container until
+        // renderPanelContent() finishes the whole month), so that query silently fails and the
+        // element never gets marked .is-viewing even though calendarState.selectedLabel becomes
+        // correct. Defer to a pending flag renderPanelContent() consumes only after attaching frag.
+        if (isInteractive && viewState.activeViewLabel === ds && calendarState.selectedLabel !== ds) runtime._pendingHistoryRestore = { sl, label: ds };
     }
 
     function injectWeeklyBar(cont, batch) {
@@ -581,7 +610,10 @@
             anchor.appendChild(tr);
             addCenterTab(sl);
             cont.appendChild(anchor);
-            if (viewState.activeViewLabel === sl.label && calendarState.selectedLabel !== sl.label) openHistory(sl, sl.label);
+            // See the matching comment in renderCell() — this element is still in an unattached
+            // fragment, so calling openHistory() here would silently fail to mark it .is-viewing.
+            // Defer to the pending flag renderPanelContent() consumes after attaching frag.
+            if (viewState.activeViewLabel === sl.label && calendarState.selectedLabel !== sl.label) runtime._pendingHistoryRestore = { sl, label: sl.label };
             return;
         }
         const { capsules, isCompleted } = computeWeekCompletion(sl._dailyList, hjDaySet, hjWeek[_wk] || 0);
@@ -590,7 +622,8 @@
         anchor.appendChild(tr);
         addCenterTab(sl);
         cont.appendChild(anchor);
-        if (viewState.activeViewLabel === sl.label && calendarState.selectedLabel !== sl.label) openHistory(sl, sl.label);
+        // Same fragment-timing issue as above — defer instead of calling openHistory() directly.
+        if (viewState.activeViewLabel === sl.label && calendarState.selectedLabel !== sl.label) runtime._pendingHistoryRestore = { sl, label: sl.label };
     }
 
     // career EXP + today's in-progress EXP — the live total both level bars display.

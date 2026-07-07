@@ -1720,7 +1720,11 @@
             _topCeilingCache = null;
         });
         window.addEventListener('bbgl:dataUpdated', () => {
-            renderPanelContent();
+            // renderPanelContent() rebuilds the whole visible month's DOM (day cells, weekly
+            // capsule bars, stickers) — real work with zero benefit if the panel isn't even on
+            // screen (e.g. the 30-minute background sync heartbeat firing while collapsed/closed).
+            // Mirrors the same guard the cross-tab sync handler already uses.
+            if (dom.panel && dom.panel.style.display !== 'none') renderPanelContent();
             updateLevelBar();
             renderBackfillButton();
         });
