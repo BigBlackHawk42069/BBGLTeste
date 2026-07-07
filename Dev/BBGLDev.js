@@ -132,7 +132,8 @@
     };
     const GAME = {
         GOLD_WEEK_JUMPS: 3,
-        HJ_WINDOW_SECONDS: 300,
+        HJ_WINDOW_SECONDS: 300, // legacy rolling-burst window, still used by the demo-mode data generator only
+        HJ_QUARTER_SECONDS: 900, // real HJ windows run from an Ecstasy dose to the next :00/:15/:30/:45 happy reset
         STAT_MAP: {
             5300: 'strength',
             5301: 'defense',
@@ -204,7 +205,8 @@
         XANAX_OD_LOG = 2291,
         LSD_OD_LOG = 2231,
         EX_OD_LOG = 2211,
-        ECAN_LOG = 2040;
+        ECAN_LOG = 2040,
+        ECSTASY_LOG = 2210;
     // Overlap buffer (seconds) subtracted from a group's last-success time to form its `from=` bound.
     // Comfortably exceeds the 2h heartbeat so a single missed beat still re-covers the gap; dedup
     // makes the overlap harmless.
@@ -803,16 +805,11 @@
         return 1 + Math.round(((date.getTime() - w1.getTime()) / 86400000 - 3 + (w1.getUTCDay() + 6) % 7) / 7);
     }
 
-    // Classify a single day into a capsule tier by energy spent (+ Happy Jump rules).
+    // Classify a single day into a capsule tier purely by its own energy spent. Happy Jump bonus
+    // capsules are a separate layer handled in computeWeekCapsules, not part of this.
     // Returns 'diamond' | 'gold' | 'green' | null (null = not capsule-worthy).
-    function classifyDay(d, hjDaySet = null, jumpGold = false) {
+    function classifyDay(d) {
         const e = d.eSpent ? d.eSpent.total : 0;
-        const isHJ = hjDaySet ? hjDaySet.has(d.date) : false;
-        if (isHJ) {
-            if (e >= 2000) return 'diamond';
-            if (jumpGold || e >= 1500) return 'gold';
-            return 'green';
-        }
         if (e >= 2000) return 'diamond';
         if (e >= 1500) return 'gold';
         if (e >= 1000) return 'green';
@@ -821,6 +818,9 @@
 
     // Overflow ranking — a higher tier overwrites a lower one. diamond > gold > green.
     const CAPSULE_RANK = { green: 1, gold: 2, diamond: 3 };
+
+    // Capsule units a tier is worth when placed (diamond counts double).
+    const TIER_UNITS = { green: 1, gold: 1, diamond: 2 };
 
     // Place one capsule unit of `color` into the 5-slot array.
     //  - Fill phase: drop into the leftmost empty slot (chronological append).
@@ -842,15 +842,36 @@
     }
 
     // Build the 5 capsule slots for a week, chronologically.
-    // green/gold = 1 unit, diamond = 2 units. Returns ['green'|'gold'|'diamond'|null] x5.
-    function computeWeekCapsules(days, hjDaySet = null, hjCount = 0) {
-        const jumpGold = hjCount >= GAME.GOLD_WEEK_JUMPS;
+    // Organic days: green/gold = 1 unit, diamond = 2 units (via classifyDay).
+    // Happy Jumps layer on top of that: the week's 1st HJ day grants 2 units, its 2nd HJ day
+    // grants 3 more (2+3=5 — two jumps alone complete a green week); a 3rd HJ that week doesn't
+    // add units (the pool's already full) but upgrades every still-green HJ unit to gold. Each HJ
+    // day's own organic tier is spent as upgrade credit on that jump's own units first (capped at
+    // however many units that jump granted), so a naturally gold/diamond HJ day still gets credit
+    // for its real performance instead of defaulting to green. A genuine HJ day's own eSpent is
+    // always >= the window's 1000E (the window is a subset of the day's clicks), so it's never
+    // classified below green here. Everything feeds the same rank-based overflow above, which is
+    // insertion-order independent, so this composes correctly with unrelated diamond days elsewhere
+    // in the week without any extra priority logic.
+    function computeWeekCapsules(days, hjDaySet = null) {
         const slots = [null, null, null, null, null];
+        const hjDays = hjDaySet ? days.filter(d => hjDaySet.has(d.date)) : [];
+        const jumpGold = hjDays.length >= GAME.GOLD_WEEK_JUMPS;
+        const JUMP_ALLOTMENT = [2, 3]; // units granted by the week's 1st and 2nd HJ day
         days.forEach(d => {
-            const tier = classifyDay(d, hjDaySet, jumpGold);
-            if (!tier) return;
-            placeCapsuleUnit(slots, tier);
-            if (tier === 'diamond') placeCapsuleUnit(slots, tier);
+            const jumpIdx = hjDays.indexOf(d);
+            if (jumpIdx === 0 || jumpIdx === 1) {
+                const jumpUnits = JUMP_ALLOTMENT[jumpIdx];
+                const naturalTier = classifyDay(d);
+                const upgradeUnits = Math.min(TIER_UNITS[naturalTier] || 0, jumpUnits);
+                for (let i = 0; i < upgradeUnits; i++) placeCapsuleUnit(slots, naturalTier);
+                for (let i = 0; i < jumpUnits - upgradeUnits; i++) placeCapsuleUnit(slots, jumpGold ? 'gold' : 'green');
+            } else {
+                const tier = classifyDay(d);
+                if (!tier) return;
+                placeCapsuleUnit(slots, tier);
+                if (tier === 'diamond') placeCapsuleUnit(slots, tier);
+            }
         });
         return slots;
     }
@@ -860,8 +881,8 @@
     //   isCompleted — all 5 capsules filled (1 sticker, green weekly bonus)
     //   isGold      — all 5 are gold-or-diamond (2 stickers, gold weekly bonus)
     //   isDiamond   — all 5 are diamond (diamond weekly bonus / diamond-week stat)
-    function computeWeekCompletion(days, hjDaySet = null, hjCount = 0) {
-        const capsules = computeWeekCapsules(days, hjDaySet, hjCount);
+    function computeWeekCompletion(days, hjDaySet = null) {
+        const capsules = computeWeekCapsules(days, hjDaySet);
         const filled = capsules.filter(c => c !== null);
         const isCompleted = filled.length === capsules.length;
         const isGold = isCompleted && filled.every(c => c === 'gold' || c === 'diamond');
@@ -1663,11 +1684,6 @@
 
                     #bbgl-panel.bbgl-mode-page .bbgl-header-wrapper {
                         flex: 0 0 clamp(108px, calc(108px + 89px * var(--bbgl-page-t)), 197px);
-                    }
-
-                    #bbgl-panel.bbgl-mode-page .bbgl-header-wrapper::before {
-                        left: 4px;
-                        right: 4px;
                     }
 
                     #bbgl-panel.bbgl-mode-page .bbgl-month-header {
@@ -3656,9 +3672,9 @@
                     .bbgl-header-wrapper::before {
                         content: "";
                         position: absolute;
-                        top: 4px;
-                        left: 4px;
-                        right: 4px;
+                        top: 0;
+                        left: 0;
+                        right: 0;
                         bottom: 0;
                         width: auto;
                         height: auto;
@@ -3882,7 +3898,7 @@
                         transition: all .2s;
                         align-self: flex-end;
                         transform-origin: center bottom;
-                        transform: translate(-2px, calc(-6px + var(--btn-lift, 0px)));
+                        transform: translate(-5px, calc(-6px + var(--btn-lift, 0px)));
                     }
 
                     /* Hover jump is a per-mode absolute (not a delta from rest):
@@ -3890,7 +3906,7 @@
                        (set per-row, e.g. .header-row--year) shifts it +1px shallower. */
                     .stats-btn:hover, .stats-btn.active {
                         opacity: 1;
-                        transform: translate(-2px, calc(var(--btn-hover-jump, -6px) + var(--btn-hover-adjust, 0px))) scale(1.15);
+                        transform: translate(-5px, calc(var(--btn-hover-jump, -6px) + var(--btn-hover-adjust, 0px))) scale(1.15);
                         filter: drop-shadow(0 0 6px rgba(216, 150, 224, 0.9)) drop-shadow(0 0 2px rgba(171, 71, 188, 1));
                     }
 
@@ -5865,9 +5881,6 @@
                     }
 
                     #bbgl-panel.bbgl-expanded:not(.bbgl-mode-page) .bbgl-header-wrapper::before {
-                        left: 0 !important;
-                        right: 0 !important;
-                        top: 0 !important;
                         border-radius: 5px 5px 0 0;
                     }
 
@@ -8461,6 +8474,33 @@ const STAT_KEYS = ['str', 'def', 'spd', 'dex'];
 function sumStats(o) {
     return (o.str || 0) + (o.def || 0) + (o.spd || 0) + (o.dex || 0);
 }
+
+// Finds Happy Jumps within one day's series: an Ecstasy dose followed by >=1000E of training
+// clicks before the next happy reset (:00/:15/:30/:45 UTC). The window is plain epoch math, so
+// it's independent of the user's day-start-mode display setting, and — since midnight is itself
+// a :00 mark — a window can never straddle two calendar days, so per-day series is sufficient.
+// Shared by getHappyJumpData() (weekly capsule/EXP data) and computeAchievements() (lifetime HJ
+// stats) so both stay on the same definition.
+function findHappyJumps(seriesArr) {
+    const doses = (seriesArr || []).filter(e => e.type === 'item' && e.logId === ECSTASY_LOG);
+    if (doses.length === 0) return [];
+    const clicks = (seriesArr || []).filter(e => e.type !== 'item' && e.ts && e.cost);
+    const jumps = [];
+    doses.forEach(dose => {
+        const windowEnd = dose.ts + (GAME.HJ_QUARTER_SECONDS - (dose.ts % GAME.HJ_QUARTER_SECONDS));
+        let cost = 0,
+            tsEnd = dose.ts;
+        const stats = { str: 0, def: 0, spd: 0, dex: 0 };
+        clicks.forEach(c => {
+            if (c.ts < dose.ts || c.ts >= windowEnd) return;
+            cost += c.cost;
+            stats[c.stat] = (stats[c.stat] || 0) + (c.gain || 0);
+            if (c.ts > tsEnd) tsEnd = c.ts;
+        });
+        if (cost >= 1000) jumps.push({ date: Formatter.dateLogical(dose.ts * 1000), ts: dose.ts, tsEnd, cost, stats });
+    });
+    return jumps;
+}
 const DataController = {
     _cache: {
         timeline: null,
@@ -8529,42 +8569,11 @@ const DataController = {
     },
     getHappyJumpData() {
         if (this._cache.hjData) return this._cache.hjData;
-        const hjWeek = {},
-            hjDaySet = new Set();
-        const allSeries = [];
+        const hjDaySet = new Set();
         this.getTimeline().forEach(day => {
-            (day.series || []).forEach(e => {
-                if (e.ts && e.cost) allSeries.push(e);
-            });
+            findHappyJumps(day.series).forEach(jump => hjDaySet.add(jump.date));
         });
-        allSeries.sort((a, b) => a.ts - b.ts);
-        if (allSeries.length > 0) {
-            let cStart = allSeries[0].ts,
-                cCost = allSeries[0].cost;
-            const register = () => {
-                if (cCost >= 1000) {
-                    const d = Formatter.dateLogical(cStart * 1000);
-                    const wk = getWeekKey(d);
-                    hjWeek[wk] = (hjWeek[wk] || 0) + 1;
-                    hjDaySet.add(d);
-                }
-            };
-            for (let i = 1; i < allSeries.length; i++) {
-                const entry = allSeries[i];
-                if (entry.ts - cStart <= GAME.HJ_WINDOW_SECONDS) {
-                    cCost += entry.cost;
-                } else {
-                    register();
-                    cStart = entry.ts;
-                    cCost = entry.cost;
-                }
-            }
-            register();
-        }
-        this._cache.hjData = {
-            hjWeek,
-            hjDaySet
-        };
+        this._cache.hjData = { hjDaySet };
         return this._cache.hjData;
     },
     buildProgressionCache() {
@@ -8578,10 +8587,7 @@ const DataController = {
             if (!weekMap[wk]) weekMap[wk] = [];
             weekMap[wk].push(day);
         });
-        const {
-            hjWeek,
-            hjDaySet
-        } = this.getHappyJumpData();
+        const { hjDaySet } = this.getHappyJumpData();
         const stickerMap = new Map();
         const featuredSet = new Set();
         let unlockedCount = 1;
@@ -8609,7 +8615,7 @@ const DataController = {
                 isCompleted,
                 isGold,
                 isDiamond
-            } = computeWeekCompletion(days, hjDaySet, hjWeek[wk] || 0);
+            } = computeWeekCompletion(days, hjDaySet);
             const numFeatured = isGold ? 2 : (isCompleted ? 1 : 0);
             const splitIdx = Math.max(0, stickerworthyDays.length - numFeatured);
             const rouletteDays = stickerworthyDays.slice(0, splitIdx);
@@ -8946,6 +8952,11 @@ const DataController = {
         else r.meta.tier = 0;
         // Item-use totals for the period (powers the ledger counters). Merge per-day `items`
         // counts and sum the cans' extra energy; dayCount drives the Xanax avg/day readout.
+        // The energy/lost totals are derived from `series` rather than the persisted
+        // itemEnergy/itemEnergyLost/itemHappyLost scalars: those scalars are written once when
+        // a day is first processed and never revisited, so a day saved under an older build can
+        // carry stale values forever. Deriving from series here keeps this in sync with
+        // computeAchievements, which sums the same per-entry `energy` field fresh every time.
         const itemDays = sDay ? [sDay] : (dList || []);
         const items = {};
         let itemEnergy = 0;
@@ -8955,9 +8966,12 @@ const DataController = {
             if (d && d.items) Object.keys(d.items).forEach(id => {
                 items[id] = (items[id] || 0) + d.items[id];
             });
-            if (d) itemEnergy += (d.itemEnergy || 0);
-            if (d) odEnergyLost += (d.itemEnergyLost || 0);
-            if (d) odHappyLost += (d.itemHappyLost || 0);
+            (d && d.series || []).forEach(e => {
+                if (e.type !== 'item') return;
+                if (e.logId === ECAN_LOG && e.energy) itemEnergy += e.energy;
+                if (e.energyLost != null) odEnergyLost += e.energyLost;
+                if (e.happyLost != null) odHappyLost += e.happyLost;
+            });
         });
         r.items = items;
         r.xanax = items[XANAX_LOG] || 0;
@@ -9649,7 +9663,7 @@ function initializeDayObject(dateStr, baseBreakdown) {
 }
 
 function computeAchievements(s) {
-    const { hjDaySet, hjWeek: hjWeekData } = DataController.getHappyJumpData();
+    const { hjDaySet } = DataController.getHappyJumpData();
     const allDays = [...(s.history || [])];
     if (s.today && s.today.date) {
         const filtered = allDays.filter(d => d.date !== s.today.date);
@@ -9882,7 +9896,7 @@ function computeAchievements(s) {
         currentWk = getWeekKey(todayStr);
     Object.keys(weekDayMap).sort().forEach(wk => {
         if (wk < currentWk) {
-            const wc = computeWeekCompletion(weekDayMap[wk], hjDaySet, hjWeekData[wk] || 0);
+            const wc = computeWeekCompletion(weekDayMap[wk], hjDaySet);
             if (wc.isGold) goldWeeks++;
             else if (wc.isCompleted) greenWeeks++;
             if (wc.isDiamond) diamondWeeks++;
@@ -10045,78 +10059,37 @@ function computeAchievements(s) {
         }
         prevDate = day.date;
     });
-    const allSeries = [];
-    allDays.forEach(day => {
-        (day.series || []).forEach(e => {
-            if (e.ts && e.cost) allSeries.push(e);
-        });
-    });
-    allSeries.sort((a, b) => a.ts - b.ts);
     let happyJumps = 0;
     const hjWeek = {},
         hjMonth = {};
-    const _registerJumpWindow = (cStart, cEnd, cCost, cStatG) => {
-        if (cCost < GREEN) return;
-        const d = Formatter.dateLogical(cStart * 1000);
-        const wk = getWeekKey(d),
-            mk = d.slice(0, 7);
+    const registerJump = (jump) => {
+        const wk = getWeekKey(jump.date),
+            mk = jump.date.slice(0, 7);
         happyJumps++;
         hjWeek[wk] = (hjWeek[wk] || 0) + 1;
         hjMonth[mk] = (hjMonth[mk] || 0) + 1;
-        const tot = (cStatG.str || 0) + (cStatG.def || 0) + (cStatG.spd || 0) + (cStatG.dex || 0);
+        const tot = sumStats(jump.stats);
         ['str', 'def', 'spd', 'dex'].forEach(sk => {
-            const sv = cStatG[sk] || 0;
+            const sv = jump.stats[sk] || 0;
             if (sv > 0 && (!bestHJByStat[sk] || sv > bestHJByStat[sk].value)) bestHJByStat[sk] = {
                 value: sv,
-                date: d,
-                ts: cStart,
-                cost: cCost
+                date: jump.date,
+                ts: jump.ts,
+                cost: jump.cost
             };
         });
         if (tot > 0 && (!bestHJByStat.total || tot > bestHJByStat.total.value)) bestHJByStat.total = {
             value: tot,
-            date: d,
-            ts: cStart,
-            tsEnd: cEnd,
-            cost: cCost,
+            date: jump.date,
+            ts: jump.ts,
+            tsEnd: jump.tsEnd,
+            cost: jump.cost,
             stats: {
-                ...cStatG
+                ...jump.stats
             }
         };
     };
-    if (allSeries.length > 0) {
-        let cStart = allSeries[0].ts,
-            cEnd = allSeries[0].ts,
-            cCost = allSeries[0].cost,
-            cStatG = {
-                str: 0,
-                def: 0,
-                spd: 0,
-                dex: 0
-            };
-        cStatG[allSeries[0].stat] = (allSeries[0].gain || 0);
-        for (let i = 1; i < allSeries.length; i++) {
-            const entry = allSeries[i];
-            if (entry.ts - cStart <= GAME.HJ_WINDOW_SECONDS) {
-                cCost += entry.cost;
-                cEnd = entry.ts;
-                cStatG[entry.stat] = (cStatG[entry.stat] || 0) + (entry.gain || 0);
-            } else {
-                _registerJumpWindow(cStart, cEnd, cCost, cStatG);
-                cStart = entry.ts;
-                cEnd = entry.ts;
-                cCost = entry.cost;
-                cStatG = {
-                    str: 0,
-                    def: 0,
-                    spd: 0,
-                    dex: 0
-                };
-                cStatG[entry.stat] = (entry.gain || 0);
-            }
-        }
-        _registerJumpWindow(cStart, cEnd, cCost, cStatG);
-    }
+    allDays.forEach(day => findHappyJumps(day.series).forEach(registerJump));
     const hjWeekBest = maxOf(hjWeek, 'weekOf'),
         hjMonthBest = maxOf(hjMonth, 'month');
     const calDays = Math.round((new Date(allDays[allDays.length - 1].date + 'T00:00:00Z') - new Date(allDays[0].date + 'T00:00:00Z')) / 86400000) + 1;
@@ -10572,7 +10545,7 @@ function achBuildPage2(d) {
         clipParts.push('Total: +' + achFmtGain(rec.value));
         return `<div class="bbgl-ach-hh-best-row" data-tooltip="${achEsc(tip)}" data-ach-key="${key}" data-clip="${achEsc(longLabel + ' (' + dateStr + ', ' + timeStrClip + '): ' + clipParts.join(' | '))}" data-clip-date="${achEsc(dateStr + '  ' + timeStrClip)}"><div class="bbgl-ach-hh-label"><span class="ach-k"><span class="ach-title-long">${achEsc(longLabel)}</span><span class="ach-title-short">${achEsc(shortLabel)}</span></span><div class="bbgl-ach-hh-date-line">${achEsc(dateStr)}<span class="bbgl-ach-hh-time"> &nbsp; ${achEsc(timeStr)}</span></div></div><div class="bbgl-ach-hh-cells">${statCells}${totalCell}</div></div>`;
     };
-    const hjCount = countRow('Happy Jumps Performed', 'Happy Jumps', d.happyJumps || 0, 'hj-count', 'Total number of Happy Jumps executed (1,000E+ energy used training within a 5-minute window).');
+    const hjCount = countRow('Happy Jumps Performed', 'Happy Jumps', d.happyJumps || 0, 'hj-count', 'Total number of Happy Jumps executed (1,000E+ energy used training between an Ecstasy dose and the next happy reset).');
     const hjBest = bestRow('Best Happy Jump', 'Best Jump', d.bestHappyJump && d.bestHappyJump.total, 'best-hj', 'The single Happy Jump that yielded the highest combined stat gain.');
     const rowsHTML = `<div class="bbgl-ach-hh-group" data-ach-key="happy-jumps-group">${hjCount}${hjBest}</div>`;
     let clipAll = `Happy Jumps Performed: ${d.happyJumps || 0}\nBest Happy Jump: ${d.bestHappyJump && d.bestHappyJump.total ? (() => { const rec = d.bestHappyJump.total; const trained = STATS.filter(sk => (rec.stats[sk] || 0) > 0); const parts = trained.map(sk => STAT_ABBR[sk] + ': +' + achFmtGain(rec.stats[sk])); parts.push('Total: +' + achFmtGain(rec.value)); return parts.join(' | '); })() : '—'}`;
@@ -12515,10 +12488,7 @@ const BestGymController = {
         sl._weekStart = batch[0].date;
         sl._weekEnd = batch[batch.length - 1].date;
         if (sl._dailyList.length === 0) return;
-        const {
-            hjDaySet,
-            hjWeek
-        } = DataController.getHappyJumpData();
+        const { hjDaySet } = DataController.getHappyJumpData();
         const _wk = getWeekKey(sl._dailyList[0].date);
         const anchor = document.createElement('div');
         anchor.className = 'bbgl-weekly-anchor';
@@ -12555,7 +12525,7 @@ const BestGymController = {
             if (viewState.activeViewLabel === sl.label && calendarState.selectedLabel !== sl.label) runtime._pendingHistoryRestore = { sl, label: sl.label };
             return;
         }
-        const { capsules, isCompleted } = computeWeekCompletion(sl._dailyList, hjDaySet, hjWeek[_wk] || 0);
+        const { capsules, isCompleted } = computeWeekCompletion(sl._dailyList, hjDaySet);
         if (isCompleted) tr.classList.add('track-polished');
         tr.innerHTML = buildCapsuleBar(capsules, isCompleted, isCompleted && userConfig.animations);
         anchor.appendChild(tr);

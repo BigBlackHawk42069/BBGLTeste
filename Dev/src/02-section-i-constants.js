@@ -66,7 +66,8 @@
     };
     const GAME = {
         GOLD_WEEK_JUMPS: 3,
-        HJ_WINDOW_SECONDS: 300,
+        HJ_WINDOW_SECONDS: 300, // legacy rolling-burst window, still used by the demo-mode data generator only
+        HJ_QUARTER_SECONDS: 900, // real HJ windows run from an Ecstasy dose to the next :00/:15/:30/:45 happy reset
         STAT_MAP: {
             5300: 'strength',
             5301: 'defense',
@@ -138,7 +139,8 @@
         XANAX_OD_LOG = 2291,
         LSD_OD_LOG = 2231,
         EX_OD_LOG = 2211,
-        ECAN_LOG = 2040;
+        ECAN_LOG = 2040,
+        ECSTASY_LOG = 2210;
     // Overlap buffer (seconds) subtracted from a group's last-success time to form its `from=` bound.
     // Comfortably exceeds the 2h heartbeat so a single missed beat still re-covers the gap; dedup
     // makes the overlap harmless.

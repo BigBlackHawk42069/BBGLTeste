@@ -296,16 +296,11 @@
         return 1 + Math.round(((date.getTime() - w1.getTime()) / 86400000 - 3 + (w1.getUTCDay() + 6) % 7) / 7);
     }
 
-    // Classify a single day into a capsule tier by energy spent (+ Happy Jump rules).
+    // Classify a single day into a capsule tier purely by its own energy spent. Happy Jump bonus
+    // capsules are a separate layer handled in computeWeekCapsules, not part of this.
     // Returns 'diamond' | 'gold' | 'green' | null (null = not capsule-worthy).
-    function classifyDay(d, hjDaySet = null, jumpGold = false) {
+    function classifyDay(d) {
         const e = d.eSpent ? d.eSpent.total : 0;
-        const isHJ = hjDaySet ? hjDaySet.has(d.date) : false;
-        if (isHJ) {
-            if (e >= 2000) return 'diamond';
-            if (jumpGold || e >= 1500) return 'gold';
-            return 'green';
-        }
         if (e >= 2000) return 'diamond';
         if (e >= 1500) return 'gold';
         if (e >= 1000) return 'green';
@@ -314,6 +309,9 @@
 
     // Overflow ranking — a higher tier overwrites a lower one. diamond > gold > green.
     const CAPSULE_RANK = { green: 1, gold: 2, diamond: 3 };
+
+    // Capsule units a tier is worth when placed (diamond counts double).
+    const TIER_UNITS = { green: 1, gold: 1, diamond: 2 };
 
     // Place one capsule unit of `color` into the 5-slot array.
     //  - Fill phase: drop into the leftmost empty slot (chronological append).
@@ -335,15 +333,36 @@
     }
 
     // Build the 5 capsule slots for a week, chronologically.
-    // green/gold = 1 unit, diamond = 2 units. Returns ['green'|'gold'|'diamond'|null] x5.
-    function computeWeekCapsules(days, hjDaySet = null, hjCount = 0) {
-        const jumpGold = hjCount >= GAME.GOLD_WEEK_JUMPS;
+    // Organic days: green/gold = 1 unit, diamond = 2 units (via classifyDay).
+    // Happy Jumps layer on top of that: the week's 1st HJ day grants 2 units, its 2nd HJ day
+    // grants 3 more (2+3=5 — two jumps alone complete a green week); a 3rd HJ that week doesn't
+    // add units (the pool's already full) but upgrades every still-green HJ unit to gold. Each HJ
+    // day's own organic tier is spent as upgrade credit on that jump's own units first (capped at
+    // however many units that jump granted), so a naturally gold/diamond HJ day still gets credit
+    // for its real performance instead of defaulting to green. A genuine HJ day's own eSpent is
+    // always >= the window's 1000E (the window is a subset of the day's clicks), so it's never
+    // classified below green here. Everything feeds the same rank-based overflow above, which is
+    // insertion-order independent, so this composes correctly with unrelated diamond days elsewhere
+    // in the week without any extra priority logic.
+    function computeWeekCapsules(days, hjDaySet = null) {
         const slots = [null, null, null, null, null];
+        const hjDays = hjDaySet ? days.filter(d => hjDaySet.has(d.date)) : [];
+        const jumpGold = hjDays.length >= GAME.GOLD_WEEK_JUMPS;
+        const JUMP_ALLOTMENT = [2, 3]; // units granted by the week's 1st and 2nd HJ day
         days.forEach(d => {
-            const tier = classifyDay(d, hjDaySet, jumpGold);
-            if (!tier) return;
-            placeCapsuleUnit(slots, tier);
-            if (tier === 'diamond') placeCapsuleUnit(slots, tier);
+            const jumpIdx = hjDays.indexOf(d);
+            if (jumpIdx === 0 || jumpIdx === 1) {
+                const jumpUnits = JUMP_ALLOTMENT[jumpIdx];
+                const naturalTier = classifyDay(d);
+                const upgradeUnits = Math.min(TIER_UNITS[naturalTier] || 0, jumpUnits);
+                for (let i = 0; i < upgradeUnits; i++) placeCapsuleUnit(slots, naturalTier);
+                for (let i = 0; i < jumpUnits - upgradeUnits; i++) placeCapsuleUnit(slots, jumpGold ? 'gold' : 'green');
+            } else {
+                const tier = classifyDay(d);
+                if (!tier) return;
+                placeCapsuleUnit(slots, tier);
+                if (tier === 'diamond') placeCapsuleUnit(slots, tier);
+            }
         });
         return slots;
     }
@@ -353,8 +372,8 @@
     //   isCompleted — all 5 capsules filled (1 sticker, green weekly bonus)
     //   isGold      — all 5 are gold-or-diamond (2 stickers, gold weekly bonus)
     //   isDiamond   — all 5 are diamond (diamond weekly bonus / diamond-week stat)
-    function computeWeekCompletion(days, hjDaySet = null, hjCount = 0) {
-        const capsules = computeWeekCapsules(days, hjDaySet, hjCount);
+    function computeWeekCompletion(days, hjDaySet = null) {
+        const capsules = computeWeekCapsules(days, hjDaySet);
         const filled = capsules.filter(c => c !== null);
         const isCompleted = filled.length === capsules.length;
         const isGold = isCompleted && filled.every(c => c === 'gold' || c === 'diamond');

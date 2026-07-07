@@ -10,6 +10,33 @@ const STAT_KEYS = ['str', 'def', 'spd', 'dex'];
 function sumStats(o) {
     return (o.str || 0) + (o.def || 0) + (o.spd || 0) + (o.dex || 0);
 }
+
+// Finds Happy Jumps within one day's series: an Ecstasy dose followed by >=1000E of training
+// clicks before the next happy reset (:00/:15/:30/:45 UTC). The window is plain epoch math, so
+// it's independent of the user's day-start-mode display setting, and — since midnight is itself
+// a :00 mark — a window can never straddle two calendar days, so per-day series is sufficient.
+// Shared by getHappyJumpData() (weekly capsule/EXP data) and computeAchievements() (lifetime HJ
+// stats) so both stay on the same definition.
+function findHappyJumps(seriesArr) {
+    const doses = (seriesArr || []).filter(e => e.type === 'item' && e.logId === ECSTASY_LOG);
+    if (doses.length === 0) return [];
+    const clicks = (seriesArr || []).filter(e => e.type !== 'item' && e.ts && e.cost);
+    const jumps = [];
+    doses.forEach(dose => {
+        const windowEnd = dose.ts + (GAME.HJ_QUARTER_SECONDS - (dose.ts % GAME.HJ_QUARTER_SECONDS));
+        let cost = 0,
+            tsEnd = dose.ts;
+        const stats = { str: 0, def: 0, spd: 0, dex: 0 };
+        clicks.forEach(c => {
+            if (c.ts < dose.ts || c.ts >= windowEnd) return;
+            cost += c.cost;
+            stats[c.stat] = (stats[c.stat] || 0) + (c.gain || 0);
+            if (c.ts > tsEnd) tsEnd = c.ts;
+        });
+        if (cost >= 1000) jumps.push({ date: Formatter.dateLogical(dose.ts * 1000), ts: dose.ts, tsEnd, cost, stats });
+    });
+    return jumps;
+}
 const DataController = {
     _cache: {
         timeline: null,
@@ -78,42 +105,11 @@ const DataController = {
     },
     getHappyJumpData() {
         if (this._cache.hjData) return this._cache.hjData;
-        const hjWeek = {},
-            hjDaySet = new Set();
-        const allSeries = [];
+        const hjDaySet = new Set();
         this.getTimeline().forEach(day => {
-            (day.series || []).forEach(e => {
-                if (e.ts && e.cost) allSeries.push(e);
-            });
+            findHappyJumps(day.series).forEach(jump => hjDaySet.add(jump.date));
         });
-        allSeries.sort((a, b) => a.ts - b.ts);
-        if (allSeries.length > 0) {
-            let cStart = allSeries[0].ts,
-                cCost = allSeries[0].cost;
-            const register = () => {
-                if (cCost >= 1000) {
-                    const d = Formatter.dateLogical(cStart * 1000);
-                    const wk = getWeekKey(d);
-                    hjWeek[wk] = (hjWeek[wk] || 0) + 1;
-                    hjDaySet.add(d);
-                }
-            };
-            for (let i = 1; i < allSeries.length; i++) {
-                const entry = allSeries[i];
-                if (entry.ts - cStart <= GAME.HJ_WINDOW_SECONDS) {
-                    cCost += entry.cost;
-                } else {
-                    register();
-                    cStart = entry.ts;
-                    cCost = entry.cost;
-                }
-            }
-            register();
-        }
-        this._cache.hjData = {
-            hjWeek,
-            hjDaySet
-        };
+        this._cache.hjData = { hjDaySet };
         return this._cache.hjData;
     },
     buildProgressionCache() {
@@ -127,10 +123,7 @@ const DataController = {
             if (!weekMap[wk]) weekMap[wk] = [];
             weekMap[wk].push(day);
         });
-        const {
-            hjWeek,
-            hjDaySet
-        } = this.getHappyJumpData();
+        const { hjDaySet } = this.getHappyJumpData();
         const stickerMap = new Map();
         const featuredSet = new Set();
         let unlockedCount = 1;
@@ -158,7 +151,7 @@ const DataController = {
                 isCompleted,
                 isGold,
                 isDiamond
-            } = computeWeekCompletion(days, hjDaySet, hjWeek[wk] || 0);
+            } = computeWeekCompletion(days, hjDaySet);
             const numFeatured = isGold ? 2 : (isCompleted ? 1 : 0);
             const splitIdx = Math.max(0, stickerworthyDays.length - numFeatured);
             const rouletteDays = stickerworthyDays.slice(0, splitIdx);
@@ -495,6 +488,11 @@ const DataController = {
         else r.meta.tier = 0;
         // Item-use totals for the period (powers the ledger counters). Merge per-day `items`
         // counts and sum the cans' extra energy; dayCount drives the Xanax avg/day readout.
+        // The energy/lost totals are derived from `series` rather than the persisted
+        // itemEnergy/itemEnergyLost/itemHappyLost scalars: those scalars are written once when
+        // a day is first processed and never revisited, so a day saved under an older build can
+        // carry stale values forever. Deriving from series here keeps this in sync with
+        // computeAchievements, which sums the same per-entry `energy` field fresh every time.
         const itemDays = sDay ? [sDay] : (dList || []);
         const items = {};
         let itemEnergy = 0;
@@ -504,9 +502,12 @@ const DataController = {
             if (d && d.items) Object.keys(d.items).forEach(id => {
                 items[id] = (items[id] || 0) + d.items[id];
             });
-            if (d) itemEnergy += (d.itemEnergy || 0);
-            if (d) odEnergyLost += (d.itemEnergyLost || 0);
-            if (d) odHappyLost += (d.itemHappyLost || 0);
+            (d && d.series || []).forEach(e => {
+                if (e.type !== 'item') return;
+                if (e.logId === ECAN_LOG && e.energy) itemEnergy += e.energy;
+                if (e.energyLost != null) odEnergyLost += e.energyLost;
+                if (e.happyLost != null) odHappyLost += e.happyLost;
+            });
         });
         r.items = items;
         r.xanax = items[XANAX_LOG] || 0;
@@ -1198,7 +1199,7 @@ function initializeDayObject(dateStr, baseBreakdown) {
 }
 
 function computeAchievements(s) {
-    const { hjDaySet, hjWeek: hjWeekData } = DataController.getHappyJumpData();
+    const { hjDaySet } = DataController.getHappyJumpData();
     const allDays = [...(s.history || [])];
     if (s.today && s.today.date) {
         const filtered = allDays.filter(d => d.date !== s.today.date);
@@ -1431,7 +1432,7 @@ function computeAchievements(s) {
         currentWk = getWeekKey(todayStr);
     Object.keys(weekDayMap).sort().forEach(wk => {
         if (wk < currentWk) {
-            const wc = computeWeekCompletion(weekDayMap[wk], hjDaySet, hjWeekData[wk] || 0);
+            const wc = computeWeekCompletion(weekDayMap[wk], hjDaySet);
             if (wc.isGold) goldWeeks++;
             else if (wc.isCompleted) greenWeeks++;
             if (wc.isDiamond) diamondWeeks++;
@@ -1594,78 +1595,37 @@ function computeAchievements(s) {
         }
         prevDate = day.date;
     });
-    const allSeries = [];
-    allDays.forEach(day => {
-        (day.series || []).forEach(e => {
-            if (e.ts && e.cost) allSeries.push(e);
-        });
-    });
-    allSeries.sort((a, b) => a.ts - b.ts);
     let happyJumps = 0;
     const hjWeek = {},
         hjMonth = {};
-    const _registerJumpWindow = (cStart, cEnd, cCost, cStatG) => {
-        if (cCost < GREEN) return;
-        const d = Formatter.dateLogical(cStart * 1000);
-        const wk = getWeekKey(d),
-            mk = d.slice(0, 7);
+    const registerJump = (jump) => {
+        const wk = getWeekKey(jump.date),
+            mk = jump.date.slice(0, 7);
         happyJumps++;
         hjWeek[wk] = (hjWeek[wk] || 0) + 1;
         hjMonth[mk] = (hjMonth[mk] || 0) + 1;
-        const tot = (cStatG.str || 0) + (cStatG.def || 0) + (cStatG.spd || 0) + (cStatG.dex || 0);
+        const tot = sumStats(jump.stats);
         ['str', 'def', 'spd', 'dex'].forEach(sk => {
-            const sv = cStatG[sk] || 0;
+            const sv = jump.stats[sk] || 0;
             if (sv > 0 && (!bestHJByStat[sk] || sv > bestHJByStat[sk].value)) bestHJByStat[sk] = {
                 value: sv,
-                date: d,
-                ts: cStart,
-                cost: cCost
+                date: jump.date,
+                ts: jump.ts,
+                cost: jump.cost
             };
         });
         if (tot > 0 && (!bestHJByStat.total || tot > bestHJByStat.total.value)) bestHJByStat.total = {
             value: tot,
-            date: d,
-            ts: cStart,
-            tsEnd: cEnd,
-            cost: cCost,
+            date: jump.date,
+            ts: jump.ts,
+            tsEnd: jump.tsEnd,
+            cost: jump.cost,
             stats: {
-                ...cStatG
+                ...jump.stats
             }
         };
     };
-    if (allSeries.length > 0) {
-        let cStart = allSeries[0].ts,
-            cEnd = allSeries[0].ts,
-            cCost = allSeries[0].cost,
-            cStatG = {
-                str: 0,
-                def: 0,
-                spd: 0,
-                dex: 0
-            };
-        cStatG[allSeries[0].stat] = (allSeries[0].gain || 0);
-        for (let i = 1; i < allSeries.length; i++) {
-            const entry = allSeries[i];
-            if (entry.ts - cStart <= GAME.HJ_WINDOW_SECONDS) {
-                cCost += entry.cost;
-                cEnd = entry.ts;
-                cStatG[entry.stat] = (cStatG[entry.stat] || 0) + (entry.gain || 0);
-            } else {
-                _registerJumpWindow(cStart, cEnd, cCost, cStatG);
-                cStart = entry.ts;
-                cEnd = entry.ts;
-                cCost = entry.cost;
-                cStatG = {
-                    str: 0,
-                    def: 0,
-                    spd: 0,
-                    dex: 0
-                };
-                cStatG[entry.stat] = (entry.gain || 0);
-            }
-        }
-        _registerJumpWindow(cStart, cEnd, cCost, cStatG);
-    }
+    allDays.forEach(day => findHappyJumps(day.series).forEach(registerJump));
     const hjWeekBest = maxOf(hjWeek, 'weekOf'),
         hjMonthBest = maxOf(hjMonth, 'month');
     const calDays = Math.round((new Date(allDays[allDays.length - 1].date + 'T00:00:00Z') - new Date(allDays[0].date + 'T00:00:00Z')) / 86400000) + 1;
@@ -2121,7 +2081,7 @@ function achBuildPage2(d) {
         clipParts.push('Total: +' + achFmtGain(rec.value));
         return `<div class="bbgl-ach-hh-best-row" data-tooltip="${achEsc(tip)}" data-ach-key="${key}" data-clip="${achEsc(longLabel + ' (' + dateStr + ', ' + timeStrClip + '): ' + clipParts.join(' | '))}" data-clip-date="${achEsc(dateStr + '  ' + timeStrClip)}"><div class="bbgl-ach-hh-label"><span class="ach-k"><span class="ach-title-long">${achEsc(longLabel)}</span><span class="ach-title-short">${achEsc(shortLabel)}</span></span><div class="bbgl-ach-hh-date-line">${achEsc(dateStr)}<span class="bbgl-ach-hh-time"> &nbsp; ${achEsc(timeStr)}</span></div></div><div class="bbgl-ach-hh-cells">${statCells}${totalCell}</div></div>`;
     };
-    const hjCount = countRow('Happy Jumps Performed', 'Happy Jumps', d.happyJumps || 0, 'hj-count', 'Total number of Happy Jumps executed (1,000E+ energy used training within a 5-minute window).');
+    const hjCount = countRow('Happy Jumps Performed', 'Happy Jumps', d.happyJumps || 0, 'hj-count', 'Total number of Happy Jumps executed (1,000E+ energy used training between an Ecstasy dose and the next happy reset).');
     const hjBest = bestRow('Best Happy Jump', 'Best Jump', d.bestHappyJump && d.bestHappyJump.total, 'best-hj', 'The single Happy Jump that yielded the highest combined stat gain.');
     const rowsHTML = `<div class="bbgl-ach-hh-group" data-ach-key="happy-jumps-group">${hjCount}${hjBest}</div>`;
     let clipAll = `Happy Jumps Performed: ${d.happyJumps || 0}\nBest Happy Jump: ${d.bestHappyJump && d.bestHappyJump.total ? (() => { const rec = d.bestHappyJump.total; const trained = STATS.filter(sk => (rec.stats[sk] || 0) > 0); const parts = trained.map(sk => STAT_ABBR[sk] + ': +' + achFmtGain(rec.stats[sk])); parts.push('Total: +' + achFmtGain(rec.value)); return parts.join(' | '); })() : '—'}`;

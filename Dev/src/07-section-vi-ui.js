@@ -576,10 +576,7 @@
         sl._weekStart = batch[0].date;
         sl._weekEnd = batch[batch.length - 1].date;
         if (sl._dailyList.length === 0) return;
-        const {
-            hjDaySet,
-            hjWeek
-        } = DataController.getHappyJumpData();
+        const { hjDaySet } = DataController.getHappyJumpData();
         const _wk = getWeekKey(sl._dailyList[0].date);
         const anchor = document.createElement('div');
         anchor.className = 'bbgl-weekly-anchor';
@@ -616,7 +613,7 @@
             if (viewState.activeViewLabel === sl.label && calendarState.selectedLabel !== sl.label) runtime._pendingHistoryRestore = { sl, label: sl.label };
             return;
         }
-        const { capsules, isCompleted } = computeWeekCompletion(sl._dailyList, hjDaySet, hjWeek[_wk] || 0);
+        const { capsules, isCompleted } = computeWeekCompletion(sl._dailyList, hjDaySet);
         if (isCompleted) tr.classList.add('track-polished');
         tr.innerHTML = buildCapsuleBar(capsules, isCompleted, isCompleted && userConfig.animations);
         anchor.appendChild(tr);

@@ -712,11 +712,6 @@
                         flex: 0 0 clamp(108px, calc(108px + 89px * var(--bbgl-page-t)), 197px);
                     }
 
-                    #bbgl-panel.bbgl-mode-page .bbgl-header-wrapper::before {
-                        left: 4px;
-                        right: 4px;
-                    }
-
                     #bbgl-panel.bbgl-mode-page .bbgl-month-header {
                         padding-left: clamp(4px, calc(4px + 3px * var(--bbgl-page-t)), 7px);
                         padding-right: clamp(16px, calc(16px + 16px * var(--bbgl-page-t)), 32px);
@@ -2703,9 +2698,9 @@
                     .bbgl-header-wrapper::before {
                         content: "";
                         position: absolute;
-                        top: 4px;
-                        left: 4px;
-                        right: 4px;
+                        top: 0;
+                        left: 0;
+                        right: 0;
                         bottom: 0;
                         width: auto;
                         height: auto;
@@ -2929,7 +2924,7 @@
                         transition: all .2s;
                         align-self: flex-end;
                         transform-origin: center bottom;
-                        transform: translate(-2px, calc(-6px + var(--btn-lift, 0px)));
+                        transform: translate(-5px, calc(-6px + var(--btn-lift, 0px)));
                     }
 
                     /* Hover jump is a per-mode absolute (not a delta from rest):
@@ -2937,7 +2932,7 @@
                        (set per-row, e.g. .header-row--year) shifts it +1px shallower. */
                     .stats-btn:hover, .stats-btn.active {
                         opacity: 1;
-                        transform: translate(-2px, calc(var(--btn-hover-jump, -6px) + var(--btn-hover-adjust, 0px))) scale(1.15);
+                        transform: translate(-5px, calc(var(--btn-hover-jump, -6px) + var(--btn-hover-adjust, 0px))) scale(1.15);
                         filter: drop-shadow(0 0 6px rgba(216, 150, 224, 0.9)) drop-shadow(0 0 2px rgba(171, 71, 188, 1));
                     }
 
@@ -4912,9 +4907,6 @@
                     }
 
                     #bbgl-panel.bbgl-expanded:not(.bbgl-mode-page) .bbgl-header-wrapper::before {
-                        left: 0 !important;
-                        right: 0 !important;
-                        top: 0 !important;
                         border-radius: 5px 5px 0 0;
                     }
 
