@@ -57,13 +57,17 @@
         c.querySelectorAll('.bbgl-weekly-track.is-viewing').forEach(el => el.classList.remove('is-viewing'));
         if (!newLabel) {
             const today = document.getElementById('active-date-today');
-            if (today) today.classList.add('is-viewing');
+            if (today) {
+                today.classList.add('is-viewing');
+                if (today._buildShine) today._buildShine();
+            }
             return;
         }
         const dC = c.querySelector(`.bbgl-day-cell[data-date="${newLabel}"]`);
         if (dC) {
             dC.classList.add('is-viewing');
             if (userConfig.animations && !dC.classList.contains('shimmer-active')) dC.classList.add('shimmer-active');
+            if (dC._buildShine) dC._buildShine();
             return;
         }
         const track = c.querySelector(`.bbgl-weekly-track[data-label="${newLabel}"]`);
@@ -2009,7 +2013,10 @@
                     }
                     TooltipController.currentTarget = t;
                     t.classList.add('is-scrub-hovered');
-                    if (t.classList.contains('bbgl-day-cell') && userConfig.animations) t.classList.add('shimmer-active');
+                    if (t.classList.contains('bbgl-day-cell') && userConfig.animations) {
+                        t.classList.add('shimmer-active');
+                        if (t._buildShine) t._buildShine();
+                    }
                     TooltipController.show(_sh || '<div style="text-align:center; color:#ddd;">' + _st + '</div>', t.getBoundingClientRect());
                 }
             } else {
@@ -2056,7 +2063,10 @@
                     if (t) {
                         TooltipController.currentTarget = t;
                         t.classList.add('is-scrub-hovered');
-                        if (t.classList.contains('bbgl-day-cell') && userConfig.animations) t.classList.add('shimmer-active');
+                        if (t.classList.contains('bbgl-day-cell') && userConfig.animations) {
+                            t.classList.add('shimmer-active');
+                            if (t._buildShine) t._buildShine();
+                        }
                         const _th = t.getAttribute('data-tooltip-html'),
                             _tt = t.getAttribute('data-tooltip');
                         if (_th || _tt) TooltipController.show(_th || '<div style="text-align:center; color:#ddd;">' + _tt + '</div>', t.getBoundingClientRect());

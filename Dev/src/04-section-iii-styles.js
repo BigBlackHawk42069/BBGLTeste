@@ -370,15 +370,15 @@
 
                     .bbgl-settings-body .bbgl-api-grid {
                         display: flex !important;
-                        flex-direction: row !important;
-                        gap: 0 !important;
-                        margin: 0 10px 10px !important;
+                        flex-direction: row;
+                        gap: 0;
+                        margin: 0 10px 10px;
                         width: auto !important;
                     }
 
                     .bbgl-api-grid .bbgl-btn {
                         flex: 1 1 0 !important;
-                        margin: 0 !important;
+                        margin: 0;
                         width: 50% !important;
                     }
 
@@ -650,20 +650,20 @@
                         top: 0 !important;
                         left: 0 !important;
                         right: auto !important;
-                        bottom: auto !important;
+                        bottom: auto;
                         width: 100% !important;
-                        flex: none !important;
-                        max-width: none !important;
+                        flex: none;
+                        max-width: none;
                         height: auto !important;
                         max-height: none !important;
-                        border: 1px solid #444 !important;
-                        border-radius: 5px !important;
-                        box-shadow: 0 10px 30px rgba(0, 0, 0, .5) !important;
-                        box-sizing: border-box !important;
-                        background: #2a2a2a !important;
+                        border: 1px solid #444;
+                        border-radius: 5px;
+                        box-shadow: 0 10px 30px rgba(0, 0, 0, .5);
+                        box-sizing: border-box;
+                        background: #2a2a2a;
                         display: flex !important;
-                        flex-direction: column !important;
-                        gap: 0 !important;
+                        flex-direction: column;
+                        gap: 0;
                         z-index: 1 !important;
                         overflow-x: hidden !important;
                         overflow-y: visible !important;
@@ -694,18 +694,18 @@
                     }
 
                     #bbgl-panel.bbgl-mode-page #bbgl-top-panel {
-                        flex: 0 0 clamp(180px, calc(180px + 90px * var(--bbgl-page-t)), 270px) !important;
-                        height: clamp(180px, calc(180px + 90px * var(--bbgl-page-t)), 270px) !important;
+                        flex: 0 0 clamp(180px, calc(180px + 90px * var(--bbgl-page-t)), 270px);
+                        height: clamp(180px, calc(180px + 90px * var(--bbgl-page-t)), 270px);
                         width: 100%;
-                        margin-bottom: 0 !important;
-                        border: none !important;
-                        border-bottom: 1px solid #444 !important;
-                        border-radius: 0 !important;
+                        margin-bottom: 0;
+                        border: none;
+                        border-bottom: 1px solid #444;
+                        border-radius: 0;
                         display: flex;
                         flex-direction: column;
                         padding-top: clamp(2px, calc(2px + 18px * var(--bbgl-page-t)), 20px) !important;
                         overflow: hidden !important;
-                        box-shadow: inset 0 0 40px rgba(0, 0, 0, .95) !important;
+                        box-shadow: inset 0 0 40px rgba(0, 0, 0, .95);
                     }
 
                     #bbgl-panel.bbgl-mode-page .bbgl-header-wrapper {
@@ -728,39 +728,39 @@
                     .bbgl-mode-page #bbgl-bottom-panel {
                         flex: none !important;
                         width: 100%;
-                        border: none !important;
-                        border-radius: 0 !important;
-                        background: 0 0 !important;
+                        border: none;
+                        border-radius: 0;
+                        background: 0 0;
                         min-height: 0;
                         display: flex;
                         flex-direction: column;
-                        height: auto !important;
+                        height: auto;
                         overflow: visible !important;
                     }
 
                     .bbgl-mode-page #bbgl-settings-view {
                         flex: none;
-                        height: auto !important;
+                        height: auto;
                     }
 
                     .bbgl-mode-page .bbgl-settings-scroll-area {
-                        overflow-y: visible !important;
-                        height: auto !important;
+                        overflow-y: visible;
+                        height: auto;
                         flex: none;
                     }
 
                     .bbgl-mode-page:has(#bbgl-settings-view.active-view) {
-                        flex: none !important;
+                        flex: none;
                     }
 
                     .bbgl-mode-page:has(#bbgl-settings-view.active-view) #bbgl-bottom-panel {
-                        flex: none !important;
+                        flex: none;
                     }
 
                     #bbgl-panel.bbgl-mode-page .bbgl-grid-container {
-                        height: auto !important;
-                        flex: none !important;
-                        padding: 0 clamp(2px, calc(2px + 2px * var(--bbgl-page-t)), 4px) clamp(1px, calc(1px + 3px * var(--bbgl-page-t)), 4px) clamp(2px, calc(2px + 2px * var(--bbgl-page-t)), 4px) !important;
+                        height: auto;
+                        flex: none;
+                        padding: 0 clamp(2px, calc(2px + 2px * var(--bbgl-page-t)), 4px) clamp(1px, calc(1px + 3px * var(--bbgl-page-t)), 4px) clamp(2px, calc(2px + 2px * var(--bbgl-page-t)), 4px);
                         overflow: visible !important;
                     }
 
@@ -771,29 +771,29 @@
                     }
 
                     .bbgl-mode-page .bbgl-cal-container {
-                        height: auto !important;
+                        height: auto;
                         display: flex;
                         flex-direction: column;
                     }
 
                     .bbgl-mode-page .bbgl-row-slice {
-                        flex: none !important;
+                        flex: none;
                         width: 100%;
                     }
 
                     .bbgl-mode-page .bbgl-day-cell {
-                        aspect-ratio: 1/1 !important;
-                        height: auto !important;
+                        aspect-ratio: 1/1;
+                        height: auto;
                         width: 100% !important;
                     }
 
                     #bbgl-panel.bbgl-mode-page .ledger-content:not(#bbgl-achievements-container) {
-                        height: auto !important;
+                        height: auto;
                         overflow: visible !important;
-                        align-content: flex-start !important;
-                        grid-template-rows: 1fr !important;
+                        align-content: flex-start;
+                        grid-template-rows: 1fr;
                         padding-top: clamp(26px, calc(32px - 6px * var(--bbgl-page-t)), 32px) !important;
-                        padding-bottom: clamp(0px, calc(0px + 15px * var(--bbgl-page-t)), 15px) !important;
+                        padding-bottom: clamp(0px, calc(0px + 15px * var(--bbgl-page-t)), 15px);
                         padding-left: 4px !important;
                         padding-right: 4px !important;
                     }
@@ -817,7 +817,7 @@
                     }
 
                     #bbgl-panel.bbgl-mode-page .bbgl-ach-scroll {
-                        padding-top: clamp(18px, calc(18px + 6px * var(--bbgl-page-t)), 24px) !important;
+                        padding-top: clamp(18px, calc(18px + 6px * var(--bbgl-page-t)), 24px);
                     }
 
                     #bbgl-panel.bbgl-mode-page #bbgl-ach-pageindicator .pg-dot {
@@ -835,15 +835,15 @@
 
                     #bbgl-panel.bbgl-mode-page .bbgl-ach-hh-group .bbgl-ach-row,
                     #bbgl-panel.bbgl-mode-page .bbgl-ach-hh-group .bbgl-ach-hh-best-row {
-                        font-size: clamp(9px, calc(9px + 4px * var(--bbgl-page-t)), 13px) !important;
+                        font-size: clamp(9px, calc(9px + 4px * var(--bbgl-page-t)), 13px);
                     }
 
                     #bbgl-panel.bbgl-mode-page .ach-sub {
-                        font-size: clamp(7px, calc(7px + 3px * var(--bbgl-page-t)), 10px) !important;
+                        font-size: clamp(7px, calc(7px + 3px * var(--bbgl-page-t)), 10px);
                     }
 
                     #bbgl-panel.bbgl-mode-page .ach-date {
-                        font-size: clamp(7.5px, calc(7.5px + 3.5px * var(--bbgl-page-t)), 11px) !important;
+                        font-size: clamp(7.5px, calc(7.5px + 3.5px * var(--bbgl-page-t)), 11px);
                     }
 
                     #bbgl-panel.bbgl-mode-page .col-header,
@@ -1334,7 +1334,7 @@
 
                     #bbgl-content-wrapper {
                         flex: 1;
-                        flex-shrink: 0 !important;
+                        flex-shrink: 0;
                         background-color: #333;
                         border: .1px solid #444;
                         border-top: none;
@@ -1659,8 +1659,8 @@
                     #bbgl-top-panel.viewing-stickers {
                         box-shadow: none !important;
                         border-bottom: none !important;
-                        background-color: transparent !important;
-                        padding-bottom: 2px !important;
+                        background-color: transparent;
+                        padding-bottom: 2px;
                     }
 
                     #bbgl-top-panel.viewing-stickers::after,
@@ -1677,7 +1677,7 @@
                     }
 
                     #bbgl-panel:not(.bbgl-mode-page) #bbgl-top-panel.viewing-achievements {
-                        padding-top: max(0px, calc(clamp(2px, calc(2px + 18px * var(--bbgl-dock-t, 0)), 20px) - calc(2px * var(--bbgl-dock-t, 0)))) !important;
+                        padding-top: max(0px, calc(clamp(2px, calc(2px + 18px * var(--bbgl-dock-t, 0)), 20px) - calc(2px * var(--bbgl-dock-t, 0))));
                     }
 
                     .ledger-content {
@@ -1892,15 +1892,15 @@
                     }
 
                     .viewing-achievements #bbgl-achievements-container.ledger-content {
-                        grid-template-columns: unset !important;
+                        grid-template-columns: unset;
                         grid-template-rows: unset !important;
-                        gap: 0 !important;
+                        gap: 0;
                         min-height: 0 !important;
                         overflow: hidden !important;
                         display: flex !important;
                         flex-direction: column !important;
                         flex: 1 !important;
-                        padding: 0 !important;
+                        padding: 0;
                     }
 
                     .g-hud {
@@ -2629,16 +2629,16 @@
                     .bbgl-mode-page #bbgl-item-viewer.active {
                         display: flex !important;
                         width: 100% !important;
-                        height: calc(100vh - 420px + 60px * var(--bbgl-page-t)) !important;
-                        min-height: clamp(300px, calc(300px + 200px * var(--bbgl-page-t)), 500px) !important;
-                        border: none !important;
-                        border-radius: 0 0 5px 5px !important;
-                        box-sizing: border-box !important;
+                        height: calc(100vh - 420px + 60px * var(--bbgl-page-t));
+                        min-height: clamp(300px, calc(300px + 200px * var(--bbgl-page-t)), 500px);
+                        border: none;
+                        border-radius: 0 0 5px 5px;
+                        box-sizing: border-box;
                         flex: none !important;
                     }
 
                     #bbgl-page-container .bbgl-mode-page:has(#bbgl-item-viewer.active) {
-                        flex: none !important;
+                        flex: none;
                     }
 
                     .bbgl-mode-page .viewer-info-overlay {
@@ -2651,12 +2651,12 @@
                     }
 
                     .bbgl-mode-page .vi-count {
-                        font-size: clamp(8px, calc(8px + 1px * var(--bbgl-page-t)), 9px) !important;
+                        font-size: clamp(8px, calc(8px + 1px * var(--bbgl-page-t)), 9px);
                     }
 
                     .bbgl-mode-page #btn-close-viewer {
-                        font-size: clamp(9px, calc(9px + 1px * var(--bbgl-page-t)), 10px) !important;
-                        padding: 2px clamp(5px, calc(5px + 1px * var(--bbgl-page-t)), 6px) !important;
+                        font-size: clamp(9px, calc(9px + 1px * var(--bbgl-page-t)), 10px);
+                        padding: 2px clamp(5px, calc(5px + 1px * var(--bbgl-page-t)), 6px);
                         top: clamp(4px, calc(4px + 1px * var(--bbgl-page-t)), 5px) !important;
                         right: clamp(4px, calc(4px + 1px * var(--bbgl-page-t)), 5px) !important;
                     }
@@ -2665,7 +2665,7 @@
                     .bbgl-mode-page .viewer-stage,
                     .bbgl-mode-page .viewer-pedestal {
                         width: clamp(85%, calc(85% + 7% * var(--bbgl-page-t)), 92%) !important;
-                        height: clamp(85%, calc(85% + 7% * var(--bbgl-page-t)), 92%) !important;
+                        height: clamp(85%, calc(85% + 7% * var(--bbgl-page-t)), 92%);
                     }
 
                     .bbgl-mode-page .viewer-obj {
@@ -2941,7 +2941,7 @@
                         filter: drop-shadow(0 0 6px rgba(216, 150, 224, 0.9)) drop-shadow(0 0 2px rgba(171, 71, 188, 1));
                     }
 
-                    #bbgl-panel:not(.bbgl-expanded):not(.bbgl-mode-page) .header-row {
+                    #bbgl-panel.bbgl-compact .header-row {
                         --btn-hover-jump: -7px;
                     }
                     #bbgl-panel.bbgl-mode-page .header-row {
@@ -3571,7 +3571,7 @@
                         --bbgl-track-h: 15px;
                     }
 
-                    #bbgl-panel:not(.bbgl-expanded):not(.bbgl-mode-page) .bbgl-weekly-anchor {
+                    #bbgl-panel.bbgl-compact .bbgl-weekly-anchor {
                         height: 12px;
                         --bbgl-tab-w: 28px;
                         --bbgl-track-h: 12px;
@@ -3600,7 +3600,7 @@
                         box-shadow: inset 0 2px 5px rgba(0, 0, 0, .8), inset 0 -1px 0 rgba(255, 255, 255, .05);
                     }
 
-                    #bbgl-panel:not(.bbgl-expanded):not(.bbgl-mode-page) .bbgl-weekly-track {
+                    #bbgl-panel.bbgl-compact .bbgl-weekly-track {
                         height: 12px;
                     }
 
@@ -3615,6 +3615,41 @@
                     #bbgl-panel.bbgl-no-animations .bbgl-day-cell.is-viewing :is(.jewel-type-gold .jewel-shine, .jewel-type-green .jewel-shine, .jewel-type-green .jewel-shine-over, .jewel-type-diamond .jewel-shine, .jewel-type-diamond .jewel-shine-over, .sticker-shine) {
                         animation: none !important;
                         opacity: 0 !important;
+                    }
+
+                    /* Weekly-bar capsule sweep — was per-capsule SMIL (<animateTransform>/<animate>),
+                       swapped for one shared CSS animation so the compositor (not the main thread)
+                       drives every simultaneously-lit capsule across a populated calendar. */
+                    .bbgl-cap-sweep {
+                        transform-box: fill-box;
+                        will-change: transform, opacity;
+                        animation: bbgl-cap-sweep-move-kf 8s cubic-bezier(.3, 0, .7, 1) infinite,
+                                   bbgl-cap-sweep-fade-kf 8s linear infinite;
+                    }
+
+                    @keyframes bbgl-cap-sweep-move-kf {
+                        0% {
+                            transform: translateX(-100%)
+                        }
+
+                        25%, 100% {
+                            transform: translateX(100%)
+                        }
+                    }
+
+                    @keyframes bbgl-cap-sweep-fade-kf {
+                        0%, 24.9% {
+                            opacity: 1
+                        }
+
+                        25%, 100% {
+                            opacity: 0
+                        }
+                    }
+
+                    #bbgl-panel.bbgl-no-animations .bbgl-cap-sweep {
+                        animation: none;
+                        opacity: 0;
                     }
 
                     #bbgl-panel.bbgl-no-rates .g-pill[data-val="rates"] {
@@ -3667,7 +3702,7 @@
                     }
 
                     /* Compact: shorter tab */
-                    #bbgl-panel:not(.bbgl-expanded):not(.bbgl-mode-page) .bbgl-bar-handle {
+                    #bbgl-panel.bbgl-compact .bbgl-bar-handle {
                         height: 20px;
                         padding: 2px 4px 2px;
                     }
@@ -3722,10 +3757,10 @@
                                     linear-gradient(180deg, #1a1a1a 0%, #2a2a2a 100%);
                     }
 
-                    body:not(.is-touch-device) #bbgl-panel:not(.bbgl-expanded):not(.bbgl-mode-page) .bbgl-weekly-track:hover ~ .bbgl-bar-handle,
-                    #bbgl-panel:not(.bbgl-expanded):not(.bbgl-mode-page) .bbgl-weekly-track.is-scrub-hovered ~ .bbgl-bar-handle,
-                    #bbgl-panel:not(.bbgl-expanded):not(.bbgl-mode-page) .bbgl-weekly-track.is-viewing ~ .bbgl-bar-handle,
-                    body:not(.is-touch-device) #bbgl-panel:not(.bbgl-expanded):not(.bbgl-mode-page) .bbgl-bar-handle:hover {
+                    body:not(.is-touch-device) #bbgl-panel.bbgl-compact .bbgl-weekly-track:hover ~ .bbgl-bar-handle,
+                    #bbgl-panel.bbgl-compact .bbgl-weekly-track.is-scrub-hovered ~ .bbgl-bar-handle,
+                    #bbgl-panel.bbgl-compact .bbgl-weekly-track.is-viewing ~ .bbgl-bar-handle,
+                    body:not(.is-touch-device) #bbgl-panel.bbgl-compact .bbgl-bar-handle:hover {
                         height: 26px;
                         --bbgl-handle-active-h: 26px;
                     }
@@ -4362,7 +4397,7 @@
                     }
 
                     #bbgl-panel.bbgl-expanded:not(.bbgl-mode-page) .bbgl-ach-section-energy .bbgl-ach-row {
-                        font-size: clamp(12px, 2.3cqi, 15px) !important;
+                        font-size: clamp(12px, 2.3cqi, 15px);
                     }
 
                     .bbgl-ach-section-energy .bbgl-ach-row:last-of-type {
@@ -4440,7 +4475,7 @@
                         height: 100%;
                         position: relative;
                         overflow: hidden !important;
-                        padding: 0 !important;
+                        padding: 0;
                     }
 
                     #bbgl-settings-view.active-view,
@@ -4764,27 +4799,14 @@
                             max-height: none !important;
                         }
 
-                        #bbgl-panel.bbgl-expanded:not(.bbgl-mode-page) #bbgl-graph-container .g-pill {
-                            font-size: 9.5px !important;
-                            padding: .5px 5px !important;
-                            line-height: 1.18 !important;
-                        }
-
-                        #bbgl-panel.bbgl-expanded:not(.bbgl-mode-page) #bbgl-graph-container .g-toggles {
-                            gap: 4px !important;
-                            align-items: center !important;
-                        }
-
-                        #bbgl-panel.bbgl-expanded:not(.bbgl-mode-page) #bbgl-graph-container .g-hud {
-                            margin-bottom: 2px !important;
-                        }
-
-                        #bbgl-panel.bbgl-expanded:not(.bbgl-mode-page) #bbgl-graph-container .g-text {
-                            font-size: 9px !important;
-                        }
-
+                        /* NOTE: expanded graph .g-pill/.g-toggles/.g-hud/.g-text rules
+                           formerly here were dead — overridden at every width <=620px by
+                           the later same-specificity fluid rules (see "fluid scaling to
+                           replace hard 620px breakpoint" block below). Removed. The
+                           .g-text.x-label override below is kept: it has no fluid twin and
+                           the fluid .g-text floors at 10px, so it still does real work. */
                         #bbgl-panel.bbgl-expanded:not(.bbgl-mode-page) #bbgl-graph-container .g-text.x-label {
-                            font-size: 9px !important;
+                            font-size: 9px;
                         }
 
                         #bbgl-panel.bbgl-expanded:not(.bbgl-mode-page) #bbgl-ledger-toggle,
@@ -4797,19 +4819,19 @@
                         #bbgl-panel.bbgl-expanded:not(.bbgl-mode-page) #bbgl-graph-toggle,
                         #bbgl-panel.bbgl-expanded:not(.bbgl-mode-page) #bbgl-sticker-toggle {
                             width: 16px !important;
-                            height: 16px !important;
+                            height: 16px;
                         }
                     }
 
                     #bbgl-panel.bbgl-expanded:not(.bbgl-mode-page) .bbgl-header-wrapper {
-                        flex: 0 0 clamp(122px, calc(122px + 23px * var(--bbgl-dock-t, 0)), 145px) !important;
+                        flex: 0 0 clamp(122px, calc(122px + 23px * var(--bbgl-dock-t, 0)), 145px);
                     }
 
                     #bbgl-panel.bbgl-expanded:not(.bbgl-mode-page) .bbgl-header-wrapper::before {
                         left: 0 !important;
                         right: 0 !important;
                         top: 0 !important;
-                        border-radius: 5px 5px 0 0 !important;
+                        border-radius: 5px 5px 0 0;
                     }
 
                     #bbgl-panel:not(.bbgl-mode-page) {
@@ -4828,26 +4850,26 @@
                     }
 
                     #bbgl-panel:not(.bbgl-mode-page) #bbgl-bottom-panel {
-                        overflow-y: auto !important;
-                        overflow-x: hidden !important;
+                        overflow-y: auto;
+                        overflow-x: hidden;
                     }
 
                     #bbgl-panel:not(.bbgl-mode-page) .bbgl-grid-container {
-                        padding: 0 !important;
+                        padding: 0;
                         overflow: visible !important;
-                        height: auto !important;
-                        flex: none !important;
+                        height: auto;
+                        flex: none;
                     }
 
                     #bbgl-panel:not(.bbgl-mode-page) .calendar-wrapper {
                         overflow: visible !important;
-                        height: auto !important;
-                        flex: none !important;
+                        height: auto;
+                        flex: none;
                     }
 
                     #bbgl-panel.bbgl-expanded:not(.bbgl-mode-page) .bbgl-month-header {
-                        padding-left: 8px !important;
-                        padding-right: clamp(10px, 2.78cqi, 16px) !important;
+                        padding-left: 8px;
+                        padding-right: clamp(10px, 2.78cqi, 16px);
                     }
 
                     #bbgl-panel.bbgl-expanded:not(.bbgl-mode-page) .day-num {
@@ -4859,9 +4881,9 @@
                     }
 
                     #bbgl-panel.bbgl-expanded:not(.bbgl-mode-page) .bbgl-day-cell.is-viewing .day-num {
-                        font-size: clamp(15px, 3.82cqi, 22px) !important;
+                        font-size: clamp(15px, 3.82cqi, 22px);
                         width: clamp(24px, 6.25cqi, 36px) !important;
-                        height: clamp(24px, 6.25cqi, 36px) !important;
+                        height: clamp(24px, 6.25cqi, 36px);
                     }
 
                     #bbgl-panel.bbgl-expanded:not(.bbgl-mode-page) #bbgl-ledger-toggle,
@@ -4871,7 +4893,7 @@
                     #bbgl-panel.bbgl-expanded:not(.bbgl-mode-page) #bbgl-achievements-toggle svg,
                     #bbgl-panel.bbgl-expanded:not(.bbgl-mode-page) #bbgl-copy-btn svg {
                         width: 15.5px !important;
-                        height: 15.5px !important;
+                        height: 15.5px;
                     }
 
                     #bbgl-panel.bbgl-expanded:not(.bbgl-mode-page) #bbgl-graph-toggle,
@@ -4899,23 +4921,23 @@
                     }
 
                     #bbgl-panel.bbgl-expanded:not(.bbgl-mode-page) .arrow-btn {
-                        font-size: clamp(18px, 3.65cqi, 21px) !important;
+                        font-size: clamp(18px, 3.65cqi, 21px);
                     }
 
 #bbgl-panel.bbgl-expanded:not(.bbgl-mode-page) #year-trigger {
-                        font-size: clamp(13px, calc(2.78cqi - 1px), 15px) !important;
+                        font-size: clamp(13px, calc(2.78cqi - 1px), 15px);
                     }
 
                     #bbgl-panel.bbgl-expanded:not(.bbgl-mode-page) #month-trigger {
-                        font-size: clamp(20px, 3.99cqi, 23px) !important;
+                        font-size: clamp(20px, 3.99cqi, 23px);
                     }
                     #bbgl-panel.bbgl-expanded:not(.bbgl-mode-page) #all-time-trigger {
-                        font-size: clamp(28px, 5.58cqi, 32px) !important;
+                        font-size: clamp(28px, 5.58cqi, 32px);
                     }
 
                     #bbgl-panel.bbgl-expanded:not(.bbgl-mode-page) .ui-floating-label,
                     #bbgl-panel.bbgl-expanded:not(.bbgl-mode-page) .ui-floating-summary {
-                        font-size: clamp(11px, 2.08cqi, 12px) !important;
+                        font-size: clamp(11px, 2.08cqi, 12px);
                     }
 
                     #bbgl-panel.bbgl-compact .ui-floating-label,
@@ -4927,35 +4949,35 @@
                     #bbgl-panel.bbgl-expanded:not(.bbgl-mode-page) #month-stats-btn,
                     #bbgl-panel.bbgl-expanded:not(.bbgl-mode-page) #all-time-btn {
                         width: clamp(17px, calc(4.86cqi - 4px), 24px) !important;
-                        height: clamp(18px, calc(4.86cqi - 3px), 25px) !important;
+                        height: clamp(18px, calc(4.86cqi - 3px), 25px);
                     }
                     /* Expanded panel graph view: fluid scaling to replace hard 620px breakpoint ---------------------*/
                     #bbgl-panel.bbgl-expanded:not(.bbgl-mode-page) #bbgl-graph-container .g-pill {
-                        font-size: clamp(8.45px, 1.62cqi, 10px) !important;
+                        font-size: clamp(8.45px, 1.62cqi, 10px);
                         /* narrow panels dip below old 9.8px floor --------*/
-                        padding: clamp(.5px, calc(.35px + .16cqi), 1.5px) clamp(5px, 1.39cqi, 8px) !important;
-                        line-height: 1 !important;
+                        padding: clamp(.5px, calc(.35px + .16cqi), 1.5px) clamp(5px, 1.39cqi, 8px);
+                        line-height: 1;
                         display: inline-flex !important;
-                        align-items: center !important;
-                        justify-content: center !important;
-                        box-sizing: border-box !important;
+                        align-items: center;
+                        justify-content: center;
+                        box-sizing: border-box;
                     }
 
                     #bbgl-panel.bbgl-expanded:not(.bbgl-mode-page) #bbgl-graph-container .g-toggles {
-                        gap: clamp(4px, 1.04cqi, 6px) !important;
-                        align-items: center !important;
+                        gap: clamp(4px, 1.04cqi, 6px);
+                        align-items: center;
                     }
 
                     #bbgl-panel.bbgl-expanded:not(.bbgl-mode-page) #bbgl-graph-container .g-hud {
-                        margin-bottom: clamp(4px, 1.12cqi, 6px) !important;
+                        margin-bottom: clamp(4px, 1.12cqi, 6px);
                     }
 
                     #bbgl-panel.bbgl-expanded:not(.bbgl-mode-page) #bbgl-graph-container .g-text {
-                        font-size: clamp(10px, 1.91cqi, 11px) !important;
+                        font-size: clamp(10px, 1.91cqi, 11px);
                     }
 
                     #bbgl-panel.bbgl-expanded:not(.bbgl-mode-page) #bbgl-graph-container {
-                        padding: clamp(5px, .72cqi, 9px) calc(var(--bbgl-gx, 10px) - 2px) clamp(4px, .65cqi, 7px) calc(var(--bbgl-gx, 10px) - 2px) !important;
+                        padding: clamp(5px, .72cqi, 9px) calc(var(--bbgl-gx, 10px) - 2px) clamp(4px, .65cqi, 7px) calc(var(--bbgl-gx, 10px) - 2px);
                     }
 
                     /* Expanded panel sticker grid: fluid sticker slot sizing to keep proportions --------------------*/
@@ -4971,19 +4993,19 @@
                         --bbgl-ach-scroll-pb: clamp(0px, .06cqi, 2px);
                         --bbgl-ach-footer-pt: clamp(0px, .06cqi, 1px);
                         --bbgl-ach-footer-pb: 2px;
-                        padding-top: var(--bbgl-ach-container-pt) !important;
-                        padding-left: var(--bbgl-ach-inset-x) !important;
-                        padding-right: var(--bbgl-ach-inset-x) !important;
-                        min-height: 0 !important;
-                        flex: 1 !important;
+                        padding-top: var(--bbgl-ach-container-pt);
+                        padding-left: var(--bbgl-ach-inset-x);
+                        padding-right: var(--bbgl-ach-inset-x);
+                        min-height: 0;
+                        flex: 1;
                         overflow: hidden !important;
                     }
 
                     #bbgl-panel:not(.bbgl-mode-page) #bbgl-top-panel.viewing-achievements #bbgl-achievements-container .bbgl-ach-scroll {
-                        flex: 1 1 auto !important;
-                        min-height: 0 !important;
+                        flex: 1 1 auto;
+                        min-height: 0;
                         overflow: hidden !important;
-                        overflow-x: hidden !important;
+                        overflow-x: hidden;
                     }
 
                     #bbgl-panel.bbgl-expanded:not(.bbgl-mode-page) #bbgl-top-panel.viewing-achievements #bbgl-achievements-container {
@@ -4991,22 +5013,22 @@
                     }
 
                     #bbgl-panel.bbgl-expanded:not(.bbgl-mode-page) .sticker-slot {
-                        height: 88px !important;
+                        height: 88px;
                     }
 
                     #bbgl-panel.bbgl-expanded:not(.bbgl-mode-page) .sticker-slot-sponsor {
-                        height: min(clamp(110px, calc(90px + 8.1cqi), 137px), clamp(110px, calc(90px + 7.4cqb), 137px)) !important;
-                        max-width: clamp(120px, calc(100px + 9cqi), 152px) !important;
+                        height: min(clamp(110px, calc(90px + 8.1cqi), 137px), clamp(110px, calc(90px + 7.4cqb), 137px));
+                        max-width: clamp(120px, calc(100px + 9cqi), 152px);
                     }
 
                     #bbgl-panel.bbgl-expanded:not(.bbgl-mode-page) #bbgl-sticker-grid {
-                        column-gap: clamp(1px, calc(.8cqi), 5px) !important;
-                        row-gap: clamp(0px, calc(.4cqi), 3px) !important;
-                        align-content: center !important;
+                        column-gap: clamp(1px, calc(.8cqi), 5px);
+                        row-gap: clamp(0px, calc(.4cqi), 3px);
+                        align-content: center;
                     }
 
                     #bbgl-panel.bbgl-expanded:not(.bbgl-mode-page) .sticker-nav-btn {
-                        font-size: clamp(20px, calc(14px + 3.1cqi), 32px) !important;
+                        font-size: clamp(20px, calc(14px + 3.1cqi), 32px);
                         width: clamp(24px, calc(17px + 4cqi), 40px) !important;
                     }
 
@@ -5085,9 +5107,9 @@
                     }
 
                     #bbgl-panel.bbgl-expanded:not(.bbgl-mode-page) #bbgl-sponsor-grid {
-                        gap: 0 !important;
-                        padding: 0 !important;
-                        margin: 0 -10px !important;
+                        gap: 0;
+                        padding: 0;
+                        margin: 0 -10px;
                     }
 
                     #bbgl-panel.bbgl-mode-page #bbgl-sponsor-grid {
@@ -5113,8 +5135,8 @@
                     }
 
                     #bbgl-panel.bbgl-expanded:not(.bbgl-mode-page) .sticker-slot-sponsor {
-                        height: 137px !important;
-                        max-width: 152px !important;
+                        height: 137px;
+                        max-width: 152px;
                     }
 
                     .sponsor-sticker-svg {
@@ -5149,8 +5171,8 @@
                     }
 
                     .pg-dot.pg-dot-sponsor.active {
-                        background: linear-gradient(135deg, #b8860b, #ffd700, #fffacd, #ffd700, #b8860b) !important;
-                        box-shadow: 0 0 6px rgba(255, 215, 0, .85) !important;
+                        background: linear-gradient(135deg, #b8860b, #ffd700, #fffacd, #ffd700, #b8860b);
+                        box-shadow: 0 0 6px rgba(255, 215, 0, .85);
                         transform: scale(1.3);
                     }
 
@@ -5928,7 +5950,7 @@
                     }
 
                     body:not(.is-touch-device) .bbgl-ach-consistency-row:hover {
-                        background: transparent !important;
+                        background: transparent;
                     }
 
                     .bbgl-ach-consistency-row .bbgl-ach-consistency-text {
@@ -6066,7 +6088,7 @@
 
                     .bbgl-ach-hh-group .bbgl-ach-row,
                     .bbgl-ach-hh-group .bbgl-ach-hh-best-row {
-                        background: transparent !important;
+                        background: transparent;
                         cursor: inherit;
                     }
 

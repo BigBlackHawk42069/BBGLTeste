@@ -30,16 +30,31 @@
     // at each end. Filled bays: same structure, but the middle section between the terminals
     // fills with the colour + a thin gray border encasing just the glass window area.
     // slots: ['green'|'gold'|'diamond'|'silver'|null] x5. lit=true → bright colours (complete week).
-    // animated=true → per-window inner radiance glow (SVG animate, staggered across capsules).
-    function buildCapsuleBar(slots, lit, animated) {
-        const W = 500, H = 100, n = 5;
-        const padX = 8, padY = 18, gap = 7;
-        const slotW = (W - 2 * padX - (n - 1) * gap) / n;
-        const slotH = H - 2 * padY;
-        const termW = 10; // terminal plate width at each end of the bay
+    // animated=true → per-window inner radiance glow (CSS-animated sweep, see .bbgl-cap-sweep).
+    const CAP_W = 500, CAP_H = 100, CAP_N = 5;
+    const CAP_PAD_X = 8, CAP_PAD_Y = 18, CAP_GAP = 7;
+    const CAP_SLOT_W = (CAP_W - 2 * CAP_PAD_X - (CAP_N - 1) * CAP_GAP) / CAP_N;
+    const CAP_SLOT_H = CAP_H - 2 * CAP_PAD_Y;
+    const CAP_TERM_W = 10; // terminal plate width at each end of the bay
 
-        const defs =
-            `<defs>` +
+    // Gradients/patterns/filter + the 5 sweep clip-paths are pure functions of the bar's fixed
+    // dimensions above, so they're identical on every call regardless of slots/lit/animated. Built
+    // once here (instead of re-built by string concatenation on every buildCapsuleBar() call) and
+    // inlined into each returned <svg> — paint-server url(#...) references only resolve reliably
+    // within the same inline SVG fragment, so this can't be hoisted into a separate shared <svg>
+    // the way the clip-paths' geometry could be reused; it's still only built once, and
+    // buildCapsuleBar()'s own memo cache means the string concatenation itself only runs once
+    // per distinct bar state.
+    const CAP_BAR_DEFS = (() => {
+        let clipPaths = '';
+        for (let i = 0; i < CAP_N; i++) {
+            const bx = CAP_PAD_X + i * (CAP_SLOT_W + CAP_GAP),
+                gx = bx + CAP_TERM_W, gw = CAP_SLOT_W - 2 * CAP_TERM_W,
+                winY = CAP_PAD_Y + 18, winH = CAP_SLOT_H - 18 * 2,
+                fy = winY + 3, fh = winH - 3 * 2;
+            clipPaths += `<clipPath id="bbc-scp${i}"><rect x="${gx.toFixed(2)}" y="${fy}" width="${gw.toFixed(2)}" height="${fh}"/></clipPath>`;
+        }
+        return `<defs>` +
             `<pattern id="bbc-hatch" width="8" height="8" patternUnits="userSpaceOnUse">` +
             `<line x1="0" y1="8" x2="8" y2="0" stroke="#fff" stroke-opacity=".1" stroke-width="1"/>` +
             `<line x1="-2" y1="2" x2="2" y2="-2" stroke="#fff" stroke-opacity=".1" stroke-width="1"/>` +
@@ -49,7 +64,7 @@
             `<stop offset="0" stop-color="#202020"/><stop offset=".4" stop-color="#363636"/>` +
             `<stop offset=".5" stop-color="#404040"/><stop offset=".6" stop-color="#363636"/>` +
             `<stop offset="1" stop-color="#181818"/></linearGradient>` +
-            `<linearGradient id="bbc-term" x1="0" y1="${padY}" x2="0" y2="${padY + (H - 2 * padY)}" gradientUnits="userSpaceOnUse">` +
+            `<linearGradient id="bbc-term" x1="0" y1="${CAP_PAD_Y}" x2="0" y2="${CAP_PAD_Y + CAP_SLOT_H}" gradientUnits="userSpaceOnUse">` +
             `<stop offset="0" stop-color="#1e1e1e"/><stop offset=".25" stop-color="#484848"/>` +
             `<stop offset=".5" stop-color="#606060"/><stop offset=".75" stop-color="#484848"/>` +
             `<stop offset="1" stop-color="#161616"/></linearGradient>` +
@@ -101,11 +116,35 @@
             `<stop offset="0" stop-color="#1e1e1e"/><stop offset=".35" stop-color="#484848"/>` +
             `<stop offset=".5" stop-color="#686868"/><stop offset=".65" stop-color="#484848"/>` +
             `<stop offset="1" stop-color="#161616"/></linearGradient>` +
+            clipPaths +
             `</defs>`;
+    })();
+
+    // Output is a pure function of (slots, lit, animated) — memoize the built markup so
+    // navigating months/re-rendering doesn't re-run the string-building loop for a bar shape
+    // that's already been built.
+    const _capBarCache = new Map();
+
+    function buildCapsuleBar(slots, lit, animated) {
+        const cacheKey = slots.join(',') + '|' + lit + '|' + animated;
+        const cached = _capBarCache.get(cacheKey);
+        if (cached) return cached;
+
+        const W = CAP_W, H = CAP_H, n = CAP_N;
+        const padX = CAP_PAD_X, padY = CAP_PAD_Y, gap = CAP_GAP;
+        const slotW = CAP_SLOT_W, slotH = CAP_SLOT_H;
+        const termW = CAP_TERM_W;
 
         const colorKey = { green: 'g', gold: 'o', diamond: 'd', silver: 's' };
         const f = (v) => v.toFixed(2);
         let out = `<rect width="${W}" height="${H}" fill="url(#bbc-housing)"/>`;
+        // Lit fills are collected separately so all of them share ONE bbc-tube-glow filter group
+        // instead of one filter group per capsule (up to 5 per week) — same blur, same look, but
+        // a single filter/raster surface instead of up to five. Sweeps are collected separately
+        // too so they still paint on top of the (now-batched) glow, matching the original
+        // per-capsule stacking order (rails/terminals -> glow fill -> sweep).
+        let litFills = '';
+        let sweeps = '';
 
         for (let i = 0; i < n; i++) {
             const bx = padX + i * (slotW + gap);
@@ -152,36 +191,36 @@
             out += `<rect x="${f(gx)}" y="${f(gy + gh - railH)}" width="${f(gw)}" height="${railH}" fill="url(#bbc-term)"/>`;
             out += `<rect x="${f(gx)}" y="${f(gy + gh - railH)}" width="${f(gw)}" height="${railH}" fill="url(#bbc-hatch)"/>`;
 
-            // Colour fill — completed tubes get a glow bloom that bleeds past the tube edges
-            if (lit && color !== 'silver') out += `<g filter="url(#bbc-tube-glow)">`;
-            out += `<rect x="${f(gx)}" y="${fy}" width="${f(gw)}" height="${fh}" fill="url(#bbc-${fillId})"/>`;
-            // Recess shadow — lighter on completed weeks so lit colors read brighter
-            out += `<rect x="${f(gx)}" y="${fy}" width="${f(gw)}" height="${fh}" fill="url(#bbc-recess-shadow)" opacity="${lit ? 0.4 : 1}"/>`;
-            // Recess shine — faint bright line at very bottom edge (reflected ambient light)
-            out += `<rect x="${f(gx)}" y="${fy}" width="${f(gw)}" height="${fh}" fill="url(#bbc-recess-shine)"/>`;
-            if (lit && color !== 'silver') out += `</g>`;
+            // Colour fill — completed tubes get a glow bloom that bleeds past the tube edges.
+            // Lit, non-silver fills go to litFills (batched into one filter group after the loop);
+            // everything else paints inline, same as before.
+            const fillMarkup =
+                `<rect x="${f(gx)}" y="${fy}" width="${f(gw)}" height="${fh}" fill="url(#bbc-${fillId})"/>` +
+                // Recess shadow — lighter on completed weeks so lit colors read brighter
+                `<rect x="${f(gx)}" y="${fy}" width="${f(gw)}" height="${fh}" fill="url(#bbc-recess-shadow)" opacity="${lit ? 0.4 : 1}"/>` +
+                // Recess shine — faint bright line at very bottom edge (reflected ambient light)
+                `<rect x="${f(gx)}" y="${fy}" width="${f(gw)}" height="${fh}" fill="url(#bbc-recess-shine)"/>`;
+            if (lit && color !== 'silver') litFills += fillMarkup;
+            else out += fillMarkup;
             // Inner sweep — wave travels left→right across the full bar; each capsule's clip window
-            // sees it pass through at the right moment by position, no stagger needed.
+            // sees it pass through at the right moment by position, no stagger needed. Driven by
+            // the shared .bbgl-cap-sweep CSS animation (CSS_STYLES) instead of per-element SMIL —
+            // same 8s cycle/easing, but compositor-driven so it's cheap with many lit capsules at
+            // once (see bbgl-cap-sweep-move-kf / bbgl-cap-sweep-fade-kf).
             if (animated && color !== 'silver') {
                 const brightId = color === 'green' ? 'bbc-gBr' : color === 'gold' ? 'bbc-oBr' : 'bbc-dBr';
-                const sweepClipId = `bbc-scp${i}`;
-                out += `<clipPath id="${sweepClipId}"><rect x="${f(gx)}" y="${fy}" width="${f(gw)}" height="${fh}"/></clipPath>`;
-                out += `<g clip-path="url(#${sweepClipId})">` +
-                    `<rect x="0" y="${fy}" width="${W}" height="${fh}" fill="url(#${brightId})" transform="translate(${-W},0)">` +
-                    `<animateTransform attributeName="transform" type="translate" ` +
-                    `values="${-W},0; ${W},0; ${-W},0; ${-W},0" ` +
-                    `keyTimes="0; 0.25; 0.251; 1" ` +
-                    `keySplines=".3 0 .7 1; 0 0 1 1; 0 0 1 1" ` +
-                    `calcMode="spline" dur="8s" begin="0s" repeatCount="indefinite"/>` +
-                    `<animate attributeName="opacity" ` +
-                    `values="1; 1; 0; 0" ` +
-                    `keyTimes="0; 0.249; 0.25; 1" ` +
-                    `calcMode="linear" dur="8s" begin="0s" repeatCount="indefinite"/>` +
-                    `</rect></g>`;
+                sweeps += `<g clip-path="url(#bbc-scp${i})">` +
+                    `<rect class="bbgl-cap-sweep" x="0" y="${fy}" width="${W}" height="${fh}" fill="url(#${brightId})"/>` +
+                    `</g>`;
             }
         }
 
-        return `<svg class="bbgl-cap-svg" viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" xmlns="http://www.w3.org/2000/svg">${defs}${out}</svg>`;
+        if (litFills) out += `<g filter="url(#bbc-tube-glow)">${litFills}</g>`;
+        out += sweeps;
+
+        const svg = `<svg class="bbgl-cap-svg" viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" xmlns="http://www.w3.org/2000/svg">${CAP_BAR_DEFS}${out}</svg>`;
+        _capBarCache.set(cacheKey, svg);
+        return svg;
     }
 
     function updateSummaryCharts() {
@@ -352,8 +391,20 @@
             cell = document.createElement('div');
         cell.className = 'bbgl-day-cell' + (isFlipped ? ' is-archived' : '') + (g ? ' ghost-cell' : '');
         cell.dataset.date = ds;
+        // .jewel-shine / .jewel-shine-over / .sticker-shine are opacity:0 at rest and only ever
+        // shown via the .shimmer-active/.is-viewing CSS combinators (see CSS_STYLES), so eagerly
+        // building them for every decorated cell cost a resting mix-blend-mode compositing layer
+        // with nothing to show for it. buildShine lazily creates them (once, idempotent) the
+        // first time this cell actually needs to show them; every path that can grant a cell
+        // .shimmer-active/.is-viewing (this cell's own mouseenter, updateCellSelection, and the
+        // touch-scrub tooltip handler in 10-section-ix-init.js) calls cell._buildShine. No
+        // teardown is needed — month navigation rebuilds the whole grid via innerHTML anyway.
+        let buildShine = null;
         cell.addEventListener('mouseenter', () => {
-            if (userConfig.animations) cell.classList.add('shimmer-active');
+            if (userConfig.animations) {
+                cell.classList.add('shimmer-active');
+                if (buildShine) buildShine();
+            }
         });
         cell.addEventListener('mouseleave', () => {
             if (!cell.classList.contains('is-viewing')) cell.classList.remove('shimmer-active');
@@ -369,8 +420,7 @@
         }
         if (!isFlipped && sl.meta.tier > 0) {
             const wrap = document.createElement('div'),
-                img = document.createElement('img'),
-                sh = document.createElement('div');
+                img = document.createElement('img');
             let tType = 'green',
                 url = 'https://raw.githubusercontent.com/BigBlackHawk42069/asdfaskijdnfawef/refs/heads/main/ScrptImgs/Calendar/rwrd-grn.png';
             if (sl.meta.tier === 2) {
@@ -383,25 +433,25 @@
             wrap.className = `jewel-wrapper jewel-type-${tType}`;
             img.className = 'jewel-asset';
             img.src = url;
-            if (sl.meta.tier === 2) {
-                sh.className = 'jewel-shine';
-                sh.style.maskImage = `url("${url}")`;
-                sh.style.webkitMaskImage = `url("${url}")`;
-                wrap.appendChild(img);
-                wrap.appendChild(sh);
-            } else {
-                sh.className = 'jewel-shine';
-                sh.style.maskImage = `url("${url}")`;
-                sh.style.webkitMaskImage = `url("${url}")`;
-                const so = document.createElement('div');
-                so.className = 'jewel-shine-over';
-                so.style.setProperty('--jewel-mask', `url("${url}")`);
-                wrap.appendChild(sh);
-                wrap.appendChild(img);
-                wrap.appendChild(so);
-            }
+            wrap.appendChild(img);
             cell.appendChild(wrap);
             cell.classList.add('is-plate');
+            buildShine = () => {
+                if (wrap.querySelector('.jewel-shine')) return;
+                const sh = document.createElement('div');
+                sh.className = 'jewel-shine';
+                sh.style.maskImage = `url("${url}")`;
+                sh.style.webkitMaskImage = `url("${url}")`;
+                if (sl.meta.tier === 2) {
+                    wrap.appendChild(sh);
+                } else {
+                    wrap.insertBefore(sh, img);
+                    const so = document.createElement('div');
+                    so.className = 'jewel-shine-over';
+                    so.style.setProperty('--jewel-mask', `url("${url}")`);
+                    wrap.appendChild(so);
+                }
+            };
         }
         const ns = document.createElement('span');
         ns.className = 'day-num';
@@ -430,24 +480,27 @@
             if (item) {
                 const uid = Math.floor(new Date(Date.UTC(y, m, d)).getTime() / 86400000);
                 const sw = document.createElement('div'),
-                    si = document.createElement('img'),
-                    ss = document.createElement('div');
+                    si = document.createElement('img');
                 sw.className = 'sticker-wrapper' + (sl.meta.tier === 3 ? ' sticker-tier-diamond' : '');
                 sw.style.setProperty('--rot', `${(uid * 17) % 21 - 10}deg`);
                 si.src = item.url;
                 si.className = 'cell-sticker-deco';
                 sw.appendChild(si);
-                ss.className = 'sticker-shine';
-                ss.style.webkitMaskImage = `url("${item.url}")`;
-                ss.style.maskImage = `url("${item.url}")`;
-                let grad = `linear-gradient(115deg,rgba(0,200,150,0.55) 0%,rgba(0,255,180,0.65) 20%,rgba(0,255,255,0.7) 35%,rgba(255,255,255,0.75) 50%,rgba(255,0,255,0.85) 65%,rgba(0,150,255,0.9) 80%,rgba(0,200,150,0.85) 100%)`;
-                if (sl.meta.tier === 2) grad = `linear-gradient(115deg,rgba(184,134,11,0.7) 0%,rgba(212,175,55,0.85) 11%,rgba(255,255,240,1.0) 13%,rgba(212,175,55,0.8) 15%,rgba(0,255,255,0.7) 35%,rgba(255,0,255,0.85) 65%,rgba(0,150,255,0.9) 80%,rgba(184,134,11,0.85) 100%)`;
-                else if (sl.meta.tier === 3) grad = `linear-gradient(115deg,rgba(0,255,255,0.85) 0%,rgba(200,100,255,0.85) 5%,rgba(255,0,255,0.85) 10%,rgba(0,150,255,0.85) 15%,rgba(0,255,255,0.75) 35%,rgba(255,0,255,0.85) 65%,rgba(0,150,255,0.9) 80%,rgba(0,255,255,0.85) 85%,rgba(200,100,255,0.85) 90%,rgba(255,0,255,0.85) 95%,rgba(0,150,255,0.85) 100%)`;
-                ss.style.backgroundImage = grad;
-                ss.style.mixBlendMode = "overlay";
-                if (sl.meta.tier >= 2) ss.style.filter = "brightness(1.5)";
-                sw.appendChild(ss);
                 cell.appendChild(sw);
+                buildShine = () => {
+                    if (sw.querySelector('.sticker-shine')) return;
+                    const ss = document.createElement('div');
+                    ss.className = 'sticker-shine';
+                    ss.style.webkitMaskImage = `url("${item.url}")`;
+                    ss.style.maskImage = `url("${item.url}")`;
+                    let grad = `linear-gradient(115deg,rgba(0,200,150,0.55) 0%,rgba(0,255,180,0.65) 20%,rgba(0,255,255,0.7) 35%,rgba(255,255,255,0.75) 50%,rgba(255,0,255,0.85) 65%,rgba(0,150,255,0.9) 80%,rgba(0,200,150,0.85) 100%)`;
+                    if (sl.meta.tier === 2) grad = `linear-gradient(115deg,rgba(184,134,11,0.7) 0%,rgba(212,175,55,0.85) 11%,rgba(255,255,240,1.0) 13%,rgba(212,175,55,0.8) 15%,rgba(0,255,255,0.7) 35%,rgba(255,0,255,0.85) 65%,rgba(0,150,255,0.9) 80%,rgba(184,134,11,0.85) 100%)`;
+                    else if (sl.meta.tier === 3) grad = `linear-gradient(115deg,rgba(0,255,255,0.85) 0%,rgba(200,100,255,0.85) 5%,rgba(255,0,255,0.85) 10%,rgba(0,150,255,0.85) 15%,rgba(0,255,255,0.75) 35%,rgba(255,0,255,0.85) 65%,rgba(0,150,255,0.9) 80%,rgba(0,255,255,0.85) 85%,rgba(200,100,255,0.85) 90%,rgba(255,0,255,0.85) 95%,rgba(0,150,255,0.85) 100%)`;
+                    ss.style.backgroundImage = grad;
+                    ss.style.mixBlendMode = "overlay";
+                    if (sl.meta.tier >= 2) ss.style.filter = "brightness(1.5)";
+                    sw.appendChild(ss);
+                };
                 if (DataController._cache.featuredDays && DataController._cache.featuredDays.has(ds) && !DataController.isStickerCleared(item.id)) {
                     const pi = document.createElement('div');
                     pi.className = 'new-sticker-post-it';
@@ -469,7 +522,11 @@
             }
         }
         if (isToday) cell.id = `active-date-today`;
-        if ((calendarState.selectedLabel === ds) || (!calendarState.selectedLabel && isToday)) cell.classList.add('is-viewing');
+        cell._buildShine = buildShine;
+        if ((calendarState.selectedLabel === ds) || (!calendarState.selectedLabel && isToday)) {
+            cell.classList.add('is-viewing');
+            if (buildShine) buildShine();
+        }
         const h = getActiveHistory();
         const tl = DataController.getTimeline();
         const firstDate = tl.length > 0 ? tl[0].date : (h ? h.today.date : null);
