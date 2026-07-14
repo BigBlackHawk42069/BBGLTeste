@@ -26,6 +26,12 @@
         CHECK: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17 4 12" fill="none"/></svg>`,
         CLOSE: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>`
     };
+    // A0 level badge: the script's own gray crown logo, reused as a CSS background-image
+    // (data URI) so it can sit behind the level bar like the A2 diamond does.
+    // The path here is modified to remove the bottom arch and halo for a completely solid flush bottom.
+    const EXP_CROWN_PATH = "M193.636 22.044 C 182.529 27.985,180.338 45.621,189.593 54.592 C 193.384 58.266,193.325 58.939,188.176 70.810 C 163.707 127.227,143.908 132.713,103.872 94.170 C 97.232 87.778,97.187 87.704,98.234 84.744 C 102.964 71.365,85.668 57.225,74.917 65.683 C 65.274 73.267,71.102 91.707,83.674 93.393 C 86.535 93.777,87.611 94.407,88.243 96.069 C 89.543 99.488,100.349 139.625,104.966 158.182 C 107.267 167.432,109.322 175.494,109.532 176.099 C 109.800 176.869,111.627 176.423,115.639 174.608 L 286.205 174.613 C 293.432 177.890,291.721 180.896,299.107 151.950 C 311.947 101.626,314.454 93.636,317.401 93.636 C 326.599 93.636,334.579 79.275,330.342 70.347 C 322.578 53.985,297.084 68.675,303.582 85.767 C 305.874 91.794,271.086 117.463,258.740 118.855 C 242.368 120.700,226.759 103.733,212.306 68.380 L 208.113 58.124 211.323 55.097 C 226.571 40.716,211.474 12.503,193.636 22.044 M138.379 65.055 C 132.851 68.927,132.526 85.309,137.973 85.475 C 138.338 85.486,139.582 86.223,140.738 87.112 L 142.839 88.729 139.512 98.673 C 137.682 104.142,135.612 109.726,134.911 111.082 C 133.185 114.418,133.200 114.456,136.789 115.955 C 146.318 119.937,155.721 116.589,165.869 105.601 L 168.556 102.692 162.196 96.119 C 152.170 85.755,152.287 85.936,154.000 83.490 C 160.757 73.843,147.749 58.492,138.379 65.055 M254.135 66.447 C 249.029 70.930,247.780 79.527,251.606 83.864 C 253.281 85.763,253.294 85.744,242.310 97.108 L 235.000 104.671 239.263 108.569 C 247.293 115.913,255.483 117.954,264.959 114.973 C 271.221 113.003,271.405 112.722,269.230 108.440 C 267.406 104.849,262.723 90.706,262.733 88.817 C 262.736 88.218,263.983 87.019,265.504 86.154 C 267.186 85.196,268.997 82.935,270.127 80.379 C 275.243 68.813,263.295 58.404,254.135 66.447";
+    const CROWN_BADGE_SVG = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="60 20 280 154.6" preserveAspectRatio="none">${ASSETS.GRADIENT}<g><path fill="url(#bbgl_silver_grad)" d="${EXP_CROWN_PATH}"></path></g></svg>`;
+    const CROWN_BADGE_URL = `data:image/svg+xml,${encodeURIComponent(CROWN_BADGE_SVG)}`;
     const CSS_STYLES = `
 
 
@@ -812,7 +818,7 @@
                     }
 
                     #bbgl-panel.bbgl-mode-page .bbgl-ach-scroll {
-                        padding-top: clamp(18px, calc(18px + 6px * var(--bbgl-page-t)), 24px);
+                        padding-top: clamp(18px, calc(18px + 1px * var(--bbgl-page-t)), 19px);
                     }
 
                     #bbgl-panel.bbgl-mode-page #bbgl-ach-pageindicator .pg-dot {
@@ -841,23 +847,37 @@
                         font-size: clamp(7.5px, calc(7.5px + 3.5px * var(--bbgl-page-t)), 11px);
                     }
 
+                    #bbgl-panel.bbgl-mode-page .bbgl-ach-hh-val {
+                        font-size: clamp(9px, calc(9px + 4px * var(--bbgl-page-t)), 13px);
+                    }
+
+                    #bbgl-panel.bbgl-mode-page .bbgl-ach-hh-tag {
+                        font-size: clamp(7px, calc(7px + 3px * var(--bbgl-page-t)), 10px);
+                    }
+
+                    #bbgl-panel.bbgl-mode-page .bbgl-ach-hh-date-line {
+                        font-size: clamp(8px, calc(8px + 3.5px * var(--bbgl-page-t)), 11.5px);
+                    }
+
+                    #bbgl-panel.bbgl-mode-page .bbgl-ach-subsection-title {
+                        font-size: clamp(8px, calc(8px + 3px * var(--bbgl-page-t)), 11px);
+                    }
+
                     #bbgl-panel.bbgl-mode-page .col-header,
                     #bbgl-panel.bbgl-mode-page .col-data-block {
                         margin-bottom: calc(8px * (1 - var(--bbgl-page-t)));
                     }
 
                     #bbgl-panel.bbgl-mode-page .day-num {
+                        --day-num-size: clamp(22px, calc(22px + 14px * var(--bbgl-page-t)), 36px);
                         top: clamp(2px, calc(2px + 4px * var(--bbgl-page-t)), 6px);
                         left: clamp(2px, calc(2px + 4px * var(--bbgl-page-t)), 6px);
                         font-size: clamp(10px, calc(10px + 8px * var(--bbgl-page-t)), 18px);
-                        width: clamp(22px, calc(22px + 14px * var(--bbgl-page-t)), 36px);
-                        height: clamp(22px, calc(22px + 14px * var(--bbgl-page-t)), 36px);
                     }
 
                     #bbgl-panel.bbgl-mode-page .bbgl-day-cell.is-viewing .day-num {
+                        --day-num-size: clamp(26px, calc(26px + 14px * var(--bbgl-page-t)), 40px);
                         font-size: clamp(14px, calc(14px + 10px * var(--bbgl-page-t)), 24px) !important;
-                        width: clamp(26px, calc(26px + 14px * var(--bbgl-page-t)), 40px);
-                        height: clamp(26px, calc(26px + 14px * var(--bbgl-page-t)), 40px);
                     }
 
                     #bbgl-panel.bbgl-mode-page .ui-floating-label,
@@ -1673,6 +1693,10 @@
 
                     #bbgl-panel:not(.bbgl-mode-page) #bbgl-top-panel.viewing-achievements {
                         padding-top: max(0px, calc(clamp(2px, calc(2px + 18px * var(--bbgl-dock-t, 0)), 20px) - calc(2px * var(--bbgl-dock-t, 0))));
+                    }
+
+                    #bbgl-panel.bbgl-compact #bbgl-top-panel.viewing-achievements {
+                        padding-top: 14px;
                     }
 
                     .ledger-content {
@@ -3191,7 +3215,7 @@
                     /* Event post-it notes — War and OD visual indicators on calendar cells. */
                     .bbgl-event-post-it {
                         position: absolute;
-                        top: 4%;
+                        top: calc(4% - max(0, var(--stack-total, 1) - 1) * 6% + var(--ei, 0) * 9%);
                         left: 4%;
                         width: 92%;
                         height: 92%;
@@ -3199,14 +3223,29 @@
                         z-index: 17;
                         filter: drop-shadow(-2px 4px 5px rgba(0, 0, 0, .4));
                         transform-origin: top right;
-                        transition: transform .35s ease-out;
+                        transition: transform .35s ease-out, top .35s ease-out;
                         pointer-events: none;
                         transform: rotate(calc(-4deg + var(--ei, 0) * -3deg));
                     }
 
-                    body:not(.is-touch-device) .bbgl-day-cell:not(.empty):hover .bbgl-event-post-it,
-                    .bbgl-day-cell.is-scrub-hovered .bbgl-event-post-it,
-                    .bbgl-day-cell.is-viewing .bbgl-event-post-it {
+                    /* Sticker awarded that day (cleared or not): the whole stack peels together. Staggered so the
+                       topmost note (the one covering everything) leaves with zero delay the
+                       moment you hover, while notes further down follow in sequence behind it. */
+                    body:not(.is-touch-device) .bbgl-day-cell:not(.empty):has(.sticker-wrapper):hover .bbgl-event-post-it,
+                    .bbgl-day-cell.is-scrub-hovered:has(.sticker-wrapper) .bbgl-event-post-it,
+                    .bbgl-day-cell.is-viewing:has(.sticker-wrapper) .bbgl-event-post-it {
+                        transform: translateX(110%) translateY(-20%) rotate(20deg);
+                        transition: transform .25s ease-in;
+                        transition-delay: calc(((var(--stack-total, 1) - 1) - var(--ei, 0)) * 0.15s);
+                    }
+
+                    /* No sticker awarded that day: only the note actually blocking the stack (marked
+                       .bbgl-event-post-it-top, only ever added when there's more than one note)
+                       peels away, revealing whatever's fanned out underneath. A lone post-it with
+                       no sticker underneath never moves. */
+                    body:not(.is-touch-device) .bbgl-day-cell:not(.empty):not(:has(.sticker-wrapper)):hover .bbgl-event-post-it-top,
+                    .bbgl-day-cell.is-scrub-hovered:not(:has(.sticker-wrapper)) .bbgl-event-post-it-top,
+                    .bbgl-day-cell.is-viewing:not(:has(.sticker-wrapper)) .bbgl-event-post-it-top {
                         transform: translateX(110%) translateY(-20%) rotate(20deg);
                         transition: transform .25s ease-in;
                     }
@@ -3516,12 +3555,13 @@
                     }
 
                     .day-num {
+                        --day-num-size: 18px;
                         position: absolute;
                         top: 3px;
                         left: 2px;
                         font-size: 10px;
-                        width: 18px;
-                        height: 18px;
+                        width: var(--day-num-size);
+                        height: var(--day-num-size);
                         color: #fff;
                         font-weight: 400;
                         font-family: 'Fjalla One', 'Arial', sans-serif;
@@ -3913,7 +3953,7 @@
                     }
 
                     #bbgl-level-num {
-                        font-family: 'Fjalla One', 'Arial Narrow', sans-serif;
+                        font-family: 'Aldrich', 'Fjalla One', 'Arial Narrow', sans-serif;
                         font-size: clamp(7px, 1.8cqi, 10px);
                         font-weight: 700;
                         letter-spacing: 0.5px;
@@ -3922,6 +3962,11 @@
                         position: relative;
                         display: block;
                         transform-origin: bottom center;
+                    }
+
+                    #bbgl-panel.bbgl-compact #bbgl-level-num .bbgl-lv-prefix,
+                    #bbgl-gym-level-num .bbgl-lv-prefix {
+                        display: none;
                     }
 
                     #bbgl-level-track,
@@ -4146,15 +4191,16 @@
                     }
 
                     #bbgl-panel.bbgl-mode-page #bbgl-level-num {
-                        font-size: clamp(7px, calc(7px + 5px * var(--bbgl-page-t)), 12px);
+                        font-size: clamp(6px, calc(6px + 6px * var(--bbgl-page-t)), 12px);
                     }
 
                     /* ─── Gym Page Level Bar — Structural ───────────────── */
                     #bbgl-gym-level-container {
                         position: relative;
                         width: 100%;
-                        margin-top: 16px;
-                        margin-bottom: -6px;
+                        margin-top: 24px;
+                        margin-bottom: -4px;
+                        --bbgl-track-h: 9px;
                         display: flex;
                         flex-direction: column;
                         align-items: center;
@@ -4163,8 +4209,8 @@
                     }
 
                     #bbgl-gym-level-num {
-                        font-family: 'Fjalla One', 'Arial Narrow', sans-serif;
-                        font-size: clamp(9px, 1.5cqi, 12px);
+                        font-family: 'Aldrich', 'Fjalla One', 'Arial Narrow', sans-serif;
+                        font-size: clamp(6.5px, 1.0cqi, 8.5px);
                         font-weight: 700;
                         letter-spacing: 0.5px;
                         line-height: 1;
@@ -4183,13 +4229,10 @@
                         animation: bbgl-lvl-flash-bar 0.8s ease-out;
                     }
 
-                    /* ─── Level Bar — A0/A1 flag: shared structure ──────────
-                       The metal (A0) and green (A1) flags are structurally identical;
-                       each tier only supplies its palette below: --f-bdr (border),
-                       --f-bg-top/--f-bg (background gradient), --f-hi (inner highlight). */
-                    #bbgl-panel[data-atrophy="0"] #bbgl-level-num,
+                    /* ─── Level Bar — A1 flag: structure ──────────
+                       --f-bdr (border), --f-bg-top/--f-bg (background gradient),
+                       --f-hi (inner highlight) are supplied by the A1 palette below. */
                     #bbgl-panel[data-atrophy="1"] #bbgl-level-num,
-                    #bbgl-gym-level-container[data-atrophy="0"] #bbgl-gym-level-num,
                     #bbgl-gym-level-container[data-atrophy="1"] #bbgl-gym-level-num {
                         --f-r: clamp(5px, 1.3cqi, 8px);
                         padding: 3px clamp(8px, 2cqi, 14px);
@@ -4206,10 +4249,8 @@
                         z-index: 1;
                     }
 
-                    /* Rounded corner flares at the flag's feet (shared by A0/A1). */
-                    #bbgl-panel[data-atrophy="0"] #bbgl-level-num::before,
+                    /* Rounded corner flares at the flag's feet (A1). */
                     #bbgl-panel[data-atrophy="1"] #bbgl-level-num::before,
-                    #bbgl-gym-level-container[data-atrophy="0"] #bbgl-gym-level-num::before,
                     #bbgl-gym-level-container[data-atrophy="1"] #bbgl-gym-level-num::before {
                         content: '';
                         position: absolute;
@@ -4225,15 +4266,76 @@
                             radial-gradient(circle at 100% 0, transparent var(--f-r-in), var(--f-bdr) var(--f-r-in), var(--f-bdr) var(--f-r), var(--f-bg) var(--f-r)) right bottom / var(--f-r) var(--f-r) no-repeat;
                     }
 
-                    /* ─── Level Bar — A0: Torn Native (Metal) palette ──────── */
+                    /* ─── Level Bar — A0: Crown badge (script logo) ─────────
+                       Same icon-badge treatment as A2's diamond: the crown sits behind the
+                       bar via a ::before background-image, "Lv X" floats above it as plain
+                       text (no flag box). */
+                    #bbgl-panel[data-atrophy="0"] #bbgl-level-container {
+                        --crwn-s: clamp(30px, 8cqi, 38px);
+                    }
+
+                    #bbgl-gym-level-container[data-atrophy="0"] {
+                        --crwn-s: clamp(30px, 7.5cqi, 34px);
+                    }
+
+                    #bbgl-panel[data-atrophy="0"].bbgl-expanded #bbgl-level-container {
+                        --crwn-s: clamp(42px, 12cqi, 52px);
+                    }
+
+                    #bbgl-panel[data-atrophy="0"].bbgl-mode-page #bbgl-level-container {
+                        --crwn-s: calc(clamp(30px, 8cqi, 38px) + 18px * var(--bbgl-page-t));
+                    }
+
+                    /* Main panel crown — lives on the flag-clip wrapper. The wrapper's own
+                       bottom edge already sits at the top of the bar (see the flag-clip
+                       comment above), so bottom:0 here lands the crown's bottom edge flush
+                       with the top of the track — no overlap into the bar. */
+                    #bbgl-panel[data-atrophy="0"] #bbgl-level-flag-clip::before {
+                        content: '';
+                        position: absolute;
+                        bottom: 0;
+                        left: 50%;
+                        transform-origin: 50% 100%;
+                        transform: translateX(-50%);
+                        width: calc(var(--crwn-s) * 1.3);
+                        height: calc(var(--crwn-s) * 0.85 + 1px);
+                        background: url("${CROWN_BADGE_URL}") center bottom / 100% 100% no-repeat;
+                        z-index: -1;
+                        pointer-events: none;
+                    }
+
+                    /* Gym page crown — old structure (no flag-clip wrapper): the container's
+                       own bottom edge is the bottom of the track, so the top of the track sits
+                       --bbgl-track-h above it. Same flush, no-overlap placement as the main
+                       panel version. */
+                    #bbgl-gym-level-container[data-atrophy="0"]::before {
+                        content: '';
+                        position: absolute;
+                        bottom: var(--bbgl-track-h);
+                        left: 50%;
+                        transform-origin: 50% 100%;
+                        transform: translateX(-50%);
+                        width: calc(var(--crwn-s) * 1.3);
+                        height: calc(var(--crwn-s) * 0.85 + 1px);
+                        background: url("${CROWN_BADGE_URL}") center bottom / 100% 100% no-repeat;
+                        z-index: 1;
+                        pointer-events: none;
+                    }
+
                     #bbgl-panel[data-atrophy="0"] #bbgl-level-num,
                     #bbgl-gym-level-container[data-atrophy="0"] #bbgl-gym-level-num {
                         color: #f0f0f0;
-                        text-shadow: 0 0 2px #cccccc, 0 0 6px #888888, 0 0 12px #555555;
-                        --f-bdr: rgba(160, 160, 160, 0.7);
-                        --f-bg-top: rgba(90, 90, 90, 0.8);
-                        --f-bg: rgba(30, 30, 30, 0.9);
-                        --f-hi: rgba(255, 255, 255, 0.25);
+                        text-shadow: 0 0 1px #000, 0 0 2px #000, 0 0 3px rgba(0,0,0,0.8);
+                        margin-bottom: 1px;
+                        transform: scaleX(1.15);
+                    }
+
+                    #bbgl-panel[data-atrophy="0"].bbgl-expanded #bbgl-level-num {
+                        margin-bottom: 2px;
+                    }
+
+                    #bbgl-panel[data-atrophy="0"].bbgl-mode-page #bbgl-level-num {
+                        margin-bottom: clamp(1px, calc(1px + 1px * var(--bbgl-page-t)), 2px);
                     }
 
                     /* ─── Level Bar — A1: Green palette ──────── */
@@ -4949,17 +5051,15 @@
                     }
 
                     #bbgl-panel.bbgl-expanded:not(.bbgl-mode-page) .day-num {
+                        --day-num-size: clamp(20px, 5.2cqi, 30px);
                         font-size: clamp(11px, 2.78cqi, 16px) !important;
                         top: clamp(3px, 1.04cqi, 6px) !important;
                         left: clamp(3px, 1.04cqi, 6px) !important;
-                        width: clamp(20px, 5.2cqi, 30px) !important;
-                        height: clamp(20px, 5.2cqi, 30px) !important;
                     }
 
                     #bbgl-panel.bbgl-expanded:not(.bbgl-mode-page) .bbgl-day-cell.is-viewing .day-num {
+                        --day-num-size: clamp(22px, 5.7cqi, 33px);
                         font-size: clamp(15px, 3.82cqi, 22px);
-                        width: clamp(24px, 6.25cqi, 36px) !important;
-                        height: clamp(24px, 6.25cqi, 36px);
                     }
 
                     #bbgl-panel.bbgl-expanded:not(.bbgl-mode-page) #bbgl-ledger-toggle,
@@ -5087,6 +5187,7 @@
                     #bbgl-panel.bbgl-expanded:not(.bbgl-mode-page) #bbgl-top-panel.viewing-achievements #bbgl-achievements-container {
                         --bbgl-ach-inset-x: clamp(4px, 1vw, 12px);
                     }
+
 
                     #bbgl-panel.bbgl-expanded:not(.bbgl-mode-page) .sticker-slot {
                         height: 88px;
@@ -6336,7 +6437,7 @@
             const link = document.createElement('link');
             link.id = 'bbgl-fonts';
             link.rel = 'stylesheet';
-            link.href = 'https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@400;500;700&family=Fjalla+One&family=Inconsolata:wght@400;500;600;700&family=Roboto+Mono:wght@400;500;700&family=VT323&display=swap';
+            link.href = 'https://fonts.googleapis.com/css2?family=Aldrich&family=Barlow+Condensed:wght@400;500;700&family=Fjalla+One&family=Inconsolata:wght@400;500;600;700&family=Roboto+Mono:wght@400;500;700&family=VT323&display=swap';
             root.appendChild(link);
         }
         const style = document.createElement('style');

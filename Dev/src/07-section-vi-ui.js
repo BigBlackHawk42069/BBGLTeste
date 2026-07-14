@@ -5,6 +5,8 @@
      *  You should still get a Tetanus Booster!
      */
 
+    const CAL_IMG_BASE = 'https://raw.githubusercontent.com/BigBlackHawk42069/asdfaskijdnfawef/refs/heads/main/ScrptImgs/Calendar/';
+
     function buildChartSVG(sl) {
         const stats = sl && sl.stats;
         const keys = ['str', 'def', 'spd', 'dex'];
@@ -314,7 +316,7 @@
         }
         calendarState.visibleCells = cells.map(z => Formatter.dateISO(z.y, z.m, z.d));
         c.style.setProperty('--total-rows', 6);
-        c.style.setProperty('--bg-url', 'url(https://raw.githubusercontent.com/BigBlackHawk42069/asdfaskijdnfawef/refs/heads/main/ScrptImgs/Calendar/cal-grid-futr.jpg)');
+        c.style.setProperty('--bg-url', `url(${CAL_IMG_BASE}cal-grid-futr.jpg)`);
         const todayStr = Formatter.dateLogical();
         const frag = document.createDocumentFragment();
         let batch = [],
@@ -333,7 +335,7 @@
                     isArch = weekEndStr < todayStr;
                 rd.className = 'bbgl-row-slice' + (isArch ? ' bbgl-row-archived' : '');
                 rd.style.setProperty('--row-idx', ridx);
-                if (isArch) rd.style.setProperty('--bg-url', 'url(https://raw.githubusercontent.com/BigBlackHawk42069/asdfaskijdnfawef/refs/heads/main/ScrptImgs/Calendar/cal-grid-past.jpg)');
+                if (isArch) rd.style.setProperty('--bg-url', `url(${CAL_IMG_BASE}cal-grid-past.jpg)`);
                 let wdb = [];
                 batch.forEach(function tickWeekCell(i, cIdx) {
                     renderCell(rd, i.y, i.m, i.d, i.g, ridx, cIdx);
@@ -434,9 +436,9 @@
         });
         const isToday = (ds === Formatter.dateLogical());
         if (isFlipped && sl.meta.tier > 0) {
-            let url = 'url(https://raw.githubusercontent.com/BigBlackHawk42069/asdfaskijdnfawef/refs/heads/main/ScrptImgs/Calendar/cal-grid-grn.jpg)';
-            if (sl.meta.tier === 2) url = 'url(https://raw.githubusercontent.com/BigBlackHawk42069/asdfaskijdnfawef/refs/heads/main/ScrptImgs/Calendar/cal-grid-gold.jpg)';
-            else if (sl.meta.tier === 3) url = 'url(https://raw.githubusercontent.com/BigBlackHawk42069/asdfaskijdnfawef/refs/heads/main/ScrptImgs/Calendar/cal-grid-dmnd.jpg)';
+            let url = `url(${CAL_IMG_BASE}cal-grid-grn.jpg)`;
+            if (sl.meta.tier === 2) url = `url(${CAL_IMG_BASE}cal-grid-gold.jpg)`;
+            else if (sl.meta.tier === 3) url = `url(${CAL_IMG_BASE}cal-grid-dmnd.jpg)`;
             cell.style.backgroundImage = url;
             cell.style.backgroundSize = "700% 600%";
             cell.style.backgroundPosition = `${(cIdx * (100 / 6)).toFixed(4)}% ${(rIdx * (100 / 5)).toFixed(4)}%`;
@@ -445,13 +447,13 @@
             const wrap = document.createElement('div'),
                 img = document.createElement('img');
             let tType = 'green',
-                url = 'https://raw.githubusercontent.com/BigBlackHawk42069/asdfaskijdnfawef/refs/heads/main/ScrptImgs/Calendar/rwrd-grn.png';
+                url = `${CAL_IMG_BASE}rwrd-grn.png`;
             if (sl.meta.tier === 2) {
                 tType = 'gold';
-                url = 'https://raw.githubusercontent.com/BigBlackHawk42069/asdfaskijdnfawef/refs/heads/main/ScrptImgs/Calendar/rwrd-gold.png';
+                url = `${CAL_IMG_BASE}rwrd-gold.png`;
             } else if (sl.meta.tier === 3) {
                 tType = 'diamond';
-                url = 'https://raw.githubusercontent.com/BigBlackHawk42069/asdfaskijdnfawef/refs/heads/main/ScrptImgs/Calendar/rwrd-dmnd.png';
+                url = `${CAL_IMG_BASE}rwrd-dmnd.png`;
             }
             wrap.className = `jewel-wrapper jewel-type-${tType}`;
             img.className = 'jewel-asset';
@@ -481,20 +483,20 @@
         ns.innerText = d;
         cell.appendChild(ns);
         if (isFlipped) {
-            const BASE = 'https://raw.githubusercontent.com/BigBlackHawk42069/asdfaskijdnfawef/refs/heads/main/ScrptImgs/Calendar/';
             const wm = getWarMarkers()[ds];
             const eventImgs = [];
-            if ((sl.lsdODs || 0) > 0) eventImgs.push(BASE + 'lsd-od.png');
-            if ((sl.xanaxODs || 0) > 0) eventImgs.push(BASE + 'xan-od.png');
+            if ((sl.lsdODs || 0) > 0) eventImgs.push(CAL_IMG_BASE + 'lsd-od.png');
+            if ((sl.xanaxODs || 0) > 0) eventImgs.push(CAL_IMG_BASE + 'xan-od.png');
             if ((sl.exODs || 0) > 0) eventImgs.push('PLACEHOLDER_EX_OD_URL');
-            if (wm && wm.warStart) eventImgs.push(BASE + 'war-strt.png');
-            if (wm && wm.warWon) eventImgs.push(BASE + 'war-win.png');
-            if (wm && wm.warLost) eventImgs.push(BASE + 'war-lost.png');
+            if (wm && wm.warStart) eventImgs.push(CAL_IMG_BASE + 'war-strt.png');
+            if (wm && wm.warWon) eventImgs.push(CAL_IMG_BASE + 'war-win.png');
+            if (wm && wm.warLost) eventImgs.push(CAL_IMG_BASE + 'war-lost.png');
             eventImgs.forEach((url, i) => {
                 const ep = document.createElement('div');
-                ep.className = 'bbgl-event-post-it';
+                ep.className = 'bbgl-event-post-it' + (eventImgs.length > 1 && i === eventImgs.length - 1 ? ' bbgl-event-post-it-top' : '');
                 ep.style.backgroundImage = `url('${url}')`;
                 ep.style.setProperty('--ei', i);
+                ep.style.setProperty('--stack-total', eventImgs.length);
                 cell.appendChild(ep);
             });
         }
@@ -653,7 +655,7 @@
     function renderLevelBar(bar, expVal) {
         const { atrophy, level, expInLevel, expToNext } = calculateLevelProgress(expVal);
         const pct = expToNext > 0 ? Math.min(100, (expInLevel / expToNext) * 100) : (level >= 100 ? 100 : 0);
-        bar.num.textContent = 'Lv ' + level;
+        bar.num.innerHTML = '<span class="bbgl-lv-prefix">Lv </span>' + level;
         bar.fill.style.width = ((pct / 100) * 96.8).toFixed(2) + '%';
         bar.fill.classList.toggle('level-full', pct >= 99.9);
         if (dom.panel) {
@@ -727,7 +729,7 @@
 
                     await new Promise(r => setTimeout(r, 200));
                     const nextLevel = currentProg.level + 1;
-                    bars.forEach(b => { b.num.textContent = 'Lv ' + nextLevel; });
+                    bars.forEach(b => { b.num.innerHTML = '<span class="bbgl-lv-prefix">Lv </span>' + nextLevel; });
 
                     await new Promise(r => setTimeout(r, 650));
                     bars.forEach(b => b.container.classList.remove('bbgl-level-up-flash'));

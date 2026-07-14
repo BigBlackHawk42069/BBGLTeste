@@ -382,15 +382,32 @@
     }
 
     // ─── LEVELING MATH ENGINE ────────────────────────────────────────────────
-    // Power 1.5 curve | Floor: 50 EXP | P0 Peak: 481 EXP (~22,000 budget)
-    // Atrophy multipliers: ×1.5 (P1) and ×2.0 (P2)
-    const LEVEL_FLOOR = 50;
-    const LEVEL_P0_MAX = 481;
-    const LEVEL_ATRO_MULT = [1, 1.5, 2.0];
+    // Two straight-line ramps (0-15% of levels to 100 EXP, 15-50% to 201 EXP), then a power-2.35
+    // curve from 50% to level 99 (350 EXP). Floor: 25 EXP | P0 Peak: 350 EXP.
+    // Atrophy multipliers: ×1.5 (P1) and ×2.25 (P2).
+    const LEVEL_FLOOR = 25;
+    const LEVEL_P0_MAX = 350;
+    const LEVEL_ATRO_MULT = [1, 1.5, 2.25];
+    const LEVEL_STEP1_END = 0.15;
+    const LEVEL_STEP1_VAL = 100;
+    const LEVEL_STEP2_END = 0.50;
+    const LEVEL_STEP2_VAL = 201;
+    const LEVEL_TAIL_POWER = 2.35;
 
     function computeLevelExpCost(level, atrophy) {
         const t = (level - 1) / 98;
-        const base = Math.round(LEVEL_FLOOR + (LEVEL_P0_MAX - LEVEL_FLOOR) * Math.pow(t, 1.5));
+        const val1 = (LEVEL_STEP1_VAL - LEVEL_FLOOR) / (LEVEL_P0_MAX - LEVEL_FLOOR);
+        const val2 = (LEVEL_STEP2_VAL - LEVEL_FLOOR) / (LEVEL_P0_MAX - LEVEL_FLOOR);
+        let frac;
+        if (t <= LEVEL_STEP1_END) {
+            frac = val1 * (t / LEVEL_STEP1_END);
+        } else if (t <= LEVEL_STEP2_END) {
+            frac = val1 + (val2 - val1) * ((t - LEVEL_STEP1_END) / (LEVEL_STEP2_END - LEVEL_STEP1_END));
+        } else {
+            const u = (t - LEVEL_STEP2_END) / (1 - LEVEL_STEP2_END);
+            frac = val2 + (1 - val2) * Math.pow(u, LEVEL_TAIL_POWER);
+        }
+        const base = Math.round(LEVEL_FLOOR + (LEVEL_P0_MAX - LEVEL_FLOOR) * frac);
         return Math.round(base * LEVEL_ATRO_MULT[atrophy]);
     }
 
@@ -426,13 +443,13 @@
 
     // Real-time daily EXP for the leveling bar (NOT the weekly progress bar).
     // Scaling tiers: 0.20/E (0-1000), 0.25/E (1001-1500), 0.30/E (1501+). +50 flat at 2000E (diamond).
-    // HJ days: burst energy (≤1000E) earns at 0.40/E; extra E above continues in normal scaling bands.
+    // HJ days: burst energy (≤1000E) earns at 0.30/E; extra E above continues in normal scaling bands.
     function computeDailyLevelExp(eSpent, hasTrainLog, isHJ = false) {
         if (!hasTrainLog) return 0;
         if (isHJ) {
             const hjE    = Math.min(eSpent, 1000);
             const extraE = Math.max(eSpent - 1000, 0);
-            const hjBase = hjE * 0.40;
+            const hjBase = hjE * 0.30;
             const t2     = Math.min(extraE, 500) * 0.25;
             const t3     = Math.max(extraE - 500, 0) * 0.30;
             const diamond = eSpent >= 2000 ? 50 : 0;

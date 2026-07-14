@@ -1783,6 +1783,12 @@
         (function injectDevWidget() {
             const w = document.createElement('div');
             w.style.cssText = 'position:fixed;top:100px;left:20px;background:#222;border:1px solid #555;padding:10px;z-index:999999;border-radius:6px;display:flex;flex-direction:column;gap:8px;box-shadow:0 4px 12px rgba(0,0,0,0.5);';
+            const closeBtn = document.createElement('button');
+            closeBtn.textContent = '✕';
+            closeBtn.title = 'Minimize (refresh page to bring back)';
+            closeBtn.style.cssText = 'position:absolute;top:4px;right:4px;background:transparent;color:#aaa;border:none;cursor:pointer;font-size:12px;line-height:1;padding:2px 4px;';
+            closeBtn.onclick = () => w.remove();
+            w.appendChild(closeBtn);
             const title = document.createElement('div');
             title.textContent = 'BBGL Dev';
             title.style.cssText = 'color:#fff;font-family:sans-serif;font-size:12px;font-weight:bold;text-align:center;margin-bottom:4px;';
