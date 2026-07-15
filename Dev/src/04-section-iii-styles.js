@@ -1261,22 +1261,6 @@
                         margin-top: -10px;
                     }
 
-                    #bbgl-api-hud {
-                        position: fixed;
-                        top: 10px;
-                        left: 10px;
-                        z-index: 999999;
-                        background: rgba(0, 0, 0, .8);
-                        color: #76ff03;
-                        padding: 5px 10px;
-                        border-radius: 4px;
-                        font-family: 'Consolas', monospace;
-                        font-size: 12px;
-                        border: 1px solid #333;
-                        pointer-events: none;
-                        box-shadow: 0 2px 5px rgba(0, 0, 0, .5);
-                    }
-
                     #bbgl-demo-exit {
                         background-color: #4a1070;
                         background-image: linear-gradient(180deg, #1a0529 0%, #6a1b9a 25%, #4a1070 60%, #4a1070 78%, #1a0529 100%);
@@ -6452,28 +6436,6 @@
         style.id = 'bbgl-styles';
         style.textContent = CSS_STYLES;
         root.appendChild(style);
-    }
-
-    function injectApiCounter() {
-        if (document.getElementById('bbgl-api-hud')) return;
-        const hud = document.createElement('div');
-        hud.id = 'bbgl-api-hud';
-        hud.innerHTML = `API Calls: ${runtime.apiCallTotal}`;
-        hud.style.display = 'none';
-        document.body.appendChild(hud);
-        dom.apiHud = hud;
-    }
-
-    function syncDevModeUI() {
-        const mode = runtime.devMode;
-        if (mode) {
-            injectApiCounter();
-            if (dom.apiHud) dom.apiHud.style.display = 'block';
-        } else {
-            if (dom.apiHud) dom.apiHud.style.display = 'none';
-        }
-        const btn = document.getElementById('dev-reset-btn');
-        if (btn) btn.style.display = mode ? 'block' : 'none';
     }
 
     function cacheDOM(root) {

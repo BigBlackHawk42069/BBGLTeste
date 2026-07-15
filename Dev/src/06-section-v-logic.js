@@ -3318,16 +3318,6 @@ async function factoryReset() {
     localStorage.setItem(KEYS.CHANGELOG_NOTIF, '1');
     runtime.wasVersionWiped = true;
 }
-async function devFactoryReset() {
-    if (confirm("⚠️ DEV FACTORY RESET ⚠️\n\nThis will completely wipe ALL data, settings, API keys, and cache. The script will emulate a completely fresh install.\n\nProceed?")) {
-        await DBManager.clearStorage();
-        localStorage.clear();
-        const devMode = sessionStorage.getItem(KEYS.DEV_MODE);
-        sessionStorage.clear();
-        if (devMode) sessionStorage.setItem(KEYS.DEV_MODE, devMode);
-        window.location.reload();
-    }
-}
 const BestGymController = {
     _suppressed: {},
     // Reads Torn's React fiber props off a gym button to find its { id, status, ... } item.

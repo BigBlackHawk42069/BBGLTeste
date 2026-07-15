@@ -2260,22 +2260,6 @@
                         margin-top: -10px;
                     }
 
-                    #bbgl-api-hud {
-                        position: fixed;
-                        top: 10px;
-                        left: 10px;
-                        z-index: 999999;
-                        background: rgba(0, 0, 0, .8);
-                        color: #76ff03;
-                        padding: 5px 10px;
-                        border-radius: 4px;
-                        font-family: 'Consolas', monospace;
-                        font-size: 12px;
-                        border: 1px solid #333;
-                        pointer-events: none;
-                        box-shadow: 0 2px 5px rgba(0, 0, 0, .5);
-                    }
-
                     #bbgl-demo-exit {
                         background-color: #4a1070;
                         background-image: linear-gradient(180deg, #1a0529 0%, #6a1b9a 25%, #4a1070 60%, #4a1070 78%, #1a0529 100%);
@@ -7453,28 +7437,6 @@
         root.appendChild(style);
     }
 
-    function injectApiCounter() {
-        if (document.getElementById('bbgl-api-hud')) return;
-        const hud = document.createElement('div');
-        hud.id = 'bbgl-api-hud';
-        hud.innerHTML = `API Calls: ${runtime.apiCallTotal}`;
-        hud.style.display = 'none';
-        document.body.appendChild(hud);
-        dom.apiHud = hud;
-    }
-
-    function syncDevModeUI() {
-        const mode = runtime.devMode;
-        if (mode) {
-            injectApiCounter();
-            if (dom.apiHud) dom.apiHud.style.display = 'block';
-        } else {
-            if (dom.apiHud) dom.apiHud.style.display = 'none';
-        }
-        const btn = document.getElementById('dev-reset-btn');
-        if (btn) btn.style.display = mode ? 'block' : 'none';
-    }
-
     function cacheDOM(root) {
         if (!root) return;
         dom.panel = root.id === 'bbgl-panel' ? root : root.querySelector('#bbgl-panel') || root;
@@ -11916,16 +11878,6 @@ async function factoryReset() {
     localStorage.setItem(KEYS.CHANGELOG_NOTIF, '1');
     runtime.wasVersionWiped = true;
 }
-async function devFactoryReset() {
-    if (confirm("⚠️ DEV FACTORY RESET ⚠️\n\nThis will completely wipe ALL data, settings, API keys, and cache. The script will emulate a completely fresh install.\n\nProceed?")) {
-        await DBManager.clearStorage();
-        localStorage.clear();
-        const devMode = sessionStorage.getItem(KEYS.DEV_MODE);
-        sessionStorage.clear();
-        if (devMode) sessionStorage.setItem(KEYS.DEV_MODE, devMode);
-        window.location.reload();
-    }
-}
 const BestGymController = {
     _suppressed: {},
     // Reads Torn's React fiber props off a gym button to find its { id, status, ... } item.
@@ -14139,7 +14091,7 @@ const BestGymController = {
 
     function buildSettingsInfoSection() {
         const guideBtn = buildButton('feature-guide-btn', 'FEATURE GUIDE', '', 'margin: 8px 10px 0 10px; width: calc(100% - 20px); display: block; border-bottom-left-radius: 0; border-bottom-right-radius: 0; border-bottom: none;');
-        const stack = `<div style="margin: 0 10px 0 10px; display: flex; flex-direction: column;">` + buildButton('settings-changelog-btn', 'CHANGELOG', '', 'border-bottom-left-radius: 0; border-bottom-right-radius: 0; border-bottom: none; width: 100%;') + buildButton('show-welcome-btn', 'WELCOME PAGE', '', 'border-radius: 0; border-bottom: none; width: 100%;') + buildButton('settings-privacy-btn', 'PRIVACY DISCLOSURE', '', 'border-radius: 0; border-bottom: none; width: 100%;') + buildButton('settings-backfill-btn', 'BACKFILL DISCLOSURE', '', 'border-radius: 0; border-bottom: none; width: 100%;') + buildButton('dev-reset-btn', 'DEV: FACTORY RESET', 'red', `border-radius: 0; border-bottom: none; width: 100%; opacity: 0.6; display: ${runtime.devMode ? 'block' : 'none'};`) + `</div>`;
+        const stack = `<div style="margin: 0 10px 0 10px; display: flex; flex-direction: column;">` + buildButton('settings-changelog-btn', 'CHANGELOG', '', 'border-bottom-left-radius: 0; border-bottom-right-radius: 0; border-bottom: none; width: 100%;') + buildButton('show-welcome-btn', 'WELCOME PAGE', '', 'border-radius: 0; border-bottom: none; width: 100%;') + buildButton('settings-privacy-btn', 'PRIVACY DISCLOSURE', '', 'border-radius: 0; border-bottom: none; width: 100%;') + buildButton('settings-backfill-btn', 'BACKFILL DISCLOSURE', '', 'border-top-left-radius: 0; border-top-right-radius: 0; width: 100%;') + `</div>`;
         const demoBtn = buildButton('settings-demo-btn', runtime.demoMode ? 'EXIT DEMO' : 'DEMO MODE', 'purple', 'margin: 0 10px 8px 10px; width: calc(100% - 20px); display: block; border-top-left-radius: 0; border-top-right-radius: 0;');
         return buildSection('Information', guideBtn + `<div class="bbgl-mask-host bbgl-demo-maskable" data-mask-text="Not available in demo mode">${stack}</div>${demoBtn}`);
     }
@@ -17406,11 +17358,6 @@ const BestGymController = {
             this.blur();
             openBackfillModal();
         };
-        const drb = get('dev-reset-btn');
-        if (drb) drb.onclick = function() {
-            this.blur();
-            devFactoryReset();
-        };
         const sa = get('swipe-area');
         if (sa) {
             let _sX = 0,
@@ -17648,7 +17595,6 @@ const BestGymController = {
     async function init() {
         Perf.start('init');
         injectStyles();
-        syncDevModeUI();
         const _seenVer = localStorage.getItem(KEYS.CHANGELOG_VER);
         if (SCRIPT_VERSION && typeof SCRIPT_VERSION === 'string') {
             if (!_seenVer) {
@@ -17745,220 +17691,7 @@ const BestGymController = {
             history[name] = wrapped;
         });
         calendarState.selectedLabel = Formatter.dateLogical();
-        window.devmode = (val) => {
-            const mode = (val === 'on' || val === true);
-            runtime.devMode = mode;
-            sessionStorage.setItem(KEYS.DEV_MODE, mode);
-            syncDevModeUI();
-            Log.info(`Developer mode ${mode ? 'ENABLED' : 'DISABLED'}`);
-        };
-        // ═══ BBGL DEV WIDGET — self-contained, delete this whole IIFE to remove ═══
-        (function injectDevWidget() {
-            const w = document.createElement('div');
-            w.style.cssText = 'position:fixed;top:100px;left:20px;background:#222;border:1px solid #555;padding:10px;z-index:999999;border-radius:6px;display:flex;flex-direction:column;gap:8px;box-shadow:0 4px 12px rgba(0,0,0,0.5);';
-            const closeBtn = document.createElement('button');
-            closeBtn.textContent = '✕';
-            closeBtn.title = 'Minimize (refresh page to bring back)';
-            closeBtn.style.cssText = 'position:absolute;top:4px;right:4px;background:transparent;color:#aaa;border:none;cursor:pointer;font-size:12px;line-height:1;padding:2px 4px;';
-            closeBtn.onclick = () => w.remove();
-            w.appendChild(closeBtn);
-            const title = document.createElement('div');
-            title.textContent = 'BBGL Dev';
-            title.style.cssText = 'color:#fff;font-family:sans-serif;font-size:12px;font-weight:bold;text-align:center;margin-bottom:4px;';
-            w.appendChild(title);
-            const btnStyle = 'background:#444;color:#fff;border:1px solid #666;padding:6px 12px;border-radius:4px;cursor:pointer;font-family:sans-serif;font-size:12px;';
-            const inputStyle = 'width:56px;background:#333;color:#fff;border:1px solid #666;border-radius:4px;padding:5px 6px;font-family:sans-serif;font-size:12px;';
-
-            // Train row: text-entry E amount (10-1500, 10E steps). Runs it through the same
-            // computeDailyLevelExp curve production uses (including HJ burst-rate on HJ days),
-            // then adds the result straight to runtime.careerLevelExp — artificial, like Level Up,
-            // so it works regardless of demoMode (the real eSpent path is ignored in demo mode).
-            const trainRow = document.createElement('div');
-            trainRow.style.cssText = 'display:flex;gap:6px;';
-            const trainInput = document.createElement('input');
-            trainInput.type = 'number';
-            trainInput.min = '10';
-            trainInput.max = '1500';
-            trainInput.step = '10';
-            trainInput.value = '150';
-            trainInput.style.cssText = inputStyle;
-            const trainBtn = document.createElement('button');
-            trainBtn.textContent = 'Train (E)';
-            trainBtn.style.cssText = btnStyle + 'flex:1;';
-            trainBtn.onclick = () => {
-                let e = parseInt(trainInput.value, 10);
-                if (!Number.isFinite(e)) e = 150;
-                e = Math.min(1500, Math.max(10, Math.round(e / 10) * 10));
-                trainInput.value = e;
-                const { hjDaySet } = DataController.getHappyJumpData();
-                const isHJ = hjDaySet.has(Formatter.dateLogical());
-                const gain = computeDailyLevelExp(e, true, isHJ);
-                runtime.careerLevelExp = (runtime.careerLevelExp || 0) + gain;
-                window.dispatchEvent(new CustomEvent('bbgl:dataUpdated'));
-            };
-            trainRow.appendChild(trainInput);
-            trainRow.appendChild(trainBtn);
-            w.appendChild(trainRow);
-
-            // Day-tier grant buttons: each adds the exact exp a real day of that tier would earn
-            // (computed via the same computeDailyLevelExp curve), straight to careerLevelExp.
-            const dayTierRow = document.createElement('div');
-            dayTierRow.style.cssText = 'display:flex;gap:4px;';
-            [
-                ['Happy Jump', () => computeDailyLevelExp(1000, true, true)],
-                ['Green Day', () => computeDailyLevelExp(1000, true, false)],
-                ['Gold Day', () => computeDailyLevelExp(1500, true, false)],
-                ['Diamond Day', () => computeDailyLevelExp(2000, true, false)]
-            ].forEach(([label, computeGain]) => {
-                const btn = document.createElement('button');
-                btn.textContent = label;
-                btn.style.cssText = btnStyle + 'flex:1;padding:6px 4px;font-size:11px;';
-                btn.onclick = () => {
-                    runtime.careerLevelExp = (runtime.careerLevelExp || 0) + computeGain();
-                    window.dispatchEvent(new CustomEvent('bbgl:dataUpdated'));
-                };
-                dayTierRow.appendChild(btn);
-            });
-            w.appendChild(dayTierRow);
-
-            const lvlUpBtn = document.createElement('button');
-            lvlUpBtn.textContent = 'Level Up';
-            lvlUpBtn.style.cssText = btnStyle;
-            lvlUpBtn.onclick = () => {
-                const cur = typeof getLiveLevelExp === 'function' ? getLiveLevelExp() : runtime.careerLevelExp || 0;
-                const prog = typeof calculateLevelProgress === 'function' ? calculateLevelProgress(cur) : { expToNext: 500, expInLevel: 0 };
-                const needed = Math.max(1, prog.expToNext - prog.expInLevel);
-                runtime.careerLevelExp = (runtime.careerLevelExp || 0) + needed;
-                window.dispatchEvent(new CustomEvent('bbgl:dataUpdated'));
-            };
-
-            // Complete Atrophy: fills whichever atrophy tier the bar is CURRENTLY SHOWING to
-            // Level 100 / max exp for that tier. Use "Start Over" to reset and test another tier
-            // from scratch.
-            // getLiveLevelExp() (what the bar displays) = runtime.careerLevelExp + today's real
-            // synced-log exp. That real leftover doesn't go away just because we rewrite
-            // careerLevelExp, so it gets re-added on top next render and overflows past the tier
-            // boundary. Net it out here so the DISPLAYED total lands exactly at Level 100, not
-            // just the artificial half.
-            const atroBtn = document.createElement('button');
-            atroBtn.textContent = 'Complete Atrophy';
-            atroBtn.style.cssText = btnStyle;
-            atroBtn.onclick = () => {
-                const displayed = typeof getLiveLevelExp === 'function' ? getLiveLevelExp() : (runtime.careerLevelExp || 0);
-                const todayReal = displayed - (runtime.careerLevelExp || 0);
-                const { atrophy } = calculateLevelProgress(displayed);
-                let base = 0;
-                for (let a = 0; a < atrophy; a++) base += LEVEL_ATRO_BUDGETS[a];
-                const target = base + LEVEL_ATRO_BUDGETS[atrophy];
-                runtime.careerLevelExp = Math.max(0, target - todayReal);
-                // Snap instantly instead of running the per-level-up animation queue — that's
-                // built for one level at a time and crawls through ~90 levels on a full jump.
-                // Pre-sync _lastLevelExp and render directly so updateLevelBar() sees no delta.
-                const newTotal = typeof getLiveLevelExp === 'function' ? getLiveLevelExp() : runtime.careerLevelExp;
-                runtime._lastLevelExp = newTotal;
-                if (typeof getLevelBars === 'function' && typeof renderLevelBar === 'function') {
-                    getLevelBars().forEach(b => renderLevelBar(b, newTotal));
-                }
-                window.dispatchEvent(new CustomEvent('bbgl:dataUpdated'));
-            };
-
-            // Start Over: back to Level 1 / Atrophy 1 / 0 exp for a clean test pass.
-            const startOverBtn = document.createElement('button');
-            startOverBtn.textContent = 'Start Over';
-            startOverBtn.style.cssText = btnStyle;
-            startOverBtn.onclick = () => {
-                runtime.careerLevelExp = 0;
-                const h = DataController.getActiveHistory();
-                if (h && h.today) {
-                    h.today.eSpent = { total: 0 };
-                    h.today.series = (h.today.series || []).filter(s => s.type !== 'gym');
-                }
-                window.dispatchEvent(new CustomEvent('bbgl:dataUpdated'));
-            };
-
-            w.appendChild(lvlUpBtn);
-            w.appendChild(atroBtn);
-            w.appendChild(startOverBtn);
-            document.body.appendChild(w);
-        })();
-        // ═══ END BBGL DEV WIDGET ═══
-        const _bbglRedactConfig = () => {
-            const c = {
-                ...userConfig
-            };
-            if (c.apiKey) c.apiKey = c.apiKey.length >= 4 ? '***' + c.apiKey.slice(-4) : '***';
-            return c;
-        };
-        window.BBGL = Object.freeze({
-            version: SCRIPT_VERSION,
-            state: () => ({
-                view: {
-                    ...viewState
-                },
-                calendar: {
-                    ...calendarState
-                },
-                runtime: {
-                    devMode: runtime.devMode,
-                    demoMode: runtime.demoMode,
-                    isSyncing: runtime.isSyncing,
-                    apiCallTotal: runtime.apiCallTotal,
-                    domObsArmed: runtime._domObsArmed === true
-                }
-            }),
-            config: () => _bbglRedactConfig(),
-            history: () => {
-                const h = getActiveHistory();
-                return h ? {
-                    meta: h.meta,
-                    today: h.today,
-                    historyCount: (h.history || []).length,
-                    firstDate: (h.history && h.history[0]) ? h.history[0].date : null,
-                    lastDate: (h.history && h.history.length) ? h.history[h.history.length - 1].date : null
-                } : null;
-            },
-            cache: Object.freeze({
-                peek: () => ({
-                    timeline: !!DataController._cache.timeline,
-                    slices: Object.keys(DataController._cache.slices || {}).length,
-                    dateMap: !!DataController._cache.dateMap,
-                    rateArr: !!DataController._cache.rateArr,
-                    stickerMap: !!DataController._cache.stickerMap,
-                    unlockedCount: DataController._cache.unlockedCount
-                })
-            }),
-            help: () => {
-                console.table([{
-                    command: 'BBGL.version',
-                    returns: 'string',
-                    description: 'Script version'
-                }, {
-                    command: 'BBGL.state()',
-                    returns: 'object',
-                    description: 'View / calendar / runtime snapshot'
-                }, {
-                    command: 'BBGL.config()',
-                    returns: 'object',
-                    description: 'User config (API key redacted)'
-                }, {
-                    command: 'BBGL.history()',
-                    returns: 'object',
-                    description: 'Active history meta + count + date range'
-                }, {
-                    command: 'BBGL.cache.peek()',
-                    returns: 'object',
-                    description: 'Which derived caches are populated'
-                }, {
-                    command: 'BBGL.help()',
-                    returns: 'void',
-                    description: 'This table'
-                }, {
-                    command: 'devmode("on"|"off")',
-                    returns: 'void',
-                    description: 'Toggle dev mode (enables Perf marks + dev UI)'
-                }]);
-            }
-        });
+        if (typeof window.initDevTools === 'function') window.initDevTools();
         if (!runtime.demoMode) {
             startBackgroundSync();
             checkExitSync();
@@ -18242,5 +17975,308 @@ const BestGymController = {
     installDomHooks();
     if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init);
     else init();
+
+/**
+ *  [SECTION X] DEV TOOLS
+ *  ========================================================================
+ *  Everything in this file is dev-only. release-build.ps1 (via build-root.js's
+ *  DEVTOOLS_FILES set) drops this entire file when producing BigBlackGymLog.js —
+ *  it only ever ships in the dev build. The single point of contact with
+ *  production code is the guarded `initDevTools()` call in init() (10-section-ix-init.js).
+ */
+(function() {
+    const btnStyle = 'background:#444;color:#fff;border:1px solid #666;padding:6px 12px;border-radius:4px;cursor:pointer;font-family:sans-serif;font-size:12px;';
+    const inputStyle = 'width:56px;background:#333;color:#fff;border:1px solid #666;border-radius:4px;padding:5px 6px;font-family:sans-serif;font-size:12px;';
+
+    let widgetEl = null;
+    let toggleBtn = null;
+
+    function setDevMode(on) {
+        runtime.devMode = !!on;
+        sessionStorage.setItem(KEYS.DEV_MODE, String(runtime.devMode));
+        renderDevToggleUI();
+        Log.info(`Developer mode ${runtime.devMode ? 'ENABLED' : 'DISABLED'}`);
+    }
+
+    function renderDevToggleUI() {
+        if (widgetEl) widgetEl.style.display = runtime.devMode ? 'flex' : 'none';
+        if (toggleBtn) toggleBtn.style.background = runtime.devMode ? '#6a1b9a' : '#444';
+    }
+
+    function buildDevSection(title, children) {
+        const section = document.createElement('div');
+        section.style.cssText = 'display:flex;flex-direction:column;gap:6px;border-top:1px solid #444;padding-top:8px;';
+        const label = document.createElement('div');
+        label.textContent = title;
+        label.style.cssText = 'color:#999;font-family:sans-serif;font-size:10px;font-weight:bold;text-transform:uppercase;letter-spacing:0.5px;';
+        section.appendChild(label);
+        children.forEach(c => section.appendChild(c));
+        return section;
+    }
+
+    function buildDevButton(text, onClick, extraStyle) {
+        const btn = document.createElement('button');
+        btn.textContent = text;
+        btn.style.cssText = btnStyle + (extraStyle || '');
+        btn.onclick = onClick;
+        return btn;
+    }
+
+    // ─── API Counter section ───────────────────────────────────────────────
+    function buildApiCounterSection() {
+        const hud = document.createElement('div');
+        hud.id = 'bbgl-api-hud';
+        hud.style.cssText = 'color:#fff;font-family:sans-serif;font-size:12px;text-align:center;';
+        hud.innerHTML = `API Calls: ${runtime.apiCallTotal}`;
+        return buildDevSection('API', [hud]);
+    }
+
+    // ─── Triggers section (XP/level testing) ───────────────────────────────
+    function buildTriggersSection() {
+        const trainRow = document.createElement('div');
+        trainRow.style.cssText = 'display:flex;gap:6px;';
+        const trainInput = document.createElement('input');
+        trainInput.type = 'number';
+        trainInput.min = '10';
+        trainInput.max = '1500';
+        trainInput.step = '10';
+        trainInput.value = '150';
+        trainInput.style.cssText = inputStyle;
+        const trainBtn = buildDevButton('Train (E)', () => {
+            let e = parseInt(trainInput.value, 10);
+            if (!Number.isFinite(e)) e = 150;
+            e = Math.min(1500, Math.max(10, Math.round(e / 10) * 10));
+            trainInput.value = e;
+            const { hjDaySet } = DataController.getHappyJumpData();
+            const isHJ = hjDaySet.has(Formatter.dateLogical());
+            const gain = computeDailyLevelExp(e, true, isHJ);
+            runtime.careerLevelExp = (runtime.careerLevelExp || 0) + gain;
+            window.dispatchEvent(new CustomEvent('bbgl:dataUpdated'));
+        }, 'flex:1;');
+        trainRow.appendChild(trainInput);
+        trainRow.appendChild(trainBtn);
+
+        const dayTierRow = document.createElement('div');
+        dayTierRow.style.cssText = 'display:flex;gap:4px;';
+        [
+            ['Happy Jump', () => computeDailyLevelExp(1000, true, true)],
+            ['Green Day', () => computeDailyLevelExp(1000, true, false)],
+            ['Gold Day', () => computeDailyLevelExp(1500, true, false)],
+            ['Diamond Day', () => computeDailyLevelExp(2000, true, false)]
+        ].forEach(([label, computeGain]) => {
+            dayTierRow.appendChild(buildDevButton(label, () => {
+                runtime.careerLevelExp = (runtime.careerLevelExp || 0) + computeGain();
+                window.dispatchEvent(new CustomEvent('bbgl:dataUpdated'));
+            }, 'flex:1;padding:6px 4px;font-size:11px;'));
+        });
+
+        const lvlUpBtn = buildDevButton('Level Up', () => {
+            const cur = typeof getLiveLevelExp === 'function' ? getLiveLevelExp() : runtime.careerLevelExp || 0;
+            const prog = typeof calculateLevelProgress === 'function' ? calculateLevelProgress(cur) : { expToNext: 500, expInLevel: 0 };
+            const needed = Math.max(1, prog.expToNext - prog.expInLevel);
+            runtime.careerLevelExp = (runtime.careerLevelExp || 0) + needed;
+            window.dispatchEvent(new CustomEvent('bbgl:dataUpdated'));
+        });
+
+        // Complete Atrophy: fills whichever atrophy tier the bar is CURRENTLY SHOWING to
+        // Level 100 / max exp for that tier. getLiveLevelExp() (what the bar displays) =
+        // runtime.careerLevelExp + today's real synced-log exp. That real leftover doesn't
+        // go away just because we rewrite careerLevelExp, so net it out here so the
+        // DISPLAYED total lands exactly at Level 100, not just the artificial half.
+        const atroBtn = buildDevButton('Complete Atrophy', () => {
+            const displayed = typeof getLiveLevelExp === 'function' ? getLiveLevelExp() : (runtime.careerLevelExp || 0);
+            const todayReal = displayed - (runtime.careerLevelExp || 0);
+            const { atrophy } = calculateLevelProgress(displayed);
+            let base = 0;
+            for (let a = 0; a < atrophy; a++) base += LEVEL_ATRO_BUDGETS[a];
+            const target = base + LEVEL_ATRO_BUDGETS[atrophy];
+            runtime.careerLevelExp = Math.max(0, target - todayReal);
+            // Snap instantly instead of running the per-level-up animation queue — that's
+            // built for one level at a time and crawls through ~90 levels on a full jump.
+            const newTotal = typeof getLiveLevelExp === 'function' ? getLiveLevelExp() : runtime.careerLevelExp;
+            runtime._lastLevelExp = newTotal;
+            if (typeof getLevelBars === 'function' && typeof renderLevelBar === 'function') {
+                getLevelBars().forEach(b => renderLevelBar(b, newTotal));
+            }
+            window.dispatchEvent(new CustomEvent('bbgl:dataUpdated'));
+        });
+
+        return buildDevSection('Triggers', [trainRow, dayTierRow, lvlUpBtn, atroBtn]);
+    }
+
+    // ─── Reset section ──────────────────────────────────────────────────────
+    function buildResetSection() {
+        const factoryResetBtn = buildDevButton('DEV: FACTORY RESET', () => {
+            devFactoryReset();
+        }, 'background:#5a1a1a;border-color:#833;');
+        return buildDevSection('Reset', [factoryResetBtn]);
+    }
+
+    async function devFactoryReset() {
+        if (confirm("⚠️ DEV FACTORY RESET ⚠️\n\nThis will completely wipe ALL data, settings, API keys, and cache. The script will emulate a completely fresh install.\n\nProceed?")) {
+            await DBManager.clearStorage();
+            localStorage.clear();
+            const devMode = sessionStorage.getItem(KEYS.DEV_MODE);
+            sessionStorage.clear();
+            if (devMode) sessionStorage.setItem(KEYS.DEV_MODE, devMode);
+            window.location.reload();
+        }
+    }
+
+    // ─── Console overlay ────────────────────────────────────────────────────
+    const _bbglRedactConfig = () => {
+        const c = { ...userConfig };
+        if (c.apiKey) c.apiKey = c.apiKey.length >= 4 ? '***' + c.apiKey.slice(-4) : '***';
+        return c;
+    };
+
+    function getBBGLState() {
+        return {
+            view: { ...viewState },
+            calendar: { ...calendarState },
+            runtime: {
+                devMode: runtime.devMode,
+                demoMode: runtime.demoMode,
+                isSyncing: runtime.isSyncing,
+                apiCallTotal: runtime.apiCallTotal,
+                domObsArmed: runtime._domObsArmed === true
+            }
+        };
+    }
+    function getBBGLConfig() {
+        return _bbglRedactConfig();
+    }
+    function getBBGLHistory() {
+        const h = getActiveHistory();
+        return h ? {
+            meta: h.meta,
+            today: h.today,
+            historyCount: (h.history || []).length,
+            firstDate: (h.history && h.history[0]) ? h.history[0].date : null,
+            lastDate: (h.history && h.history.length) ? h.history[h.history.length - 1].date : null
+        } : null;
+    }
+    function getBBGLCachePeek() {
+        return {
+            timeline: !!DataController._cache.timeline,
+            slices: Object.keys(DataController._cache.slices || {}).length,
+            dateMap: !!DataController._cache.dateMap,
+            rateArr: !!DataController._cache.rateArr,
+            stickerMap: !!DataController._cache.stickerMap,
+            unlockedCount: DataController._cache.unlockedCount
+        };
+    }
+
+    const BBGL_COMMANDS = [
+        { label: 'State', command: 'BBGL.state()', description: 'View / calendar / runtime snapshot', run: getBBGLState },
+        { label: 'Config', command: 'BBGL.config()', description: 'User config (API key redacted)', run: getBBGLConfig },
+        { label: 'History', command: 'BBGL.history()', description: 'Active history meta + count + date range', run: getBBGLHistory },
+        { label: 'Cache Peek', command: 'BBGL.cache.peek()', description: 'Which derived caches are populated', run: getBBGLCachePeek },
+        { label: 'Help', command: 'BBGL.help()', description: 'This table', run: () => BBGL_COMMANDS.map(({ command, description }) => ({ command, description })) }
+    ];
+
+    window.BBGL = Object.freeze({
+        version: SCRIPT_VERSION,
+        state: getBBGLState,
+        config: getBBGLConfig,
+        history: getBBGLHistory,
+        cache: Object.freeze({ peek: getBBGLCachePeek }),
+        help: () => {
+            console.table(BBGL_COMMANDS.map(({ command, description }) => ({ command, description }))
+                .concat([{ command: 'devmode("on"|"off")', description: 'Toggle dev mode (enables Perf marks + dev UI)' }]));
+        }
+    });
+
+    window.devmode = (val) => setDevMode(val === 'on' || val === true);
+
+    let consoleOverlay = null;
+    let consoleOutput = null;
+
+    function buildConsoleOverlay() {
+        const overlay = document.createElement('div');
+        overlay.style.cssText = 'position:fixed;top:100px;left:220px;background:#1a1a1a;border:1px solid #555;padding:10px;z-index:999999;border-radius:6px;display:none;flex-direction:column;gap:8px;box-shadow:0 4px 12px rgba(0,0,0,0.5);width:280px;';
+
+        const closeBtn = document.createElement('button');
+        closeBtn.textContent = '✕';
+        closeBtn.style.cssText = 'position:absolute;top:4px;right:4px;background:transparent;color:#aaa;border:none;cursor:pointer;font-size:12px;line-height:1;padding:2px 4px;';
+        closeBtn.onclick = () => { overlay.style.display = 'none'; };
+        overlay.appendChild(closeBtn);
+
+        const title = document.createElement('div');
+        title.textContent = 'BBGL Console';
+        title.style.cssText = 'color:#fff;font-family:sans-serif;font-size:12px;font-weight:bold;text-align:center;margin-bottom:4px;';
+        overlay.appendChild(title);
+
+        const btnRow = document.createElement('div');
+        btnRow.style.cssText = 'display:flex;flex-wrap:wrap;gap:4px;';
+        BBGL_COMMANDS.forEach(cmd => {
+            btnRow.appendChild(buildDevButton(cmd.label, () => {
+                let result;
+                try {
+                    result = cmd.run();
+                } catch (e) {
+                    result = { error: String(e) };
+                }
+                consoleOutput.textContent = JSON.stringify(result, null, 2);
+            }, 'flex:1 1 auto;font-size:11px;padding:6px 4px;'));
+        });
+        overlay.appendChild(btnRow);
+
+        consoleOutput = document.createElement('pre');
+        consoleOutput.style.cssText = 'color:#0f0;background:#000;border:1px solid #444;border-radius:4px;padding:6px;font-family:monospace;font-size:11px;max-height:240px;overflow:auto;margin:0;white-space:pre-wrap;word-break:break-all;';
+        consoleOutput.textContent = '(click a command)';
+        overlay.appendChild(consoleOutput);
+
+        document.body.appendChild(overlay);
+        return overlay;
+    }
+
+    // ─── Widget assembly ────────────────────────────────────────────────────
+    function buildWidget() {
+        const w = document.createElement('div');
+        w.style.cssText = 'position:fixed;top:100px;left:20px;background:#222;border:1px solid #555;padding:10px;z-index:999999;border-radius:6px;display:none;flex-direction:column;gap:8px;box-shadow:0 4px 12px rgba(0,0,0,0.5);width:180px;';
+
+        const closeBtn = document.createElement('button');
+        closeBtn.textContent = '✕';
+        closeBtn.title = 'Turn off dev mode';
+        closeBtn.style.cssText = 'position:absolute;top:4px;right:4px;background:transparent;color:#aaa;border:none;cursor:pointer;font-size:12px;line-height:1;padding:2px 4px;';
+        closeBtn.onclick = () => setDevMode(false);
+        w.appendChild(closeBtn);
+
+        const title = document.createElement('div');
+        title.textContent = 'BBGL Dev';
+        title.style.cssText = 'color:#fff;font-family:sans-serif;font-size:12px;font-weight:bold;text-align:center;margin-bottom:2px;';
+        w.appendChild(title);
+
+        w.appendChild(buildApiCounterSection());
+        w.appendChild(buildTriggersSection());
+        w.appendChild(buildResetSection());
+
+        consoleOverlay = buildConsoleOverlay();
+        const consoleBtn = buildDevButton('Console', () => {
+            consoleOverlay.style.display = consoleOverlay.style.display === 'none' ? 'flex' : 'none';
+        }, 'margin-top:4px;');
+        w.appendChild(consoleBtn);
+
+        document.body.appendChild(w);
+        return w;
+    }
+
+    function buildToggleButton() {
+        const btn = document.createElement('button');
+        btn.textContent = 'DEV';
+        btn.title = 'Toggle BBGL dev mode';
+        btn.style.cssText = 'position:fixed;top:8px;left:8px;background:#444;color:#fff;border:1px solid #666;padding:4px 8px;border-radius:4px;cursor:pointer;font-family:sans-serif;font-size:11px;font-weight:bold;z-index:999999;';
+        btn.onclick = () => setDevMode(!runtime.devMode);
+        document.body.appendChild(btn);
+        return btn;
+    }
+
+    window.initDevTools = function initDevTools() {
+        toggleBtn = buildToggleButton();
+        widgetEl = buildWidget();
+        renderDevToggleUI();
+    };
+})();
     //# sourceURL=BBGL.js
 })();
