@@ -5354,6 +5354,14 @@
                         -webkit-backdrop-filter: none;
                     }
 
+                    /* Suppress backdrop-filter while the compact<->expanded resize is animating: blurring
+                       what's behind this element has to be resampled every frame the panel's layer changes,
+                       which is one of the more GPU-expensive things to animate. Restored once settled. */
+                    #bbgl-panel.bbgl-resizing #bbgl-level-num {
+                        backdrop-filter: none !important;
+                        -webkit-backdrop-filter: none !important;
+                    }
+
                     #bbgl-panel[data-atrophy="0"] #bbgl-level-fill,
                     #bbgl-gym-level-container[data-atrophy="0"] #bbgl-gym-level-fill {
                         background: linear-gradient(180deg,
@@ -13277,11 +13285,11 @@ const BestGymController = {
         return Array.from(out);
     }
 
-    function _syncLayoutResizeTargets() {
+    function _syncLayoutResizeTargets(precomputedWindows) {
         if (!runtime.layoutResizeObserver) return;
         const prev = runtime._layoutResizeTargets || (runtime._layoutResizeTargets = new Set());
         const next = new Set();
-        _getLayoutWindows().forEach(w => {
+        (precomputedWindows || _getLayoutWindows()).forEach(w => {
             next.add(w);
             if (!prev.has(w)) runtime.layoutResizeObserver.observe(w);
         });
@@ -13314,8 +13322,8 @@ const BestGymController = {
             notesOpen = isOpen(noteBtn);
         const innerW = window.innerWidth;
         const topCeiling = getTopCeiling();
-        _syncLayoutResizeTargets();
         const visWins = _getLayoutWindows();
+        _syncLayoutResizeTargets(visWins);
         let isNotesExpanded = false;
         let maxNonChatWidth = 0;
         const winInfo = [];
@@ -13374,6 +13382,31 @@ const BestGymController = {
                 return;
             }
         });
+    }
+
+    // Marks the panel as resizing for the duration of its native width/height transition, so
+    // backdrop-filter (expensive to animate) can be suppressed for that window via CSS
+    // (see `#bbgl-panel.bbgl-resizing` in the stylesheet). Cleans up on transitionend, with a
+    // timeout fallback in case the event doesn't fire (e.g. transition got interrupted).
+    function markPanelResizing(p) {
+        if (!p) return;
+        if (p._bbglResizingCancel) p._bbglResizingCancel();
+        p.classList.add('bbgl-resizing');
+        let done = false;
+        const finish = () => {
+            if (done) return;
+            done = true;
+            p.removeEventListener('transitionend', onEnd);
+            clearTimeout(timer);
+            p.classList.remove('bbgl-resizing');
+            p._bbglResizingCancel = null;
+        };
+        const onEnd = (ev) => {
+            if (ev.target === p && (ev.propertyName === 'width' || ev.propertyName === 'height')) finish();
+        };
+        p.addEventListener('transitionend', onEnd);
+        const timer = setTimeout(finish, 350); // matches the stylesheet's .3s width/height transition + margin
+        p._bbglResizingCancel = finish;
     }
 
     function _bbglGetChatRoot() {
@@ -17048,8 +17081,10 @@ const BestGymController = {
         if (pb) pb.onclick = (e) => {
             e.stopPropagation();
             if (dom.panel.classList.contains('bbgl-mode-page')) return;
-            viewState.expanded = !viewState.expanded;
             const p = dom.panel;
+            const animate = userConfig.animations && !p.classList.contains('bbgl-no-animations');
+            if (animate) markPanelResizing(p); // suppresses backdrop-filter for the width/height transition
+            viewState.expanded = !viewState.expanded;
             if (viewState.expanded) {
                 p.classList.add('bbgl-expanded');
                 p.classList.remove('bbgl-compact');

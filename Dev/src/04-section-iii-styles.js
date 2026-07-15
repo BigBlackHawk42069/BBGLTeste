@@ -4355,6 +4355,14 @@
                         -webkit-backdrop-filter: none;
                     }
 
+                    /* Suppress backdrop-filter while the compact<->expanded resize is animating: blurring
+                       what's behind this element has to be resampled every frame the panel's layer changes,
+                       which is one of the more GPU-expensive things to animate. Restored once settled. */
+                    #bbgl-panel.bbgl-resizing #bbgl-level-num {
+                        backdrop-filter: none !important;
+                        -webkit-backdrop-filter: none !important;
+                    }
+
                     #bbgl-panel[data-atrophy="0"] #bbgl-level-fill,
                     #bbgl-gym-level-container[data-atrophy="0"] #bbgl-gym-level-fill {
                         background: linear-gradient(180deg,

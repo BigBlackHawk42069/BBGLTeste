@@ -1110,8 +1110,10 @@
         if (pb) pb.onclick = (e) => {
             e.stopPropagation();
             if (dom.panel.classList.contains('bbgl-mode-page')) return;
-            viewState.expanded = !viewState.expanded;
             const p = dom.panel;
+            const animate = userConfig.animations && !p.classList.contains('bbgl-no-animations');
+            if (animate) markPanelResizing(p); // suppresses backdrop-filter for the width/height transition
+            viewState.expanded = !viewState.expanded;
             if (viewState.expanded) {
                 p.classList.add('bbgl-expanded');
                 p.classList.remove('bbgl-compact');
