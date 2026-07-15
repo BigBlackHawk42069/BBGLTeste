@@ -471,12 +471,24 @@
         return Formatter.dateISO(weekStart.getUTCFullYear(), weekStart.getUTCMonth(), weekStart.getUTCDate());
     }
 
-    // Week-key of the install date (privacyAgreed). Rewards (stickers now, XP later) are only
-    // eligible for weeks with key >= this. Respects the user's day-start and week-start modes.
-    // Returns null if unknown (no gating) — but init() self-heals privacyAgreed so this is rare.
+    // Week-key of the install date (rewardStartDate). Stickers are eligible for weeks with key >=
+    // this — week-precision, so a backfilled day earlier in the install week still counts toward
+    // that week's sticker goal. Respects the user's day-start and week-start modes. Returns null if
+    // unknown (no gating) — but init() self-heals privacyAgreed so this is rare.
     function getInstallWeekKey() {
         const rewardStartDate = getActiveHistory().meta.rewardStartDate;
         if (!rewardStartDate) return null;
         return getWeekKey(Formatter.dateLogical(rewardStartDate * 1000));
+    }
+
+    // Logical date-string of the install moment (rewardStartDate), day-precision. Gates EXP
+    // specifically: unlike getInstallWeekKey()'s week-level sticker gate, a backfilled day earlier
+    // in the install week earns 0 EXP — only days on/after the exact install moment count. This is
+    // what keeps a Clear Log + Backfill from retroactively granting career EXP for reconstructed
+    // pre-install history while still letting that same week's sticker goal be met.
+    function getInstallDateKey() {
+        const rewardStartDate = getActiveHistory().meta.rewardStartDate;
+        if (!rewardStartDate) return null;
+        return Formatter.dateLogical(rewardStartDate * 1000);
     }
 

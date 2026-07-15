@@ -204,7 +204,16 @@
                     return;
                 }
                 const tx = this._db.transaction([this._META_STORE, this._DAYS_STORE], 'readwrite');
-                tx.objectStore(this._META_STORE).clear();
+                const metaStore = tx.objectStore(this._META_STORE);
+                metaStore.clear();
+                // Re-seed rewardStartDate atomically with the wipe, in the same transaction, rather
+                // than leaving meta empty until the next sync gets around to it. getInstallWeekKey()
+                // treats a missing rewardStartDate as "no gating" (fail open, not fail closed) — so
+                // any reward computation between a clear and the next normal sync (e.g. a Backfill
+                // run from Settings right after clearing) would count pre-clear weeks as eligible
+                // again. logStartDate is deliberately NOT seeded here, so the next sync still runs
+                // its normal baseline-capture path (current battlestats -> baselineBreakdown).
+                metaStore.put({ rewardStartDate: Math.floor(Date.now() / 1000) }, this._META_KEY);
                 tx.objectStore(this._DAYS_STORE).clear();
                 tx.oncomplete = () => {
                     _syncChannel.postMessage({
@@ -233,6 +242,10 @@
                 const loaded = await DBManager.loadHistory();
                 DataController.hydrate(loaded);
                 if (dom.panel && dom.panel.style.display !== 'none') renderPanelContent();
+                // Keep this tab's scan mask in sync with whatever the scanning tab just persisted
+                // (start / heartbeat / pause / cap / complete). Passenger tabs mask off this.
+                renderScanOverlay();
+                renderBackfillButton();
             } catch (e) {
                 Log.warn('Cross-tab sync failed', e);
             }
@@ -242,13 +255,14 @@
     function defaultBackfill() {
         return {
             targets: {},
-            windowStart: 0,      // anchor of the current budget window (ms); 0 = no window open
-            rowsThisWindow: 0,   // rows spent in the current window, accumulated across resumes
-            cooldownUntil: 0,    // armed only when the window budget is exhausted
+            rowsUsed: 0,         // cumulative rows spent; resets on full completion or after a cap cooldown elapses
+            cooldownUntil: 0,    // armed to now + COOLDOWN_MS at the moment the cap is hit
             lastResult: null,    // 'partial' | 'complete'
+            stopReason: null,    // null | 'paused' | 'error' | 'cap' — why a partial stopped; drives masked-state copy
             completion: null,    // 'origin' | 'exhausted' (only meaningful once lastResult === 'complete')
-            acknowledged: true,
-            lock: 0              // heartbeat timestamp of the tab currently scanning; 0 = no scan running
+            acknowledged: true,  // false while a masked stop-state (paused/error/cap/complete) awaits the user's dismissal
+            lock: 0,             // heartbeat timestamp of the tab currently scanning; 0 = no scan running
+            lockOwner: null      // _TAB_ID of the scanning tab; lets any tab tell driver from passenger
         };
     }
 
@@ -256,13 +270,16 @@
         const d = defaultBackfill();
         if (ds && typeof ds === 'object') {
             if (ds.targets && typeof ds.targets === 'object') d.targets = ds.targets;
-            if (typeof ds.windowStart === 'number') d.windowStart = ds.windowStart;
-            if (typeof ds.rowsThisWindow === 'number') d.rowsThisWindow = ds.rowsThisWindow;
+            // rowsUsed superseded the older rowsThisWindow; accept either on load.
+            if (typeof ds.rowsUsed === 'number') d.rowsUsed = ds.rowsUsed;
+            else if (typeof ds.rowsThisWindow === 'number') d.rowsUsed = ds.rowsThisWindow;
             if (typeof ds.cooldownUntil === 'number') d.cooldownUntil = ds.cooldownUntil;
             if (ds.lastResult === 'complete' || ds.lastResult === 'partial') d.lastResult = ds.lastResult;
+            if (ds.stopReason === 'paused' || ds.stopReason === 'error' || ds.stopReason === 'cap') d.stopReason = ds.stopReason;
             if (ds.completion === 'origin' || ds.completion === 'exhausted') d.completion = ds.completion;
             if (typeof ds.acknowledged === 'boolean') d.acknowledged = ds.acknowledged;
             if (typeof ds.lock === 'number') d.lock = ds.lock;
+            if (typeof ds.lockOwner === 'string') d.lockOwner = ds.lockOwner;
         }
         return d;
     }
@@ -815,6 +832,94 @@
         await finalizeBackfill(ds, []);
         window.dispatchEvent(new CustomEvent('bbgl:dataUpdated'));
         renderBackfillButton();
+        renderScanOverlay();
+    }
+
+    // Called by 'Proceed to partial logs' on a paused/error/cap masked stop-state: the scanned rows
+    // are already flushed and live, so this just retires the mask. Persist + broadcast so every tab
+    // (and the next reload) agrees the mask is dismissed.
+    async function proceedPartialBackfill() {
+        if (runtime.demoMode || runtime.backfilling) return;
+        const s = getActiveHistory();
+        const ds = s.meta && s.meta.backfill;
+        if (!ds || ds.lastResult !== 'partial' || ds.acknowledged !== false) return;
+        ds.acknowledged = true;
+        try {
+            await persistBackfillState(ds);
+        } catch (e) {
+            Log.warn('Backfill proceed save failed', e);
+        }
+        renderBackfillButton();
+        renderScanOverlay();
+    }
+
+    // Cancel-discard: throw away the reconstructed pre-install history but keep everything tracked
+    // live since install. The install-time baseline is restored as (current battlestats − gains
+    // logged live since install), which is exact whether or not the user trained after installing.
+    // rowsUsed and cooldownUntil are deliberately preserved so a cancel-then-restart cannot dodge
+    // Torn's rolling budget. Frontiers are reseeded to "now" so a future scan re-reconstructs cleanly.
+    async function discardBackfillData(ds) {
+        let stored = await DBManager.getStorage();
+        if (!stored) stored = { meta: { baselineBreakdown: { ...ZERO_BREAKDOWN } }, series: [] };
+        if (!Array.isArray(stored.series)) stored.series = [];
+        if (!stored.meta) stored.meta = { baselineBreakdown: { ...ZERO_BREAKDOWN } };
+
+        // Install cutoff (seconds): rewardStartDate is the fixed install anchor; fall back to
+        // privacyAgreed, then to now (keeps nothing older — still safe, never over-keeps).
+        let cutoff = (typeof stored.meta.rewardStartDate === 'number') ? stored.meta.rewardStartDate : null;
+        if (cutoff === null) {
+            const p = Date.parse(userConfig.privacyAgreed);
+            cutoff = isNaN(p) ? Math.floor(Date.now() / 1000) : Math.floor(p / 1000);
+        }
+
+        // Keep only rows logged live since install; drop the reconstructed history (gym + item).
+        stored.series = stored.series.filter(e => e.ts >= cutoff);
+
+        // Restore the install-time baseline from live battlestats minus post-install live gains.
+        let curStats = null;
+        try {
+            const res = await fetch(`https://api.torn.com/user/?selections=battlestats&key=${userConfig.apiKey}&timestamp=${Date.now()}`);
+            incrementApiCount(1);
+            const data = await res.json();
+            if (!data.error) curStats = data;
+        } catch (e) {
+            Log.warn('Discard baseline battlestats fetch failed', e);
+        }
+        if (curStats) {
+            const liveGain = { str: 0, def: 0, spd: 0, dex: 0 };
+            stored.series.forEach(e => {
+                if (e.type !== 'item' && liveGain[e.stat] !== undefined) liveGain[e.stat] += (e.gain || 0);
+            });
+            stored.meta.baselineBreakdown = {
+                str: r2((curStats.strength || 0) - liveGain.str),
+                def: r2((curStats.defense || 0) - liveGain.def),
+                spd: r2((curStats.speed || 0) - liveGain.spd),
+                dex: r2((curStats.dexterity || 0) - liveGain.dex)
+            };
+        }
+        // else: keep the existing baseline (best effort) rather than zeroing real data.
+
+        // Reseed both frontiers to "now" so a future scan restarts from scratch.
+        ds.targets = {};
+        ensureBackfillTargets(ds);
+
+        // Undo backfill's backward push of the origin floor.
+        stored.meta.logStartDate = cutoff;
+
+        // Preserve anti-abuse budget; clear the masked flow.
+        ds.lastResult = null;
+        ds.stopReason = null;
+        ds.completion = null;
+        ds.acknowledged = true;
+        ds.lock = 0;
+        ds.lockOwner = null;
+        stored.meta.backfill = ds;
+
+        await DBManager.setStorage(stored);
+
+        const rebuilt = DataController._rebuildFromSeries(stored.series || [], stored.meta.baselineBreakdown || ZERO_BREAKDOWN);
+        _historyCache = { meta: stored.meta, history: rebuilt.history, today: rebuilt.today };
+        DataController.invalidate();
     }
 
     // One backward log page for a group, with a changing &timestamp cache-buster. Torn's ~29s API
@@ -845,10 +950,17 @@
         const ds = s.meta.backfill;
         const now = Date.now();
 
-        // Budget cooldown gate: only armed when a previous run exhausted the window's budget.
-        if (ds.cooldownUntil && now < ds.cooldownUntil) {
-            renderBackfillButton();
-            return;
+        // Cap cooldown gate: armed only when a previous run hit the row cap. While it is live, block.
+        // Once it elapses, every counted row has aged out of Torn's rolling 24h — clear the counter
+        // and the cooldown so this run starts with a full budget.
+        if (ds.cooldownUntil) {
+            if (now < ds.cooldownUntil) {
+                renderBackfillButton();
+                renderScanOverlay();
+                return;
+            }
+            ds.cooldownUntil = 0;
+            ds.rowsUsed = 0;
         }
 
         // Cross-tab guard: if another tab is mid-scan its heartbeat lock is fresh in storage. Stand
@@ -857,37 +969,44 @@
         const liveLock = freshStored && freshStored.meta && freshStored.meta.backfill && freshStored.meta.backfill.lock;
         if (liveLock && (Date.now() - liveLock) < BACKFILL.LOCK_STALE_MS) {
             renderBackfillButton();
+            renderScanOverlay();
             return;
         }
 
-        // Open or roll the budget window: a window older than WINDOW_MS has fully aged out of Torn's
-        // rolling 24h, so we start fresh; otherwise this run spends only the remaining budget.
-        if (!ds.windowStart || (Date.now() - ds.windowStart) >= BACKFILL.WINDOW_MS) {
-            ds.windowStart = Date.now();
-            ds.rowsThisWindow = 0;
-        }
-        const budget = Math.max(0, BACKFILL.SOFT_CAP - (ds.rowsThisWindow || 0));
+        // Per-run budget is whatever is left of the cap; rowsUsed persists across resumes and cancels.
+        const budget = Math.max(0, BACKFILL.SOFT_CAP - (ds.rowsUsed || 0));
         if (budget <= 0) {
-            // Window already spent (e.g. resumed right at the boundary): arm the cooldown and bail.
+            // Budget already spent (e.g. resumed right at the boundary): arm the cooldown and bail.
             ds.lastResult = 'partial';
-            ds.cooldownUntil = ds.windowStart + BACKFILL.WINDOW_MS;
+            ds.stopReason = 'cap';
+            ds.acknowledged = false;
+            ds.cooldownUntil = Date.now() + BACKFILL.COOLDOWN_MS;
             await persistBackfillState(ds);
             renderBackfillButton();
+            renderScanOverlay();
             return;
         }
 
         const frontiers = ensureBackfillTargets(ds);
 
         ds.lastResult = 'partial';
+        ds.stopReason = null;
+        ds.acknowledged = false;
         ds.lock = Date.now();
+        ds.lockOwner = _TAB_ID;
+        runtime.backfillAbort = null;
         await persistBackfillState(ds);
+        // Flip backfilling on and raise the mask BEFORE the (potentially slow) faction fetches, so the
+        // Scanning overlay shows immediately rather than briefly resolving to the Error state. Set
+        // after the persist so a persist failure can't strand backfilling=true with no loop running.
+        runtime.backfilling = true;
+        renderScanOverlay();
 
         // Build the faction membership timeline, then fetch ranked war history for each past
         // faction. Sequential: past faction wars depend on the history being stored first.
         await fetchFactionHistory();
         await fetchPastFactionWars();
 
-        runtime.backfilling = true;
         if (btn) {
             if (!btn.dataset.originalText) btn.dataset.originalText = btn.innerText;
             btn.style.pointerEvents = 'none';
@@ -897,13 +1016,15 @@
 
         let sessionRows = 0;       // rows fetched this run (failsafe against HARD_CAP)
         let stoppedEarly = false;
-        let capHit = false;        // window budget reached this run
+        let capHit = false;        // budget reached this run
+        let aborted = null;        // 'pause' | 'cancel' if the user stopped the scan
         let drainDay = null;       // once the cap is hit, only finish the current day
         let pending = [];          // rows not yet flushed to storage
         let lastHeartbeat = Date.now();
 
         const flush = async () => {
             ds.lock = Date.now();
+            ds.lockOwner = _TAB_ID;
             await _persistBackfillSeries(ds, pending);
             pending = [];
             lastHeartbeat = Date.now();
@@ -911,6 +1032,12 @@
 
         try {
             while (sessionRows < BACKFILL.HARD_CAP) {
+                // User-initiated stop: pause keeps what has been scanned, cancel throws it away.
+                // Checked first so a stop is honored before another page is fetched.
+                if (runtime.backfillAbort) {
+                    aborted = runtime.backfillAbort;
+                    break;
+                }
                 // Pick the still-incomplete group with the deepest (highest) cursor, honoring the
                 // drain boundary so we never start a day older than the one being finished.
                 let pick = null;
@@ -973,7 +1100,7 @@
 
                 pending.push(...normalizeApiLogs(data.log));
                 sessionRows += rowKeys.length;
-                ds.rowsThisWindow = (ds.rowsThisWindow || 0) + rowKeys.length;
+                ds.rowsUsed = (ds.rowsUsed || 0) + rowKeys.length;
 
                 let oldestTs = fr.cursor;
                 for (const k of rowKeys) {
@@ -983,10 +1110,11 @@
                 fr.cursor = oldestTs - 1;
 
                 if (btn) btn.innerText = `Scanning... ${sessionRows}`;
+                updateScanOverlayCount(sessionRows);
 
-                // Window budget reached: stop STARTING new days, drain the current one across both
+                // Budget reached: stop STARTING new days, drain the current one across both
                 // groups so the persisted boundary is a fully complete day.
-                if (drainDay === null && ds.rowsThisWindow >= BACKFILL.SOFT_CAP) {
+                if (drainDay === null && ds.rowsUsed >= BACKFILL.SOFT_CAP) {
                     capHit = true;
                     let maxCursor = -Infinity;
                     BACKFILL_GROUP_KEYS.forEach(g => {
@@ -996,12 +1124,12 @@
                     if (maxCursor > -Infinity) drainDay = backfillDayStart(maxCursor);
                 }
 
-                if (pending.length >= BACKFILL.CHECKPOINT_ROWS) {
+                // Both checkpoints are real flushes: the count-based one bounds memory, the
+                // time-based one bounds data-loss on interruption. Persisting the advanced cursor
+                // without the rows that advanced it (the old heartbeat path) silently dropped any
+                // rows still in `pending`, since resume picks up from the persisted cursor.
+                if (pending.length >= BACKFILL.CHECKPOINT_ROWS || Date.now() - lastHeartbeat >= BACKFILL.HEARTBEAT_MS) {
                     await flush();
-                } else if (Date.now() - lastHeartbeat >= BACKFILL.HEARTBEAT_MS) {
-                    ds.lock = Date.now();
-                    await persistBackfillState(ds);
-                    lastHeartbeat = Date.now();
                 }
 
                 if (sessionRows >= BACKFILL.HARD_CAP) {
@@ -1015,22 +1143,48 @@
             stoppedEarly = true;
         }
 
+        ds.lock = 0;
+        ds.lockOwner = null;
+
+        if (aborted === 'cancel') {
+            // User discarded the scan: drop unflushed rows and wipe the backfilled history, keeping
+            // only rowsUsed/cooldownUntil so a restart cannot dodge the rolling budget.
+            pending = [];
+            runtime.backfilling = false;
+            runtime.backfillAbort = null;
+            try {
+                await discardBackfillData(ds);
+            } catch (e) {
+                Log.error('Backfill discard failed', e);
+            }
+            window.dispatchEvent(new CustomEvent('bbgl:dataUpdated'));
+            renderBackfillButton();
+            renderScanOverlay();
+            return;
+        }
+
         const allComplete = BACKFILL_GROUP_KEYS.every(g => frontiers[g] && frontiers[g].complete);
-        if (allComplete && !stoppedEarly) {
+        if (allComplete && !stoppedEarly && !aborted) {
             ds.lastResult = 'complete';
+            ds.stopReason = null;
             ds.acknowledged = false;
             ds.cooldownUntil = 0;
-            ds.windowStart = 0;
-            ds.rowsThisWindow = 0;
+            ds.rowsUsed = 0;
         } else {
             ds.lastResult = 'partial';
-            // Arm the cooldown only when the budget was actually spent. Interruptions, network
-            // errors, and crashes leave it clear so Resume is immediately available.
-            if (capHit || (ds.rowsThisWindow || 0) >= BACKFILL.SOFT_CAP) {
-                ds.cooldownUntil = ds.windowStart + BACKFILL.WINDOW_MS;
+            ds.acknowledged = false;
+            if (aborted === 'pause') {
+                // Manual pause: keep progress, no cooldown — Resume is immediately available.
+                ds.stopReason = 'paused';
+            } else if (capHit || (ds.rowsUsed || 0) >= BACKFILL.SOFT_CAP) {
+                // Budget spent: arm the cooldown at the moment of the cap-hit.
+                ds.stopReason = 'cap';
+                ds.cooldownUntil = Date.now() + BACKFILL.COOLDOWN_MS;
+            } else {
+                // Interruption, network, or API error: resumable now.
+                ds.stopReason = 'error';
             }
         }
-        ds.lock = 0;
 
         try {
             await finalizeBackfill(ds, pending);
@@ -1038,6 +1192,7 @@
             Log.error('Deep scan save failed', e);
         } finally {
             runtime.backfilling = false;
+            runtime.backfillAbort = null;
         }
 
         // Classify a completed scan now that the deepest rows (the final batch) are merged and the
@@ -1056,11 +1211,14 @@
 
         window.dispatchEvent(new CustomEvent('bbgl:dataUpdated'));
         renderBackfillButton();
+        renderScanOverlay();
     }
 
     // Crash/refresh recovery: on boot, a backfill heartbeat lock that has gone stale means a scan was
-    // interrupted. Release the lock so Resume works (its cooldown is already correct — clear unless
-    // the cap was hit). A still-fresh lock means another live tab owns the scan, so we leave it be.
+    // interrupted (tab/browser closed outright — the running code never reached its own catch). This
+    // is the ONLY place that can classify that case. Release the lock and surface the interactive
+    // Error mask (resume / proceed). A still-fresh lock means another live tab owns the scan, so we
+    // leave it be. A cleanly completed-but-unacknowledged scan is left untouched.
     async function recoverInterruptedBackfill() {
         if (runtime.demoMode || runtime.backfilling) return;
         const s = getActiveHistory();
@@ -1068,7 +1226,13 @@
         if (!ds || !ds.lock) return;
         if ((Date.now() - ds.lock) <= BACKFILL.LOCK_STALE_MS) return;
         ds.lock = 0;
-        if (!ds.lastResult) ds.lastResult = 'partial';
+        ds.lockOwner = null;
+        if (ds.lastResult !== 'complete') {
+            ds.lastResult = 'partial';
+            // Preserve a cap stop (its cooldown is real); otherwise treat as an interruption.
+            if (ds.stopReason !== 'cap') ds.stopReason = 'error';
+            ds.acknowledged = false;
+        }
         try {
             await persistBackfillState(ds);
         } catch (e) {

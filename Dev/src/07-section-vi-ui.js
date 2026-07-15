@@ -1686,7 +1686,7 @@
         BEST_GYM_UNPURCHASED: "<b>Allow switching to unpurchased gyms</b><br><i>When off, auto-switch only considers gyms you have already bought.</i>",
         API: "Custom API key required.<br><br><i>This script strictly requests 'battlestats' and 'log' data. Click the Create API Key button below to securely generate a key for this script. For maximum safety, you can edit this newly created key in your Torn API Settings to restrict its log access specifically to the 'Gym' category.<br><br>Your key is stored locally on your device only and is sent exclusively to api.torn.com.</i>",
         PASTE_CLIPBOARD: "Paste from Clipboard",
-        AGREE_GATE: "Check every box in the user acknowledgement",
+        AGREE_GATE: "Check the box to confirm you've read the disclosure",
         LOCKED: "Locked",
         LEDGER_VIEW: "Ledger",
         GRAPH_VIEW: "Graph",
@@ -1786,20 +1786,16 @@
     const DOC_ERROR_HTML   = `<div style="padding:20px; text-align:center; color:#888;">Could not load document. Check your connection.</div>`;
 
     const PRIVACY_TEXT = {
-        ACK_INTRO: `<div style="padding:0 0 8px 0; color:#bbb; font-size:12px;">By using this script, you acknowledge and agree to the following:</div>`,
-        ACK_ITEMS: ["I understand that this script requires full log access solely due to limitations in Torn's API.", "I understand this script's API usage and that it is designed to stay well within Torn's rate limits.", "I understand that all data is processed and stored locally within my own browser, and is never transmitted, stored externally, or accessible to the developer.", "I understand that I can verify these claims by reviewing the script's source code, specifically the \"THE CHECK-IN COUNTER\" section.", "I understand I can use Demo mode to test the script before registering any API Key or agreeing to this disclosure."]
+        AGREE_LABEL: "I have read and agree to this disclosure."
     };
 
     function buildPrivacyModalHTML(reviewMode) {
-        const ackRows = PRIVACY_TEXT.ACK_ITEMS.map((txt, i) => {
-                const ctrl = reviewMode ? `<span class="bbgl-ack-check">${ICONS.CHECK}</span>` : `<input type="checkbox" id="bbgl-ack-${i + 1}">`,
-                    label = reviewMode ? `<span>${txt}</span>` : `<label for="bbgl-ack-${i + 1}">${txt}</label>`;
-                return `<div class="bbgl-ack-row">${ctrl}${label}</div>`;
-            }).join(''),
-            discSection = buildSection('Privacy Disclosure', `<div class="bbgl-modal-scrollbox"><div id="bbgl-privacy-disc">${DOC_LOADING_HTML}</div></div>`, 'margin-bottom:5px;'),
-            ackSection = buildSection('User Acknowledgement', `<div class="bbgl-modal-scrollbox">${PRIVACY_TEXT.ACK_INTRO}${ackRows}</div>`, 'margin-bottom:8px;'),
+        const ctrl = reviewMode ? `<span class="bbgl-ack-check">${ICONS.CHECK}</span>` : `<input type="checkbox" id="bbgl-privacy-ack">`,
+            label = reviewMode ? `<span>${PRIVACY_TEXT.AGREE_LABEL}</span>` : `<label for="bbgl-privacy-ack">${PRIVACY_TEXT.AGREE_LABEL}</label>`,
+            ackRow = `<div class="bbgl-ack-row" style="margin:0 10px 8px 10px;">${ctrl}${label}</div>`,
+            discSection = buildSection('Big Black Dicslosure', `<div class="bbgl-modal-scrollbox"><div id="bbgl-privacy-disc">${DOC_LOADING_HTML}</div></div>${ackRow}`, 'margin-bottom:8px;'),
             footer = reviewMode ? '' : `<div style="display:flex; margin:0 10px 4px 10px;">${buildButton('bbgl-privacy-demo-btn', 'DEMO', 'purple', 'flex:2; border-radius:4px 0 0 4px; margin:0;')}<span class="bbgl-agree-wrap" style="flex:1; display:flex;" data-tooltip="${TOOLTIPS.AGREE_GATE}">${buildButton('bbgl-privacy-agree-btn', 'AGREE', 'green', 'flex:1; border-radius:0 4px 4px 0; margin:0;')}</span></div>`;
-        return `<div class="bbgl-modal-overlay" id="bbgl-privacy-modal"><div class="bbgl-modal-window"><div class="close-settings-btn bbgl-close-x" id="bbgl-privacy-close" title="Close">${ICONS.CLOSE}</div>${discSection}${ackSection}${footer}</div></div>`;
+        return `<div class="bbgl-modal-overlay" id="bbgl-privacy-modal"><div class="bbgl-modal-window"><div class="close-settings-btn bbgl-close-x" id="bbgl-privacy-close" title="Close">${ICONS.CLOSE}</div>${discSection}${footer}</div></div>`;
     }
 
     function closePrivacyModal() {
@@ -1903,7 +1899,9 @@
             if (startBtn.classList.contains('bbgl-btn-disabled')) return;
             this.blur();
             closeBackfillModal();
-            backfillLogs(document.getElementById('backfill-btn'));
+            // Route through the settings starter so we land on the log (with the overlay's pause/
+            // cancel controls) rather than the "settings unavailable" mask.
+            startBackfillFromSettings();
         };
         try {
             const disclosureHTML = await fetchDoc('backfill');
@@ -1913,6 +1911,40 @@
             const disc = modal.querySelector('#bbgl-backfill-disc');
             if (disc) disc.innerHTML = DOC_ERROR_HTML;
         }
+    }
+
+    // Shown right after START TRACKING (post key-verification): the user chooses whether to begin
+    // with an empty log or reconstruct their history via Big Black Backfill. The panel is already
+    // initialized and sitting on the (empty) ledger behind this modal, so dismissing == start fresh.
+    function buildBackfillChoiceModalHTML() {
+        const intro = `<div style="padding:6px 4px 14px; color:#ccc; font-size:12px; line-height:1.6; text-align:center;">You're all set. Start a fresh log from today, or use Big Black Backfill to reconstruct your full training history from Torn's logs. You can always run the backfill later from Settings.</div>`;
+        const buttons = `<div style="display:flex; gap:0; margin:0 6px 2px;">${buildButton('bbgl-choice-fresh-btn', 'START LOG FRESH', '', 'flex:1; border-radius:4px 0 0 4px; margin:0;')}${buildButton('bbgl-choice-backfill-btn', 'BIG BLACK BACKFILL', 'purple', 'flex:1; border-radius:0 4px 4px 0; margin:0;')}</div>`;
+        return `<div class="bbgl-modal-overlay" id="bbgl-choice-modal"><div class="bbgl-modal-window"><div class="close-settings-btn bbgl-close-x" id="bbgl-choice-close" title="Close">${ICONS.CLOSE}</div>${buildSection('Start Tracking', intro + buttons, 'margin-bottom:8px;')}</div></div>`;
+    }
+
+    function closeBackfillChoiceModal() {
+        const m = document.getElementById('bbgl-choice-modal');
+        if (m && m.parentNode) m.parentNode.removeChild(m);
+    }
+
+    function openBackfillChoiceModal() {
+        if (runtime.demoMode) return;
+        closeBackfillChoiceModal();
+        document.body.insertAdjacentHTML('beforeend', buildBackfillChoiceModalHTML());
+        const modal = document.getElementById('bbgl-choice-modal');
+        if (!modal) return;
+        const close = () => closeBackfillChoiceModal();
+        modal.querySelector('#bbgl-choice-close').onclick = close;
+        modal.onclick = (e) => { if (e.target === modal) close(); };
+        const fresh = modal.querySelector('#bbgl-choice-fresh-btn');
+        if (fresh) fresh.onclick = function() { this.blur(); close(); };  // already on the empty ledger
+        const bf = modal.querySelector('#bbgl-choice-backfill-btn');
+        if (bf) bf.onclick = function() {
+            this.blur();
+            close();
+            // Kick off the scan; the masked overlay takes over the panel from here.
+            backfillLogs(document.getElementById('backfill-btn'));
+        };
     }
 
     async function openPrivacyModal() {
@@ -1929,11 +1961,10 @@
         if (!reviewMode) {
             const agreeBtn = modal.querySelector('#bbgl-privacy-agree-btn'),
                 agreeWrap = modal.querySelector('.bbgl-agree-wrap'),
-                boxes = Array.from(modal.querySelectorAll('.bbgl-ack-row input[type="checkbox"]'));
+                ackBox = modal.querySelector('#bbgl-privacy-ack');
             agreeBtn.classList.add('bbgl-btn-disabled');
             const refreshAgreeState = () => {
-                const all = boxes.every(b => b.checked);
-                if (all) {
+                if (ackBox.checked) {
                     agreeBtn.classList.remove('bbgl-btn-disabled');
                     if (agreeWrap) agreeWrap.removeAttribute('data-tooltip');
                 } else {
@@ -1941,7 +1972,7 @@
                     if (agreeWrap) agreeWrap.setAttribute('data-tooltip', TOOLTIPS.AGREE_GATE);
                 }
             };
-            boxes.forEach(b => b.onchange = refreshAgreeState);
+            ackBox.onchange = refreshAgreeState;
             refreshAgreeState();
             modal.querySelector('#bbgl-privacy-demo-btn').onclick = function() {
                 this.blur();
@@ -1962,12 +1993,36 @@
                 if (wv && wv.classList.contains('active-view')) refreshInitMask(wv);
             };
         }
+        const disc = modal.querySelector('#bbgl-privacy-disc');
+        // In-modal doc swap: any element in a loaded doc carrying data-bbgl-doc="<name>" (e.g. a
+        // "technical details" link in privacy.html pointing to "privacy-tech", and a "back" link in
+        // that doc pointing to "privacy") swaps the disclosure content in place without leaving the
+        // modal. Copy and link placement live entirely in the docs.
+        const wireDocSwap = (container) => {
+            if (!container) return;
+            container.querySelectorAll('[data-bbgl-doc]').forEach(link => {
+                link.style.cursor = 'pointer';
+                link.onclick = async (e) => {
+                    e.preventDefault();
+                    const name = link.getAttribute('data-bbgl-doc');
+                    if (!name) return;
+                    container.innerHTML = DOC_LOADING_HTML;
+                    try {
+                        container.innerHTML = await fetchDoc(name);
+                    } catch (err) {
+                        container.innerHTML = DOC_ERROR_HTML;
+                    }
+                    wireDocSwap(container);
+                };
+            });
+        };
         try {
             const disclosureHTML = await fetchDoc('privacy');
-            const disc = modal.querySelector('#bbgl-privacy-disc');
-            if (disc) disc.innerHTML = disclosureHTML;
+            if (disc) {
+                disc.innerHTML = disclosureHTML;
+                wireDocSwap(disc);
+            }
         } catch (e) {
-            const disc = modal.querySelector('#bbgl-privacy-disc');
             if (disc) disc.innerHTML = DOC_ERROR_HTML;
         }
     }

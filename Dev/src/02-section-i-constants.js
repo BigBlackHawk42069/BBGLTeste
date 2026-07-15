@@ -161,20 +161,23 @@
     // partial one), bounded by HARD_CAP as an absolute failsafe against a pathologically dense
     // single day.
     //
-    // Budget accounting is a fixed 24.2h window (WINDOW_MS) anchored at the first scan of the
-    // window: rowsThisWindow accumulates across resumes, the per-run budget is SOFT_CAP minus what
-    // is already spent, and the cooldown is only armed (windowStart + WINDOW_MS) when that budget
-    // is exhausted. Any other stop (interrupt, crash, network) leaves the cooldown clear so Resume
-    // works immediately. The 0.2h margin keeps the earliest spends provably aged out of Torn's
-    // rolling 24h window on resume. Progress is checkpointed to storage every CHECKPOINT_ROWS rows
-    // so an interruption never loses more than the last partial batch, and a heartbeat (refreshed
-    // every HEARTBEAT_MS, considered dead after LOCK_STALE_MS) guards against two tabs scanning at
-    // once. ORIGIN_MAX_STAT classifies a completed scan: if every baseline stat is at/under it the
-    // scan genuinely reached the account's origin, otherwise it merely exhausted Torn's retained logs.
+    // Budget accounting uses a single cumulative counter (rowsUsed) plus a cooldown armed only at
+    // the moment the cap is hit. rowsUsed accumulates across resumes and cancels; the per-run budget
+    // is SOFT_CAP minus what is already spent. When the budget is exhausted the cooldown is armed to
+    // now + COOLDOWN_MS (24h6m) — anchored at the cap-hit itself, not at any window start — which
+    // provably ages every counted row out of Torn's rolling 24h before the next scan may begin.
+    // rowsUsed resets to 0 only when a scan completes fully, or when a new attempt starts after a
+    // previously-armed cooldown has elapsed. Any other stop (interrupt, crash, network, pause) leaves
+    // the cooldown clear so Resume works immediately. Progress is checkpointed to storage every
+    // CHECKPOINT_ROWS rows AND every HEARTBEAT_MS so an interruption never loses more than the last
+    // partial batch, and the heartbeat lock (considered dead after LOCK_STALE_MS) guards against two
+    // tabs scanning at once. ORIGIN_MAX_STAT classifies a completed scan: if every baseline stat is
+    // at/under it the scan genuinely reached the account's origin, otherwise it merely exhausted
+    // Torn's retained logs.
     const BACKFILL = {
-        SOFT_CAP: 30000,   // stop *starting* new days once crossed
-        HARD_CAP: 32000,   // absolute failsafe, normally never reached, keeps us < 50k
-        WINDOW_MS: Math.round(24.2 * 3600 * 1000),
+        SOFT_CAP: 40000,   // stop *starting* new days once crossed
+        HARD_CAP: 42000,   // absolute failsafe, normally never reached, keeps us < 50k
+        COOLDOWN_MS: Math.round(24.1 * 3600 * 1000),  // 24h6m; armed at cap-hit, covers Torn's rolling 24h
         THROTTLE_MS: 700,
         CHECKPOINT_ROWS: 2000,
         HEARTBEAT_MS: 15000,
@@ -301,6 +304,7 @@
         isViewAnimating: false,
         isSyncing: false,
         backfilling: false,
+        backfillAbort: null,   // null | 'pause' | 'cancel' — checked each scan-loop iteration
         apiCallTotal: 0,
         resizeObserver: null,
         stickerSlots: [],

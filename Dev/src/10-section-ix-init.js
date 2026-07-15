@@ -675,6 +675,9 @@
                             viewState.activeViewLabel = null;
                             switchView('ledger');
                             syncWithFeedback('FULL_SYNC');
+                            // Offer the fresh-vs-backfill choice over the (now empty) ledger.
+                            // Dismissing the modal simply leaves them on the fresh log.
+                            openBackfillChoiceModal();
                         } catch (e) {
                             alert("Network error during verification.");
                             isb.style.color = '';
@@ -685,7 +688,7 @@
                     const cb = wv.querySelector('#init-create-api-btn');
                     if (cb) cb.onclick = function() {
                         this.blur();
-                        window.open('https://www.torn.com/preferences.php#tab=api?step=addNewKey&user=battlestats,log&=,,,,&logIds=56,52,54,50,23,6&title=Big%20Black%20Gym%20Log', '_blank');
+                        window.open('https://www.torn.com/preferences.php#tab=api?step=addNewKey&user=battlestats,log&=,,,,&faction=rankedwars&logIds=56,52,54,50,23,6&title=BigBlackGymLog', '_blank');
                     };
                     const rib = wv.querySelector('#init-returning-import-btn'),
                         rif = wv.querySelector('#init-import-file');
@@ -733,6 +736,9 @@
                 tp.classList.add('viewing-achievements');
                 renderAchievements();
             } else renderPanelContent();
+            // Re-apply the scan mask for the newly active view (settings gets the "unavailable"
+            // variant; other views get the full scan state machine).
+            renderScanOverlay();
         };
         if (inst) {
             app();
@@ -972,13 +978,166 @@
         return `${pad(h)}:${pad(m)}:${pad(s)}`;
     }
 
-    // Reflects backfill state onto the button and wires its per-state click behavior:
-    //  - idle: responsive label; clicking opens the disclaimer/config modal.
-    //  - complete (unacknowledged): "Scan Complete!" in green with a clickable checkmark the user
-    //    taps to retire the confirmation (the data is already live). The button body itself is inert.
-    //  - partial + cooling down: "Partial Scan Complete! Resume?", dimmed and inert, with a live
-    //    countdown tooltip on the whole button (hover/tap to see how long until resume).
-    //  - partial + cooldown elapsed: same label, full opacity, clicking resumes immediately (no modal).
+    /* ============================ Big Black Backfill scan overlay ============================
+       A full-panel mask (#bbgl-scan-overlay) driven entirely off the persisted backfill state
+       (ds) plus runtime.backfilling. renderScanOverlay() is the single source of truth — the
+       overlay analog of renderBackfillButton() — and is idempotent so it can be called freely
+       from render/lifecycle paths without tearing down the live counter or handlers. */
+    const SCAN_PAUSE_SVG = `<svg viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="5" width="4" height="14" rx="1"/><rect x="14" y="5" width="4" height="14" rx="1"/></svg>`;
+    const SCAN_PLAY_SVG  = `<svg viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>`;
+    let _scanOverlayTimer = null;   // cap countdown OR passenger-staleness poll
+    let _scanOverlayKey = null;     // last rendered visual key; guards idempotent rebuilds
+    let _scanCancelConfirm = false; // transient: Cancel clicked, awaiting yes/no
+
+    function updateScanOverlayCount(n) {
+        const el = document.querySelector('#bbgl-scan-count');
+        if (el) el.textContent = String(n);
+    }
+
+    // Resolve the current visual state from persisted ds + this tab's role. Returns {key, ds}.
+    function currentScanState() {
+        if (runtime.demoMode) return { key: null, ds: null };
+        const s = getActiveHistory();
+        const ds = s && s.meta && s.meta.backfill;
+        if (!ds) return { key: null, ds: null };
+        const lockFresh = ds.lock && (Date.now() - ds.lock) < BACKFILL.LOCK_STALE_MS;
+        let key = null;
+        if (runtime.backfilling) key = _scanCancelConfirm ? 'confirm' : 'scanning';
+        else if (lockFresh && ds.lockOwner !== _TAB_ID) key = 'passenger';   // another tab drives
+        else if (ds.acknowledged === false) {
+            if (ds.lastResult === 'complete') key = 'complete';
+            else if (ds.stopReason === 'cap') key = 'cap';
+            else if (ds.stopReason === 'paused') key = 'paused';
+            else key = 'error';
+        }
+        return { key, ds };
+    }
+
+    function updateScanCapCountdown(ds) {
+        const el = document.querySelector('#bbgl-scan-cap-timer');
+        if (!el) return;
+        const remaining = (ds.cooldownUntil || 0) - Date.now();
+        el.textContent = formatCountdown(remaining);
+        if (remaining <= 0 && _scanOverlayTimer) {
+            clearInterval(_scanOverlayTimer);
+            _scanOverlayTimer = null;
+        }
+    }
+
+    // Placeholder copy — final wording authored separately. Each state returns overlay inner HTML.
+    function buildScanOverlayInner(key, ds) {
+        const cancelX = `<div id="bbgl-scan-cancel">Cancel</div>`;
+        switch (key) {
+            case 'settings':
+                return `<div class="bbgl-scan-title">Scan in Progress</div><div class="bbgl-scan-sub">Settings are unavailable while a backfill is running. Return to the log to manage the scan.</div>`;
+            case 'scanning':
+                return `${cancelX}<div class="bbgl-scan-title">Scanning&hellip; <span id="bbgl-scan-count" class="bbgl-scan-count">0</span></div><div class="bbgl-scan-sub">Reconstructing your training history. You can keep playing &mdash; just don't close this tab until the scan finishes.</div><div class="bbgl-scan-actions"><div id="bbgl-scan-pause" class="bbgl-scan-iconbtn bbgl-scan-play" title="Pause">${SCAN_PAUSE_SVG}</div></div>`;
+            case 'confirm':
+                return `<div class="bbgl-scan-title">Discard backfill progress?</div><div class="bbgl-scan-sub">This discards all backfilled history and starts your log fresh from installation. Your tracking since install is kept.</div><div class="bbgl-scan-actions"><div id="bbgl-scan-confirm-yes" class="bbgl-scan-iconbtn bbgl-scan-yes" title="Yes, discard">${ICONS.CHECK}</div><div id="bbgl-scan-confirm-no" class="bbgl-scan-iconbtn bbgl-scan-no" title="No, keep scanning">${ICONS.CLOSE}</div></div>`;
+            case 'passenger':
+                return `<div class="bbgl-scan-title">Scanning&hellip;</div><div class="bbgl-scan-sub">A backfill is running in another tab. Switch to that tab to pause or cancel it.</div>`;
+            case 'paused':
+                return `<div class="bbgl-scan-title">Scan Paused</div><div class="bbgl-scan-sub">Your logs are partially filled. Continue now and resume the backfill anytime from the Settings menu.</div><div class="bbgl-scan-actions"><div id="bbgl-scan-resume" class="bbgl-scan-iconbtn bbgl-scan-play" title="Resume">${SCAN_PLAY_SVG}</div><div id="bbgl-scan-proceed" class="bbgl-scan-textbtn bbgl-scan-primary">Proceed to partial logs</div></div>`;
+            case 'error':
+                return `<div class="bbgl-scan-title">Scan Interrupted</div><div class="bbgl-scan-sub">The backfill stopped before finishing. Resume to keep going, or proceed with what's been filled so far.</div><div class="bbgl-scan-actions"><div id="bbgl-scan-resume" class="bbgl-scan-iconbtn bbgl-scan-play" title="Resume">${SCAN_PLAY_SVG}</div><div id="bbgl-scan-proceed" class="bbgl-scan-textbtn bbgl-scan-primary">Proceed to partial logs</div></div>`;
+            case 'cap':
+                return `<div class="bbgl-scan-title">Daily Row Limit Reached</div><div class="bbgl-scan-sub">Torn limits how much history can be pulled per day. You can resume in <span id="bbgl-scan-cap-timer">--:--:--</span> from the Settings menu.</div><div class="bbgl-scan-actions"><div id="bbgl-scan-proceed" class="bbgl-scan-textbtn bbgl-scan-primary">Proceed to partial logs</div></div>`;
+            case 'complete': {
+                const sub = ds && ds.completion === 'exhausted'
+                    ? "We've pulled back as far as Torn still keeps your logs. Your history is ready."
+                    : "Your full training history has been reconstructed. Welcome to the log.";
+                return `<div class="bbgl-scan-title">Backfill Complete!</div><div class="bbgl-scan-sub">${sub}</div><div class="bbgl-scan-actions"><div id="bbgl-scan-ack" class="bbgl-scan-textbtn bbgl-scan-primary">Enter Logs</div></div>`;
+            }
+            default:
+                return '';
+        }
+    }
+
+    function wireScanOverlay(el, key, ds) {
+        const cancel = el.querySelector('#bbgl-scan-cancel');
+        if (cancel) cancel.onclick = () => { _scanCancelConfirm = true; _scanOverlayKey = null; renderScanOverlay(); };
+        const pause = el.querySelector('#bbgl-scan-pause');
+        if (pause) pause.onclick = () => {
+            runtime.backfillAbort = 'pause';
+            const t = el.querySelector('.bbgl-scan-title');
+            if (t) t.textContent = 'Pausing…';
+        };
+        const yes = el.querySelector('#bbgl-scan-confirm-yes');
+        if (yes) yes.onclick = () => {
+            runtime.backfillAbort = 'cancel';
+            _scanCancelConfirm = false;
+            const t = el.querySelector('.bbgl-scan-title');
+            if (t) t.textContent = 'Discarding…';
+        };
+        const no = el.querySelector('#bbgl-scan-confirm-no');
+        if (no) no.onclick = () => { _scanCancelConfirm = false; _scanOverlayKey = null; renderScanOverlay(); };
+        const resume = el.querySelector('#bbgl-scan-resume');
+        if (resume) resume.onclick = () => { backfillLogs(document.getElementById('backfill-btn')); };
+        const proceed = el.querySelector('#bbgl-scan-proceed');
+        if (proceed) proceed.onclick = () => { proceedPartialBackfill(); };
+        const ack = el.querySelector('#bbgl-scan-ack');
+        if (ack) ack.onclick = () => { acknowledgeBackfill(); };
+    }
+
+    function renderScanOverlay() {
+        const existing = document.getElementById('bbgl-scan-overlay');
+        const { key, ds } = currentScanState();
+
+        if (!key) {
+            _scanCancelConfirm = false;
+            _scanOverlayKey = null;
+            if (_scanOverlayTimer) { clearInterval(_scanOverlayTimer); _scanOverlayTimer = null; }
+            if (existing) existing.remove();
+            return;
+        }
+
+        // The cancel-confirm sub-state only exists during an active scan; clear it on any other
+        // state so it can never leak into the next scan's first render.
+        if (key !== 'scanning' && key !== 'confirm') _scanCancelConfirm = false;
+
+        const host = document.querySelector('#bbgl-content-wrapper');
+        if (!host) return;
+
+        // In the settings view, show a distinct "unavailable" mask with no scan controls.
+        const inSettings = dom.settingsView && dom.settingsView.classList.contains('active-view');
+        const renderKey = inSettings ? 'settings' : key;
+
+        // Idempotent: skip a rebuild when the visual state is unchanged so the live counter and
+        // handlers survive (renderScanOverlay is called from hot render paths).
+        if (existing && _scanOverlayKey === renderKey) return;
+        _scanOverlayKey = renderKey;
+        if (_scanOverlayTimer) { clearInterval(_scanOverlayTimer); _scanOverlayTimer = null; }
+
+        const el = existing || document.createElement('div');
+        el.id = 'bbgl-scan-overlay';
+        el.innerHTML = buildScanOverlayInner(renderKey, ds);
+        if (!existing) host.appendChild(el);
+        wireScanOverlay(el, renderKey, ds);
+
+        if (renderKey === 'cap') {
+            updateScanCapCountdown(ds);
+            _scanOverlayTimer = setInterval(() => updateScanCapCountdown(ds), 1000);
+        } else if (renderKey === 'passenger') {
+            // No broadcast fires if the driver tab dies; poll so we can promote to the Error mask
+            // once its lock goes stale.
+            _scanOverlayTimer = setInterval(() => renderScanOverlay(), 3000);
+        }
+    }
+
+    // Route the Settings "BB Backfill" button into the masked scan: switch to the log (so the
+    // overlay's pause/cancel controls are visible, not the settings "unavailable" variant), then
+    // start or resume the scan. No modal — the disclosure now lives in the privacy doc.
+    function startBackfillFromSettings() {
+        if (runtime.demoMode) return;
+        switchView('ledger');
+        backfillLogs(document.getElementById('backfill-btn'));
+    }
+
+    // The full scan state machine now lives in the masked overlay (renderScanOverlay). This just
+    // reflects backfill state onto the Settings button and wires its click:
+    //  - scanning / masked stop-state (unacknowledged): inert; the overlay owns the UI.
+    //  - cooling down after a cap (acknowledged): inert with a live "resume available in" countdown.
+    //  - partial + resumable, or fresh/complete: clickable, routes into the masked scan.
     function renderBackfillButton() {
         const btn = document.getElementById('backfill-btn');
         if (!btn) return;
@@ -986,61 +1145,62 @@
             clearInterval(_backfillCountdownId);
             _backfillCountdownId = null;
         }
-        if (runtime.demoMode || runtime.backfilling) return;
-
-        const s = getActiveHistory();
-        const ds = s.meta && s.meta.backfill;
 
         // Reset to a clean baseline before applying the active state.
-        btn.style.pointerEvents = 'auto';
-        btn.style.opacity = '1';
+        btn.style.pointerEvents = '';
+        btn.style.opacity = '';
         btn.style.color = '';
         btn.removeAttribute('data-tooltip');
         delete btn.dataset.originalText;
         btn.onclick = null;
 
-        if (ds && ds.lastResult === 'complete' && ds.acknowledged === false) {
-            btn.style.color = '#43a047';
-            btn.setAttribute('data-tooltip', ds.completion === 'exhausted' ? TOOLTIPS.BACKFILL_COMPLETE_EXHAUSTED : TOOLTIPS.BACKFILL_COMPLETE_ORIGIN);
-            btn.innerHTML = `Full Backfill Completed!<span id="bbgl-backfill-ack" title="Confirm" style="display:inline-flex;align-items:center;justify-content:center;width:16px;height:16px;margin-left:8px;cursor:pointer;vertical-align:middle;">${ICONS.CHECK}</span>`;
-            const ack = btn.querySelector('#bbgl-backfill-ack');
-            if (ack) ack.onclick = (e) => {
-                e.stopPropagation();
-                acknowledgeBackfill();
-            };
+        if (runtime.demoMode) return;
+
+        const idleLabel = '<span class="view-std">BB Backfill</span><span class="view-exp">Big Black Backfill</span>';
+
+        // Scan running, or a masked stop-state awaiting acknowledgement: the overlay covers the panel
+        // (including this button), so keep it inert.
+        const s = getActiveHistory();
+        const ds = s.meta && s.meta.backfill;
+        if (runtime.backfilling || (ds && ds.acknowledged === false)) {
+            btn.style.opacity = '0.6';
+            btn.style.pointerEvents = 'none';
+            btn.innerHTML = idleLabel;
             return;
         }
 
+        // Acknowledged cap: still cooling down. Inert with a live countdown until resume unlocks.
         if (ds && ds.lastResult === 'partial' && ds.cooldownUntil && Date.now() < ds.cooldownUntil) {
             btn.style.opacity = '0.6';
-            btn.textContent = 'Partial Scan Complete! Resume?';
+            btn.style.pointerEvents = 'none';
             const render = () => {
                 const remaining = ds.cooldownUntil - Date.now();
                 if (remaining <= 0) {
                     renderBackfillButton();
                     return;
                 }
-                btn.setAttribute('data-tooltip', TOOLTIPS.BACKFILL_RESUME_COOLDOWN(formatCountdown(remaining)));
+                btn.innerHTML = `Resume available in ${formatCountdown(remaining)}`;
             };
             render();
             _backfillCountdownId = setInterval(render, 1000);
             return;
         }
 
+        // Partial and resumable now (acknowledged pause/error, or cap cooldown elapsed).
         if (ds && ds.lastResult === 'partial') {
-            // Cooldown elapsed: stay in the resume state until the log is fully backfilled.
-            btn.textContent = 'Partial Scan Complete! Resume?';
+            btn.innerHTML = '<span class="view-std">Resume Backfill</span><span class="view-exp">Resume Big Black Backfill</span>';
             btn.onclick = function() {
                 this.blur();
-                backfillLogs(this);
+                startBackfillFromSettings();
             };
             return;
         }
 
-        btn.innerHTML = '<span class="view-std">BB Backfill</span><span class="view-exp">Big Black Backfill</span>';
+        // Fresh, or completed-and-acknowledged: start a new scan.
+        btn.innerHTML = idleLabel;
         btn.onclick = function() {
             this.blur();
-            openBackfillModal();
+            startBackfillFromSettings();
         };
     }
 
@@ -1371,7 +1531,7 @@
         const crb = get('create-api-btn');
         if (crb) crb.onclick = function() {
             this.blur();
-            window.open('https://www.torn.com/preferences.php#tab=api?step=addNewKey&user=battlestats,log&=,,,,&logIds=56,52,54,50,23,6&title=Big%20Black%20Gym%20Log', '_blank');
+            window.open('https://www.torn.com/preferences.php#tab=api?step=addNewKey&user=battlestats,log&=,,,,&faction=rankedwars&logIds=56,52,54,50,23,6&title=BigBlackGymLog', '_blank');
         };
         const rb = get('refresh-log-btn');
         if (rb) rb.onclick = function() {
@@ -1394,6 +1554,7 @@
         // The backfill button's click behavior is state-dependent (open modal / resume / acknowledge),
         // so renderBackfillButton owns wiring its onclick for the current state.
         renderBackfillButton();
+        renderScanOverlay();
         const clb = get('clear-btn');
         if (clb) clb.onclick = function() {
             this.blur();
@@ -1704,6 +1865,7 @@
                 // stale; release it so the Resume button works again without a 24h lockout.
                 await recoverInterruptedBackfill();
                 renderBackfillButton();
+                renderScanOverlay();
                 if (loaded && ((_historyCache.history.length > 0) || (_historyCache.meta && _historyCache.meta.logStartDate)) && !localStorage.getItem('bbgl_initialized')) localStorage.setItem('bbgl_initialized', '1');
             } catch (e) {
                 Log.warn('IndexedDB boot failed, continuing with empty state', e);
@@ -1723,6 +1885,7 @@
             if (dom.panel && dom.panel.style.display !== 'none') renderPanelContent();
             updateLevelBar();
             renderBackfillButton();
+            renderScanOverlay();
         });
         updateLevelBar(); // initialize _lastLevelExp before first interaction
         let _domRaf = null;

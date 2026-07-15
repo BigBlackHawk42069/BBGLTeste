@@ -131,17 +131,33 @@ const DataController = {
         let careerLevelExp = 0;
         // Reward gating: stickers (and their unlock progression) only count from the install
         // week onward. Pre-install weeks still render their bar/day counts elsewhere, but earn
-        // no stickers here. Demo mode is exempt (keeps its 1-sticker showcase behavior).
+        // no stickers here. EXP uses a stricter gate: full days before the install day contribute
+        // 0 EXP, and on the exact install day itself, only training at/after the precise
+        // rewardStartDate timestamp counts (sub-day precision) — so a Clear Log + Backfill can
+        // still earn that week's sticker, but reconstructed pre-install training earlier the same
+        // day (before the user actually clicked train post-install) contributes 0 EXP. Demo mode
+        // is exempt (keeps its 1-sticker showcase behavior).
         const installWeekKey = runtime.demoMode ? null : getInstallWeekKey();
+        const installDateKey = runtime.demoMode ? null : getInstallDateKey();
+        const rewardStartTs = runtime.demoMode ? null : (getActiveHistory().meta && getActiveHistory().meta.rewardStartDate) || null;
         Object.keys(weekMap).sort().forEach(wk => {
             if (installWeekKey && wk < installWeekKey) return;
             const days = weekMap[wk].sort((a, b) => a.date.localeCompare(b.date));
             // Daily level EXP: include current week's past days (today excluded by weekMap).
             if (!runtime.demoMode) {
                 days.forEach(day => {
-                    const e = day.eSpent ? (day.eSpent.total || 0) : 0;
-                    const hasTrainLog = day.series && day.series.some(s => s.type === 'gym');
-                    careerLevelExp += computeDailyLevelExp(e, hasTrainLog, hjDaySet.has(day.date));
+                    if (installDateKey && day.date < installDateKey) return;
+                    let daySeries = day.series || [];
+                    // On the exact install day, restrict to entries at/after the precise install
+                    // moment — day.date alone can't distinguish "trained at 2pm, installed at 8pm"
+                    // (pre-install) from "installed at 8pm, trained at 10pm" (post-install).
+                    if (installDateKey && day.date === installDateKey && rewardStartTs) {
+                        daySeries = daySeries.filter(s => s.ts >= rewardStartTs);
+                    }
+                    const e = daySeries.filter(s => s.type === 'gym').reduce((sum, s) => sum + (s.cost || 0), 0);
+                    const hasTrainLog = daySeries.some(s => s.type === 'gym');
+                    const isHJ = (daySeries === day.series) ? hjDaySet.has(day.date) : findHappyJumps(daySeries).length > 0;
+                    careerLevelExp += computeDailyLevelExp(e, hasTrainLog, isHJ);
                 });
             }
             if (wk >= todayWeekKey) return;

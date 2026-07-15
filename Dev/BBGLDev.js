@@ -7,6 +7,7 @@
 // @match        https://www.torn.com/*
 // @grant        GM_xmlhttpRequest
 // @connect      raw.githubusercontent.com
+// @connect      cdn.jsdelivr.net
 // @run-at       document-start
 // @updateURL    https://raw.githubusercontent.com/BigBlackHawk42069/BBGLTeste/refs/heads/main/BigBlackGymLog.js
 // @downloadURL  https://raw.githubusercontent.com/BigBlackHawk42069/BBGLTeste/refs/heads/main/BigBlackGymLog.js
@@ -227,20 +228,23 @@
     // partial one), bounded by HARD_CAP as an absolute failsafe against a pathologically dense
     // single day.
     //
-    // Budget accounting is a fixed 24.2h window (WINDOW_MS) anchored at the first scan of the
-    // window: rowsThisWindow accumulates across resumes, the per-run budget is SOFT_CAP minus what
-    // is already spent, and the cooldown is only armed (windowStart + WINDOW_MS) when that budget
-    // is exhausted. Any other stop (interrupt, crash, network) leaves the cooldown clear so Resume
-    // works immediately. The 0.2h margin keeps the earliest spends provably aged out of Torn's
-    // rolling 24h window on resume. Progress is checkpointed to storage every CHECKPOINT_ROWS rows
-    // so an interruption never loses more than the last partial batch, and a heartbeat (refreshed
-    // every HEARTBEAT_MS, considered dead after LOCK_STALE_MS) guards against two tabs scanning at
-    // once. ORIGIN_MAX_STAT classifies a completed scan: if every baseline stat is at/under it the
-    // scan genuinely reached the account's origin, otherwise it merely exhausted Torn's retained logs.
+    // Budget accounting uses a single cumulative counter (rowsUsed) plus a cooldown armed only at
+    // the moment the cap is hit. rowsUsed accumulates across resumes and cancels; the per-run budget
+    // is SOFT_CAP minus what is already spent. When the budget is exhausted the cooldown is armed to
+    // now + COOLDOWN_MS (24h6m) — anchored at the cap-hit itself, not at any window start — which
+    // provably ages every counted row out of Torn's rolling 24h before the next scan may begin.
+    // rowsUsed resets to 0 only when a scan completes fully, or when a new attempt starts after a
+    // previously-armed cooldown has elapsed. Any other stop (interrupt, crash, network, pause) leaves
+    // the cooldown clear so Resume works immediately. Progress is checkpointed to storage every
+    // CHECKPOINT_ROWS rows AND every HEARTBEAT_MS so an interruption never loses more than the last
+    // partial batch, and the heartbeat lock (considered dead after LOCK_STALE_MS) guards against two
+    // tabs scanning at once. ORIGIN_MAX_STAT classifies a completed scan: if every baseline stat is
+    // at/under it the scan genuinely reached the account's origin, otherwise it merely exhausted
+    // Torn's retained logs.
     const BACKFILL = {
-        SOFT_CAP: 30000,   // stop *starting* new days once crossed
-        HARD_CAP: 32000,   // absolute failsafe, normally never reached, keeps us < 50k
-        WINDOW_MS: Math.round(24.2 * 3600 * 1000),
+        SOFT_CAP: 40000,   // stop *starting* new days once crossed
+        HARD_CAP: 42000,   // absolute failsafe, normally never reached, keeps us < 50k
+        COOLDOWN_MS: Math.round(24.1 * 3600 * 1000),  // 24h6m; armed at cap-hit, covers Torn's rolling 24h
         THROTTLE_MS: 700,
         CHECKPOINT_ROWS: 2000,
         HEARTBEAT_MS: 15000,
@@ -367,6 +371,7 @@
         isViewAnimating: false,
         isSyncing: false,
         backfilling: false,
+        backfillAbort: null,   // null | 'pause' | 'cancel' — checked each scan-loop iteration
         apiCallTotal: 0,
         resizeObserver: null,
         stickerSlots: [],
@@ -988,13 +993,25 @@
         return Formatter.dateISO(weekStart.getUTCFullYear(), weekStart.getUTCMonth(), weekStart.getUTCDate());
     }
 
-    // Week-key of the install date (privacyAgreed). Rewards (stickers now, XP later) are only
-    // eligible for weeks with key >= this. Respects the user's day-start and week-start modes.
-    // Returns null if unknown (no gating) — but init() self-heals privacyAgreed so this is rare.
+    // Week-key of the install date (rewardStartDate). Stickers are eligible for weeks with key >=
+    // this — week-precision, so a backfilled day earlier in the install week still counts toward
+    // that week's sticker goal. Respects the user's day-start and week-start modes. Returns null if
+    // unknown (no gating) — but init() self-heals privacyAgreed so this is rare.
     function getInstallWeekKey() {
         const rewardStartDate = getActiveHistory().meta.rewardStartDate;
         if (!rewardStartDate) return null;
         return getWeekKey(Formatter.dateLogical(rewardStartDate * 1000));
+    }
+
+    // Logical date-string of the install moment (rewardStartDate), day-precision. Gates EXP
+    // specifically: unlike getInstallWeekKey()'s week-level sticker gate, a backfilled day earlier
+    // in the install week earns 0 EXP — only days on/after the exact install moment count. This is
+    // what keeps a Clear Log + Backfill from retroactively granting career EXP for reconstructed
+    // pre-install history while still letting that same week's sticker goal be met.
+    function getInstallDateKey() {
+        const rewardStartDate = getActiveHistory().meta.rewardStartDate;
+        if (!rewardStartDate) return null;
+        return Formatter.dateLogical(rewardStartDate * 1000);
     }
 
     /**
@@ -5743,6 +5760,88 @@
                         display: none !important;
                     }
 
+                    /* Full-panel Big Black Backfill scan mask. Anchored to #bbgl-content-wrapper
+                       (position:relative), so it covers the top + bottom panels and the settings/
+                       welcome views while leaving the header (settings/close) reachable. */
+                    #bbgl-scan-overlay {
+                        position: absolute;
+                        inset: 0;
+                        z-index: 60;
+                        display: flex;
+                        flex-direction: column;
+                        align-items: center;
+                        justify-content: center;
+                        gap: 14px;
+                        padding: 26px 24px;
+                        box-sizing: border-box;
+                        background: rgba(10, 10, 12, .88);
+                        color: #ddd;
+                        font-family: Arial, sans-serif;
+                        text-align: center;
+                        border-radius: 0 0 5px 5px;
+                    }
+                    #bbgl-scan-overlay .bbgl-scan-title {
+                        font-size: 18px;
+                        font-weight: 800;
+                        color: #fff;
+                        letter-spacing: .3px;
+                    }
+                    #bbgl-scan-overlay .bbgl-scan-sub {
+                        font-size: 12px;
+                        line-height: 1.6;
+                        color: #b6b6b6;
+                        max-width: 300px;
+                    }
+                    #bbgl-scan-overlay .bbgl-scan-count { color: #b388ff; font-variant-numeric: tabular-nums; }
+                    #bbgl-scan-cancel {
+                        position: absolute;
+                        top: 10px;
+                        right: 12px;
+                        font-size: 11px;
+                        font-weight: 700;
+                        color: #ff5252;
+                        cursor: pointer;
+                        padding: 4px 9px;
+                        border-radius: 4px;
+                        text-transform: uppercase;
+                        letter-spacing: .5px;
+                    }
+                    #bbgl-scan-cancel:hover { background: rgba(255, 82, 82, .16); }
+                    #bbgl-scan-overlay .bbgl-scan-actions {
+                        display: flex;
+                        gap: 18px;
+                        align-items: center;
+                        justify-content: center;
+                        margin-top: 2px;
+                    }
+                    .bbgl-scan-textbtn {
+                        cursor: pointer;
+                        font-size: 13px;
+                        font-weight: 700;
+                        color: #dcdcdc;
+                        padding: 7px 12px;
+                        border-radius: 4px;
+                    }
+                    .bbgl-scan-textbtn:hover { background: rgba(255, 255, 255, .1); color: #fff; }
+                    .bbgl-scan-textbtn.bbgl-scan-primary { color: #b388ff; }
+                    .bbgl-scan-textbtn.bbgl-scan-primary:hover { background: rgba(179, 136, 255, .16); }
+                    .bbgl-scan-iconbtn {
+                        display: inline-flex;
+                        align-items: center;
+                        justify-content: center;
+                        width: 36px;
+                        height: 36px;
+                        border-radius: 50%;
+                        cursor: pointer;
+                    }
+                    .bbgl-scan-iconbtn svg { width: 18px; height: 18px; }
+                    .bbgl-scan-iconbtn.bbgl-scan-yes { color: #69f0ae; }
+                    .bbgl-scan-iconbtn.bbgl-scan-yes:hover { background: rgba(105, 240, 174, .16); }
+                    .bbgl-scan-iconbtn.bbgl-scan-no { color: #ff5252; }
+                    .bbgl-scan-iconbtn.bbgl-scan-no:hover { background: rgba(255, 82, 82, .16); }
+                    .bbgl-scan-iconbtn.bbgl-scan-play { color: #b388ff; }
+                    .bbgl-scan-iconbtn.bbgl-scan-play:hover { background: rgba(179, 136, 255, .16); }
+
                     .bbgl-ack-check {
                         display: inline-flex;
                         width: 14px;
@@ -7686,7 +7785,16 @@
                     return;
                 }
                 const tx = this._db.transaction([this._META_STORE, this._DAYS_STORE], 'readwrite');
-                tx.objectStore(this._META_STORE).clear();
+                const metaStore = tx.objectStore(this._META_STORE);
+                metaStore.clear();
+                // Re-seed rewardStartDate atomically with the wipe, in the same transaction, rather
+                // than leaving meta empty until the next sync gets around to it. getInstallWeekKey()
+                // treats a missing rewardStartDate as "no gating" (fail open, not fail closed) — so
+                // any reward computation between a clear and the next normal sync (e.g. a Backfill
+                // run from Settings right after clearing) would count pre-clear weeks as eligible
+                // again. logStartDate is deliberately NOT seeded here, so the next sync still runs
+                // its normal baseline-capture path (current battlestats -> baselineBreakdown).
+                metaStore.put({ rewardStartDate: Math.floor(Date.now() / 1000) }, this._META_KEY);
                 tx.objectStore(this._DAYS_STORE).clear();
                 tx.oncomplete = () => {
                     _syncChannel.postMessage({
@@ -7715,6 +7823,10 @@
                 const loaded = await DBManager.loadHistory();
                 DataController.hydrate(loaded);
                 if (dom.panel && dom.panel.style.display !== 'none') renderPanelContent();
+                // Keep this tab's scan mask in sync with whatever the scanning tab just persisted
+                // (start / heartbeat / pause / cap / complete). Passenger tabs mask off this.
+                renderScanOverlay();
+                renderBackfillButton();
             } catch (e) {
                 Log.warn('Cross-tab sync failed', e);
             }
@@ -7724,13 +7836,14 @@
     function defaultBackfill() {
         return {
             targets: {},
-            windowStart: 0,      // anchor of the current budget window (ms); 0 = no window open
-            rowsThisWindow: 0,   // rows spent in the current window, accumulated across resumes
-            cooldownUntil: 0,    // armed only when the window budget is exhausted
+            rowsUsed: 0,         // cumulative rows spent; resets on full completion or after a cap cooldown elapses
+            cooldownUntil: 0,    // armed to now + COOLDOWN_MS at the moment the cap is hit
             lastResult: null,    // 'partial' | 'complete'
+            stopReason: null,    // null | 'paused' | 'error' | 'cap' — why a partial stopped; drives masked-state copy
             completion: null,    // 'origin' | 'exhausted' (only meaningful once lastResult === 'complete')
-            acknowledged: true,
-            lock: 0              // heartbeat timestamp of the tab currently scanning; 0 = no scan running
+            acknowledged: true,  // false while a masked stop-state (paused/error/cap/complete) awaits the user's dismissal
+            lock: 0,             // heartbeat timestamp of the tab currently scanning; 0 = no scan running
+            lockOwner: null      // _TAB_ID of the scanning tab; lets any tab tell driver from passenger
         };
     }
 
@@ -7738,13 +7851,16 @@
         const d = defaultBackfill();
         if (ds && typeof ds === 'object') {
             if (ds.targets && typeof ds.targets === 'object') d.targets = ds.targets;
-            if (typeof ds.windowStart === 'number') d.windowStart = ds.windowStart;
-            if (typeof ds.rowsThisWindow === 'number') d.rowsThisWindow = ds.rowsThisWindow;
+            // rowsUsed superseded the older rowsThisWindow; accept either on load.
+            if (typeof ds.rowsUsed === 'number') d.rowsUsed = ds.rowsUsed;
+            else if (typeof ds.rowsThisWindow === 'number') d.rowsUsed = ds.rowsThisWindow;
             if (typeof ds.cooldownUntil === 'number') d.cooldownUntil = ds.cooldownUntil;
             if (ds.lastResult === 'complete' || ds.lastResult === 'partial') d.lastResult = ds.lastResult;
+            if (ds.stopReason === 'paused' || ds.stopReason === 'error' || ds.stopReason === 'cap') d.stopReason = ds.stopReason;
             if (ds.completion === 'origin' || ds.completion === 'exhausted') d.completion = ds.completion;
             if (typeof ds.acknowledged === 'boolean') d.acknowledged = ds.acknowledged;
             if (typeof ds.lock === 'number') d.lock = ds.lock;
+            if (typeof ds.lockOwner === 'string') d.lockOwner = ds.lockOwner;
         }
         return d;
     }
@@ -8297,6 +8413,94 @@
         await finalizeBackfill(ds, []);
         window.dispatchEvent(new CustomEvent('bbgl:dataUpdated'));
         renderBackfillButton();
+        renderScanOverlay();
+    }
+
+    // Called by 'Proceed to partial logs' on a paused/error/cap masked stop-state: the scanned rows
+    // are already flushed and live, so this just retires the mask. Persist + broadcast so every tab
+    // (and the next reload) agrees the mask is dismissed.
+    async function proceedPartialBackfill() {
+        if (runtime.demoMode || runtime.backfilling) return;
+        const s = getActiveHistory();
+        const ds = s.meta && s.meta.backfill;
+        if (!ds || ds.lastResult !== 'partial' || ds.acknowledged !== false) return;
+        ds.acknowledged = true;
+        try {
+            await persistBackfillState(ds);
+        } catch (e) {
+            Log.warn('Backfill proceed save failed', e);
+        }
+        renderBackfillButton();
+        renderScanOverlay();
+    }
+
+    // Cancel-discard: throw away the reconstructed pre-install history but keep everything tracked
+    // live since install. The install-time baseline is restored as (current battlestats − gains
+    // logged live since install), which is exact whether or not the user trained after installing.
+    // rowsUsed and cooldownUntil are deliberately preserved so a cancel-then-restart cannot dodge
+    // Torn's rolling budget. Frontiers are reseeded to "now" so a future scan re-reconstructs cleanly.
+    async function discardBackfillData(ds) {
+        let stored = await DBManager.getStorage();
+        if (!stored) stored = { meta: { baselineBreakdown: { ...ZERO_BREAKDOWN } }, series: [] };
+        if (!Array.isArray(stored.series)) stored.series = [];
+        if (!stored.meta) stored.meta = { baselineBreakdown: { ...ZERO_BREAKDOWN } };
+
+        // Install cutoff (seconds): rewardStartDate is the fixed install anchor; fall back to
+        // privacyAgreed, then to now (keeps nothing older — still safe, never over-keeps).
+        let cutoff = (typeof stored.meta.rewardStartDate === 'number') ? stored.meta.rewardStartDate : null;
+        if (cutoff === null) {
+            const p = Date.parse(userConfig.privacyAgreed);
+            cutoff = isNaN(p) ? Math.floor(Date.now() / 1000) : Math.floor(p / 1000);
+        }
+
+        // Keep only rows logged live since install; drop the reconstructed history (gym + item).
+        stored.series = stored.series.filter(e => e.ts >= cutoff);
+
+        // Restore the install-time baseline from live battlestats minus post-install live gains.
+        let curStats = null;
+        try {
+            const res = await fetch(`https://api.torn.com/user/?selections=battlestats&key=${userConfig.apiKey}&timestamp=${Date.now()}`);
+            incrementApiCount(1);
+            const data = await res.json();
+            if (!data.error) curStats = data;
+        } catch (e) {
+            Log.warn('Discard baseline battlestats fetch failed', e);
+        }
+        if (curStats) {
+            const liveGain = { str: 0, def: 0, spd: 0, dex: 0 };
+            stored.series.forEach(e => {
+                if (e.type !== 'item' && liveGain[e.stat] !== undefined) liveGain[e.stat] += (e.gain || 0);
+            });
+            stored.meta.baselineBreakdown = {
+                str: r2((curStats.strength || 0) - liveGain.str),
+                def: r2((curStats.defense || 0) - liveGain.def),
+                spd: r2((curStats.speed || 0) - liveGain.spd),
+                dex: r2((curStats.dexterity || 0) - liveGain.dex)
+            };
+        }
+        // else: keep the existing baseline (best effort) rather than zeroing real data.
+
+        // Reseed both frontiers to "now" so a future scan restarts from scratch.
+        ds.targets = {};
+        ensureBackfillTargets(ds);
+
+        // Undo backfill's backward push of the origin floor.
+        stored.meta.logStartDate = cutoff;
+
+        // Preserve anti-abuse budget; clear the masked flow.
+        ds.lastResult = null;
+        ds.stopReason = null;
+        ds.completion = null;
+        ds.acknowledged = true;
+        ds.lock = 0;
+        ds.lockOwner = null;
+        stored.meta.backfill = ds;
+
+        await DBManager.setStorage(stored);
+
+        const rebuilt = DataController._rebuildFromSeries(stored.series || [], stored.meta.baselineBreakdown || ZERO_BREAKDOWN);
+        _historyCache = { meta: stored.meta, history: rebuilt.history, today: rebuilt.today };
+        DataController.invalidate();
     }
 
     // One backward log page for a group, with a changing &timestamp cache-buster. Torn's ~29s API
@@ -8327,10 +8531,17 @@
         const ds = s.meta.backfill;
         const now = Date.now();
 
-        // Budget cooldown gate: only armed when a previous run exhausted the window's budget.
-        if (ds.cooldownUntil && now < ds.cooldownUntil) {
-            renderBackfillButton();
-            return;
+        // Cap cooldown gate: armed only when a previous run hit the row cap. While it is live, block.
+        // Once it elapses, every counted row has aged out of Torn's rolling 24h — clear the counter
+        // and the cooldown so this run starts with a full budget.
+        if (ds.cooldownUntil) {
+            if (now < ds.cooldownUntil) {
+                renderBackfillButton();
+                renderScanOverlay();
+                return;
+            }
+            ds.cooldownUntil = 0;
+            ds.rowsUsed = 0;
         }
 
         // Cross-tab guard: if another tab is mid-scan its heartbeat lock is fresh in storage. Stand
@@ -8339,37 +8550,44 @@
         const liveLock = freshStored && freshStored.meta && freshStored.meta.backfill && freshStored.meta.backfill.lock;
         if (liveLock && (Date.now() - liveLock) < BACKFILL.LOCK_STALE_MS) {
             renderBackfillButton();
+            renderScanOverlay();
             return;
         }
 
-        // Open or roll the budget window: a window older than WINDOW_MS has fully aged out of Torn's
-        // rolling 24h, so we start fresh; otherwise this run spends only the remaining budget.
-        if (!ds.windowStart || (Date.now() - ds.windowStart) >= BACKFILL.WINDOW_MS) {
-            ds.windowStart = Date.now();
-            ds.rowsThisWindow = 0;
-        }
-        const budget = Math.max(0, BACKFILL.SOFT_CAP - (ds.rowsThisWindow || 0));
+        // Per-run budget is whatever is left of the cap; rowsUsed persists across resumes and cancels.
+        const budget = Math.max(0, BACKFILL.SOFT_CAP - (ds.rowsUsed || 0));
         if (budget <= 0) {
-            // Window already spent (e.g. resumed right at the boundary): arm the cooldown and bail.
+            // Budget already spent (e.g. resumed right at the boundary): arm the cooldown and bail.
             ds.lastResult = 'partial';
-            ds.cooldownUntil = ds.windowStart + BACKFILL.WINDOW_MS;
+            ds.stopReason = 'cap';
+            ds.acknowledged = false;
+            ds.cooldownUntil = Date.now() + BACKFILL.COOLDOWN_MS;
             await persistBackfillState(ds);
             renderBackfillButton();
+            renderScanOverlay();
             return;
         }
 
         const frontiers = ensureBackfillTargets(ds);
 
         ds.lastResult = 'partial';
+        ds.stopReason = null;
+        ds.acknowledged = false;
         ds.lock = Date.now();
+        ds.lockOwner = _TAB_ID;
+        runtime.backfillAbort = null;
         await persistBackfillState(ds);
+        // Flip backfilling on and raise the mask BEFORE the (potentially slow) faction fetches, so the
+        // Scanning overlay shows immediately rather than briefly resolving to the Error state. Set
+        // after the persist so a persist failure can't strand backfilling=true with no loop running.
+        runtime.backfilling = true;
+        renderScanOverlay();
 
         // Build the faction membership timeline, then fetch ranked war history for each past
         // faction. Sequential: past faction wars depend on the history being stored first.
         await fetchFactionHistory();
         await fetchPastFactionWars();
 
-        runtime.backfilling = true;
         if (btn) {
             if (!btn.dataset.originalText) btn.dataset.originalText = btn.innerText;
             btn.style.pointerEvents = 'none';
@@ -8379,13 +8597,15 @@
 
         let sessionRows = 0;       // rows fetched this run (failsafe against HARD_CAP)
         let stoppedEarly = false;
-        let capHit = false;        // window budget reached this run
+        let capHit = false;        // budget reached this run
+        let aborted = null;        // 'pause' | 'cancel' if the user stopped the scan
         let drainDay = null;       // once the cap is hit, only finish the current day
         let pending = [];          // rows not yet flushed to storage
         let lastHeartbeat = Date.now();
 
         const flush = async () => {
             ds.lock = Date.now();
+            ds.lockOwner = _TAB_ID;
             await _persistBackfillSeries(ds, pending);
             pending = [];
             lastHeartbeat = Date.now();
@@ -8393,6 +8613,12 @@
 
         try {
             while (sessionRows < BACKFILL.HARD_CAP) {
+                // User-initiated stop: pause keeps what has been scanned, cancel throws it away.
+                // Checked first so a stop is honored before another page is fetched.
+                if (runtime.backfillAbort) {
+                    aborted = runtime.backfillAbort;
+                    break;
+                }
                 // Pick the still-incomplete group with the deepest (highest) cursor, honoring the
                 // drain boundary so we never start a day older than the one being finished.
                 let pick = null;
@@ -8455,7 +8681,7 @@
 
                 pending.push(...normalizeApiLogs(data.log));
                 sessionRows += rowKeys.length;
-                ds.rowsThisWindow = (ds.rowsThisWindow || 0) + rowKeys.length;
+                ds.rowsUsed = (ds.rowsUsed || 0) + rowKeys.length;
 
                 let oldestTs = fr.cursor;
                 for (const k of rowKeys) {
@@ -8465,10 +8691,11 @@
                 fr.cursor = oldestTs - 1;
 
                 if (btn) btn.innerText = `Scanning... ${sessionRows}`;
+                updateScanOverlayCount(sessionRows);
 
-                // Window budget reached: stop STARTING new days, drain the current one across both
+                // Budget reached: stop STARTING new days, drain the current one across both
                 // groups so the persisted boundary is a fully complete day.
-                if (drainDay === null && ds.rowsThisWindow >= BACKFILL.SOFT_CAP) {
+                if (drainDay === null && ds.rowsUsed >= BACKFILL.SOFT_CAP) {
                     capHit = true;
                     let maxCursor = -Infinity;
                     BACKFILL_GROUP_KEYS.forEach(g => {
@@ -8478,12 +8705,12 @@
                     if (maxCursor > -Infinity) drainDay = backfillDayStart(maxCursor);
                 }
 
-                if (pending.length >= BACKFILL.CHECKPOINT_ROWS) {
+                // Both checkpoints are real flushes: the count-based one bounds memory, the
+                // time-based one bounds data-loss on interruption. Persisting the advanced cursor
+                // without the rows that advanced it (the old heartbeat path) silently dropped any
+                // rows still in `pending`, since resume picks up from the persisted cursor.
+                if (pending.length >= BACKFILL.CHECKPOINT_ROWS || Date.now() - lastHeartbeat >= BACKFILL.HEARTBEAT_MS) {
                     await flush();
-                } else if (Date.now() - lastHeartbeat >= BACKFILL.HEARTBEAT_MS) {
-                    ds.lock = Date.now();
-                    await persistBackfillState(ds);
-                    lastHeartbeat = Date.now();
                 }
 
                 if (sessionRows >= BACKFILL.HARD_CAP) {
@@ -8497,22 +8724,48 @@
             stoppedEarly = true;
         }
 
+        ds.lock = 0;
+        ds.lockOwner = null;
+
+        if (aborted === 'cancel') {
+            // User discarded the scan: drop unflushed rows and wipe the backfilled history, keeping
+            // only rowsUsed/cooldownUntil so a restart cannot dodge the rolling budget.
+            pending = [];
+            runtime.backfilling = false;
+            runtime.backfillAbort = null;
+            try {
+                await discardBackfillData(ds);
+            } catch (e) {
+                Log.error('Backfill discard failed', e);
+            }
+            window.dispatchEvent(new CustomEvent('bbgl:dataUpdated'));
+            renderBackfillButton();
+            renderScanOverlay();
+            return;
+        }
+
         const allComplete = BACKFILL_GROUP_KEYS.every(g => frontiers[g] && frontiers[g].complete);
-        if (allComplete && !stoppedEarly) {
+        if (allComplete && !stoppedEarly && !aborted) {
             ds.lastResult = 'complete';
+            ds.stopReason = null;
             ds.acknowledged = false;
             ds.cooldownUntil = 0;
-            ds.windowStart = 0;
-            ds.rowsThisWindow = 0;
+            ds.rowsUsed = 0;
         } else {
             ds.lastResult = 'partial';
-            // Arm the cooldown only when the budget was actually spent. Interruptions, network
-            // errors, and crashes leave it clear so Resume is immediately available.
-            if (capHit || (ds.rowsThisWindow || 0) >= BACKFILL.SOFT_CAP) {
-                ds.cooldownUntil = ds.windowStart + BACKFILL.WINDOW_MS;
+            ds.acknowledged = false;
+            if (aborted === 'pause') {
+                // Manual pause: keep progress, no cooldown — Resume is immediately available.
+                ds.stopReason = 'paused';
+            } else if (capHit || (ds.rowsUsed || 0) >= BACKFILL.SOFT_CAP) {
+                // Budget spent: arm the cooldown at the moment of the cap-hit.
+                ds.stopReason = 'cap';
+                ds.cooldownUntil = Date.now() + BACKFILL.COOLDOWN_MS;
+            } else {
+                // Interruption, network, or API error: resumable now.
+                ds.stopReason = 'error';
             }
         }
-        ds.lock = 0;
 
         try {
             await finalizeBackfill(ds, pending);
@@ -8520,6 +8773,7 @@
             Log.error('Deep scan save failed', e);
         } finally {
             runtime.backfilling = false;
+            runtime.backfillAbort = null;
         }
 
         // Classify a completed scan now that the deepest rows (the final batch) are merged and the
@@ -8538,11 +8792,14 @@
 
         window.dispatchEvent(new CustomEvent('bbgl:dataUpdated'));
         renderBackfillButton();
+        renderScanOverlay();
     }
 
     // Crash/refresh recovery: on boot, a backfill heartbeat lock that has gone stale means a scan was
-    // interrupted. Release the lock so Resume works (its cooldown is already correct — clear unless
-    // the cap was hit). A still-fresh lock means another live tab owns the scan, so we leave it be.
+    // interrupted (tab/browser closed outright — the running code never reached its own catch). This
+    // is the ONLY place that can classify that case. Release the lock and surface the interactive
+    // Error mask (resume / proceed). A still-fresh lock means another live tab owns the scan, so we
+    // leave it be. A cleanly completed-but-unacknowledged scan is left untouched.
     async function recoverInterruptedBackfill() {
         if (runtime.demoMode || runtime.backfilling) return;
         const s = getActiveHistory();
@@ -8550,7 +8807,13 @@
         if (!ds || !ds.lock) return;
         if ((Date.now() - ds.lock) <= BACKFILL.LOCK_STALE_MS) return;
         ds.lock = 0;
-        if (!ds.lastResult) ds.lastResult = 'partial';
+        ds.lockOwner = null;
+        if (ds.lastResult !== 'complete') {
+            ds.lastResult = 'partial';
+            // Preserve a cap stop (its cooldown is real); otherwise treat as an interruption.
+            if (ds.stopReason !== 'cap') ds.stopReason = 'error';
+            ds.acknowledged = false;
+        }
         try {
             await persistBackfillState(ds);
         } catch (e) {
@@ -8691,17 +8954,33 @@ const DataController = {
         let careerLevelExp = 0;
         // Reward gating: stickers (and their unlock progression) only count from the install
         // week onward. Pre-install weeks still render their bar/day counts elsewhere, but earn
-        // no stickers here. Demo mode is exempt (keeps its 1-sticker showcase behavior).
+        // no stickers here. EXP uses a stricter gate: full days before the install day contribute
+        // 0 EXP, and on the exact install day itself, only training at/after the precise
+        // rewardStartDate timestamp counts (sub-day precision) — so a Clear Log + Backfill can
+        // still earn that week's sticker, but reconstructed pre-install training earlier the same
+        // day (before the user actually clicked train post-install) contributes 0 EXP. Demo mode
+        // is exempt (keeps its 1-sticker showcase behavior).
         const installWeekKey = runtime.demoMode ? null : getInstallWeekKey();
+        const installDateKey = runtime.demoMode ? null : getInstallDateKey();
+        const rewardStartTs = runtime.demoMode ? null : (getActiveHistory().meta && getActiveHistory().meta.rewardStartDate) || null;
         Object.keys(weekMap).sort().forEach(wk => {
             if (installWeekKey && wk < installWeekKey) return;
             const days = weekMap[wk].sort((a, b) => a.date.localeCompare(b.date));
             // Daily level EXP: include current week's past days (today excluded by weekMap).
             if (!runtime.demoMode) {
                 days.forEach(day => {
-                    const e = day.eSpent ? (day.eSpent.total || 0) : 0;
-                    const hasTrainLog = day.series && day.series.some(s => s.type === 'gym');
-                    careerLevelExp += computeDailyLevelExp(e, hasTrainLog, hjDaySet.has(day.date));
+                    if (installDateKey && day.date < installDateKey) return;
+                    let daySeries = day.series || [];
+                    // On the exact install day, restrict to entries at/after the precise install
+                    // moment — day.date alone can't distinguish "trained at 2pm, installed at 8pm"
+                    // (pre-install) from "installed at 8pm, trained at 10pm" (post-install).
+                    if (installDateKey && day.date === installDateKey && rewardStartTs) {
+                        daySeries = daySeries.filter(s => s.ts >= rewardStartTs);
+                    }
+                    const e = daySeries.filter(s => s.type === 'gym').reduce((sum, s) => sum + (s.cost || 0), 0);
+                    const hasTrainLog = daySeries.some(s => s.type === 'gym');
+                    const isHJ = (daySeries === day.series) ? hjDaySet.has(day.date) : findHappyJumps(daySeries).length > 0;
+                    careerLevelExp += computeDailyLevelExp(e, hasTrainLog, isHJ);
                 });
             }
             if (wk >= todayWeekKey) return;
@@ -13684,7 +13963,7 @@ const BestGymController = {
         BEST_GYM_UNPURCHASED: "<b>Allow switching to unpurchased gyms</b><br><i>When off, auto-switch only considers gyms you have already bought.</i>",
         API: "Custom API key required.<br><br><i>This script strictly requests 'battlestats' and 'log' data. Click the Create API Key button below to securely generate a key for this script. For maximum safety, you can edit this newly created key in your Torn API Settings to restrict its log access specifically to the 'Gym' category.<br><br>Your key is stored locally on your device only and is sent exclusively to api.torn.com.</i>",
         PASTE_CLIPBOARD: "Paste from Clipboard",
-        AGREE_GATE: "Check every box in the user acknowledgement",
+        AGREE_GATE: "Check the box to confirm you've read the disclosure",
         LOCKED: "Locked",
         LEDGER_VIEW: "Ledger",
         GRAPH_VIEW: "Graph",
@@ -13784,20 +14063,16 @@ const BestGymController = {
     const DOC_ERROR_HTML   = `<div style="padding:20px; text-align:center; color:#888;">Could not load document. Check your connection.</div>`;
 
     const PRIVACY_TEXT = {
-        ACK_INTRO: `<div style="padding:0 0 8px 0; color:#bbb; font-size:12px;">By using this script, you acknowledge and agree to the following:</div>`,
-        ACK_ITEMS: ["I understand that this script requires full log access solely due to limitations in Torn's API.", "I understand this script's API usage and that it is designed to stay well within Torn's rate limits.", "I understand that all data is processed and stored locally within my own browser, and is never transmitted, stored externally, or accessible to the developer.", "I understand that I can verify these claims by reviewing the script's source code, specifically the \"THE CHECK-IN COUNTER\" section.", "I understand I can use Demo mode to test the script before registering any API Key or agreeing to this disclosure."]
+        AGREE_LABEL: "I have read and agree to this disclosure."
     };
 
     function buildPrivacyModalHTML(reviewMode) {
-        const ackRows = PRIVACY_TEXT.ACK_ITEMS.map((txt, i) => {
-                const ctrl = reviewMode ? `<span class="bbgl-ack-check">${ICONS.CHECK}</span>` : `<input type="checkbox" id="bbgl-ack-${i + 1}">`,
-                    label = reviewMode ? `<span>${txt}</span>` : `<label for="bbgl-ack-${i + 1}">${txt}</label>`;
-                return `<div class="bbgl-ack-row">${ctrl}${label}</div>`;
-            }).join(''),
-            discSection = buildSection('Privacy Disclosure', `<div class="bbgl-modal-scrollbox"><div id="bbgl-privacy-disc">${DOC_LOADING_HTML}</div></div>`, 'margin-bottom:5px;'),
-            ackSection = buildSection('User Acknowledgement', `<div class="bbgl-modal-scrollbox">${PRIVACY_TEXT.ACK_INTRO}${ackRows}</div>`, 'margin-bottom:8px;'),
+        const ctrl = reviewMode ? `<span class="bbgl-ack-check">${ICONS.CHECK}</span>` : `<input type="checkbox" id="bbgl-privacy-ack">`,
+            label = reviewMode ? `<span>${PRIVACY_TEXT.AGREE_LABEL}</span>` : `<label for="bbgl-privacy-ack">${PRIVACY_TEXT.AGREE_LABEL}</label>`,
+            ackRow = `<div class="bbgl-ack-row" style="margin:0 10px 8px 10px;">${ctrl}${label}</div>`,
+            discSection = buildSection('Big Black Dicslosure', `<div class="bbgl-modal-scrollbox"><div id="bbgl-privacy-disc">${DOC_LOADING_HTML}</div></div>${ackRow}`, 'margin-bottom:8px;'),
             footer = reviewMode ? '' : `<div style="display:flex; margin:0 10px 4px 10px;">${buildButton('bbgl-privacy-demo-btn', 'DEMO', 'purple', 'flex:2; border-radius:4px 0 0 4px; margin:0;')}<span class="bbgl-agree-wrap" style="flex:1; display:flex;" data-tooltip="${TOOLTIPS.AGREE_GATE}">${buildButton('bbgl-privacy-agree-btn', 'AGREE', 'green', 'flex:1; border-radius:0 4px 4px 0; margin:0;')}</span></div>`;
-        return `<div class="bbgl-modal-overlay" id="bbgl-privacy-modal"><div class="bbgl-modal-window"><div class="close-settings-btn bbgl-close-x" id="bbgl-privacy-close" title="Close">${ICONS.CLOSE}</div>${discSection}${ackSection}${footer}</div></div>`;
+        return `<div class="bbgl-modal-overlay" id="bbgl-privacy-modal"><div class="bbgl-modal-window"><div class="close-settings-btn bbgl-close-x" id="bbgl-privacy-close" title="Close">${ICONS.CLOSE}</div>${discSection}${footer}</div></div>`;
     }
 
     function closePrivacyModal() {
@@ -13901,7 +14176,9 @@ const BestGymController = {
             if (startBtn.classList.contains('bbgl-btn-disabled')) return;
             this.blur();
             closeBackfillModal();
-            backfillLogs(document.getElementById('backfill-btn'));
+            // Route through the settings starter so we land on the log (with the overlay's pause/
+            // cancel controls) rather than the "settings unavailable" mask.
+            startBackfillFromSettings();
         };
         try {
             const disclosureHTML = await fetchDoc('backfill');
@@ -13911,6 +14188,40 @@ const BestGymController = {
             const disc = modal.querySelector('#bbgl-backfill-disc');
             if (disc) disc.innerHTML = DOC_ERROR_HTML;
         }
+    }
+
+    // Shown right after START TRACKING (post key-verification): the user chooses whether to begin
+    // with an empty log or reconstruct their history via Big Black Backfill. The panel is already
+    // initialized and sitting on the (empty) ledger behind this modal, so dismissing == start fresh.
+    function buildBackfillChoiceModalHTML() {
+        const intro = `<div style="padding:6px 4px 14px; color:#ccc; font-size:12px; line-height:1.6; text-align:center;">You're all set. Start a fresh log from today, or use Big Black Backfill to reconstruct your full training history from Torn's logs. You can always run the backfill later from Settings.</div>`;
+        const buttons = `<div style="display:flex; gap:0; margin:0 6px 2px;">${buildButton('bbgl-choice-fresh-btn', 'START LOG FRESH', '', 'flex:1; border-radius:4px 0 0 4px; margin:0;')}${buildButton('bbgl-choice-backfill-btn', 'BIG BLACK BACKFILL', 'purple', 'flex:1; border-radius:0 4px 4px 0; margin:0;')}</div>`;
+        return `<div class="bbgl-modal-overlay" id="bbgl-choice-modal"><div class="bbgl-modal-window"><div class="close-settings-btn bbgl-close-x" id="bbgl-choice-close" title="Close">${ICONS.CLOSE}</div>${buildSection('Start Tracking', intro + buttons, 'margin-bottom:8px;')}</div></div>`;
+    }
+
+    function closeBackfillChoiceModal() {
+        const m = document.getElementById('bbgl-choice-modal');
+        if (m && m.parentNode) m.parentNode.removeChild(m);
+    }
+
+    function openBackfillChoiceModal() {
+        if (runtime.demoMode) return;
+        closeBackfillChoiceModal();
+        document.body.insertAdjacentHTML('beforeend', buildBackfillChoiceModalHTML());
+        const modal = document.getElementById('bbgl-choice-modal');
+        if (!modal) return;
+        const close = () => closeBackfillChoiceModal();
+        modal.querySelector('#bbgl-choice-close').onclick = close;
+        modal.onclick = (e) => { if (e.target === modal) close(); };
+        const fresh = modal.querySelector('#bbgl-choice-fresh-btn');
+        if (fresh) fresh.onclick = function() { this.blur(); close(); };  // already on the empty ledger
+        const bf = modal.querySelector('#bbgl-choice-backfill-btn');
+        if (bf) bf.onclick = function() {
+            this.blur();
+            close();
+            // Kick off the scan; the masked overlay takes over the panel from here.
+            backfillLogs(document.getElementById('backfill-btn'));
+        };
     }
 
     async function openPrivacyModal() {
@@ -13927,11 +14238,10 @@ const BestGymController = {
         if (!reviewMode) {
             const agreeBtn = modal.querySelector('#bbgl-privacy-agree-btn'),
                 agreeWrap = modal.querySelector('.bbgl-agree-wrap'),
-                boxes = Array.from(modal.querySelectorAll('.bbgl-ack-row input[type="checkbox"]'));
+                ackBox = modal.querySelector('#bbgl-privacy-ack');
             agreeBtn.classList.add('bbgl-btn-disabled');
             const refreshAgreeState = () => {
-                const all = boxes.every(b => b.checked);
-                if (all) {
+                if (ackBox.checked) {
                     agreeBtn.classList.remove('bbgl-btn-disabled');
                     if (agreeWrap) agreeWrap.removeAttribute('data-tooltip');
                 } else {
@@ -13939,7 +14249,7 @@ const BestGymController = {
                     if (agreeWrap) agreeWrap.setAttribute('data-tooltip', TOOLTIPS.AGREE_GATE);
                 }
             };
-            boxes.forEach(b => b.onchange = refreshAgreeState);
+            ackBox.onchange = refreshAgreeState;
             refreshAgreeState();
             modal.querySelector('#bbgl-privacy-demo-btn').onclick = function() {
                 this.blur();
@@ -13960,12 +14270,36 @@ const BestGymController = {
                 if (wv && wv.classList.contains('active-view')) refreshInitMask(wv);
             };
         }
+        const disc = modal.querySelector('#bbgl-privacy-disc');
+        // In-modal doc swap: any element in a loaded doc carrying data-bbgl-doc="<name>" (e.g. a
+        // "technical details" link in privacy.html pointing to "privacy-tech", and a "back" link in
+        // that doc pointing to "privacy") swaps the disclosure content in place without leaving the
+        // modal. Copy and link placement live entirely in the docs.
+        const wireDocSwap = (container) => {
+            if (!container) return;
+            container.querySelectorAll('[data-bbgl-doc]').forEach(link => {
+                link.style.cursor = 'pointer';
+                link.onclick = async (e) => {
+                    e.preventDefault();
+                    const name = link.getAttribute('data-bbgl-doc');
+                    if (!name) return;
+                    container.innerHTML = DOC_LOADING_HTML;
+                    try {
+                        container.innerHTML = await fetchDoc(name);
+                    } catch (err) {
+                        container.innerHTML = DOC_ERROR_HTML;
+                    }
+                    wireDocSwap(container);
+                };
+            });
+        };
         try {
             const disclosureHTML = await fetchDoc('privacy');
-            const disc = modal.querySelector('#bbgl-privacy-disc');
-            if (disc) disc.innerHTML = disclosureHTML;
+            if (disc) {
+                disc.innerHTML = disclosureHTML;
+                wireDocSwap(disc);
+            }
         } catch (e) {
-            const disc = modal.querySelector('#bbgl-privacy-disc');
             if (disc) disc.innerHTML = DOC_ERROR_HTML;
         }
     }
@@ -16598,6 +16932,9 @@ const BestGymController = {
                             viewState.activeViewLabel = null;
                             switchView('ledger');
                             syncWithFeedback('FULL_SYNC');
+                            // Offer the fresh-vs-backfill choice over the (now empty) ledger.
+                            // Dismissing the modal simply leaves them on the fresh log.
+                            openBackfillChoiceModal();
                         } catch (e) {
                             alert("Network error during verification.");
                             isb.style.color = '';
@@ -16608,7 +16945,7 @@ const BestGymController = {
                     const cb = wv.querySelector('#init-create-api-btn');
                     if (cb) cb.onclick = function() {
                         this.blur();
-                        window.open('https://www.torn.com/preferences.php#tab=api?step=addNewKey&user=battlestats,log&=,,,,&logIds=56,52,54,50,23,6&title=Big%20Black%20Gym%20Log', '_blank');
+                        window.open('https://www.torn.com/preferences.php#tab=api?step=addNewKey&user=battlestats,log&=,,,,&faction=rankedwars&logIds=56,52,54,50,23,6&title=BigBlackGymLog', '_blank');
                     };
                     const rib = wv.querySelector('#init-returning-import-btn'),
                         rif = wv.querySelector('#init-import-file');
@@ -16656,6 +16993,9 @@ const BestGymController = {
                 tp.classList.add('viewing-achievements');
                 renderAchievements();
             } else renderPanelContent();
+            // Re-apply the scan mask for the newly active view (settings gets the "unavailable"
+            // variant; other views get the full scan state machine).
+            renderScanOverlay();
         };
         if (inst) {
             app();
@@ -16895,13 +17235,166 @@ const BestGymController = {
         return `${pad(h)}:${pad(m)}:${pad(s)}`;
     }
 
-    // Reflects backfill state onto the button and wires its per-state click behavior:
-    //  - idle: responsive label; clicking opens the disclaimer/config modal.
-    //  - complete (unacknowledged): "Scan Complete!" in green with a clickable checkmark the user
-    //    taps to retire the confirmation (the data is already live). The button body itself is inert.
-    //  - partial + cooling down: "Partial Scan Complete! Resume?", dimmed and inert, with a live
-    //    countdown tooltip on the whole button (hover/tap to see how long until resume).
-    //  - partial + cooldown elapsed: same label, full opacity, clicking resumes immediately (no modal).
+    /* ============================ Big Black Backfill scan overlay ============================
+       A full-panel mask (#bbgl-scan-overlay) driven entirely off the persisted backfill state
+       (ds) plus runtime.backfilling. renderScanOverlay() is the single source of truth — the
+       overlay analog of renderBackfillButton() — and is idempotent so it can be called freely
+       from render/lifecycle paths without tearing down the live counter or handlers. */
+    const SCAN_PAUSE_SVG = `<svg viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="5" width="4" height="14" rx="1"/><rect x="14" y="5" width="4" height="14" rx="1"/></svg>`;
+    const SCAN_PLAY_SVG  = `<svg viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>`;
+    let _scanOverlayTimer = null;   // cap countdown OR passenger-staleness poll
+    let _scanOverlayKey = null;     // last rendered visual key; guards idempotent rebuilds
+    let _scanCancelConfirm = false; // transient: Cancel clicked, awaiting yes/no
+
+    function updateScanOverlayCount(n) {
+        const el = document.querySelector('#bbgl-scan-count');
+        if (el) el.textContent = String(n);
+    }
+
+    // Resolve the current visual state from persisted ds + this tab's role. Returns {key, ds}.
+    function currentScanState() {
+        if (runtime.demoMode) return { key: null, ds: null };
+        const s = getActiveHistory();
+        const ds = s && s.meta && s.meta.backfill;
+        if (!ds) return { key: null, ds: null };
+        const lockFresh = ds.lock && (Date.now() - ds.lock) < BACKFILL.LOCK_STALE_MS;
+        let key = null;
+        if (runtime.backfilling) key = _scanCancelConfirm ? 'confirm' : 'scanning';
+        else if (lockFresh && ds.lockOwner !== _TAB_ID) key = 'passenger';   // another tab drives
+        else if (ds.acknowledged === false) {
+            if (ds.lastResult === 'complete') key = 'complete';
+            else if (ds.stopReason === 'cap') key = 'cap';
+            else if (ds.stopReason === 'paused') key = 'paused';
+            else key = 'error';
+        }
+        return { key, ds };
+    }
+
+    function updateScanCapCountdown(ds) {
+        const el = document.querySelector('#bbgl-scan-cap-timer');
+        if (!el) return;
+        const remaining = (ds.cooldownUntil || 0) - Date.now();
+        el.textContent = formatCountdown(remaining);
+        if (remaining <= 0 && _scanOverlayTimer) {
+            clearInterval(_scanOverlayTimer);
+            _scanOverlayTimer = null;
+        }
+    }
+
+    // Placeholder copy — final wording authored separately. Each state returns overlay inner HTML.
+    function buildScanOverlayInner(key, ds) {
+        const cancelX = `<div id="bbgl-scan-cancel">Cancel</div>`;
+        switch (key) {
+            case 'settings':
+                return `<div class="bbgl-scan-title">Scan in Progress</div><div class="bbgl-scan-sub">Settings are unavailable while a backfill is running. Return to the log to manage the scan.</div>`;
+            case 'scanning':
+                return `${cancelX}<div class="bbgl-scan-title">Scanning&hellip; <span id="bbgl-scan-count" class="bbgl-scan-count">0</span></div><div class="bbgl-scan-sub">Reconstructing your training history. You can keep playing &mdash; just don't close this tab until the scan finishes.</div><div class="bbgl-scan-actions"><div id="bbgl-scan-pause" class="bbgl-scan-iconbtn bbgl-scan-play" title="Pause">${SCAN_PAUSE_SVG}</div></div>`;
+            case 'confirm':
+                return `<div class="bbgl-scan-title">Discard backfill progress?</div><div class="bbgl-scan-sub">This discards all backfilled history and starts your log fresh from installation. Your tracking since install is kept.</div><div class="bbgl-scan-actions"><div id="bbgl-scan-confirm-yes" class="bbgl-scan-iconbtn bbgl-scan-yes" title="Yes, discard">${ICONS.CHECK}</div><div id="bbgl-scan-confirm-no" class="bbgl-scan-iconbtn bbgl-scan-no" title="No, keep scanning">${ICONS.CLOSE}</div></div>`;
+            case 'passenger':
+                return `<div class="bbgl-scan-title">Scanning&hellip;</div><div class="bbgl-scan-sub">A backfill is running in another tab. Switch to that tab to pause or cancel it.</div>`;
+            case 'paused':
+                return `<div class="bbgl-scan-title">Scan Paused</div><div class="bbgl-scan-sub">Your logs are partially filled. Continue now and resume the backfill anytime from the Settings menu.</div><div class="bbgl-scan-actions"><div id="bbgl-scan-resume" class="bbgl-scan-iconbtn bbgl-scan-play" title="Resume">${SCAN_PLAY_SVG}</div><div id="bbgl-scan-proceed" class="bbgl-scan-textbtn bbgl-scan-primary">Proceed to partial logs</div></div>`;
+            case 'error':
+                return `<div class="bbgl-scan-title">Scan Interrupted</div><div class="bbgl-scan-sub">The backfill stopped before finishing. Resume to keep going, or proceed with what's been filled so far.</div><div class="bbgl-scan-actions"><div id="bbgl-scan-resume" class="bbgl-scan-iconbtn bbgl-scan-play" title="Resume">${SCAN_PLAY_SVG}</div><div id="bbgl-scan-proceed" class="bbgl-scan-textbtn bbgl-scan-primary">Proceed to partial logs</div></div>`;
+            case 'cap':
+                return `<div class="bbgl-scan-title">Daily Row Limit Reached</div><div class="bbgl-scan-sub">Torn limits how much history can be pulled per day. You can resume in <span id="bbgl-scan-cap-timer">--:--:--</span> from the Settings menu.</div><div class="bbgl-scan-actions"><div id="bbgl-scan-proceed" class="bbgl-scan-textbtn bbgl-scan-primary">Proceed to partial logs</div></div>`;
+            case 'complete': {
+                const sub = ds && ds.completion === 'exhausted'
+                    ? "We've pulled back as far as Torn still keeps your logs. Your history is ready."
+                    : "Your full training history has been reconstructed. Welcome to the log.";
+                return `<div class="bbgl-scan-title">Backfill Complete!</div><div class="bbgl-scan-sub">${sub}</div><div class="bbgl-scan-actions"><div id="bbgl-scan-ack" class="bbgl-scan-textbtn bbgl-scan-primary">Enter Logs</div></div>`;
+            }
+            default:
+                return '';
+        }
+    }
+
+    function wireScanOverlay(el, key, ds) {
+        const cancel = el.querySelector('#bbgl-scan-cancel');
+        if (cancel) cancel.onclick = () => { _scanCancelConfirm = true; _scanOverlayKey = null; renderScanOverlay(); };
+        const pause = el.querySelector('#bbgl-scan-pause');
+        if (pause) pause.onclick = () => {
+            runtime.backfillAbort = 'pause';
+            const t = el.querySelector('.bbgl-scan-title');
+            if (t) t.textContent = 'Pausing…';
+        };
+        const yes = el.querySelector('#bbgl-scan-confirm-yes');
+        if (yes) yes.onclick = () => {
+            runtime.backfillAbort = 'cancel';
+            _scanCancelConfirm = false;
+            const t = el.querySelector('.bbgl-scan-title');
+            if (t) t.textContent = 'Discarding…';
+        };
+        const no = el.querySelector('#bbgl-scan-confirm-no');
+        if (no) no.onclick = () => { _scanCancelConfirm = false; _scanOverlayKey = null; renderScanOverlay(); };
+        const resume = el.querySelector('#bbgl-scan-resume');
+        if (resume) resume.onclick = () => { backfillLogs(document.getElementById('backfill-btn')); };
+        const proceed = el.querySelector('#bbgl-scan-proceed');
+        if (proceed) proceed.onclick = () => { proceedPartialBackfill(); };
+        const ack = el.querySelector('#bbgl-scan-ack');
+        if (ack) ack.onclick = () => { acknowledgeBackfill(); };
+    }
+
+    function renderScanOverlay() {
+        const existing = document.getElementById('bbgl-scan-overlay');
+        const { key, ds } = currentScanState();
+
+        if (!key) {
+            _scanCancelConfirm = false;
+            _scanOverlayKey = null;
+            if (_scanOverlayTimer) { clearInterval(_scanOverlayTimer); _scanOverlayTimer = null; }
+            if (existing) existing.remove();
+            return;
+        }
+
+        // The cancel-confirm sub-state only exists during an active scan; clear it on any other
+        // state so it can never leak into the next scan's first render.
+        if (key !== 'scanning' && key !== 'confirm') _scanCancelConfirm = false;
+
+        const host = document.querySelector('#bbgl-content-wrapper');
+        if (!host) return;
+
+        // In the settings view, show a distinct "unavailable" mask with no scan controls.
+        const inSettings = dom.settingsView && dom.settingsView.classList.contains('active-view');
+        const renderKey = inSettings ? 'settings' : key;
+
+        // Idempotent: skip a rebuild when the visual state is unchanged so the live counter and
+        // handlers survive (renderScanOverlay is called from hot render paths).
+        if (existing && _scanOverlayKey === renderKey) return;
+        _scanOverlayKey = renderKey;
+        if (_scanOverlayTimer) { clearInterval(_scanOverlayTimer); _scanOverlayTimer = null; }
+
+        const el = existing || document.createElement('div');
+        el.id = 'bbgl-scan-overlay';
+        el.innerHTML = buildScanOverlayInner(renderKey, ds);
+        if (!existing) host.appendChild(el);
+        wireScanOverlay(el, renderKey, ds);
+
+        if (renderKey === 'cap') {
+            updateScanCapCountdown(ds);
+            _scanOverlayTimer = setInterval(() => updateScanCapCountdown(ds), 1000);
+        } else if (renderKey === 'passenger') {
+            // No broadcast fires if the driver tab dies; poll so we can promote to the Error mask
+            // once its lock goes stale.
+            _scanOverlayTimer = setInterval(() => renderScanOverlay(), 3000);
+        }
+    }
+
+    // Route the Settings "BB Backfill" button into the masked scan: switch to the log (so the
+    // overlay's pause/cancel controls are visible, not the settings "unavailable" variant), then
+    // start or resume the scan. No modal — the disclosure now lives in the privacy doc.
+    function startBackfillFromSettings() {
+        if (runtime.demoMode) return;
+        switchView('ledger');
+        backfillLogs(document.getElementById('backfill-btn'));
+    }
+
+    // The full scan state machine now lives in the masked overlay (renderScanOverlay). This just
+    // reflects backfill state onto the Settings button and wires its click:
+    //  - scanning / masked stop-state (unacknowledged): inert; the overlay owns the UI.
+    //  - cooling down after a cap (acknowledged): inert with a live "resume available in" countdown.
+    //  - partial + resumable, or fresh/complete: clickable, routes into the masked scan.
     function renderBackfillButton() {
         const btn = document.getElementById('backfill-btn');
         if (!btn) return;
@@ -16909,61 +17402,62 @@ const BestGymController = {
             clearInterval(_backfillCountdownId);
             _backfillCountdownId = null;
         }
-        if (runtime.demoMode || runtime.backfilling) return;
-
-        const s = getActiveHistory();
-        const ds = s.meta && s.meta.backfill;
 
         // Reset to a clean baseline before applying the active state.
-        btn.style.pointerEvents = 'auto';
-        btn.style.opacity = '1';
+        btn.style.pointerEvents = '';
+        btn.style.opacity = '';
         btn.style.color = '';
         btn.removeAttribute('data-tooltip');
         delete btn.dataset.originalText;
         btn.onclick = null;
 
-        if (ds && ds.lastResult === 'complete' && ds.acknowledged === false) {
-            btn.style.color = '#43a047';
-            btn.setAttribute('data-tooltip', ds.completion === 'exhausted' ? TOOLTIPS.BACKFILL_COMPLETE_EXHAUSTED : TOOLTIPS.BACKFILL_COMPLETE_ORIGIN);
-            btn.innerHTML = `Full Backfill Completed!<span id="bbgl-backfill-ack" title="Confirm" style="display:inline-flex;align-items:center;justify-content:center;width:16px;height:16px;margin-left:8px;cursor:pointer;vertical-align:middle;">${ICONS.CHECK}</span>`;
-            const ack = btn.querySelector('#bbgl-backfill-ack');
-            if (ack) ack.onclick = (e) => {
-                e.stopPropagation();
-                acknowledgeBackfill();
-            };
+        if (runtime.demoMode) return;
+
+        const idleLabel = '<span class="view-std">BB Backfill</span><span class="view-exp">Big Black Backfill</span>';
+
+        // Scan running, or a masked stop-state awaiting acknowledgement: the overlay covers the panel
+        // (including this button), so keep it inert.
+        const s = getActiveHistory();
+        const ds = s.meta && s.meta.backfill;
+        if (runtime.backfilling || (ds && ds.acknowledged === false)) {
+            btn.style.opacity = '0.6';
+            btn.style.pointerEvents = 'none';
+            btn.innerHTML = idleLabel;
             return;
         }
 
+        // Acknowledged cap: still cooling down. Inert with a live countdown until resume unlocks.
         if (ds && ds.lastResult === 'partial' && ds.cooldownUntil && Date.now() < ds.cooldownUntil) {
             btn.style.opacity = '0.6';
-            btn.textContent = 'Partial Scan Complete! Resume?';
+            btn.style.pointerEvents = 'none';
             const render = () => {
                 const remaining = ds.cooldownUntil - Date.now();
                 if (remaining <= 0) {
                     renderBackfillButton();
                     return;
                 }
-                btn.setAttribute('data-tooltip', TOOLTIPS.BACKFILL_RESUME_COOLDOWN(formatCountdown(remaining)));
+                btn.innerHTML = `Resume available in ${formatCountdown(remaining)}`;
             };
             render();
             _backfillCountdownId = setInterval(render, 1000);
             return;
         }
 
+        // Partial and resumable now (acknowledged pause/error, or cap cooldown elapsed).
         if (ds && ds.lastResult === 'partial') {
-            // Cooldown elapsed: stay in the resume state until the log is fully backfilled.
-            btn.textContent = 'Partial Scan Complete! Resume?';
+            btn.innerHTML = '<span class="view-std">Resume Backfill</span><span class="view-exp">Resume Big Black Backfill</span>';
             btn.onclick = function() {
                 this.blur();
-                backfillLogs(this);
+                startBackfillFromSettings();
             };
             return;
         }
 
-        btn.innerHTML = '<span class="view-std">BB Backfill</span><span class="view-exp">Big Black Backfill</span>';
+        // Fresh, or completed-and-acknowledged: start a new scan.
+        btn.innerHTML = idleLabel;
         btn.onclick = function() {
             this.blur();
-            openBackfillModal();
+            startBackfillFromSettings();
         };
     }
 
@@ -17294,7 +17788,7 @@ const BestGymController = {
         const crb = get('create-api-btn');
         if (crb) crb.onclick = function() {
             this.blur();
-            window.open('https://www.torn.com/preferences.php#tab=api?step=addNewKey&user=battlestats,log&=,,,,&logIds=56,52,54,50,23,6&title=Big%20Black%20Gym%20Log', '_blank');
+            window.open('https://www.torn.com/preferences.php#tab=api?step=addNewKey&user=battlestats,log&=,,,,&faction=rankedwars&logIds=56,52,54,50,23,6&title=BigBlackGymLog', '_blank');
         };
         const rb = get('refresh-log-btn');
         if (rb) rb.onclick = function() {
@@ -17317,6 +17811,7 @@ const BestGymController = {
         // The backfill button's click behavior is state-dependent (open modal / resume / acknowledge),
         // so renderBackfillButton owns wiring its onclick for the current state.
         renderBackfillButton();
+        renderScanOverlay();
         const clb = get('clear-btn');
         if (clb) clb.onclick = function() {
             this.blur();
@@ -17627,6 +18122,7 @@ const BestGymController = {
                 // stale; release it so the Resume button works again without a 24h lockout.
                 await recoverInterruptedBackfill();
                 renderBackfillButton();
+                renderScanOverlay();
                 if (loaded && ((_historyCache.history.length > 0) || (_historyCache.meta && _historyCache.meta.logStartDate)) && !localStorage.getItem('bbgl_initialized')) localStorage.setItem('bbgl_initialized', '1');
             } catch (e) {
                 Log.warn('IndexedDB boot failed, continuing with empty state', e);
@@ -17646,6 +18142,7 @@ const BestGymController = {
             if (dom.panel && dom.panel.style.display !== 'none') renderPanelContent();
             updateLevelBar();
             renderBackfillButton();
+            renderScanOverlay();
         });
         updateLevelBar(); // initialize _lastLevelExp before first interaction
         let _domRaf = null;

@@ -4744,6 +4744,88 @@
                         display: none !important;
                     }
 
+                    /* Full-panel Big Black Backfill scan mask. Anchored to #bbgl-content-wrapper
+                       (position:relative), so it covers the top + bottom panels and the settings/
+                       welcome views while leaving the header (settings/close) reachable. */
+                    #bbgl-scan-overlay {
+                        position: absolute;
+                        inset: 0;
+                        z-index: 60;
+                        display: flex;
+                        flex-direction: column;
+                        align-items: center;
+                        justify-content: center;
+                        gap: 14px;
+                        padding: 26px 24px;
+                        box-sizing: border-box;
+                        background: rgba(10, 10, 12, .88);
+                        color: #ddd;
+                        font-family: Arial, sans-serif;
+                        text-align: center;
+                        border-radius: 0 0 5px 5px;
+                    }
+                    #bbgl-scan-overlay .bbgl-scan-title {
+                        font-size: 18px;
+                        font-weight: 800;
+                        color: #fff;
+                        letter-spacing: .3px;
+                    }
+                    #bbgl-scan-overlay .bbgl-scan-sub {
+                        font-size: 12px;
+                        line-height: 1.6;
+                        color: #b6b6b6;
+                        max-width: 300px;
+                    }
+                    #bbgl-scan-overlay .bbgl-scan-count { color: #b388ff; font-variant-numeric: tabular-nums; }
+                    #bbgl-scan-cancel {
+                        position: absolute;
+                        top: 10px;
+                        right: 12px;
+                        font-size: 11px;
+                        font-weight: 700;
+                        color: #ff5252;
+                        cursor: pointer;
+                        padding: 4px 9px;
+                        border-radius: 4px;
+                        text-transform: uppercase;
+                        letter-spacing: .5px;
+                    }
+                    #bbgl-scan-cancel:hover { background: rgba(255, 82, 82, .16); }
+                    #bbgl-scan-overlay .bbgl-scan-actions {
+                        display: flex;
+                        gap: 18px;
+                        align-items: center;
+                        justify-content: center;
+                        margin-top: 2px;
+                    }
+                    .bbgl-scan-textbtn {
+                        cursor: pointer;
+                        font-size: 13px;
+                        font-weight: 700;
+                        color: #dcdcdc;
+                        padding: 7px 12px;
+                        border-radius: 4px;
+                    }
+                    .bbgl-scan-textbtn:hover { background: rgba(255, 255, 255, .1); color: #fff; }
+                    .bbgl-scan-textbtn.bbgl-scan-primary { color: #b388ff; }
+                    .bbgl-scan-textbtn.bbgl-scan-primary:hover { background: rgba(179, 136, 255, .16); }
+                    .bbgl-scan-iconbtn {
+                        display: inline-flex;
+                        align-items: center;
+                        justify-content: center;
+                        width: 36px;
+                        height: 36px;
+                        border-radius: 50%;
+                        cursor: pointer;
+                    }
+                    .bbgl-scan-iconbtn svg { width: 18px; height: 18px; }
+                    .bbgl-scan-iconbtn.bbgl-scan-yes { color: #69f0ae; }
+                    .bbgl-scan-iconbtn.bbgl-scan-yes:hover { background: rgba(105, 240, 174, .16); }
+                    .bbgl-scan-iconbtn.bbgl-scan-no { color: #ff5252; }
+                    .bbgl-scan-iconbtn.bbgl-scan-no:hover { background: rgba(255, 82, 82, .16); }
+                    .bbgl-scan-iconbtn.bbgl-scan-play { color: #b388ff; }
+                    .bbgl-scan-iconbtn.bbgl-scan-play:hover { background: rgba(179, 136, 255, .16); }
+
                     .bbgl-ack-check {
                         display: inline-flex;
                         width: 14px;
