@@ -4923,13 +4923,12 @@
                     .bbgl-ack-row {
                         display: flex;
                         gap: 8px;
-                        align-items: flex-start;
+                        align-items: center;
                         padding: 4px 0;
                         color: #ccc;
                     }
 
                     .bbgl-ack-row input[type="checkbox"] {
-                        margin-top: 2px;
                         flex: 0 0 auto;
                         cursor: pointer;
                     }

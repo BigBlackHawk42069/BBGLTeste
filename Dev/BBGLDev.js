@@ -9,8 +9,8 @@
 // @connect      raw.githubusercontent.com
 // @connect      cdn.jsdelivr.net
 // @run-at       document-start
-// @updateURL    https://raw.githubusercontent.com/BigBlackHawk42069/BBGLTeste/refs/heads/main/BigBlackGymLog.js
-// @downloadURL  https://raw.githubusercontent.com/BigBlackHawk42069/BBGLTeste/refs/heads/main/BigBlackGymLog.js
+// @updateURL    https://raw.githubusercontent.com/BigBlackHawk42069/BigBlackGymLog/refs/heads/DevBranch/Dev/BBGLDev.js
+// @downloadURL  https://raw.githubusercontent.com/BigBlackHawk42069/BigBlackGymLog/refs/heads/DevBranch/Dev/BBGLDev.js
 // ==/UserScript==
 
 (function() {
@@ -125,7 +125,7 @@
         /^https:\/\/raw\.githubusercontent\.com\/([^/]+)\/([^/]+)\/(?:refs\/heads\/)?([^/]+)\//,
         'https://cdn.jsdelivr.net/gh/$1/$2@$3/'
     );
-    const BASE_DOCS_URL = cdnize('https://raw.githubusercontent.com/BigBlackHawk42069/BBGLTeste/DeepScan/UserDocs/');
+    const BASE_DOCS_URL = cdnize('https://raw.githubusercontent.com/BigBlackHawk42069/BigBlackGymLog/DevBranch/UserDocs/');
     const CONSTANTS = {
         MONTHS: ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"],
         MONTHS_SHORT: ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"],
@@ -5939,13 +5939,12 @@
                     .bbgl-ack-row {
                         display: flex;
                         gap: 8px;
-                        align-items: flex-start;
+                        align-items: center;
                         padding: 4px 0;
                         color: #ccc;
                     }
 
                     .bbgl-ack-row input[type="checkbox"] {
-                        margin-top: 2px;
                         flex: 0 0 auto;
                         cursor: pointer;
                     }
