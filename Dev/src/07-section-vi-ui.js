@@ -1651,9 +1651,9 @@
         return `<select id="${id}" class="bbgl-native-select"><option value="utc"${selectedVal === 'utc' ? ' selected' : ''}>Torn Time (UTC)</option><option value="local"${selectedVal === 'local' ? ' selected' : ''}>Local Time</option></select>`;
     }
 
-    function buildSection(title, bodyHTML, bodyStyle = '') {
+    function buildSection(title, bodyHTML, bodyStyle = '', titleExtraHTML = '') {
         const style = bodyStyle ? ` style="${bodyStyle}"` : '';
-        return `<div class="bbgl-prefs-tab-title">${title}</div><div class="bbgl-settings-body"${style}>${bodyHTML}</div>`;
+        return `<div class="bbgl-prefs-tab-title"><span>${title}</span>${titleExtraHTML}</div><div class="bbgl-settings-body"${style}>${bodyHTML}</div>`;
     }
 
     function buildRow(labelHTML, controlHTML, extraClass = '') {
@@ -1668,6 +1668,19 @@
         const cls = ['bbgl-btn', modifier ? `bbgl-btn-${modifier}` : ''].filter(Boolean).join(' ');
         const style = extraStyle ? ` style="${extraStyle}"` : '';
         return `<button id="${id}" class="${cls}"${style}>${label}</button>`;
+    }
+
+    // Single source of truth for "which corners are flat" in a vertical button stack (Settings
+    // sections like Information/API Access). 'top' and 'bottom' round only their outer corners and
+    // drop the border that would otherwise double up against the neighboring button; 'mid' is fully
+    // flat on all corners. Pick the position by role, not by trial and error — that's what caused
+    // buttons in the middle of a stack to render with stray rounded corners before.
+    function stackBtnStyle(pos) {
+        return {
+            top: 'border-bottom-left-radius:0; border-bottom-right-radius:0; border-bottom:none;',
+            mid: 'border-radius:0; border-bottom:none;',
+            bottom: 'border-top-left-radius:0; border-top-right-radius:0;'
+        }[pos];
     }
 
     function buildApiEntryField(prefix, extraStyle = '') {
@@ -1699,7 +1712,6 @@
         DEMO_EXIT: "Exit Demo Mode",
         DEMO_EXIT_HTML: "Exit Demo Mode<i>Stats shown here are for previewing the functions of the script only — they do not reflect realistic Torn growth.</i>",
         REFRESH_COOLDOWN: (remaining) => `Please wait ${remaining}s before refreshing the log again`,
-        BACKFILL_AGREE_GATE: "Read and agree to start the backfill",
         BACKFILL_RESUME_COOLDOWN: (t) => `Daily limit reached. Wait ${t} before resuming the Backfill.`,
         BACKFILL_COMPLETE_ORIGIN: "Your full training history was reconstructed back to the very beginning.",
         BACKFILL_COMPLETE_EXHAUSTED: "Scan reached the end of the logs Torn still retains. Any older history is no longer available from Torn's servers.",
@@ -1769,7 +1781,11 @@
         return new Promise((resolve, reject) => {
             GM_xmlhttpRequest({
                 method: 'GET',
-                url: BASE_DOCS_URL + name + '.html',
+                // Cache-busting query param, tied to the TEMP raw.githubusercontent.com bypass in
+                // BASE_DOCS_URL (see 02-section-i-constants.js) — raw.githubusercontent.com sits
+                // behind its own short-lived CDN cache too, so without this a push can take a few
+                // minutes to actually show up. Drop this once BASE_DOCS_URL is re-wrapped in cdnize(...).
+                url: BASE_DOCS_URL + name + '.html?_=' + Date.now(),
                 onload(res) {
                     if (res.status >= 200 && res.status < 300) {
                         docCache[name] = res.responseText;
@@ -1793,7 +1809,7 @@
         const ctrl = reviewMode ? `<span class="bbgl-ack-check">${ICONS.CHECK}</span>` : `<input type="checkbox" id="bbgl-privacy-ack">`,
             label = reviewMode ? `<span>${PRIVACY_TEXT.AGREE_LABEL}</span>` : `<label for="bbgl-privacy-ack">${PRIVACY_TEXT.AGREE_LABEL}</label>`,
             ackRow = `<div class="bbgl-ack-row" style="margin:0 10px 8px 10px;">${ctrl}${label}</div>`,
-            discSection = buildSection('Big Black Dicslosure', `<div class="bbgl-modal-scrollbox"><div id="bbgl-privacy-disc">${DOC_LOADING_HTML}</div></div>${ackRow}`, 'margin-bottom:8px;'),
+            discSection = buildSection('Big Black Dicslosure', `<div class="bbgl-modal-scrollbox" style="max-height:calc(68vh - 80px); min-height:300px;"><div id="bbgl-privacy-disc">${DOC_LOADING_HTML}</div></div>${ackRow}`, 'margin-bottom:8px;'),
             footer = reviewMode ? '' : `<div style="display:flex; margin:0 10px 4px 10px;">${buildButton('bbgl-privacy-demo-btn', 'DEMO', 'purple', 'flex:2; border-radius:4px 0 0 4px; margin:0;')}<span class="bbgl-agree-wrap" style="flex:1; display:flex;" data-tooltip="${TOOLTIPS.AGREE_GATE}">${buildButton('bbgl-privacy-agree-btn', 'AGREE', 'green', 'flex:1; border-radius:0 4px 4px 0; margin:0;')}</span></div>`;
         return `<div class="bbgl-modal-overlay" id="bbgl-privacy-modal"><div class="bbgl-modal-window"><div class="close-settings-btn bbgl-close-x" id="bbgl-privacy-close" title="Close">${ICONS.CLOSE}</div>${discSection}${footer}</div></div>`;
     }
@@ -1804,7 +1820,7 @@
     }
 
     function buildChangelogModalHTML() {
-        const changelogSection = buildSection('BBGL Test Phase Changelog', `<div class="bbgl-modal-scrollbox" style="max-height:calc(68vh - 80px); min-height:250px;"><div id="bbgl-changelog-content" style="font-family:Arial,sans-serif; font-size:12px; color:#ccc; line-height:1.7;">${DOC_LOADING_HTML}</div></div>`, 'margin-bottom:8px;');
+        const changelogSection = buildSection('BBGL Test Phase Changelog', `<div class="bbgl-modal-scrollbox" style="max-height:calc(68vh - 80px); min-height:300px;"><div id="bbgl-changelog-content" style="font-family:Arial,sans-serif; font-size:12px; color:#ccc; line-height:1.7;">${DOC_LOADING_HTML}</div></div>`, 'margin-bottom:8px;');
         return `<div class="bbgl-modal-overlay" id="bbgl-changelog-modal"><div class="bbgl-modal-window"><div class="close-settings-btn bbgl-close-x" id="bbgl-changelog-close" title="Close">${ICONS.CLOSE}</div>${changelogSection}</div></div>`;
     }
 
@@ -1836,7 +1852,7 @@
     }
 
     function buildFeatureGuideModalHTML() {
-        const guideSection = buildSection('Feature Guide', `<div class="bbgl-modal-scrollbox" style="max-height:calc(68vh - 80px); min-height:250px;"><div style="padding:20px; text-align:center; color:#888;">Cumming Soon...</div></div>`, 'margin-bottom:8px;');
+        const guideSection = buildSection('Feature Guide', `<div class="bbgl-modal-scrollbox" style="max-height:calc(68vh - 80px); min-height:300px;"><div style="padding:20px; text-align:center; color:#888;">Cumming Soon...</div></div>`, 'margin-bottom:8px;');
         return `<div class="bbgl-modal-overlay" id="bbgl-feature-guide-modal"><div class="bbgl-modal-window"><div class="close-settings-btn bbgl-close-x" id="bbgl-feature-guide-close" title="Close">${ICONS.CLOSE}</div>${guideSection}</div></div>`;
     }
 
@@ -1854,63 +1870,6 @@
         modal.onclick = (e) => {
             if (e.target === modal) closeFeatureGuideModal();
         };
-    }
-
-    function buildBackfillModalHTML() {
-        const agreeRow = `<div class="bbgl-ack-row" style="margin-top:10px;"><input type="checkbox" id="bbgl-backfill-agree"><label for="bbgl-backfill-agree">I understand what the Backfill does, how it uses my API key, and what happens if the scan is interrupted.</label></div>`,
-            infoSection = buildSection('Big Black Dicslosure', `<div class="bbgl-modal-scrollbox" style="max-height:calc(68vh - 80px); min-height:300px;"><div id="bbgl-backfill-disc">${DOC_LOADING_HTML}</div>${agreeRow}</div>`, 'margin-bottom:8px;'),
-            footer = `<div style="display:flex; justify-content:flex-end; margin:0 10px 4px 10px;"><span class="bbgl-agree-wrap" style="flex:0 0 auto; display:inline-flex;" data-tooltip="${TOOLTIPS.BACKFILL_AGREE_GATE}">${buildButton('bbgl-backfill-start-btn', 'Start', 'green', 'margin:0; min-width:96px;')}</span></div>`;
-        return `<div class="bbgl-modal-overlay" id="bbgl-backfill-modal"><div class="bbgl-modal-window"><div class="close-settings-btn bbgl-close-x" id="bbgl-backfill-close" title="Close">${ICONS.CLOSE}</div>${infoSection}${footer}</div></div>`;
-    }
-
-    function closeBackfillModal() {
-        const m = document.getElementById('bbgl-backfill-modal');
-        if (m && m.parentNode) m.parentNode.removeChild(m);
-    }
-
-    async function openBackfillModal() {
-        if (runtime.demoMode) return;
-        closeBackfillModal();
-        document.body.insertAdjacentHTML('beforeend', buildBackfillModalHTML());
-        const modal = document.getElementById('bbgl-backfill-modal');
-        if (!modal) return;
-        modal.querySelector('#bbgl-backfill-close').onclick = () => closeBackfillModal();
-        modal.onclick = (e) => {
-            if (e.target === modal) closeBackfillModal();
-        };
-        const startBtn = modal.querySelector('#bbgl-backfill-start-btn'),
-            startWrap = modal.querySelector('.bbgl-agree-wrap'),
-            agree = modal.querySelector('#bbgl-backfill-agree');
-        startBtn.classList.add('bbgl-btn-disabled');
-        const refreshStartState = () => {
-            if (agree.checked) {
-                startBtn.classList.remove('bbgl-btn-disabled');
-                if (startWrap) startWrap.removeAttribute('data-tooltip');
-            } else {
-                startBtn.classList.add('bbgl-btn-disabled');
-                if (startWrap) startWrap.setAttribute('data-tooltip', TOOLTIPS.BACKFILL_AGREE_GATE);
-            }
-        };
-        agree.onchange = refreshStartState;
-        refreshStartState();
-        // Agreement is intentionally not persisted: starting the scan creates its own timers, which
-        // are the record. The disclaimer is shown fresh on every manual start.
-        startBtn.onclick = function() {
-            if (startBtn.classList.contains('bbgl-btn-disabled')) return;
-            this.blur();
-            closeBackfillModal();
-            // Route through the settings starter so we land on the log (with the overlay's pause/
-            // cancel controls) rather than the "settings unavailable" mask.
-            startBackfillFromSettings();
-        };
-        try {
-            const disclosureHTML = await fetchDoc('backfill');
-            const disc = modal.querySelector('#bbgl-backfill-disc');
-            if (disc) disc.innerHTML = disclosureHTML;
-        } catch (e) {
-            const disc = modal.querySelector('#bbgl-backfill-disc');
-            if (disc) disc.innerHTML = DOC_ERROR_HTML;
-        }
     }
 
     // Shown right after START TRACKING (post key-verification): the user chooses whether to begin
@@ -2124,10 +2083,20 @@
         return `${closeBtn}<div class="bbgl-settings-scroll-area">${buildWelcomeIntroSection()}${buildWelcomeInitSection()}${buildWelcomeReturningSection()}</div>`;
     }
 
+    // Small duplicate of the Refresh Log button, embedded in the "Big Black Features" title bar.
+    // Idle label follows the panel mode (view-std/view-exp, same CSS-driven swap "BB Backfill" uses
+    // above); the syncing/done states are identical text in every mode, so they skip that split.
+    function buildResyncBtn() {
+        const idle = `<span class="bbgl-rs-idle"><span class="view-std">RESYNC</span><span class="view-exp">RESYNC LOG</span></span>`,
+            syncing = `<span class="bbgl-rs-sync" style="display:none;"><span class="view-std">...</span><span class="view-exp">Syncing...</span></span>`,
+            done = `<span class="bbgl-rs-done" style="display:none;">Resynced!</span>`;
+        return `<button id="resync-btn" class="bbgl-tab-title-btn">${idle}${syncing}${done}</button>`;
+    }
+
     function buildSettingsFeaturesSection() {
         const bestGymGroup = buildToggle('set-bestgym-toggle', `<span data-tooltip-html="${TOOLTIPS.BEST_GYM}">BB Best Gym</span>`, 'bbgl-bestgym-lead') + buildToggle('set-bestgym-spec-toggle', `<span data-tooltip-html="${TOOLTIPS.BEST_GYM_SPEC}">Specialty Gyms</span>`, 'bbgl-subgroup-row') + buildToggle('set-bestgym-unpurch-toggle', `<span data-tooltip-html="${TOOLTIPS.BEST_GYM_UNPURCHASED}">Unpurchased Gyms</span>`, 'bbgl-subgroup-row bbgl-subgroup-row-last');
         const backfillBtn = buildButton('backfill-btn', '<span class="view-std">BB Backfill</span><span class="view-exp">Big Black Backfill</span>', 'purple', 'margin: 8px 10px 8px 10px; width: calc(100% - 20px); display: block;');
-        return buildSection('Big Black Features', bestGymGroup + buildToggle('set-rate-toggle', `<span data-tooltip-html="${TOOLTIPS.RATES}">Rate Displays</span>`) + buildToggle('set-anim-toggle', `<span data-tooltip-html="${TOOLTIPS.ANIM}">Animations</span>`) + buildRow(`<span data-tooltip-html="${TOOLTIPS.DRUG_TRACKER}">Drug Use Tracker</span>`, `<select id="set-drug-tracker" class="bbgl-native-select"><option value="xanax">Xanax</option><option value="lsd">LSD</option></select>`) + `<div class="bbgl-mask-host bbgl-demo-maskable" data-mask-text="Not available in demo mode">${backfillBtn}</div>`);
+        return buildSection('Big Black Features', bestGymGroup + buildToggle('set-rate-toggle', `<span data-tooltip-html="${TOOLTIPS.RATES}">Rate Displays</span>`) + buildToggle('set-anim-toggle', `<span data-tooltip-html="${TOOLTIPS.ANIM}">Animations</span>`) + buildRow(`<span data-tooltip-html="${TOOLTIPS.DRUG_TRACKER}">Drug Use Tracker</span>`, `<select id="set-drug-tracker" class="bbgl-native-select"><option value="xanax">Xanax</option><option value="lsd">LSD</option></select>`) + `<div class="bbgl-mask-host bbgl-demo-maskable" data-mask-text="Not available in demo mode">${backfillBtn}</div>`, '', buildResyncBtn());
     }
 
     function buildSettingsLogFormatSection() {
@@ -2136,25 +2105,41 @@
 
     function buildSettingsApiSection() {
         const inputHTML = buildApiEntryField('set');
-        const topBtn = buildButton('create-api-btn', 'CREATE API KEY', '', 'margin: 0 10px 0 10px; width: calc(100% - 20px); display: block; border-bottom-left-radius: 0; border-bottom-right-radius: 0; border-bottom: none;');
-        const buttons = `<div class="bbgl-btn-grid bbgl-api-grid" style="margin: 0 10px 10px 10px!important;">${buildButton('clear-api-btn', 'CLEAR API KEY', 'red', 'border-top-left-radius: 0!important;')}${buildButton('updt-settings-btn', 'REGISTER API KEY', 'green', 'border-top-right-radius: 0!important;')}</div>`;
-        return buildSection('API Access', `<div class="bbgl-mask-host bbgl-demo-maskable" data-mask-text="Not available in demo mode">${inputHTML}${topBtn}${buttons}</div>`, 'margin-bottom: 5px;');
+        const topBtn = buildButton('create-api-btn', 'CREATE API KEY', '', `margin: 0 10px 0 10px; width: calc(100% - 20px); display: block; ${stackBtnStyle('top')}`);
+        // .bbgl-btn-grid's default :first-of-type/:last-of-type rules round the *top* corners of the
+        // pair (right for a row sitting at the top of its stack, e.g. Data Management's Export/Import).
+        // This row sits at the *bottom* of the API Access stack, below Create, so the rounding needs
+        // to flip to the bottom-outer corners instead — hence the explicit overrides here.
+        const stack = `<div class="bbgl-btn-grid" style="margin: 0 10px 10px 10px;">` +
+            buildButton('clear-api-btn', 'CLEAR API KEY', 'red', 'border-radius: 0 0 0 5px;') +
+            buildButton('updt-settings-btn', 'REGISTER API KEY', 'green', 'border-radius: 0 0 5px 0;') +
+            `</div>`;
+        return buildSection('API Access', `<div class="bbgl-mask-host bbgl-demo-maskable" data-mask-text="Not available in demo mode">${inputHTML}${topBtn}${stack}</div>`, 'margin-bottom: 5px;');
     }
 
     function buildSettingsDataSection() {
-        const inner = buildButton('refresh-log-btn', 'REFRESH LOG', '', 'margin: 8px 10px 0 10px; width: calc(100% - 20px); display: block; border-bottom-left-radius: 0; border-bottom-right-radius: 0; border-bottom: none;') + `<div class="bbgl-btn-grid" style="margin: 0 10px 0 10px;">${buildButton('export-btn', 'EXPORT LOG', '', 'border-radius: 0; border-bottom: none;')}${buildButton('import-btn', 'IMPORT LOG', '', 'border-radius: 0; border-bottom: none;')}<input type="file" id="import-file" accept=".json,application/json" style="display:none"></div>` + buildButton('clear-btn', 'CLEAR LOG', 'red', 'margin: 0 10px 8px 10px; width: calc(100% - 20px); display: block; border-top-left-radius: 0; border-top-right-radius: 0;');
+        // Refresh Log is hidden in favor of the Resync button in the "Big Black Features" title bar,
+        // but kept in the DOM/code rather than deleted — see buildResyncBtn. With it hidden, Export/
+        // Import becomes the visual top of this stack, so its outer corners pick up the rounding
+        // Refresh Log used to own.
+        const refreshBtn = buildButton('refresh-log-btn', 'REFRESH LOG', '', 'display: none;');
+        const grid = `<div class="bbgl-btn-grid" style="margin: 8px 10px 0 10px;">${buildButton('export-btn', 'EXPORT LOG', '', 'border-radius: 5px 0 0 0; border-bottom: none;')}${buildButton('import-btn', 'IMPORT LOG', '', 'border-radius: 0 5px 0 0; border-bottom: none;')}<input type="file" id="import-file" accept=".json,application/json" style="display:none"></div>`;
+        const inner = refreshBtn + grid + buildButton('clear-btn', 'CLEAR LOG', 'red', 'margin: 0 10px 8px 10px; width: calc(100% - 20px); display: block; border-top-left-radius: 0; border-top-right-radius: 0;');
         return buildSection('Data Management', `<div class="bbgl-mask-host bbgl-demo-maskable" data-mask-text="Not available in demo mode">${inner}</div>`);
     }
 
     function buildSettingsInfoSection() {
-        const guideBtn = buildButton('feature-guide-btn', 'FEATURE GUIDE', '', 'margin: 8px 10px 0 10px; width: calc(100% - 20px); display: block; border-bottom-left-radius: 0; border-bottom-right-radius: 0; border-bottom: none;');
-        const stack = `<div style="margin: 0 10px 0 10px; display: flex; flex-direction: column;">` + buildButton('settings-changelog-btn', 'CHANGELOG', '', 'border-bottom-left-radius: 0; border-bottom-right-radius: 0; border-bottom: none; width: 100%;') + buildButton('show-welcome-btn', 'WELCOME PAGE', '', 'border-radius: 0; border-bottom: none; width: 100%;') + buildButton('settings-privacy-btn', 'PRIVACY DISCLOSURE', '', 'border-radius: 0; border-bottom: none; width: 100%;') + buildButton('settings-backfill-btn', 'BACKFILL DISCLOSURE', '', 'border-top-left-radius: 0; border-top-right-radius: 0; width: 100%;') + `</div>`;
-        const demoBtn = buildButton('settings-demo-btn', runtime.demoMode ? 'EXIT DEMO' : 'DEMO MODE', 'purple', 'margin: 0 10px 8px 10px; width: calc(100% - 20px); display: block; border-top-left-radius: 0; border-top-right-radius: 0;');
+        const guideBtn = buildButton('feature-guide-btn', 'FEATURE GUIDE', '', `margin: 8px 10px 0 10px; width: calc(100% - 20px); display: block; ${stackBtnStyle('top')}`);
+        const stack = `<div style="margin: 0 10px 0 10px; display: flex; flex-direction: column;">` +
+            buildButton('settings-changelog-btn', 'CHANGELOG', '', `width: 100%; ${stackBtnStyle('mid')}`) +
+            buildButton('show-welcome-btn', 'WELCOME PAGE', '', `width: 100%; ${stackBtnStyle('mid')}`) +
+            `</div>`;
+        const demoBtn = buildButton('settings-demo-btn', runtime.demoMode ? 'EXIT DEMO' : 'DEMO MODE', 'purple', `margin: 0 10px 8px 10px; width: calc(100% - 20px); display: block; ${stackBtnStyle('bottom')}`);
         return buildSection('Information', guideBtn + `<div class="bbgl-mask-host bbgl-demo-maskable" data-mask-text="Not available in demo mode">${stack}</div>${demoBtn}`);
     }
 
     function getSettingsHTML() {
-        return `<div class="close-settings-btn" title="Close Settings">${ICONS.CHECK}</div><div class="bbgl-settings-scroll-area">${buildSettingsFeaturesSection()}${buildSettingsLogFormatSection()}${buildSettingsApiSection()}${buildSettingsDataSection()}${buildSettingsInfoSection()}</div>`;
+        return `<div class="close-settings-btn" title="Close Settings">${ICONS.CHECK}</div><div class="bbgl-settings-scroll-area">${buildSettingsFeaturesSection()}${buildSettingsLogFormatSection()}${buildSettingsDataSection()}${buildSettingsApiSection()}${buildSettingsInfoSection()}</div>`;
     }
 
     function buildEmptyLevelTrackSVG() {

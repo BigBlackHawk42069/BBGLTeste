@@ -1204,6 +1204,18 @@
         };
     }
 
+    // Idle/syncing/done are separate spans inside the button (see buildResyncBtn) rather than a
+    // literal text swap, since the idle label itself has to keep responding to compact/expanded
+    // mode via CSS (view-std/view-exp) even while this function is driving it.
+    function setResyncBtnState(btn, state) {
+        const idle = btn.querySelector('.bbgl-rs-idle'),
+            syncing = btn.querySelector('.bbgl-rs-sync'),
+            done = btn.querySelector('.bbgl-rs-done');
+        if (idle) idle.style.display = state === 'idle' ? '' : 'none';
+        if (syncing) syncing.style.display = state === 'syncing' ? '' : 'none';
+        if (done) done.style.display = state === 'done' ? '' : 'none';
+    }
+
     function setupEventListeners(root) {
         cacheDOM(root);
         const get = (id) => root.querySelector('#' + id);
@@ -1539,6 +1551,15 @@
             if (checkRefreshCooldown(this)) return;
             syncWithFeedback('FULL_SYNC');
         };
+        const rsb = get('resync-btn');
+        if (rsb) rsb.onclick = async function() {
+            this.blur();
+            setResyncBtnState(rsb, 'syncing');
+            await syncWithFeedback('FULL_SYNC');
+            setResyncBtnState(rsb, 'done');
+            if (rsb.dataset.timerId) clearTimeout(rsb.dataset.timerId);
+            rsb.dataset.timerId = setTimeout(() => setResyncBtnState(rsb, 'idle'), 2000);
+        };
         const eb = get('export-btn');
         if (eb) eb.onclick = function() {
             this.blur();
@@ -1571,11 +1592,6 @@
             this.blur();
             openChangelogModal();
         };
-        const pl = get('settings-privacy-btn');
-        if (pl) pl.onclick = function() {
-            this.blur();
-            openPrivacyModal();
-        };
         const sdemo = get('settings-demo-btn');
         if (sdemo) sdemo.onclick = function() {
             this.blur();
@@ -1590,11 +1606,6 @@
         if (fgb) fgb.onclick = function() {
             this.blur();
             openFeatureGuideModal();
-        };
-        const sbb = get('settings-backfill-btn');
-        if (sbb) sbb.onclick = function() {
-            this.blur();
-            openBackfillModal();
         };
         const sa = get('swipe-area');
         if (sa) {

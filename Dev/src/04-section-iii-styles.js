@@ -70,10 +70,53 @@
                         margin: 0;
                         z-index: 2;
                         position: relative;
+                        display: flex;
+                        align-items: center;
+                        justify-content: space-between;
+                        gap: 8px;
+                        padding-right: 46px;
                     }
 
                     .bbgl-prefs-tab-title:first-child {
                         margin-top: 0;
+                    }
+
+                    .bbgl-tab-title-btn {
+                        flex: 0 0 auto;
+                        margin: 0;
+                        width: 84px;
+                        height: 18px;
+                        line-height: 16px;
+                        padding: 0;
+                        text-align: center;
+                        font-size: 10px;
+                        border-radius: 3px;
+                        background-image: linear-gradient(rgb(17, 17, 17) 0%, rgb(85, 85, 85) 25%, rgb(51, 51, 51) 60%, rgb(51, 51, 51) 78%, rgb(17, 17, 17) 100%);
+                        color: #eee;
+                        font-family: Arial, sans-serif;
+                        font-weight: 700;
+                        letter-spacing: .3px;
+                        text-transform: uppercase;
+                        border: 1px solid #111;
+                        cursor: pointer;
+                        box-sizing: border-box;
+                    }
+
+                    .bbgl-tab-title-btn:hover {
+                        background-image: linear-gradient(rgb(51, 51, 51) 0%, rgb(119, 119, 119) 25%, rgb(51, 51, 51) 59%, rgb(102, 102, 102) 78%, rgb(51, 51, 51) 100%);
+                        color: #fff;
+                    }
+
+                    .bbgl-tab-title-btn .bbgl-rs-done {
+                        color: #43a047;
+                    }
+
+                    /* Expanded/page show the longer "RESYNC LOG"/"Syncing..." labels, which don't
+                       fit the compact-mode width with comfortable padding — widen the button rather
+                       than let its text crowd the edges. */
+                    .bbgl-expanded .bbgl-tab-title-btn,
+                    .bbgl-mode-page .bbgl-tab-title-btn {
+                        width: 112px;
                     }
 
                     .bbgl-btn {
@@ -374,35 +417,6 @@
                         border-bottom-right-radius: 0;
                     }
 
-                    .bbgl-settings-body .bbgl-api-grid {
-                        display: flex !important;
-                        flex-direction: row;
-                        gap: 0;
-                        margin: 0 10px 10px;
-                        width: auto !important;
-                    }
-
-                    .bbgl-api-grid .bbgl-btn {
-                        flex: 1 1 0 !important;
-                        margin: 0;
-                        width: 50% !important;
-                    }
-
-                    .bbgl-api-grid .bbgl-btn:first-child {
-                        border-top-right-radius: 0 !important;
-                        border-bottom-right-radius: 0 !important;
-                        border-top-left-radius: 5px !important;
-                        border-bottom-left-radius: 5px !important;
-                        border-right: none !important;
-                    }
-
-                    .bbgl-api-grid .bbgl-btn:last-child {
-                        border-top-left-radius: 0 !important;
-                        border-bottom-left-radius: 0 !important;
-                        border-top-right-radius: 5px !important;
-                        border-bottom-right-radius: 5px !important;
-                    }
-
                     .close-settings-btn {
                         position: absolute;
                         background: transparent;
@@ -463,12 +477,6 @@
                     .bbgl-settings-body .bbgl-api-container {
                         margin: 8px 10px;
                         width: auto;
-                    }
-
-                    .bbgl-settings-body #updt-settings-btn {
-                        margin: 0 10px 10px;
-                        width: calc(100% - 20px);
-                        display: block;
                     }
 
                     .bbgl-settings-body .bbgl-btn-grid {
