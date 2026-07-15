@@ -117,7 +117,14 @@
     };
     // [TEMP — delete before full release]
     const REQUIRED_CONFIG_VERSION = 1;
-    const BASE_DOCS_URL = 'https://raw.githubusercontent.com/BigBlackHawk42069/BBGLTeste/DeepScan/UserDocs/';
+    // Rewrites a raw.githubusercontent.com URL to the jsDelivr CDN equivalent — raw.github
+    // sets weak cache headers and throttles hotlinking, jsDelivr is a real edge CDN and free
+    // for public repos.
+    const cdnize = u => u.replace(
+        /^https:\/\/raw\.githubusercontent\.com\/([^/]+)\/([^/]+)\/(?:refs\/heads\/)?([^/]+)\//,
+        'https://cdn.jsdelivr.net/gh/$1/$2@$3/'
+    );
+    const BASE_DOCS_URL = cdnize('https://raw.githubusercontent.com/BigBlackHawk42069/BBGLTeste/DeepScan/UserDocs/');
     const CONSTANTS = {
         MONTHS: ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"],
         MONTHS_SHORT: ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"],
@@ -354,6 +361,7 @@
             url: _d('aHR0cHM6Ly9yYXcuZ2l0aHVidXNlcmNvbnRlbnQuY29tL0JpZ0JsYWNrSGF3azQyMDY5L2FzZGZhc2tpamRuZmF3ZWYvcmVmcy9oZWFkcy9tYWluL1NjcnB0SW1ncy9TdGlja2VyYm9vay9DYXNpbm8vbHNscy1zY2stZHkucG5n')
         }
     ];
+    CUSTOM_STICKERS.forEach(s => { s.url = cdnize(s.url); });
     let runtime = {
         isClosing: false,
         isViewAnimating: false,
@@ -995,7 +1003,7 @@
      *  The Big & Black Part of the script.
      */
     const ASSETS = {
-        HEADER_IMG: "https://raw.githubusercontent.com/BigBlackHawk42069/asdfaskijdnfawef/refs/heads/main/ScrptImgs/Calendar/cal-hdr.jpg",
+        HEADER_IMG: cdnize("https://raw.githubusercontent.com/BigBlackHawk42069/asdfaskijdnfawef/refs/heads/main/ScrptImgs/Calendar/cal-hdr.jpg"),
         GRADIENT: `<defs><linearGradient id="bbgl_silver_grad" x1="0%" y1="0%" x2="0%" y2="100%"><stop offset="0%" style="stop-color:#d9d9d9;stop-opacity:1" /><stop offset="100%" style="stop-color:#999999;stop-opacity:1" /></linearGradient></defs>`
     };
     const ICONS = {
@@ -2610,7 +2618,7 @@
                         left: 0;
                         width: 100%;
                         height: 100%;
-                        background-image: url('https://raw.githubusercontent.com/BigBlackHawk42069/asdfaskijdnfawef/refs/heads/main/ScrptImgs/Calendar/glass-ovly.jpg');
+                        background-image: url('${cdnize('https://raw.githubusercontent.com/BigBlackHawk42069/asdfaskijdnfawef/refs/heads/main/ScrptImgs/Calendar/glass-ovly.jpg')}');
                         background-size: 100% 100%;
                         background-position: center;
                         opacity: .5;
@@ -3072,7 +3080,7 @@
                         left: 0;
                         width: 100%;
                         height: 100%;
-                        background-image: url('https://raw.githubusercontent.com/BigBlackHawk42069/asdfaskijdnfawef/refs/heads/main/ScrptImgs/Stickerbook/stkr-bckgr.png');
+                        background-image: url('${cdnize('https://raw.githubusercontent.com/BigBlackHawk42069/asdfaskijdnfawef/refs/heads/main/ScrptImgs/Stickerbook/stkr-bckgr.png')}');
                         background-size: cover;
                         background-position: center;
                         z-index: 5;
@@ -4431,7 +4439,7 @@
                         left: 4%;
                         width: 92%;
                         height: 92%;
-                        background: url('https://raw.githubusercontent.com/BigBlackHawk42069/asdfaskijdnfawef/refs/heads/main/ScrptImgs/Calendar/new-stkr.png') no-repeat center / contain;
+                        background: url('${cdnize('https://raw.githubusercontent.com/BigBlackHawk42069/asdfaskijdnfawef/refs/heads/main/ScrptImgs/Calendar/new-stkr.png')}') no-repeat center / contain;
                         z-index: 20;
                         filter: drop-shadow(-2px 4px 5px rgba(0, 0, 0, .4));
                         transform-origin: top right;
@@ -5426,7 +5434,7 @@
                         transform: translateX(-50%);
                         width: var(--dmnd-s);
                         height: var(--dmnd-s);
-                        background: url('https://raw.githubusercontent.com/BigBlackHawk42069/asdfaskijdnfawef/refs/heads/main/ScrptImgs/Calendar/lvl-dmnd.png') center / contain no-repeat;
+                        background: url('${cdnize('https://raw.githubusercontent.com/BigBlackHawk42069/asdfaskijdnfawef/refs/heads/main/ScrptImgs/Calendar/lvl-dmnd.png')}') center / contain no-repeat;
                         z-index: -1;
                         pointer-events: none;
                     }
@@ -5443,7 +5451,7 @@
                         width: var(--dmnd-s);
                         height: var(--dmnd-s);
                         clip-path: inset(0 0 calc(var(--dmnd-b) * -1 + 2px) 0);
-                        background: url('https://raw.githubusercontent.com/BigBlackHawk42069/asdfaskijdnfawef/refs/heads/main/ScrptImgs/Calendar/lvl-dmnd.png') center / contain no-repeat;
+                        background: url('${cdnize('https://raw.githubusercontent.com/BigBlackHawk42069/asdfaskijdnfawef/refs/heads/main/ScrptImgs/Calendar/lvl-dmnd.png')}') center / contain no-repeat;
                         z-index: 1;
                         pointer-events: none;
                     }
@@ -12035,7 +12043,7 @@ const BestGymController = {
      *  You should still get a Tetanus Booster!
      */
 
-    const CAL_IMG_BASE = 'https://raw.githubusercontent.com/BigBlackHawk42069/asdfaskijdnfawef/refs/heads/main/ScrptImgs/Calendar/';
+    const CAL_IMG_BASE = cdnize('https://raw.githubusercontent.com/BigBlackHawk42069/asdfaskijdnfawef/refs/heads/main/ScrptImgs/Calendar/');
 
     function buildChartSVG(sl) {
         const stats = sl && sl.stats;

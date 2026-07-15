@@ -51,7 +51,14 @@
     };
     // [TEMP — delete before full release]
     const REQUIRED_CONFIG_VERSION = 1;
-    const BASE_DOCS_URL = 'https://raw.githubusercontent.com/BigBlackHawk42069/BBGLTeste/DeepScan/UserDocs/';
+    // Rewrites a raw.githubusercontent.com URL to the jsDelivr CDN equivalent — raw.github
+    // sets weak cache headers and throttles hotlinking, jsDelivr is a real edge CDN and free
+    // for public repos.
+    const cdnize = u => u.replace(
+        /^https:\/\/raw\.githubusercontent\.com\/([^/]+)\/([^/]+)\/(?:refs\/heads\/)?([^/]+)\//,
+        'https://cdn.jsdelivr.net/gh/$1/$2@$3/'
+    );
+    const BASE_DOCS_URL = cdnize('https://raw.githubusercontent.com/BigBlackHawk42069/BBGLTeste/DeepScan/UserDocs/');
     const CONSTANTS = {
         MONTHS: ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"],
         MONTHS_SHORT: ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"],
@@ -288,6 +295,7 @@
             url: _d('aHR0cHM6Ly9yYXcuZ2l0aHVidXNlcmNvbnRlbnQuY29tL0JpZ0JsYWNrSGF3azQyMDY5L2FzZGZhc2tpamRuZmF3ZWYvcmVmcy9oZWFkcy9tYWluL1NjcnB0SW1ncy9TdGlja2VyYm9vay9DYXNpbm8vbHNscy1zY2stZHkucG5n')
         }
     ];
+    CUSTOM_STICKERS.forEach(s => { s.url = cdnize(s.url); });
     let runtime = {
         isClosing: false,
         isViewAnimating: false,
