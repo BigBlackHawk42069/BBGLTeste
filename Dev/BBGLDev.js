@@ -125,7 +125,9 @@
         /^https:\/\/raw\.githubusercontent\.com\/([^/]+)\/([^/]+)\/(?:refs\/heads\/)?([^/]+)\//,
         'https://cdn.jsdelivr.net/gh/$1/$2@$3/'
     );
-    const BASE_DOCS_URL = cdnize('https://raw.githubusercontent.com/BigBlackHawk42069/BigBlackGymLog/DevBranch/UserDocs/');
+    // TEMP (dev iteration): bypassing cdnize so doc edits show up immediately with no jsDelivr purge step.
+    // Re-wrap in cdnize(...) before this ships for real.
+    const BASE_DOCS_URL = 'https://raw.githubusercontent.com/BigBlackHawk42069/BigBlackGymLog/DevBranch/UserDocs/';
     const CONSTANTS = {
         MONTHS: ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"],
         MONTHS_SHORT: ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"],
