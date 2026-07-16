@@ -15,6 +15,7 @@ Version 0.9.90 - Pending
 - **Backfill Interruption Data Loss**: Fixed a bug where an interrupted Backfill run could silently lose log data without any visible indication to the user.
 - **Sidebar Active-State on Gym Log Page**: Fixed a bug where the Gym Log sidebar button wouldn't show its active/highlighted state while already viewing the gym log page.
 - **Incomplete Clear Data Reset**: Fixed a bug where clearing the log left certain pieces of data behind, which could distort future data going forward.
+- **Achievements Page Settings Return**: Fixed a bug where closing Settings while viewing the Achievements page dropped you back on the ledger/calendar instead of returning to Achievements, unlike Graph and Stickerbook which already remembered their place.
 
 ### Improvements:
 - **Weekly Progress Bar Redesign**: Replaced the solid weekly progress bar fill with individual daily capsules for clearer at-a-glance discoverability. Summary buttons were redesigned as visual bar-graph icons and now also appear as flags directly on the weekly progress bar, indicating when a weekly summary is available.
@@ -25,6 +26,7 @@ Version 0.9.90 - Pending
 - **Achievements Page Tooltip Refinement**: Rewrote tooltips across the Endocrine Enhancers and Happy Hopping achievement pages — corrected item pluralization, refined the wording and formatting, and made expanded mode show additional category detail not shown in compact/page mode.
 - **Endocrine Enhancers Period Toggle**: Added an All-Time / Selected switch to the Endocrine Enhancers achievements page, letting users choose between lifetime totals and the period currently selected on the calendar.
 - **Performance Optimizations**: Additional performance passes to keep the script lightweight.
+- **Demo Mode Bar Repositioning**: Moved the purple Demo Mode bar from the bottom of the calendar header to the top, clearing room for the new EXP/level bar now anchored to the header's bottom edge. In panel mode, the bar now stays pinned to the bottom edge of the top panel as you scroll or toggle tall mode instead of scrolling out of view.
 
 --------------------------------------------------
 

@@ -179,8 +179,8 @@
     // at/under it the scan genuinely reached the account's origin, otherwise it merely exhausted
     // Torn's retained logs.
     const BACKFILL = {
-        SOFT_CAP: 40000,   // stop *starting* new days once crossed
-        HARD_CAP: 42000,   // absolute failsafe, normally never reached, keeps us < 50k
+        SOFT_CAP: 38000,   // stop *starting* new days once crossed
+        HARD_CAP: 40000,   // absolute failsafe, normally never reached, keeps us < 50k
         COOLDOWN_MS: Math.round(24.1 * 3600 * 1000),  // 24h6m; armed at cap-hit, covers Torn's rolling 24h
         THROTTLE_MS: 700,
         CHECKPOINT_ROWS: 2000,

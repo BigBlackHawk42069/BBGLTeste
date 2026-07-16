@@ -3,44 +3,51 @@
 <p style="margin:0 0 16px 0;"><a href="#" data-bbgl-doc="privacy" style="color:#8ecbff; text-decoration:underline;">&larr; Back to Privacy Disclosure</a></p>
 
 <strong style="display:block; font-size:15px; margin:0 0 8px 0;">API Technical Transparency</strong>
-<p style="margin:0 0 16px 0; color:#bbb;">A precise breakdown of every network call this script makes, for anyone who wants to verify the plain-language disclosure against the actual behavior.</p>
+<p style="margin:0 0 16px 0; color:#bbb;">A precise breakdown of every network call this script makes, for anyone who wants to verify the plain-language disclosure against the actual behavior. Torn allows roughly <strong>100 API calls/minute</strong> and a <strong>50,000-row/day</strong> log read cap per category, shared across every script you run. Everything below is measured against those limits.</p>
 
-<strong style="display:block; font-size:14px; margin:0 0 6px 0;">Key Scope</strong>
+<strong style="display:block; font-size:14px; margin:0 0 6px 0;">Key Scope &amp; Log Types</strong>
+<p style="margin:0 0 8px 0; color:#bbb;">The Create API Key button generates a key pre-scoped to exactly six log categories, plus battlestats and basic faction data. Nothing broader is ever requested.</p>
 <div style="background:rgba(160,100,255,0.08); border:1px solid rgba(160,100,255,0.25); border-radius:6px; padding:10px 12px; margin:0 0 16px 0; font-size:12px;">
-<div style="margin:0 0 4px 0;"><strong>user:</strong> battlestats, log</div>
-<div style="margin:0;"><strong>faction:</strong> rankedwars, basic</div>
+<div style="margin:0 0 4px 0;"><strong>user:</strong> battlestats</div>
+<div style="margin:0 0 4px 0;"><strong>faction:</strong> rankedwars, basic</div>
+<div style="margin:0;"><strong>logids:</strong> Strength (56), Speed (52), Defense (54), Dexterity (50), Item Use (23), Points (6), Faction (80)</div>
 </div>
-<p style="margin:0 0 16px 0; color:#bbb;">Nothing outside this is ever requested &mdash; no messages, money, bazaar, or other players' data, and no write/POST endpoints of any kind. Every call is a plain read-only GET. After generating your key, you can further restrict its log access to Torn's "Gym" category in your own API settings.</p>
+
+<p style="margin:0 0 8px 0; color:#bbb;">Within these categories, the specific log types actually read are:</p>
+<div style="font-size:12px; margin:0 0 16px 0;">
+<div style="margin:0 0 6px 0;"><span style="color:#8ecbff;">&raquo;</span> <strong>Training</strong> (4 log types): strength, defense, speed, dexterity.</div>
+<div style="margin:0 0 6px 0;"><span style="color:#8ecbff;">&raquo;</span> <strong>Energy items</strong> (6 log types): green eggs, Xanax, LSD, energy cans, hotel coupons, points refills.</div>
+<div style="margin:0 0 6px 0;"><span style="color:#8ecbff;">&raquo;</span> <strong>Stat enhancers</strong> (4 log types): parachutes, skateboards, boxing gloves, dumbbells.</div>
+<div style="margin:0 0 6px 0;"><span style="color:#8ecbff;">&raquo;</span> <strong>Happy items</strong> (4 log types): candy, erotic DVDs, ecstasy, yellow eggs.</div>
+<div style="margin:0 0 6px 0;"><span style="color:#8ecbff;">&raquo;</span> <strong>Overdoses</strong> (3 log types): Xanax, LSD, and Ecstasy ODs.</div>
+<div style="margin:0 0 6px 0;"><span style="color:#8ecbff;">&raquo;</span> <strong>Ranked Wars</strong>: for placing war periods on the calendar.</div>
+<div style="margin:0;"><span style="color:#8ecbff;">&raquo;</span> <strong>Faction Application Accepts</strong>: read only once during the backfill process to accurately align your past war history.</div>
+</div>
 
 <strong style="display:block; font-size:14px; margin:0 0 6px 0;">Regular Sync</strong>
-<div style="font-size:12px; margin:0 0 16px 0;">
-<div style="margin:0 0 6px 0;"><span style="color:#8ecbff;">&raquo;</span> <strong>Every 30 minutes</strong> &mdash; a background heartbeat while the panel is open. Requests battlestats plus your training/item logs (and, rarely, a 4th call for stat-enhancer logs, only if battlestats shows a stat increase since last sync).</div>
-<div style="margin:0 0 6px 0;"><span style="color:#8ecbff;">&raquo;</span> <strong>On Train click</strong> &mdash; one lightweight call for just that stat's log, debounced 1 second against rapid clicks. Does not request battlestats.</div>
-<div style="margin:0 0 6px 0;"><span style="color:#8ecbff;">&raquo;</span> <strong>On page load</strong> &mdash; if you trained and navigated away before a sync could complete, the next load catches up immediately.</div>
-<div style="margin:0;"><span style="color:#8ecbff;">&raquo;</span> <strong>Manual RESYNC button</strong> &mdash; same as the 30-minute sync, on demand.</div>
-</div>
-<p style="margin:0 0 16px 0; color:#bbb;">Each open tab keeps its own independent 30-minute timer &mdash; with several tabs open, you may see more than one sync over time rather than a single shared one.</p>
-
-<strong style="display:block; font-size:14px; margin:0 0 6px 0;">Log Types Read</strong>
-<div style="font-size:12px; margin:0 0 16px 0;">
-<div style="margin:0 0 6px 0;"><span style="color:#8ecbff;">&raquo;</span> <strong>Training</strong> (4 log types) &mdash; strength, defense, speed, dexterity.</div>
-<div style="margin:0 0 6px 0;"><span style="color:#8ecbff;">&raquo;</span> <strong>Energy items</strong> (6 log types) &mdash; green eggs, Xanax, LSD, energy cans, hotel coupons, points refills.</div>
-<div style="margin:0 0 6px 0;"><span style="color:#8ecbff;">&raquo;</span> <strong>Stat enhancers</strong> (4 log types) &mdash; parachutes, skateboards, boxing gloves, dumbbells.</div>
-<div style="margin:0 0 6px 0;"><span style="color:#8ecbff;">&raquo;</span> <strong>Happy items</strong> (4 log types) &mdash; candy, erotic DVDs, ecstasy, yellow eggs.</div>
-<div style="margin:0 0 6px 0;"><span style="color:#8ecbff;">&raquo;</span> <strong>Overdoses</strong> (3 log types) &mdash; Xanax, LSD, and Ecstasy ODs.</div>
-<div style="margin:0;"><span style="color:#8ecbff;">&raquo;</span> <strong>Faction history</strong> &mdash; join/leave record, read once per Backfill run to line up war dates.</div>
+<div style="background:rgba(160,100,255,0.08); border:1px solid rgba(160,100,255,0.25); border-radius:6px; padding:4px 12px; margin:0 0 16px 0; font-size:12px;">
+<div style="display:flex; justify-content:space-between; gap:10px; padding:6px 0; border-bottom:1px solid rgba(255,255,255,0.08);"><span><strong>30-min heartbeat</strong><br><span style="color:#999;">battlestats + training/item logs, rarely a 4th call for stat-enhancer logs</span></span><span style="color:#8ecbff; white-space:nowrap;">3 calls</span></div>
+<div style="display:flex; justify-content:space-between; gap:10px; padding:6px 0; border-bottom:1px solid rgba(255,255,255,0.08);"><span><strong>Train click</strong><br><span style="color:#999;">that stat's log + energy item logs, debounced 1s</span></span><span style="color:#8ecbff; white-space:nowrap;">1 call</span></div>
+<div style="display:flex; justify-content:space-between; gap:10px; padding:6px 0; border-bottom:1px solid rgba(255,255,255,0.08);"><span><strong>Gym exit reconciliation</strong><br><span style="color:#999;">same as heartbeat, triggers if you leave the gym page before the debounce finishes to catch any remaining logs</span></span><span style="color:#8ecbff; white-space:nowrap;">3 calls</span></div>
+<div style="display:flex; justify-content:space-between; gap:10px; padding:6px 0;"><span><strong>Manual RESYNC</strong><br><span style="color:#999;">same as heartbeat, on demand</span></span><span style="color:#8ecbff; white-space:nowrap;">3 calls</span></div>
 </div>
 
-<strong style="display:block; font-size:14px; margin:0 0 6px 0;">BB Backfill</strong>
-<div style="font-size:12px; margin:0 0 16px 0;">
-<div style="margin:0 0 6px 0;"><span style="color:#8ecbff;">&raquo;</span> Walks each log category backward in pages, paced at a fixed <strong>700ms between calls</strong> (&asymp;85 calls/minute).</div>
-<div style="margin:0 0 6px 0;"><span style="color:#8ecbff;">&raquo;</span> Budgeted to <strong>40,000 rows/day</strong> (stops starting new days past this), with a <strong>42,000-row hard failsafe</strong> &mdash; kept under Torn's own 50,000-row/day cloud-read cap, which is shared across every script you run.</div>
-<div style="margin:0 0 6px 0;"><span style="color:#8ecbff;">&raquo;</span> If the daily budget is hit, a <strong>~24-hour cooldown</strong> is armed before scanning can resume &mdash; timed so every counted row has aged out of Torn's rolling 24-hour window.</div>
-<div style="margin:0 0 6px 0;"><span style="color:#8ecbff;">&raquo;</span> A separate, much shorter <strong>45-second lock</strong> exists purely to stop two tabs from scanning at once; if a scan is interrupted by a crash or refresh, this lock clears on its own within 45 seconds so Resume isn't blocked. A manual pause has no cooldown at all &mdash; Resume is available immediately.</div>
-<div style="margin:0;"><span style="color:#8ecbff;">&raquo;</span> A scan stops when it reaches the true start of your account history, hits the daily budget, or Torn itself returns a rate-limit/daily-cap error &mdash; in every case it stops cleanly rather than retrying blindly.</div>
+<strong style="display:block; font-size:13px; margin:0 0 6px 0; color:#bbb;">Average Daily API Calls</strong>
+<div style="background:rgba(160,100,255,0.08); border:1px solid rgba(160,100,255,0.25); border-radius:6px; padding:4px 12px; margin:0 0 16px 0; font-size:12px;">
+<div style="display:flex; justify-content:space-between; gap:10px; padding:6px 0; border-bottom:1px solid rgba(255,255,255,0.08);"><span><strong>Average Trainer</strong><br><span style="color:#999;">Torn opened roughly every 2 hours, training 5 times/day</span></span><span style="color:#8ecbff; white-space:nowrap; text-align:right;">&asymp;41 calls<br>&asymp;0.03/min &middot; 0.03% of limit</span></div>
+<div style="display:flex; justify-content:space-between; gap:10px; padding:6px 0;"><span><strong>Heavy Trainer</strong><br><span style="color:#999;">Torn opened in a browser for 16 hrs straight, heartbeat running the whole time, same 5 training clicks</span></span><span style="color:#8ecbff; white-space:nowrap; text-align:right;">&asymp;101 calls<br>&asymp;0.1/min &middot; 0.1% of limit</span></div>
+</div>
+
+<strong style="display:block; font-size:14px; margin:0 0 6px 0;">Big Black Backfill</strong>
+<p style="margin:0 0 8px 0; color:#bbb;">Big Black Backfill is a manual, one-time catch-up tool. You trigger it yourself, and once your history is fully reconstructed there's nothing left to run. It exists purely to backfill older history or gaps that regular sync doesn't reach back for on its own.</p>
+<p style="margin:0 0 10px 0; color:#bbb;">Torn caps cloud-data log reads at 50,000 rows per day per category, shared across every script you use, not just this one. Big Black Backfill budgets itself well under that ceiling, keeping it well clear of locking you out of other tools.</p>
+<div style="background:rgba(160,100,255,0.08); border:1px solid rgba(160,100,255,0.25); border-radius:6px; padding:4px 12px; margin:0 0 16px 0; font-size:12px;">
+<div style="display:flex; justify-content:space-between; gap:10px; padding:6px 0; border-bottom:1px solid rgba(255,255,255,0.08);"><span>Pacing</span><span style="color:#8ecbff; white-space:nowrap;">700ms/call (&asymp;85 calls/min)</span></div>
+<div style="display:flex; justify-content:space-between; gap:10px; padding:6px 0; border-bottom:1px solid rgba(255,255,255,0.08);"><span>Daily budget</span><span style="color:#8ecbff; white-space:nowrap;">38,000 soft / 40,000 hard</span></div>
+<div style="display:flex; justify-content:space-between; gap:10px; padding:6px 0;"><span>Cooldown after cap hit</span><span style="color:#8ecbff; white-space:nowrap;">&asymp;24 hours</span></div>
 </div>
 
 <strong style="display:block; font-size:14px; margin:0 0 6px 0;">Staying Within Torn's Limits</strong>
-<p style="margin:0 0 8px 0; color:#bbb;">Torn enforces roughly 100 API calls/minute and a 50,000-row/day cloud-data read cap per category. This script doesn't track a live request counter against those numbers &mdash; instead it stays comfortably under them by design: the 700ms Backfill pacing caps it near 85 calls/minute, the 40,000/42,000-row budget leaves headroom under the daily cap, and regular sync only runs once per 30 minutes plus whatever your own Train clicks add. If Torn ever responds with a rate-limit or daily-cap error anyway, the script stops rather than retrying.</p>
+<p style="margin:0; color:#bbb;">Every part of this script is built to stay quiet next to whatever else you run on Torn. Regular sync sits at a fraction of a percent of Torn's allowed rate even under heavy use, and Big Black Backfill paces itself well under the daily cap. The goal is a script that stays out of the way of other tools, and holds up the same way years from now as it does today.</p>
 
 </div>

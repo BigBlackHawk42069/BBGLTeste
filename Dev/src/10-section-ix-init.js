@@ -685,7 +685,7 @@
                     const cb = wv.querySelector('#init-create-api-btn');
                     if (cb) cb.onclick = function() {
                         this.blur();
-                        window.open('https://www.torn.com/preferences.php#tab=api?step=addNewKey&user=battlestats,log&=,,,,&faction=rankedwars&logIds=56,52,54,50,23,6&title=BigBlackGymLog', '_blank');
+                        window.open('https://www.torn.com/preferences.php#tab=api?step=addNewKey&user=battlestats,log&faction=rankedwars&logIds=54,50,52,23,80,6&title=BigBlackGymLog', '_blank');
                     };
                     const rib = wv.querySelector('#init-returning-import-btn'),
                         rif = wv.querySelector('#init-import-file');
@@ -1543,7 +1543,7 @@
         const crb = get('create-api-btn');
         if (crb) crb.onclick = function() {
             this.blur();
-            window.open('https://www.torn.com/preferences.php#tab=api?step=addNewKey&user=battlestats,log&=,,,,&faction=rankedwars&logIds=56,52,54,50,23,6&title=BigBlackGymLog', '_blank');
+            window.open('https://www.torn.com/preferences.php#tab=api?step=addNewKey&user=battlestats,log&faction=rankedwars&logIds=54,50,52,23,80,6&title=BigBlackGymLog', '_blank');
         };
         const rb = get('refresh-log-btn');
         if (rb) rb.onclick = function() {
