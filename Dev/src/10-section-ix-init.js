@@ -1302,6 +1302,9 @@
                 GraphController.draw();
                 setTimeout(GraphController.draw, 320);
             }
+            if (dom.topPanel.classList.contains('viewing-achievements')) {
+                setTimeout(resizeAchLockedPage, 320);
+            }
         };
         const tt = get('bbgl-tall-toggle');
         if (tt) tt.onclick = toggleTall;
@@ -1853,8 +1856,9 @@
             }
         }
         if (!runtime.demoMode) {
-            // [TEMP — delete before full release]
-            if (userConfig.configVersion < REQUIRED_CONFIG_VERSION) {
+            // Testing-phase reset lever (see WIPE_BELOW_VERSION in 02-section-i-constants.js).
+            // Fresh installs (_seenVer null) are never wiped — there's nothing to wipe yet.
+            if (_seenVer && compareVersions(_seenVer, WIPE_BELOW_VERSION) < 0) {
                 await factoryReset();
             }
             // Self-heal the install date: if privacyAgreed is missing or unparseable (e.g. corrupted

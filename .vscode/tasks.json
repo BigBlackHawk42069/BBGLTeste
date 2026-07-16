@@ -15,10 +15,23 @@
             "problemMatcher": []
         },
         {
-            "label": "BBGL Release Build",
+            "label": "BBGL Release-Dev Build",
             "type": "shell",
             "command": "powershell",
             "args": ["-ExecutionPolicy", "Bypass", "-File", "${workspaceFolder}\\Dev\\..\\..\\..\\..\\Build Tools\\BBGL\\release-build.ps1"],
+            "group": "build",
+            "presentation": {
+                "reveal": "always",
+                "panel": "shared",
+                "clear": true
+            },
+            "problemMatcher": []
+        },
+        {
+            "label": "BBGL Full Release Build",
+            "type": "shell",
+            "command": "powershell",
+            "args": ["-ExecutionPolicy", "Bypass", "-File", "${workspaceFolder}\\Dev\\..\\..\\..\\..\\Build Tools\\BBGL\\full-release-build.ps1"],
             "group": "build",
             "presentation": {
                 "reveal": "always",

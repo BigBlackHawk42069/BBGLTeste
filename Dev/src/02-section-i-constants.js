@@ -49,8 +49,11 @@
         WARS_DATA: 'bbgl_wars_data_v1',
         FACTION_HISTORY: 'bbgl_faction_history_v1'
     };
-    // [TEMP — delete before full release]
-    const REQUIRED_CONFIG_VERSION = 1;
+    // Testing-phase reset lever: anyone whose last-seen script version (KEYS.CHANGELOG_VER)
+    // is below this gets a factoryReset() on next boot (see init() in 10-section-ix-init.js).
+    // Left at '0.0.0' this never fires. To force a clean install for everyone still on an
+    // older version, bump this to a version below the new SCRIPT_VERSION you're about to ship.
+    const WIPE_BELOW_VERSION = '0.0.0';
     // Rewrites a raw.githubusercontent.com URL to the jsDelivr CDN equivalent — raw.github
     // sets weak cache headers and throttles hotlinking, jsDelivr is a real edge CDN and free
     // for public repos.
@@ -100,16 +103,16 @@
         2290: { label: 'Xanax Taken', group: 'energy', energy: true, short: 'Xans' },
         2230: { label: 'LSD Taken', group: 'energy', energy: true, short: 'LSD' },
         2040: { label: 'Energy Can Used', group: 'energy', energy: true, short: 'Cans', achLabel: 'Energy Cans Used' },
-        2190: { label: 'Hotel Coupon Used', group: 'energy', energy: true, short: 'FHC', achLabel: 'FHCs Used' },
+        2190: { label: 'Hotel Coupon Used', group: 'energy', energy: true, short: 'FHC', achLabel: 'FHCs Used', achTipLabel: 'Feathery Hotel Coupons Used' },
         4900: { label: 'Points Refill Used', group: 'energy', energy: true, short: 'Refill', achLabel: 'Refills Used' },
         2120: { label: 'Parachute Used', group: 'stat', stat: true, achLabel: 'Parachutes Used' },
-        2130: { label: 'Skateboard Used', group: 'stat', stat: true },
+        2130: { label: 'Skateboard Used', group: 'stat', stat: true, achLabel: 'Skateboards Used' },
         2140: { label: 'Boxing Gloves Used', group: 'stat', stat: true },
         2150: { label: 'Dumbbells Used', group: 'stat', stat: true },
         2020: { label: 'Candy Used', group: 'happy', happy: true },
-        2180: { label: 'Erotic DVD Used', group: 'happy', happy: true },
+        2180: { label: 'Erotic DVD Used', group: 'happy', happy: true, achLabel: 'Erotic DVDs Used' },
         2210: { label: 'Ecstasy Taken', group: 'happy', happy: true },
-        8983: { label: 'Yellow Egg Used', group: 'happy', happy: true },
+        8983: { label: 'Yellow Egg Used', group: 'happy', happy: true, achLabel: 'Yellow Eggs Used' },
         2291: { label: 'Xanax OD', group: 'od', energyLost: true, short: 'Xan OD' },
         2231: { label: 'LSD OD', group: 'od', energyLost: true, short: 'LSD OD' },
         2211: { label: 'Ecstasy OD', group: 'od', happyLost: true, energyLost: true, short: 'Ex OD' }
@@ -379,8 +382,7 @@
         bestGymSpecialist: true,
         bestGymUnpurchased: true,
         drugTracker: 'xanax', // ledger primary-drug counter: 'xanax' (2290) or 'lsd' (2230)
-        privacyAgreed: '',
-        configVersion: 0
+        privacyAgreed: ''
     };
     const ALLOWED_CONFIG_KEYS = Object.keys(userConfig);
     const r2 = (v) => Math.round(v * 100) / 100;

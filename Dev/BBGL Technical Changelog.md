@@ -1,10 +1,30 @@
 # Big Black Gym Log - Testing Phase Changelog
 
-Version 0.9.76 - Pending
+Version 0.9.90 - Pending
+
+### New Features:
+- **RPG Leveling System**: Introduced the career leveling system built on top of the existing weekly-points foundation. Daily training now accumulates career EXP (tiered by E spent, with a Happy Jump bonus) into a 1–99 per-level cost curve, gated across three Atrophy tiers (A0/A1/A2) with independent floor/ceiling values and per-tier multipliers. The cost curve itself (piecewise linear ramp into a power-curve tail) is fully locked in and pending live user feedback before final tuning. Added level-up animations to the level bar; Atrophy-tier transition animations are in progress.
+- **Level 100 Locked Achievements Page**: Added a 6th page to the achievements panel, gated behind reaching Level 100 (the first Atrophy tier). Displays a locked placeholder for anyone below that level.
+- **Dynamic Summary Bar-Graph Buttons**: Replaced the static All-Time/Yearly/Monthly summary buttons with dynamic bar-graph icon buttons.
+- **Expanded Item Tracking & Calendar Events**: Expanded training item tracking to include Overdoses (ODs), and added war status/events directly to the calendar so events affecting training are visible at a glance. Requires a broader API key scope to capture the additional data — existing users can update this via the existing Create API Key flow in settings.
 
 ### Bug Fixes:
 - **Native Torn Button Conflict**: Fixed a site-wide button misshaping issue caused by BBGL's custom button styles being applied globally to Torn's native `.torn-btn` class. All BBGL-generated buttons have been migrated to a private `.bbgl-btn` class family (`.bbgl-btn`, `.bbgl-btn-green`, `.bbgl-btn-red`, `.bbgl-btn-purple`), keeping button appearance identical while fully isolating BBGL's styles from Torn's UI on every page.
 - **Premature Sticker Unlock**: Fixed a bug where stickers were appearing in the stickerbook as soon as the weekly bar filled up mid-week. The sticker award logic now only processes fully completed past weeks, so stickers are never unlocked for the current active week regardless of bar fill state — they appear correctly once the week ends and is archived.
+- **Automatic Log Sync Speed**: Improved automatic log syncing so training done on another device reflects more quickly.
+- **Backfill Interruption Data Loss**: Fixed a bug where an interrupted Backfill run could silently lose log data without any visible indication to the user.
+- **Sidebar Active-State on Gym Log Page**: Fixed a bug where the Gym Log sidebar button wouldn't show its active/highlighted state while already viewing the gym log page.
+- **Incomplete Clear Data Reset**: Fixed a bug where clearing the log left certain pieces of data behind, which could distort future data going forward.
+
+### Improvements:
+- **Weekly Progress Bar Redesign**: Replaced the solid weekly progress bar fill with individual daily capsules for clearer at-a-glance discoverability. Summary buttons were redesigned as visual bar-graph icons and now also appear as flags directly on the weekly progress bar, indicating when a weekly summary is available.
+- **Backfill Onboarding Integration**: Folded Backfill into the onboarding flow and clarified the process throughout, making historical log reconstruction more approachable.
+- **Simplified Disclosures**: Streamlined the onboarding privacy/consent disclosures for a more frictionless experience. Added a separate Technical Disclosure with the full detailed breakdown for users who want it.
+- **Settings Menu Reorganization**: Reorganized and simplified the settings menu layout.
+- **RESYNC Button**: Moved the log refresh action out of its previous location into a dedicated RESYNC button at the top of the settings menu for quicker access.
+- **Achievements Page Tooltip Refinement**: Rewrote tooltips across the Endocrine Enhancers and Happy Hopping achievement pages — corrected item pluralization, refined the wording and formatting, and made expanded mode show additional category detail not shown in compact/page mode.
+- **Endocrine Enhancers Period Toggle**: Added an All-Time / Selected switch to the Endocrine Enhancers achievements page, letting users choose between lifetime totals and the period currently selected on the calendar.
+- **Performance Optimizations**: Additional performance passes to keep the script lightweight.
 
 --------------------------------------------------
 

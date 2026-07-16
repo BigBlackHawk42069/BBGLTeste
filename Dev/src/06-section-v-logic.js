@@ -1735,11 +1735,62 @@ function computeAchievements(s) {
     };
 }
 
+// #bbgl-ach-pages' own top edge already clears the SVG toggle row (via the container's
+// padding-top), and #bbgl-ach-footer's top edge is the top of the page-dot/nav bar. Rather
+// than trying to replicate that gap with CSS box-model math (which the grid layout under
+// #bbgl-achievements-container doesn't resolve the way plain flex would), measure the two
+// real rects directly and pin the locked page's height to exactly the space between them.
+// Also stamps that measured gap as --ach-gap so the page-mode transform (04-section-iii-styles.js)
+// can scale its correction off the container's actual live height, not just a width breakpoint.
+//
+// A ResizeObserver on both elements re-runs this automatically whenever their real layout
+// changes, instead of relying on every call site that might move them (page-flip CRT animation,
+// panel mode toggle, tall-mode toggle, page-mode's own fresh mount, window resize, font load,
+// ...) to remember to call it. A single measurement isn't trustworthy, though — whichever of
+// those transitions is in flight when this fires, the first reading can land mid-animation and
+// look plausible (not just implausibly tiny) while still being wrong. So instead of accepting
+// one reading, poll every frame until two consecutive readings agree (layout has stopped
+// moving) before committing. Each call supersedes any still-running poll from an earlier call.
+let _achLockedResizeObserver = null;
+let _achLockedStabilizeToken = 0;
+
+function resizeAchLockedPage() {
+    const container = document.getElementById('bbgl-ach-pages');
+    const footer = document.getElementById('bbgl-ach-footer');
+    if (!container || !footer) return;
+    if (!_achLockedResizeObserver && typeof ResizeObserver === 'function') {
+        _achLockedResizeObserver = new ResizeObserver(() => resizeAchLockedPage());
+    }
+    if (_achLockedResizeObserver) {
+        _achLockedResizeObserver.observe(container);
+        _achLockedResizeObserver.observe(footer);
+    }
+    const token = ++_achLockedStabilizeToken;
+    let lastGap = null;
+    const tick = () => {
+        if (token !== _achLockedStabilizeToken) return;
+        const c = document.getElementById('bbgl-ach-pages');
+        const f = document.getElementById('bbgl-ach-footer');
+        const lockedEl = c && c.querySelector('.bbgl-ach-locked');
+        if (!c || !f || !lockedEl) return;
+        const gap = f.getBoundingClientRect().top - c.getBoundingClientRect().top;
+        if (gap >= 40 && lastGap !== null && Math.abs(gap - lastGap) < 0.5) {
+            lockedEl.style.height = gap + 'px';
+            lockedEl.style.setProperty('--ach-gap', gap + 'px');
+            return;
+        }
+        lastGap = gap;
+        requestAnimationFrame(tick);
+    };
+    requestAnimationFrame(tick);
+}
+
 function achRefreshPageDom() {
     const container = document.getElementById('bbgl-ach-pages');
     if (!container || !runtime._achCache) return;
     container.innerHTML = buildAchievementsPage(runtime._achPage, runtime._achCache);
     updateAchPageIndicator();
+    resizeAchLockedPage();
 }
 
 function renderAchievements() {
@@ -1756,7 +1807,7 @@ function updateAchPageIndicator() {
     const ind = document.getElementById('bbgl-ach-pageindicator');
     if (!ind) return;
     ind.innerHTML = '';
-    for (let i = 0; i < 5; i++) {
+    for (let i = 0; i < 6; i++) {
         const d = document.createElement('div');
         d.className = 'pg-dot' + (i === runtime._achPage ? ' active' : '');
         d.onclick = () => {
@@ -1781,7 +1832,7 @@ function gotoAchievementsPage(dir) {
     const container = document.getElementById('bbgl-ach-pages');
     if (!container || !runtime._achCache) return;
     const newPage = runtime._achPage + dir;
-    if (newPage < 0 || newPage > 4) return;
+    if (newPage < 0 || newPage > 5) return;
     const apply = () => {
         runtime._achPage = newPage;
         viewState.achPage = newPage;
@@ -1922,6 +1973,10 @@ function achFmtTimeHMS(ts) {
     const m = TimeManager.useLocal() ? d.getMinutes() : d.getUTCMinutes();
     const s = TimeManager.useLocal() ? d.getSeconds() : d.getUTCSeconds();
     return String(h).padStart(2, '0') + ':' + String(m).padStart(2, '0') + ':' + String(s).padStart(2, '0') + ' ' + achTimeZoneSuffix();
+}
+
+function achBuildPageLocked() {
+    return `<div class="bbgl-ach-locked"><div class="bbgl-ach-locked-icon">\u{1F512}</div><div class="bbgl-ach-locked-text">Reach Level 100 to unlock this page!</div></div>`;
 }
 
 function achBuildPage0(d) {
@@ -2079,9 +2134,11 @@ function achBuildPage2(d) {
         dex: 'Dexterity'
     };
     const STATS = ['str', 'def', 'spd', 'dex'];
-    const countRow = (label, shortLabel, count, key, tip) => {
+    const isExpanded = achIsExpandedMode();
+    const countRow = (label, shortLabel, count, key, tip, tipIsHtml) => {
         const clipVal = String(count);
-        return `<div class="bbgl-ach-row" data-tooltip="${achEsc(tip)}" data-ach-key="${key}" data-clip="${achEsc(label + ': ' + clipVal)}"><div class="ach-row-main"><div class="ach-k-stack"><span class="ach-k"><span class="ach-title-long">${achEsc(label)}</span><span class="ach-title-short">${achEsc(shortLabel)}</span>:</span></div><div class="ach-v-wrap"><span class="ach-value">${achEsc(clipVal)}</span></div></div></div>`;
+        const tipAttr = tipIsHtml ? `data-tooltip-html="${tip}"` : `data-tooltip="${achEsc(tip)}"`;
+        return `<div class="bbgl-ach-row" ${tipAttr} data-ach-key="${key}" data-clip="${achEsc(label + ': ' + clipVal)}"><div class="ach-row-main"><div class="ach-k-stack"><span class="ach-k"><span class="ach-title-long">${achEsc(label)}</span><span class="ach-title-short">${achEsc(shortLabel)}</span>:</span></div><div class="ach-v-wrap"><span class="ach-value">${achEsc(clipVal)}</span></div></div></div>`;
     };
     const bestRow = (longLabel, shortLabel, rec, key, tip) => {
         if (!rec || !rec.stats) {
@@ -2097,7 +2154,7 @@ function achBuildPage2(d) {
         clipParts.push('Total: +' + achFmtGain(rec.value));
         return `<div class="bbgl-ach-hh-best-row" data-tooltip="${achEsc(tip)}" data-ach-key="${key}" data-clip="${achEsc(longLabel + ' (' + dateStr + ', ' + timeStrClip + '): ' + clipParts.join(' | '))}" data-clip-date="${achEsc(dateStr + '  ' + timeStrClip)}"><div class="bbgl-ach-hh-label"><span class="ach-k"><span class="ach-title-long">${achEsc(longLabel)}</span><span class="ach-title-short">${achEsc(shortLabel)}</span></span><div class="bbgl-ach-hh-date-line">${achEsc(dateStr)}<span class="bbgl-ach-hh-time"> &nbsp; ${achEsc(timeStr)}</span></div></div><div class="bbgl-ach-hh-cells">${statCells}${totalCell}</div></div>`;
     };
-    const hjCount = countRow('Happy Jumps Performed', 'Happy Jumps', d.happyJumps || 0, 'hj-count', 'Total number of Happy Jumps executed (1,000E+ energy used training between an Ecstasy dose and the next happy reset).');
+    const hjCount = countRow('Happy Jumps Performed', 'Happy Jumps', d.happyJumps || 0, 'hj-count', 'Total number of Happy Jumps performed.<br><i>HJ = 1000E+ spent within 15m of using Ecstasy</i>', true);
     const hjBest = bestRow('Best Happy Jump', 'Best Jump', d.bestHappyJump && d.bestHappyJump.total, 'best-hj', 'The single Happy Jump that yielded the highest combined stat gain.');
     const rowsHTML = `<div class="bbgl-ach-hh-group" data-ach-key="happy-jumps-group">${hjCount}${hjBest}</div>`;
     let clipAll = `Happy Jumps Performed: ${d.happyJumps || 0}\nBest Happy Jump: ${d.bestHappyJump && d.bestHappyJump.total ? (() => { const rec = d.bestHappyJump.total; const trained = STATS.filter(sk => (rec.stats[sk] || 0) > 0); const parts = trained.map(sk => STAT_ABBR[sk] + ': +' + achFmtGain(rec.stats[sk])); parts.push('Total: +' + achFmtGain(rec.value)); return parts.join(' | '); })() : '—'}`;
@@ -2107,10 +2164,11 @@ function achBuildPage2(d) {
         const hhOrder = { 2180: 1, 2210: 2, 2020: 3, 8983: 4 };
         const helpers = HAPPY_LOGS.map(id => {
             const rec = d.happyItemTotals[id] || { count: 0, happy: 0 };
+            const meta = ITEM_LOG_META[id];
             return {
                 id,
-                label: ITEM_LOG_META[id].label,
-                short: ITEM_LOG_META[id].short || ITEM_LOG_META[id].label,
+                label: meta.achLabel || meta.label,
+                short: meta.short || meta.label,
                 count: rec.count,
                 happy: rec.happy
             };
@@ -2118,7 +2176,7 @@ function achBuildPage2(d) {
 
         if (helpers.length > 0) {
             const helperRow = (h) => {
-                const tip = `${achEsc(h.label)} | Happy Gained`;
+                const tip = isExpanded ? `Amount of ${h.label} · Happy Gained` : `Amount of ${h.label}`;
                 const clipVal = `${h.label}: ${h.count} (${Formatter.number(h.happy)} Happy)`;
                 let html = `<div class="bbgl-ach-row" data-tooltip="${achEsc(tip)}" data-ach-key="happy-helper-${h.id}" data-clip="${achEsc(clipVal)}"><div class="ach-row-main"><div class="ach-k-stack"><span class="ach-k"><span class="ach-title-long">${achEsc(h.label)}</span><span class="ach-title-short">${achEsc(h.short)}</span>:</span></div><div class="ach-v-wrap"><span class="ach-value">${Formatter.number(h.count)}</span><span class="ach-value ach-happy-col">+${achEsc(achFmtGain(h.happy))} <span class="ach-happy-word">H</span></span></div></div></div>`;
                 if (h.id === 2210 && d.odItemTotals && d.odItemTotals[EX_OD_LOG] && d.odItemTotals[EX_OD_LOG].count > 0) {
@@ -2126,13 +2184,14 @@ function achBuildPage2(d) {
                     const countHtml = achEsc(Formatter.number(exRec.count));
                     const lostNum = exRec.happyLost > 0 ? `-${achEsc(Formatter.number(exRec.happyLost))}` : '<span class="ach-null">—</span>';
                     const eLostNum = exRec.energyLost > 0 ? `-${achEsc(Formatter.number(exRec.energyLost))}` : '<span class="ach-null">—</span>';
-                    
+
                     const gainedHtml = `<div style="display:flex; flex-direction:column; align-items:flex-end; gap:4px; line-height:1.2;">
                         <div>${lostNum} <span class="ach-happy-word ach-od-happy-word">H</span></div>
                         <div>${eLostNum} <span class="ach-enh-e-label" style="color:#c06060;">E</span></div>
                     </div>`;
-                    
-                    const exTip = `${achEsc(ITEM_LOG_META[EX_OD_LOG].label)} | Happy / Energy Lost`;
+
+                    const exOdLabel = achOdLabel(ITEM_LOG_META[EX_OD_LOG].label);
+                    const exTip = isExpanded ? `Amount of ${exOdLabel} · Happy / Energy Lost` : `Amount of ${exOdLabel}`;
                     const exClip = `${ITEM_LOG_META[EX_OD_LOG].label}: ${exRec.count} (-${Formatter.number(exRec.happyLost)} H, -${Formatter.number(exRec.energyLost)} E)`;
                     html += `<div class="bbgl-ach-row bbgl-ach-od-row bbgl-subgroup-row bbgl-subgroup-row-last" data-tooltip="${achEsc(exTip)}" data-ach-key="happy-od-${EX_OD_LOG}" data-clip="${achEsc(exClip)}"><div class="ach-row-main" style="align-items:flex-start;"><div class="ach-k-stack"><span class="ach-k"><span class="ach-title-long">ODs:</span><span class="ach-title-short">ODs:</span></span></div><div class="ach-v-wrap" style="align-items:flex-start;"><span class="ach-value" style="padding-top:1px;">${countHtml}</span><span class="ach-value ach-happy-col ach-enh-od">${gainedHtml}</span></div></div></div>`;
                 }
@@ -2204,6 +2263,7 @@ function achBuildPageOverview(d) {
     const enrg = d.energyItemTotals || {};
     const od = d.odItemTotals || {};
     const STAT_ABBR = { str: 'Str', def: 'Def', spd: 'Spd', dex: 'Dex' };
+    const isExpanded = achIsExpandedMode();
 
     const STAT_ENH_MAP = { 2150: 'str', 2130: 'spd', 2140: 'def', 2120: 'dex' };
     const LEFT_COL = [2150, 2130, 2290, 2040, 4900];
@@ -2213,6 +2273,7 @@ function achBuildPageOverview(d) {
     const buildRow = (id) => {
         const meta = ITEM_LOG_META[id];
         const label = meta.achLabel || meta.label;
+        const tipLabel = meta.achTipLabel || label;
         const sk = STAT_ENH_MAP[id];
         let countHtml, gainedHtml, clipVal, tip;
 
@@ -2223,14 +2284,14 @@ function achBuildPageOverview(d) {
             const gainNum = rec.gain > 0 ? `+${achEsc(Formatter.gain(rec.gain))}` : NULL;
             gainedHtml = `${gainNum} <span class="ach-stat-${sk}">${STAT_ABBR[sk]}</span>`;
             clipVal = `${label}: ${rec.count} (+${Formatter.gain(rec.gain)} ${STAT_ABBR[sk]})`;
-            tip = `${achEsc(label)} | ${STAT_ABBR[sk]} Gained`;
+            tip = isExpanded ? `Amount of ${tipLabel} · ${achStatFull(sk)} Gained` : `Amount of ${tipLabel}`;
         } else {
             const rec = enrg[id] || { count: 0, energy: 0 };
             countHtml = rec.count > 0 ? achEsc(Formatter.number(rec.count)) : NULL;
             const gainNum = rec.energy > 0 ? `+${achEsc(Formatter.gain(rec.energy))}` : NULL;
             gainedHtml = `${gainNum} <span class="ach-enh-e-label">E</span>`;
             clipVal = `${label}: ${rec.count} (+${Formatter.gain(rec.energy)} Energy)`;
-            tip = `${achEsc(label)} | Energy Gained`;
+            tip = isExpanded ? `Amount of ${tipLabel} · Energy Gained` : `Amount of ${tipLabel}`;
         }
 
         const key = `enh-${id}`;
@@ -2243,7 +2304,8 @@ function achBuildPageOverview(d) {
         const countHtml = rec.count > 0 ? achEsc(Formatter.number(rec.count)) : NULL;
         const lostNum = rec.energyLost > 0 ? `-${achEsc(Formatter.number(rec.energyLost))}` : NULL;
         const gainedHtml = `${lostNum} <span class="ach-enh-e-label">E</span>`;
-        const tip = `${achEsc(meta.label)} | Energy Lost`;
+        const odLabel = achOdLabel(meta.label);
+        const tip = isExpanded ? `Amount of ${odLabel} · Energy Lost` : `Amount of ${odLabel}`;
         const clipVal = `${meta.label}: ${rec.count} (-${Formatter.number(rec.energyLost)} Energy Lost)`;
         const key = `enh-${odId}`;
         return `<div class="bbgl-ach-row bbgl-ach-enh-row bbgl-ach-od-row bbgl-subgroup-row bbgl-subgroup-row-last" data-tooltip="${achEsc(tip)}" data-ach-key="${key}" data-clip="${achEsc(clipVal)}"><div class="ach-row-main"><div class="ach-k-stack"><span class="ach-k"><span class="ach-title-long">ODs:</span><span class="ach-title-short">ODs:</span></span></div><div class="ach-v-wrap"><span class="ach-value">${countHtml}</span><span class="ach-value ach-enh-gained ach-enh-od">${gainedHtml}</span></div></div></div>`;
@@ -2344,6 +2406,8 @@ function buildAchievementsPage(pageIdx, d) {
         return achBuildPageOverview(overviewD);
     } else if (pageIdx === 3) {
         return achBuildPage2(d);
+    } else if (pageIdx === 5) {
+        return achBuildPageLocked();
     } else {
         const consistRows = [mk('Best Training Streak', d.longestStreak, {
             key: 'training-streak',
@@ -2435,6 +2499,19 @@ function achStatFull(s) {
         spd: 'Speed',
         dex: 'Dexterity'
     }[s] || s;
+}
+
+// Expanded mode has room to show what an item-use tooltip's count actually gains; compact/page
+// mode just get the bare "Amount of X" phrasing. Checked against the live DOM (not viewState)
+// since achievements content re-renders on every mode toggle anyway (see achRefreshPageDom callers).
+function achIsExpandedMode() {
+    const p = document.getElementById('bbgl-panel');
+    return !!(p && p.classList.contains('bbgl-expanded'));
+}
+
+// "Xanax OD" -> "Xanax Overdoses", etc. — every OD item's ITEM_LOG_META label ends in " OD".
+function achOdLabel(label) {
+    return label.replace(/ OD$/, ' Overdoses');
 }
 
 function achFmtGainsLine(g) {
@@ -3310,7 +3387,8 @@ async function clearData() {
         alert("History cleared.");
     }
 }
-// [TEMP — delete before full release]
+// Wipes local data/config back to a fresh-install state. Called manually from Dev Tools
+// and automatically by the WIPE_BELOW_VERSION reset lever in init() (10-section-ix-init.js).
 async function factoryReset() {
     await DBManager.clearStorage();
     for (let i = localStorage.length - 1; i >= 0; i--) {
@@ -3328,7 +3406,7 @@ async function factoryReset() {
     runtime.stickerSlots = [];
     runtime.currentStats = null;
     runtime._achPage = 0;
-    const _fresh = { apiKey: '', dayStartMode: 'utc', weekStartMode: 'mon', animations: true, buttonLocation: 'both', ratesEnabled: true, bestGym: true, bestGymSpecialist: true, bestGymUnpurchased: true, drugTracker: 'xanax', privacyAgreed: '', configVersion: REQUIRED_CONFIG_VERSION };
+    const _fresh = { apiKey: '', dayStartMode: 'utc', weekStartMode: 'mon', animations: true, buttonLocation: 'both', ratesEnabled: true, bestGym: true, bestGymSpecialist: true, bestGymUnpurchased: true, drugTracker: 'xanax', privacyAgreed: '' };
     ALLOWED_CONFIG_KEYS.forEach(k => { userConfig[k] = _fresh[k] !== undefined ? _fresh[k] : userConfig[k]; });
     saveConfig();
     localStorage.setItem(KEYS.CHANGELOG_NOTIF, '1');

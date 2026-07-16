@@ -4,6 +4,20 @@
      *  Your pre-workout, Xanax, and Creatine all in one section.
      */
 
+    // Compares two 'x.y.z'-style version strings numerically, segment by segment
+    // (plain string comparison breaks on e.g. "0.9.9" vs "0.9.75"). Returns -1/0/1.
+    function compareVersions(a, b) {
+        const pa = String(a).split('.').map(Number);
+        const pb = String(b).split('.').map(Number);
+        const len = Math.max(pa.length, pb.length);
+        for (let i = 0; i < len; i++) {
+            const na = pa[i] || 0;
+            const nb = pb[i] || 0;
+            if (na !== nb) return na < nb ? -1 : 1;
+        }
+        return 0;
+    }
+
     const Formatter = {
         number(n, d = 0) {
             return (n === undefined || n === null) ? '0' : n.toLocaleString('en-US', {
@@ -382,17 +396,17 @@
     }
 
     // ─── LEVELING MATH ENGINE ────────────────────────────────────────────────
-    // Two straight-line ramps (0-15% of levels to 100 EXP, 15-50% to 201 EXP), then a power-2.35
-    // curve from 50% to level 99 (350 EXP). Floor: 25 EXP | P0 Peak: 350 EXP.
-    // Atrophy multipliers: ×1.5 (P1) and ×2.25 (P2).
-    const LEVEL_FLOOR = 25;
-    const LEVEL_P0_MAX = 350;
-    const LEVEL_ATRO_MULT = [1, 1.5, 2.25];
-    const LEVEL_STEP1_END = 0.15;
-    const LEVEL_STEP1_VAL = 100;
-    const LEVEL_STEP2_END = 0.50;
-    const LEVEL_STEP2_VAL = 201;
-    const LEVEL_TAIL_POWER = 2.35;
+    // Two straight-line ramps (0-50% of levels to 182 EXP, 50-70% to 289 EXP), then a power-4.5
+    // curve from 70% to level 99 (400 EXP). Floor: 30 EXP | P0 Peak: 400 EXP.
+    // Atrophy multipliers: ×1.75 (P1) and ×3.00 (P2).
+    const LEVEL_FLOOR = 30;
+    const LEVEL_P0_MAX = 400;
+    const LEVEL_ATRO_MULT = [1, 1.75, 3.00];
+    const LEVEL_STEP1_END = 0.50;
+    const LEVEL_STEP1_VAL = 182;
+    const LEVEL_STEP2_END = 0.70;
+    const LEVEL_STEP2_VAL = 289;
+    const LEVEL_TAIL_POWER = 4.50;
 
     function computeLevelExpCost(level, atrophy) {
         const t = (level - 1) / 98;
@@ -439,6 +453,14 @@
         const expInLevel = level <= 99 ? remaining : 0;
         const expToNext = level <= 99 ? computeLevelExpCost(level, atrophy) : 0;
         return { atrophy, level, expInLevel, expToNext };
+    }
+
+    // Atrophy-tier flavor title, working up to "Fully Bricked" at max level in the final tier.
+    const ATROPHY_TITLES = ['Wet Cement', 'Partly Bricked', 'Half Bricked'];
+
+    function atrophyTitle(atrophy, level) {
+        if (atrophy >= 2 && level >= 100) return 'Fully Bricked';
+        return ATROPHY_TITLES[atrophy] || ATROPHY_TITLES[0];
     }
 
     // Real-time daily EXP for the leveling bar (NOT the weekly progress bar).

@@ -1185,6 +1185,10 @@
                         font-weight: 400;
                     }
 
+                    #bbgl-tooltip i.bbgl-lvl-tip-title {
+                        font-size: 13px;
+                    }
+
                     .tt-header {
                         color: #999;
                         font-weight: 700;
@@ -2702,7 +2706,7 @@
                         padding: 4px 0 2px 10px;
                         margin-bottom: 0;
                         border-bottom: none;
-                        flex: 0 0 85px;
+                        flex: 0 0 95px;
                         overflow: visible;
                         z-index: 20;
                         display: flex;
@@ -2791,10 +2795,17 @@
                         align-items: flex-start;
                         gap: 3px;
                         /* transform makes this a stacking-context root, so the
-                           dropdown's z-index is scoped here. Lift the whole
-                           group above #bbgl-level-container (z-index:10) so the
-                           open menu paints over the exp bar. */
+                           dropdown's z-index is scoped here. */
                         position: relative;
+                    }
+
+                    /* Only lift .title-group above #bbgl-level-container (z-index:10) while a
+                       dropdown is actually open, so the menu paints over the exp bar — the rest
+                       of the time it stays at its normal stacking position. Elevating it
+                       unconditionally (the old approach) made its whole box win any overlap with
+                       the level bar's crown/diamond badge beneath it, across the entire header
+                       row width, which is more than this ever actually needs. */
+                    .title-group:has(.bbgl-dropdown-menu.show) {
                         z-index: 30;
                     }
 
@@ -2882,6 +2893,11 @@
                     #bbgl-panel.bbgl-expanded .header-row {
                         gap: 6px;
                         height: clamp(20px, calc(4.86cqi - 1px), 27px);
+                        --btn-lift: -4px;
+                    }
+
+                    #bbgl-panel.bbgl-expanded .header-row--month {
+                        --btn-lift: -1px;
                     }
 
                     #bbgl-panel.bbgl-mode-page .header-row {
@@ -2954,6 +2970,11 @@
 
                     #bbgl-panel.bbgl-compact .header-row {
                         --btn-hover-jump: -7px;
+                        --btn-lift: -2.5px;
+                    }
+
+                    #bbgl-panel.bbgl-compact .header-row--month {
+                        --btn-lift: -1.5px;
                     }
                     #bbgl-panel.bbgl-mode-page .header-row {
                         --btn-hover-jump: -4px;
@@ -3942,6 +3963,19 @@
                         z-index: 3;
                         flex-shrink: 0;
                         clip-path: inset(-9999px -9999px calc(var(--bbgl-track-h) * -0.5) -9999px);
+                        /* #bbgl-level-container (panel version) is pointer-events:none since it's
+                           an absolute overlay that shouldn't block calendar clicks underneath it —
+                           re-enable it here so the level tooltip is still hoverable/tappable. */
+                        pointer-events: auto;
+                    }
+
+                    /* Single shared rule for every atrophy-tier badge graphic (A0 crown, A2
+                       diamond, ...) instead of setting pointer-events on each tier's own ::before
+                       block individually — whichever one is actually generated (content: '' set
+                       by its own [data-atrophy="N"]-scoped rule) picks this up. */
+                    #bbgl-level-flag-clip::before,
+                    #bbgl-gym-level-container::before {
+                        pointer-events: auto;
                     }
 
                     #bbgl-level-num {
@@ -3972,6 +4006,7 @@
                         overflow: hidden;
                         background: none;
                         box-shadow: none;
+                        pointer-events: auto;
                     }
 
                     #bbgl-level-fill,
@@ -4293,7 +4328,6 @@
                         height: calc(var(--crwn-s) * 0.85 + 1px);
                         background: url("${CROWN_BADGE_URL}") center bottom / 100% 100% no-repeat;
                         z-index: -1;
-                        pointer-events: none;
                     }
 
                     /* Gym page crown — old structure (no flag-clip wrapper): the container's
@@ -4311,7 +4345,6 @@
                         height: calc(var(--crwn-s) * 0.85 + 1px);
                         background: url("${CROWN_BADGE_URL}") center bottom / 100% 100% no-repeat;
                         z-index: 1;
-                        pointer-events: none;
                     }
 
                     #bbgl-panel[data-atrophy="0"] #bbgl-level-num,
@@ -4437,7 +4470,6 @@
                         height: var(--dmnd-s);
                         background: url('${cdnize('https://raw.githubusercontent.com/BigBlackHawk42069/asdfaskijdnfawef/refs/heads/main/ScrptImgs/Calendar/lvl-dmnd.png')}') center / contain no-repeat;
                         z-index: -1;
-                        pointer-events: none;
                     }
 
                     /* Gym page diamond — old structure (no flag-clip wrapper), keeps its own
@@ -5086,7 +5118,7 @@
                     }
 
                     #bbgl-panel.bbgl-expanded:not(.bbgl-mode-page) .bbgl-header-wrapper {
-                        flex: 0 0 clamp(122px, calc(122px + 23px * var(--bbgl-dock-t, 0)), 145px);
+                        flex: 0 0 clamp(140px, calc(140px + 23px * var(--bbgl-dock-t, 0)), 163px);
                     }
 
                     #bbgl-panel.bbgl-expanded:not(.bbgl-mode-page) .bbgl-header-wrapper::before {
@@ -5468,6 +5500,7 @@
                     }
 
                     #bbgl-ach-pages {
+                        position: relative;
                         container-type: inline-size;
                         container-name: bbgl-ach;
                         width: 100%;
@@ -5553,6 +5586,53 @@
                     .ach-v-wrap,
                     .bbgl-ach-row .ach-value {
                         overflow: visible;
+                    }
+
+                    /* height is set inline by achRefreshPageDom() to the real, measured distance
+                       between #bbgl-ach-pages' top (already clear of the SVG toggle row) and
+                       #bbgl-ach-footer's top (the page-dot/nav bar), so this centers within the
+                       actual visible gap in every panel mode instead of guessing box-model math
+                       against the grid layout under #bbgl-achievements-container. */
+                    .bbgl-ach-locked {
+                        position: absolute;
+                        top: 0;
+                        left: 0;
+                        right: 0;
+                        min-height: 60px;
+                        display: flex;
+                        flex-direction: column;
+                        align-items: center;
+                        justify-content: center;
+                        gap: 8px;
+                        text-align: center;
+                        box-sizing: border-box;
+                        /* Nudge on top of the measured centering above; magnitude differs per mode. */
+                        transform: translateY(-4px);
+                    }
+
+                    #bbgl-panel.bbgl-compact .bbgl-ach-locked {
+                        transform: translateY(2px);
+                    }
+
+                    /* --ach-gap is stamped by resizeAchLockedPage() (06-section-v-logic.js) to the
+                       real measured height of the visible area, so this scales off the container's
+                       actual live height rather than the width-only --bbgl-page-t breakpoint. */
+                    #bbgl-panel.bbgl-mode-page .bbgl-ach-locked {
+                        transform: translateY(clamp(-2.5px, calc(0px - var(--ach-gap, 300px) * 0.012), 0px));
+                    }
+
+                    .bbgl-ach-locked-icon {
+                        font-size: clamp(28px, 6cqi, 42px);
+                        opacity: .55;
+                        filter: grayscale(1);
+                    }
+
+                    .bbgl-ach-locked-text {
+                        font-size: clamp(13px, 2.6cqi, 16px);
+                        font-weight: 600;
+                        color: rgba(255, 255, 255, .75);
+                        letter-spacing: .02em;
+                        max-width: 26ch;
                     }
 
                     .bbgl-ach-title-row {

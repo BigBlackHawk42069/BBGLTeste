@@ -664,6 +664,12 @@
         }
         bar.container.dataset.atrophy = atrophy;
         bar.container.dataset.level = level;
+        const lvLine = level >= 100 ? 'Level 100  •  Max Level' : `Level ${level}  •  ${Math.round(pct)}%`;
+        // data-tooltip (not -html): the mobile touch handler only supports quick-tap-to-reveal
+        // for this attribute — data-tooltip-html only reveals via the 400ms tap-and-hold gesture.
+        // <br>/<i> still render fine since both the hover and tap code paths wrap this value in a
+        // div and set it via innerHTML either way.
+        bar.container.setAttribute('data-tooltip', `${lvLine}<br><i class="bbgl-lvl-tip-title">${atrophyTitle(atrophy, level)}</i>`);
     }
 
     function updateLevelBar() {
