@@ -1831,11 +1831,14 @@
     };
 
     function buildPrivacyModalHTML(reviewMode) {
-        const ctrl = reviewMode ? `<span class="bbgl-ack-check">${ICONS.CHECK}</span>` : `<input type="checkbox" id="bbgl-privacy-ack">`,
-            label = reviewMode ? `<span>${PRIVACY_TEXT.AGREE_LABEL}</span>` : `<label for="bbgl-privacy-ack">${PRIVACY_TEXT.AGREE_LABEL}</label>`,
-            ackRow = `<div class="bbgl-ack-row" style="margin:0 10px 8px 10px;">${ctrl}${label}</div>`,
-            discSection = buildSection('Big Black Dicslosure', `<div class="bbgl-modal-scrollbox" style="max-height:calc(68vh - 80px); min-height:300px;"><div id="bbgl-privacy-disc">${DOC_LOADING_HTML}</div></div>${ackRow}`, 'margin-bottom:8px;'),
-            footer = reviewMode ? '' : `<div style="display:flex; margin:0 10px 4px 10px;">${buildButton('bbgl-privacy-demo-btn', 'DEMO', 'purple', 'flex:2; border-radius:4px 0 0 4px; margin:0;')}<span class="bbgl-agree-wrap" style="flex:1; display:flex;" data-tooltip="${TOOLTIPS.AGREE_GATE}">${buildButton('bbgl-privacy-agree-btn', 'AGREE', 'green', 'flex:1; border-radius:0 4px 4px 0; margin:0;')}</span></div>`;
+        // Agreement mode: checkbox + DEMO / AGREE footer.
+        // Review mode (already agreed): scrollable disclosure + green pre-checked row + X to close. No buttons.
+        const scrollbox = `<div class="bbgl-modal-scrollbox" style="max-height:calc(68vh - 80px); min-height:300px;"><div id="bbgl-privacy-disc">${DOC_LOADING_HTML}</div></div>`;
+        const ctrl = reviewMode ? `<span class="bbgl-ack-check bbgl-ack-agreed">${ICONS.CHECK}</span>` : `<input type="checkbox" id="bbgl-privacy-ack">`;
+        const label = reviewMode ? `<span class="bbgl-ack-agreed-label">${PRIVACY_TEXT.AGREE_LABEL}</span>` : `<label for="bbgl-privacy-ack">${PRIVACY_TEXT.AGREE_LABEL}</label>`;
+        const ackRow = `<div class="bbgl-ack-row" style="margin:0 10px 8px 10px;">${ctrl}${label}</div>`;
+        const footer = reviewMode ? '' : `<div style="display:flex; margin:0 10px 4px 10px;">${buildButton('bbgl-privacy-demo-btn', 'DEMO', 'purple', 'flex:2; border-radius:4px 0 0 4px; margin:0;')}<span class="bbgl-agree-wrap" style="flex:1; display:flex;" data-tooltip="${TOOLTIPS.AGREE_GATE}">${buildButton('bbgl-privacy-agree-btn', 'AGREE', 'green', 'flex:1; border-radius:0 4px 4px 0; margin:0;')}</span></div>`;
+        const discSection = buildSection('Big Black Dicslosure', `${scrollbox}${ackRow}`, 'margin-bottom:8px;');
         return `<div class="bbgl-modal-overlay" id="bbgl-privacy-modal"><div class="bbgl-modal-window"><div class="close-settings-btn bbgl-close-x" id="bbgl-privacy-close" title="Close">${ICONS.CLOSE}</div>${discSection}${footer}</div></div>`;
     }
 
@@ -1917,11 +1920,14 @@
         document.body.insertAdjacentHTML('beforeend', buildBackfillChoiceModalHTML());
         const modal = document.getElementById('bbgl-choice-modal');
         if (!modal) return;
-        const close = () => closeBackfillChoiceModal();
+        const close = () => {
+            closeBackfillChoiceModal();
+            switchView('ledger');
+        };
         modal.querySelector('#bbgl-choice-close').onclick = close;
         modal.onclick = (e) => { if (e.target === modal) close(); };
         const fresh = modal.querySelector('#bbgl-choice-fresh-btn');
-        if (fresh) fresh.onclick = function() { this.blur(); close(); };  // already on the empty ledger
+        if (fresh) fresh.onclick = function() { this.blur(); close(); };
         const bf = modal.querySelector('#bbgl-choice-backfill-btn');
         if (bf) bf.onclick = function() {
             this.blur();

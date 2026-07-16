@@ -670,10 +670,9 @@
                             calendarState.selectedData = null;
                             calendarState.selectedLabel = Formatter.dateLogical();
                             viewState.activeViewLabel = null;
-                            switchView('ledger');
                             syncWithFeedback('FULL_SYNC');
-                            // Offer the fresh-vs-backfill choice over the (now empty) ledger.
-                            // Dismissing the modal simply leaves them on the fresh log.
+                            // Stay on the welcome view until the user picks fresh or backfill.
+                            // The choice modal's buttons handle switchView('ledger') themselves.
                             openBackfillChoiceModal();
                         } catch (e) {
                             alert("Network error during verification.");
@@ -685,7 +684,7 @@
                     const cb = wv.querySelector('#init-create-api-btn');
                     if (cb) cb.onclick = function() {
                         this.blur();
-                        window.open('https://www.torn.com/preferences.php#tab=api?step=addNewKey&user=battlestats,log&faction=rankedwars&logIds=54,50,52,23,80,6&title=BigBlackGymLog', '_blank');
+                        window.open('https://www.torn.com/preferences.php#tab=api?step=addNewKey&user=faction,battlestats,log&faction=rankedwars&logIds=54,50,23,52,56,80,6&title=BigBlackGymLog', '_blank');
                     };
                     const rib = wv.querySelector('#init-returning-import-btn'),
                         rif = wv.querySelector('#init-import-file');
@@ -1543,7 +1542,7 @@
         const crb = get('create-api-btn');
         if (crb) crb.onclick = function() {
             this.blur();
-            window.open('https://www.torn.com/preferences.php#tab=api?step=addNewKey&user=battlestats,log&faction=rankedwars&logIds=54,50,52,23,80,6&title=BigBlackGymLog', '_blank');
+            window.open('https://www.torn.com/preferences.php#tab=api?step=addNewKey&user=faction,battlestats,log&faction=rankedwars&logIds=54,50,23,52,56,80,6&title=BigBlackGymLog', '_blank');
         };
         const rb = get('refresh-log-btn');
         if (rb) rb.onclick = function() {
@@ -1857,13 +1856,8 @@
             if (_seenVer && compareVersions(_seenVer, WIPE_BELOW_VERSION) < 0) {
                 await factoryReset();
             }
-            // Self-heal the install date: if privacyAgreed is missing or unparseable (e.g. corrupted
-            // by an older export/import round-trip), stamp it to now. This only governs when reward
-            // (sticker/XP) gating begins — it never touches log data.
-            if (!userConfig.privacyAgreed || isNaN(Date.parse(userConfig.privacyAgreed))) {
-                userConfig.privacyAgreed = new Date().toISOString();
-                saveConfig();
-            }
+            // privacyAgreed is set only when the user explicitly clicks AGREE in the privacy modal.
+            // No auto-heal — the init section stays masked until the user actually agrees.
             try {
                 await DBManager.initDB();
                 // Fast boot: load pre-built day objects directly (no series flatten, no
@@ -1877,7 +1871,7 @@
                 await recoverInterruptedBackfill();
                 renderBackfillButton();
                 renderScanOverlay();
-                if (loaded && ((_historyCache.history.length > 0) || (_historyCache.meta && _historyCache.meta.logStartDate)) && !localStorage.getItem('bbgl_initialized')) localStorage.setItem('bbgl_initialized', '1');
+                if (loaded && ((_historyCache.history.length > 0) || (_historyCache.meta && _historyCache.meta.logStartDate)) && !localStorage.getItem('bbgl_initialized') && !sessionStorage.getItem('bbgl_dev_onboarding')) localStorage.setItem('bbgl_initialized', '1');
             } catch (e) {
                 Log.warn('IndexedDB boot failed, continuing with empty state', e);
             }

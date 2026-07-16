@@ -4905,6 +4905,7 @@
                         height: 100%;
                     }
 
+
                     .bbgl-modal-overlay {
                         position: fixed;
                         inset: 0;

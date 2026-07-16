@@ -361,20 +361,34 @@
         const lastSync = parseInt(localStorage.getItem(KEYS.WARS_SYNC) || '0');
         if (!manual && (Date.now() - lastSync) < TWENTY_FOUR_HOURS) return;
         try {
-            incrementApiCount(1);
-            const res = await fetch(`https://api.torn.com/faction/?selections=rankedwars,basic&key=${userConfig.apiKey}`);
-            if (!res.ok) return;
-            const data = await res.json();
+            // Fetch ranked wars and current faction ID in parallel. The faction ID comes from
+            // user/?selections=faction (part of the required key permissions) rather than
+            // faction/?selections=basic, which would need a separate key permission.
+            incrementApiCount(2);
+            const [warsRes, userFactionRes] = await Promise.all([
+                fetch(`https://api.torn.com/faction/?selections=rankedwars&key=${userConfig.apiKey}`),
+                fetch(`https://api.torn.com/user/?selections=faction&key=${userConfig.apiKey}`)
+            ]);
+            if (!warsRes.ok) return;
+            const data = await warsRes.json();
             if (data.error) return;
             const wars = data.rankedwars || {};
-            if (data.ID) {
+            // Resolve the player's current faction ID to tag each war with win/loss outcome.
+            let myFactionId = null;
+            if (userFactionRes.ok) {
+                const userFactionData = await userFactionRes.json();
+                if (!userFactionData.error && userFactionData.faction) {
+                    myFactionId = userFactionData.faction.faction_id;
+                }
+            }
+            if (myFactionId) {
                 Object.values(wars).forEach(w => {
                     if (!w || !w.war) return;
                     if (w.war.end && w.war.winner != null) {
-                        w.outcome = w.war.winner === data.ID ? 'won' : 'lost';
+                        w.outcome = w.war.winner === myFactionId ? 'won' : 'lost';
                     }
                     // Tag each war with the faction it belongs to for membership filtering.
-                    w.factionId = data.ID;
+                    w.factionId = myFactionId;
                 });
             }
             localStorage.setItem(KEYS.WARS_DATA, JSON.stringify(wars));

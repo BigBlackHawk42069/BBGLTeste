@@ -246,8 +246,8 @@
     // at/under it the scan genuinely reached the account's origin, otherwise it merely exhausted
     // Torn's retained logs.
     const BACKFILL = {
-        SOFT_CAP: 40000,   // stop *starting* new days once crossed
-        HARD_CAP: 42000,   // absolute failsafe, normally never reached, keeps us < 50k
+        SOFT_CAP: 38000,   // stop *starting* new days once crossed
+        HARD_CAP: 40000,   // absolute failsafe, normally never reached, keeps us < 50k
         COOLDOWN_MS: Math.round(24.1 * 3600 * 1000),  // 24h6m; armed at cap-hit, covers Torn's rolling 24h
         THROTTLE_MS: 700,
         CHECKPOINT_ROWS: 2000,
@@ -5946,6 +5946,7 @@
                         height: 100%;
                     }
 
+
                     .bbgl-modal-overlay {
                         position: fixed;
                         inset: 0;
@@ -8079,20 +8080,34 @@
         const lastSync = parseInt(localStorage.getItem(KEYS.WARS_SYNC) || '0');
         if (!manual && (Date.now() - lastSync) < TWENTY_FOUR_HOURS) return;
         try {
-            incrementApiCount(1);
-            const res = await fetch(`https://api.torn.com/faction/?selections=rankedwars,basic&key=${userConfig.apiKey}`);
-            if (!res.ok) return;
-            const data = await res.json();
+            // Fetch ranked wars and current faction ID in parallel. The faction ID comes from
+            // user/?selections=faction (part of the required key permissions) rather than
+            // faction/?selections=basic, which would need a separate key permission.
+            incrementApiCount(2);
+            const [warsRes, userFactionRes] = await Promise.all([
+                fetch(`https://api.torn.com/faction/?selections=rankedwars&key=${userConfig.apiKey}`),
+                fetch(`https://api.torn.com/user/?selections=faction&key=${userConfig.apiKey}`)
+            ]);
+            if (!warsRes.ok) return;
+            const data = await warsRes.json();
             if (data.error) return;
             const wars = data.rankedwars || {};
-            if (data.ID) {
+            // Resolve the player's current faction ID to tag each war with win/loss outcome.
+            let myFactionId = null;
+            if (userFactionRes.ok) {
+                const userFactionData = await userFactionRes.json();
+                if (!userFactionData.error && userFactionData.faction) {
+                    myFactionId = userFactionData.faction.faction_id;
+                }
+            }
+            if (myFactionId) {
                 Object.values(wars).forEach(w => {
                     if (!w || !w.war) return;
                     if (w.war.end && w.war.winner != null) {
-                        w.outcome = w.war.winner === data.ID ? 'won' : 'lost';
+                        w.outcome = w.war.winner === myFactionId ? 'won' : 'lost';
                     }
                     // Tag each war with the faction it belongs to for membership filtering.
-                    w.factionId = data.ID;
+                    w.factionId = myFactionId;
                 });
             }
             localStorage.setItem(KEYS.WARS_DATA, JSON.stringify(wars));
@@ -14322,11 +14337,14 @@ const BestGymController = {
     };
 
     function buildPrivacyModalHTML(reviewMode) {
-        const ctrl = reviewMode ? `<span class="bbgl-ack-check">${ICONS.CHECK}</span>` : `<input type="checkbox" id="bbgl-privacy-ack">`,
-            label = reviewMode ? `<span>${PRIVACY_TEXT.AGREE_LABEL}</span>` : `<label for="bbgl-privacy-ack">${PRIVACY_TEXT.AGREE_LABEL}</label>`,
-            ackRow = `<div class="bbgl-ack-row" style="margin:0 10px 8px 10px;">${ctrl}${label}</div>`,
-            discSection = buildSection('Big Black Dicslosure', `<div class="bbgl-modal-scrollbox" style="max-height:calc(68vh - 80px); min-height:300px;"><div id="bbgl-privacy-disc">${DOC_LOADING_HTML}</div></div>${ackRow}`, 'margin-bottom:8px;'),
-            footer = reviewMode ? '' : `<div style="display:flex; margin:0 10px 4px 10px;">${buildButton('bbgl-privacy-demo-btn', 'DEMO', 'purple', 'flex:2; border-radius:4px 0 0 4px; margin:0;')}<span class="bbgl-agree-wrap" style="flex:1; display:flex;" data-tooltip="${TOOLTIPS.AGREE_GATE}">${buildButton('bbgl-privacy-agree-btn', 'AGREE', 'green', 'flex:1; border-radius:0 4px 4px 0; margin:0;')}</span></div>`;
+        // Agreement mode: checkbox + DEMO / AGREE footer.
+        // Review mode (already agreed): scrollable disclosure + green pre-checked row + X to close. No buttons.
+        const scrollbox = `<div class="bbgl-modal-scrollbox" style="max-height:calc(68vh - 80px); min-height:300px;"><div id="bbgl-privacy-disc">${DOC_LOADING_HTML}</div></div>`;
+        const ctrl = reviewMode ? `<span class="bbgl-ack-check bbgl-ack-agreed">${ICONS.CHECK}</span>` : `<input type="checkbox" id="bbgl-privacy-ack">`;
+        const label = reviewMode ? `<span class="bbgl-ack-agreed-label">${PRIVACY_TEXT.AGREE_LABEL}</span>` : `<label for="bbgl-privacy-ack">${PRIVACY_TEXT.AGREE_LABEL}</label>`;
+        const ackRow = `<div class="bbgl-ack-row" style="margin:0 10px 8px 10px;">${ctrl}${label}</div>`;
+        const footer = reviewMode ? '' : `<div style="display:flex; margin:0 10px 4px 10px;">${buildButton('bbgl-privacy-demo-btn', 'DEMO', 'purple', 'flex:2; border-radius:4px 0 0 4px; margin:0;')}<span class="bbgl-agree-wrap" style="flex:1; display:flex;" data-tooltip="${TOOLTIPS.AGREE_GATE}">${buildButton('bbgl-privacy-agree-btn', 'AGREE', 'green', 'flex:1; border-radius:0 4px 4px 0; margin:0;')}</span></div>`;
+        const discSection = buildSection('Big Black Dicslosure', `${scrollbox}${ackRow}`, 'margin-bottom:8px;');
         return `<div class="bbgl-modal-overlay" id="bbgl-privacy-modal"><div class="bbgl-modal-window"><div class="close-settings-btn bbgl-close-x" id="bbgl-privacy-close" title="Close">${ICONS.CLOSE}</div>${discSection}${footer}</div></div>`;
     }
 
@@ -14408,11 +14426,14 @@ const BestGymController = {
         document.body.insertAdjacentHTML('beforeend', buildBackfillChoiceModalHTML());
         const modal = document.getElementById('bbgl-choice-modal');
         if (!modal) return;
-        const close = () => closeBackfillChoiceModal();
+        const close = () => {
+            closeBackfillChoiceModal();
+            switchView('ledger');
+        };
         modal.querySelector('#bbgl-choice-close').onclick = close;
         modal.onclick = (e) => { if (e.target === modal) close(); };
         const fresh = modal.querySelector('#bbgl-choice-fresh-btn');
-        if (fresh) fresh.onclick = function() { this.blur(); close(); };  // already on the empty ledger
+        if (fresh) fresh.onclick = function() { this.blur(); close(); };
         const bf = modal.querySelector('#bbgl-choice-backfill-btn');
         if (bf) bf.onclick = function() {
             this.blur();
@@ -17153,10 +17174,9 @@ const BestGymController = {
                             calendarState.selectedData = null;
                             calendarState.selectedLabel = Formatter.dateLogical();
                             viewState.activeViewLabel = null;
-                            switchView('ledger');
                             syncWithFeedback('FULL_SYNC');
-                            // Offer the fresh-vs-backfill choice over the (now empty) ledger.
-                            // Dismissing the modal simply leaves them on the fresh log.
+                            // Stay on the welcome view until the user picks fresh or backfill.
+                            // The choice modal's buttons handle switchView('ledger') themselves.
                             openBackfillChoiceModal();
                         } catch (e) {
                             alert("Network error during verification.");
@@ -17168,7 +17188,7 @@ const BestGymController = {
                     const cb = wv.querySelector('#init-create-api-btn');
                     if (cb) cb.onclick = function() {
                         this.blur();
-                        window.open('https://www.torn.com/preferences.php#tab=api?step=addNewKey&user=battlestats,log&=,,,,&faction=rankedwars&logIds=56,52,54,50,23,6&title=BigBlackGymLog', '_blank');
+                        window.open('https://www.torn.com/preferences.php#tab=api?step=addNewKey&user=faction,battlestats,log&faction=rankedwars&logIds=54,50,23,52,56,80,6&title=BigBlackGymLog', '_blank');
                     };
                     const rib = wv.querySelector('#init-returning-import-btn'),
                         rif = wv.querySelector('#init-import-file');
@@ -18026,7 +18046,7 @@ const BestGymController = {
         const crb = get('create-api-btn');
         if (crb) crb.onclick = function() {
             this.blur();
-            window.open('https://www.torn.com/preferences.php#tab=api?step=addNewKey&user=battlestats,log&=,,,,&faction=rankedwars&logIds=56,52,54,50,23,6&title=BigBlackGymLog', '_blank');
+            window.open('https://www.torn.com/preferences.php#tab=api?step=addNewKey&user=faction,battlestats,log&faction=rankedwars&logIds=54,50,23,52,56,80,6&title=BigBlackGymLog', '_blank');
         };
         const rb = get('refresh-log-btn');
         if (rb) rb.onclick = function() {
@@ -18340,13 +18360,8 @@ const BestGymController = {
             if (_seenVer && compareVersions(_seenVer, WIPE_BELOW_VERSION) < 0) {
                 await factoryReset();
             }
-            // Self-heal the install date: if privacyAgreed is missing or unparseable (e.g. corrupted
-            // by an older export/import round-trip), stamp it to now. This only governs when reward
-            // (sticker/XP) gating begins — it never touches log data.
-            if (!userConfig.privacyAgreed || isNaN(Date.parse(userConfig.privacyAgreed))) {
-                userConfig.privacyAgreed = new Date().toISOString();
-                saveConfig();
-            }
+            // privacyAgreed is set only when the user explicitly clicks AGREE in the privacy modal.
+            // No auto-heal — the init section stays masked until the user actually agrees.
             try {
                 await DBManager.initDB();
                 // Fast boot: load pre-built day objects directly (no series flatten, no
@@ -18360,7 +18375,7 @@ const BestGymController = {
                 await recoverInterruptedBackfill();
                 renderBackfillButton();
                 renderScanOverlay();
-                if (loaded && ((_historyCache.history.length > 0) || (_historyCache.meta && _historyCache.meta.logStartDate)) && !localStorage.getItem('bbgl_initialized')) localStorage.setItem('bbgl_initialized', '1');
+                if (loaded && ((_historyCache.history.length > 0) || (_historyCache.meta && _historyCache.meta.logStartDate)) && !localStorage.getItem('bbgl_initialized') && !sessionStorage.getItem('bbgl_dev_onboarding')) localStorage.setItem('bbgl_initialized', '1');
             } catch (e) {
                 Log.warn('IndexedDB boot failed, continuing with empty state', e);
             }
@@ -18838,6 +18853,27 @@ const BestGymController = {
         return buildDevSection('Triggers', [trainRow, dayTierRow, lvlUpBtn, atroBtn]);
     }
 
+    // ─── Onboarding section ─────────────────────────────────────────────────
+    function buildOnboardingSection() {
+        const togglePrivacyBtn = buildDevButton('Toggle Onboarding Mode', () => {
+            const isTestMode = sessionStorage.getItem('bbgl_dev_onboarding') === '1';
+            if (!isTestMode) {
+                sessionStorage.setItem('bbgl_dev_onboarding', '1');
+                userConfig.privacyAgreed = '';
+                localStorage.removeItem('bbgl_initialized');
+                Log.info('Onboarding Test Mode ENABLED. Reloading...');
+            } else {
+                sessionStorage.removeItem('bbgl_dev_onboarding');
+                userConfig.privacyAgreed = new Date().toISOString();
+                localStorage.setItem('bbgl_initialized', '1');
+                Log.info('Onboarding Test Mode DISABLED. Reloading...');
+            }
+            if (typeof saveConfig === 'function') saveConfig();
+            window.location.reload();
+        }, 'background:#1a5a5a;border-color:#388;');
+        return buildDevSection('Onboarding', [togglePrivacyBtn]);
+    }
+
     // ─── Reset section ──────────────────────────────────────────────────────
     function buildResetSection() {
         const factoryResetBtn = buildDevButton('DEV: FACTORY RESET', () => {
@@ -18984,6 +19020,7 @@ const BestGymController = {
 
         w.appendChild(buildApiCounterSection());
         w.appendChild(buildTriggersSection());
+        w.appendChild(buildOnboardingSection());
         w.appendChild(buildResetSection());
 
         consoleOverlay = buildConsoleOverlay();

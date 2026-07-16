@@ -127,6 +127,27 @@
         return buildDevSection('Triggers', [trainRow, dayTierRow, lvlUpBtn, atroBtn]);
     }
 
+    // ─── Onboarding section ─────────────────────────────────────────────────
+    function buildOnboardingSection() {
+        const togglePrivacyBtn = buildDevButton('Toggle Onboarding Mode', () => {
+            const isTestMode = sessionStorage.getItem('bbgl_dev_onboarding') === '1';
+            if (!isTestMode) {
+                sessionStorage.setItem('bbgl_dev_onboarding', '1');
+                userConfig.privacyAgreed = '';
+                localStorage.removeItem('bbgl_initialized');
+                Log.info('Onboarding Test Mode ENABLED. Reloading...');
+            } else {
+                sessionStorage.removeItem('bbgl_dev_onboarding');
+                userConfig.privacyAgreed = new Date().toISOString();
+                localStorage.setItem('bbgl_initialized', '1');
+                Log.info('Onboarding Test Mode DISABLED. Reloading...');
+            }
+            if (typeof saveConfig === 'function') saveConfig();
+            window.location.reload();
+        }, 'background:#1a5a5a;border-color:#388;');
+        return buildDevSection('Onboarding', [togglePrivacyBtn]);
+    }
+
     // ─── Reset section ──────────────────────────────────────────────────────
     function buildResetSection() {
         const factoryResetBtn = buildDevButton('DEV: FACTORY RESET', () => {
@@ -273,6 +294,7 @@
 
         w.appendChild(buildApiCounterSection());
         w.appendChild(buildTriggersSection());
+        w.appendChild(buildOnboardingSection());
         w.appendChild(buildResetSection());
 
         consoleOverlay = buildConsoleOverlay();
