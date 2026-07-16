@@ -9,7 +9,7 @@
 // @connect      raw.githubusercontent.com
 // @connect      cdn.jsdelivr.net
 // @run-at       document-start
-// @updateURL    https://raw.githubusercontent.com/BigBlackHawk42069/BigBlackGymLog/main/BigBlackGymLog.js
+// @updateURL    https://raw.githubusercontent.com/BigBlackHawk42069/BigBlackGymLog/DevBranch/Dev/BBGLRelease.js
 // @downloadURL  __SCRIPT_URL__
 // ==/UserScript==
 
