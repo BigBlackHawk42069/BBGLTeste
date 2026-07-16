@@ -4842,11 +4842,11 @@
                         justify-content: center;
                         gap: 10px;
                     }
-                    #bbgl-scan-overlay .bbgl-scan-pause-inline {
+                    #bbgl-scan-overlay .bbgl-scan-title-icon {
                         width: 26px;
                         height: 26px;
                     }
-                    #bbgl-scan-overlay .bbgl-scan-pause-inline svg { width: 13px; height: 13px; }
+                    #bbgl-scan-overlay .bbgl-scan-title-icon svg { width: 13px; height: 13px; }
                     #bbgl-scan-overlay .bbgl-scan-sub {
                         font-size: 12px;
                         line-height: 1.6;

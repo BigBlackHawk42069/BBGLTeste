@@ -1132,8 +1132,12 @@
                 }
                 fr.cursor = oldestTs - 1;
 
-                if (btn) btn.innerText = `Scanning... ${sessionRows}`;
-                updateScanOverlayCount(sessionRows);
+                // Display the cumulative rowsUsed (survives pause/resume), not sessionRows (a
+                // this-run-only counter used purely for the HARD_CAP loop failsafe below) — otherwise
+                // resuming a paused scan visually resets the count to 0 instead of picking up where
+                // it left off.
+                if (btn) btn.innerText = `Scanning... ${ds.rowsUsed}`;
+                updateScanOverlayCount(ds.rowsUsed);
 
                 // Budget reached: stop STARTING new days, drain the current one across both
                 // groups so the persisted boundary is a fully complete day.

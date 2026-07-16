@@ -5883,11 +5883,11 @@
                         justify-content: center;
                         gap: 10px;
                     }
-                    #bbgl-scan-overlay .bbgl-scan-pause-inline {
+                    #bbgl-scan-overlay .bbgl-scan-title-icon {
                         width: 26px;
                         height: 26px;
                     }
-                    #bbgl-scan-overlay .bbgl-scan-pause-inline svg { width: 13px; height: 13px; }
+                    #bbgl-scan-overlay .bbgl-scan-title-icon svg { width: 13px; height: 13px; }
                     #bbgl-scan-overlay .bbgl-scan-sub {
                         font-size: 12px;
                         line-height: 1.6;
@@ -8894,8 +8894,12 @@
                 }
                 fr.cursor = oldestTs - 1;
 
-                if (btn) btn.innerText = `Scanning... ${sessionRows}`;
-                updateScanOverlayCount(sessionRows);
+                // Display the cumulative rowsUsed (survives pause/resume), not sessionRows (a
+                // this-run-only counter used purely for the HARD_CAP loop failsafe below) — otherwise
+                // resuming a paused scan visually resets the count to 0 instead of picking up where
+                // it left off.
+                if (btn) btn.innerText = `Scanning... ${ds.rowsUsed}`;
+                updateScanOverlayCount(ds.rowsUsed);
 
                 // Budget reached: stop STARTING new days, drain the current one across both
                 // groups so the persisted boundary is a fully complete day.
@@ -17590,17 +17594,20 @@ const BestGymController = {
             case 'settings':
                 return `<div class="bbgl-scan-title">Scan in Progress</div><div class="bbgl-scan-sub">Settings are locked while Big Black Backfill runs. Head back to the log to pause or check progress.</div>`;
             case 'scanning':
-                return `${cancelX}<div class="bbgl-scan-title-row"><div class="bbgl-scan-title">Scanning&hellip;</div><div id="bbgl-scan-pause" class="bbgl-scan-iconbtn bbgl-scan-play bbgl-scan-pause-inline" title="Pause">${SCAN_PAUSE_SVG}</div></div><div class="bbgl-scan-count-row"><span class="bbgl-scan-pulse"></span>Rows recovered so far: <span id="bbgl-scan-count" class="bbgl-scan-count">0</span></div><div class="bbgl-scan-sub">This only takes up to a few minutes. Please stay on this page until the scan completes.</div><div class="bbgl-scan-note">If you're on PC, you may continue playing in another tab, but do not close this one.</div>`;
+                // Seed the count from ds.rowsUsed (survives pause/resume) rather than a hardcoded 0,
+                // so resuming a paused scan doesn't visually flash back to zero before the loop's
+                // first update lands.
+                return `${cancelX}<div class="bbgl-scan-title-row"><div class="bbgl-scan-title">Scanning&hellip;</div><div id="bbgl-scan-pause" class="bbgl-scan-iconbtn bbgl-scan-play bbgl-scan-title-icon" title="Pause">${SCAN_PAUSE_SVG}</div></div><div class="bbgl-scan-count-row"><span class="bbgl-scan-pulse"></span>Rows recovered so far: <span id="bbgl-scan-count" class="bbgl-scan-count">${(ds && ds.rowsUsed) || 0}</span></div><div class="bbgl-scan-sub">This only takes up to a few minutes. Please stay on this page until the scan completes.</div><div class="bbgl-scan-note">If you're on PC, you may continue playing in another tab, but do not close this one.</div>`;
             case 'confirm':
                 return `<div class="bbgl-scan-title">Cancel this scan?</div><div class="bbgl-scan-sub">Canceling discards everything recovered during this scan. Your log since installation remains untouched.</div><div class="bbgl-scan-actions"><div id="bbgl-scan-confirm-yes" class="bbgl-scan-iconbtn bbgl-scan-yes" title="Yes, cancel">${ICONS.CHECK}</div><div id="bbgl-scan-confirm-no" class="bbgl-scan-iconbtn bbgl-scan-no" title="No, keep scanning">${ICONS.CLOSE}</div></div>`;
             case 'passenger':
                 return `<div class="bbgl-scan-title">Scan Running in Another Tab</div><div class="bbgl-scan-sub">Big Black Backfill is currently active in another tab. Use that tab to pause or cancel the scan.</div>`;
             case 'paused':
-                return `<div class="bbgl-scan-title">Paused</div><div class="bbgl-scan-sub">You can resume now, or continue with what's been recovered so far.</div><div class="bbgl-scan-actions"><div id="bbgl-scan-resume" class="bbgl-scan-iconbtn bbgl-scan-play" title="Resume">${SCAN_PLAY_SVG}</div><div id="bbgl-scan-proceed" class="bbgl-scan-textbtn bbgl-scan-primary">Continue with what's been recovered</div></div>`;
+                return `<div class="bbgl-scan-title-row"><div class="bbgl-scan-title">Paused</div><div id="bbgl-scan-resume" class="bbgl-scan-iconbtn bbgl-scan-play bbgl-scan-title-icon" title="Resume">${SCAN_PLAY_SVG}</div></div><div class="bbgl-scan-sub">You can resume now, or continue with what's been recovered so far.</div><div class="bbgl-scan-actions"><div id="bbgl-scan-proceed" class="bbgl-scan-textbtn bbgl-scan-primary">Continue with what's been recovered</div></div>`;
             case 'error':
-                return `<div class="bbgl-scan-title">Scan Error</div><div class="bbgl-scan-sub">A network or API error occurred. No progress was lost. Resume to keep going, or continue with what's been recovered so far.</div><div class="bbgl-scan-actions"><div id="bbgl-scan-resume" class="bbgl-scan-iconbtn bbgl-scan-play" title="Resume">${SCAN_PLAY_SVG}</div><div id="bbgl-scan-proceed" class="bbgl-scan-textbtn bbgl-scan-primary">Continue with what's been recovered</div></div>`;
+                return `<div class="bbgl-scan-title-row"><div class="bbgl-scan-title">Scan Error</div><div id="bbgl-scan-resume" class="bbgl-scan-iconbtn bbgl-scan-play bbgl-scan-title-icon" title="Resume">${SCAN_PLAY_SVG}</div></div><div class="bbgl-scan-sub">A network or API error occurred. No progress was lost. Resume to keep going, or continue with what's been recovered so far.</div><div class="bbgl-scan-actions"><div id="bbgl-scan-proceed" class="bbgl-scan-textbtn bbgl-scan-primary">Continue with what's been recovered</div></div>`;
             case 'interrupted':
-                return `<div class="bbgl-scan-title">Interrupted</div><div class="bbgl-scan-sub">The tab or browser was closed before the scan finished. Your progress up to that point was saved. Resume to keep going, or continue with what's been recovered so far.</div><div class="bbgl-scan-actions"><div id="bbgl-scan-resume" class="bbgl-scan-iconbtn bbgl-scan-play" title="Resume">${SCAN_PLAY_SVG}</div><div id="bbgl-scan-proceed" class="bbgl-scan-textbtn bbgl-scan-primary">Continue with what's been recovered</div></div>`;
+                return `<div class="bbgl-scan-title-row"><div class="bbgl-scan-title">Interrupted</div><div id="bbgl-scan-resume" class="bbgl-scan-iconbtn bbgl-scan-play bbgl-scan-title-icon" title="Resume">${SCAN_PLAY_SVG}</div></div><div class="bbgl-scan-sub">The tab or browser was closed before the scan finished. Your progress up to that point was saved. Resume to keep going, or continue with what's been recovered so far.</div><div class="bbgl-scan-actions"><div id="bbgl-scan-proceed" class="bbgl-scan-textbtn bbgl-scan-primary">Continue with what's been recovered</div></div>`;
             case 'cap':
                 return `<div class="bbgl-scan-title">Daily Limit Reached</div><div class="bbgl-scan-sub">Torn's daily row cap has been reached. Resume from the Settings menu in 24h. Everything recovered so far is fully constructed, none of it is partial.</div><div class="bbgl-scan-actions"><div id="bbgl-scan-proceed" class="bbgl-scan-textbtn bbgl-scan-primary">Continue to Logs</div></div>`;
             case 'complete':
