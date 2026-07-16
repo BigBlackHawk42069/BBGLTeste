@@ -4830,22 +4830,65 @@
                         border-radius: 0 0 5px 5px;
                     }
                     #bbgl-scan-overlay .bbgl-scan-title {
-                        font-size: 18px;
-                        font-weight: 800;
+                        font-family: "Fjalla One", Arial, sans-serif;
+                        font-size: 19px;
+                        font-weight: 400;
                         color: #fff;
-                        letter-spacing: .3px;
+                        letter-spacing: .4px;
                     }
+                    #bbgl-scan-overlay .bbgl-scan-title-row {
+                        display: flex;
+                        align-items: center;
+                        justify-content: center;
+                        gap: 10px;
+                    }
+                    #bbgl-scan-overlay .bbgl-scan-pause-inline {
+                        width: 26px;
+                        height: 26px;
+                    }
+                    #bbgl-scan-overlay .bbgl-scan-pause-inline svg { width: 13px; height: 13px; }
                     #bbgl-scan-overlay .bbgl-scan-sub {
                         font-size: 12px;
                         line-height: 1.6;
                         color: #b6b6b6;
                         max-width: 300px;
                     }
+                    #bbgl-scan-overlay .bbgl-scan-note {
+                        font-size: 11px;
+                        font-style: italic;
+                        color: #888;
+                        max-width: 300px;
+                        line-height: 1.5;
+                    }
+                    #bbgl-scan-overlay .bbgl-scan-count-row {
+                        display: flex;
+                        align-items: center;
+                        justify-content: center;
+                        gap: 8px;
+                        font-size: 12px;
+                        color: #ccc;
+                    }
                     #bbgl-scan-overlay .bbgl-scan-count { color: #b388ff; font-variant-numeric: tabular-nums; }
+                    .bbgl-scan-pulse {
+                        width: 8px;
+                        height: 8px;
+                        border-radius: 50%;
+                        background: #b388ff;
+                        flex: 0 0 auto;
+                        animation: bbgl-scan-pulse-anim 1.4s ease-in-out infinite;
+                    }
+                    @keyframes bbgl-scan-pulse-anim {
+                        0%, 100% { opacity: .35; transform: scale(.8); }
+                        50% { opacity: 1; transform: scale(1.15); }
+                    }
+                    #bbgl-panel.bbgl-no-animations .bbgl-scan-pulse {
+                        animation: none;
+                        opacity: 1;
+                    }
                     #bbgl-scan-cancel {
                         position: absolute;
-                        top: 10px;
-                        right: 12px;
+                        top: 22px;
+                        right: 16px;
                         font-size: 11px;
                         font-weight: 700;
                         color: #ff5252;

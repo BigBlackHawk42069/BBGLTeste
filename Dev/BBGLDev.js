@@ -1,7 +1,7 @@
 ﻿// ==UserScript==
 // @name         Big Black Gym Log Teste
 // @namespace    http://tampermonkey.net/
-// @version      0.9.75
+// @version      0.9.90
 // @description  A high-fidelity, gamified stat tracker built to integrate seamlessly with Torn's native UI.
 // @author       BigBlackHawk [3550896]
 // @match        https://www.torn.com/*
@@ -29,7 +29,7 @@
      *  so that you don't have to.
      */
 
-    const SCRIPT_VERSION = '0.9.75';
+    const SCRIPT_VERSION = '0.9.90';
     const Log = {
         _bootShown: false,
         _badge: ['%c BBGL %c', 'background:#6a1b9a;color:#fff;font-weight:700;border-radius:3px 0 0 3px;padding:2px 6px;', 'color:#999;'],
@@ -119,7 +119,7 @@
     // is below this gets a factoryReset() on next boot (see init() in 10-section-ix-init.js).
     // Left at '0.0.0' this never fires. To force a clean install for everyone still on an
     // older version, bump this to a version below the new SCRIPT_VERSION you're about to ship.
-    const WIPE_BELOW_VERSION = '0.0.0';
+    const WIPE_BELOW_VERSION = '0.9.90';
     // Rewrites a raw.githubusercontent.com URL to the jsDelivr CDN equivalent — raw.github
     // sets weak cache headers and throttles hotlinking, jsDelivr is a real edge CDN and free
     // for public repos.
@@ -5871,22 +5871,65 @@
                         border-radius: 0 0 5px 5px;
                     }
                     #bbgl-scan-overlay .bbgl-scan-title {
-                        font-size: 18px;
-                        font-weight: 800;
+                        font-family: "Fjalla One", Arial, sans-serif;
+                        font-size: 19px;
+                        font-weight: 400;
                         color: #fff;
-                        letter-spacing: .3px;
+                        letter-spacing: .4px;
                     }
+                    #bbgl-scan-overlay .bbgl-scan-title-row {
+                        display: flex;
+                        align-items: center;
+                        justify-content: center;
+                        gap: 10px;
+                    }
+                    #bbgl-scan-overlay .bbgl-scan-pause-inline {
+                        width: 26px;
+                        height: 26px;
+                    }
+                    #bbgl-scan-overlay .bbgl-scan-pause-inline svg { width: 13px; height: 13px; }
                     #bbgl-scan-overlay .bbgl-scan-sub {
                         font-size: 12px;
                         line-height: 1.6;
                         color: #b6b6b6;
                         max-width: 300px;
                     }
+                    #bbgl-scan-overlay .bbgl-scan-note {
+                        font-size: 11px;
+                        font-style: italic;
+                        color: #888;
+                        max-width: 300px;
+                        line-height: 1.5;
+                    }
+                    #bbgl-scan-overlay .bbgl-scan-count-row {
+                        display: flex;
+                        align-items: center;
+                        justify-content: center;
+                        gap: 8px;
+                        font-size: 12px;
+                        color: #ccc;
+                    }
                     #bbgl-scan-overlay .bbgl-scan-count { color: #b388ff; font-variant-numeric: tabular-nums; }
+                    .bbgl-scan-pulse {
+                        width: 8px;
+                        height: 8px;
+                        border-radius: 50%;
+                        background: #b388ff;
+                        flex: 0 0 auto;
+                        animation: bbgl-scan-pulse-anim 1.4s ease-in-out infinite;
+                    }
+                    @keyframes bbgl-scan-pulse-anim {
+                        0%, 100% { opacity: .35; transform: scale(.8); }
+                        50% { opacity: 1; transform: scale(1.15); }
+                    }
+                    #bbgl-panel.bbgl-no-animations .bbgl-scan-pulse {
+                        animation: none;
+                        opacity: 1;
+                    }
                     #bbgl-scan-cancel {
                         position: absolute;
-                        top: 10px;
-                        right: 12px;
+                        top: 22px;
+                        right: 16px;
                         font-size: 11px;
                         font-weight: 700;
                         color: #ff5252;
@@ -7977,7 +8020,7 @@
             rowsUsed: 0,         // cumulative rows spent; resets on full completion or after a cap cooldown elapses
             cooldownUntil: 0,    // armed to now + COOLDOWN_MS at the moment the cap is hit
             lastResult: null,    // 'partial' | 'complete'
-            stopReason: null,    // null | 'paused' | 'error' | 'cap' — why a partial stopped; drives masked-state copy
+            stopReason: null,    // null | 'paused' | 'error' | 'interrupted' | 'cap' — why a partial stopped; drives masked-state copy
             completion: null,    // 'origin' | 'exhausted' (only meaningful once lastResult === 'complete')
             acknowledged: true,  // false while a masked stop-state (paused/error/cap/complete) awaits the user's dismissal
             lock: 0,             // heartbeat timestamp of the tab currently scanning; 0 = no scan running
@@ -7994,7 +8037,7 @@
             else if (typeof ds.rowsThisWindow === 'number') d.rowsUsed = ds.rowsThisWindow;
             if (typeof ds.cooldownUntil === 'number') d.cooldownUntil = ds.cooldownUntil;
             if (ds.lastResult === 'complete' || ds.lastResult === 'partial') d.lastResult = ds.lastResult;
-            if (ds.stopReason === 'paused' || ds.stopReason === 'error' || ds.stopReason === 'cap') d.stopReason = ds.stopReason;
+            if (ds.stopReason === 'paused' || ds.stopReason === 'error' || ds.stopReason === 'interrupted' || ds.stopReason === 'cap') d.stopReason = ds.stopReason;
             if (ds.completion === 'origin' || ds.completion === 'exhausted') d.completion = ds.completion;
             if (typeof ds.acknowledged === 'boolean') d.acknowledged = ds.acknowledged;
             if (typeof ds.lock === 'number') d.lock = ds.lock;
@@ -8054,6 +8097,16 @@
             ok: false,
             msg: "Invalid file format."
         };
+        // Testing-phase reset lever (WIPE_BELOW_VERSION, 02-section-i-constants.js): once armed,
+        // an export from before the cutoff can't be re-imported to resurrect pre-wipe data —
+        // otherwise anyone with an old backup could bypass the forced reset entirely.
+        if (WIPE_BELOW_VERSION !== '0.0.0') {
+            const importedVer = (j.meta && j.meta.version) ? String(j.meta.version) : '';
+            if (!importedVer || compareVersions(importedVer, WIPE_BELOW_VERSION) < 0) return {
+                ok: false,
+                msg: "This export is from before a required data reset and can no longer be imported. Please start tracking fresh."
+            };
+        }
         if (!j.storage || typeof j.storage !== 'object') return {
             ok: false,
             msg: "No training data found in file."
@@ -8913,7 +8966,8 @@
                 ds.stopReason = 'cap';
                 ds.cooldownUntil = Date.now() + BACKFILL.COOLDOWN_MS;
             } else {
-                // Interruption, network, or API error: resumable now.
+                // The scan's own code caught this (network/API failure), as opposed to the tab/browser
+                // closing outright (see recoverInterruptedBackfill's 'interrupted' classification).
                 ds.stopReason = 'error';
             }
         }
@@ -8949,8 +9003,8 @@
     // Crash/refresh recovery: on boot, a backfill heartbeat lock that has gone stale means a scan was
     // interrupted (tab/browser closed outright — the running code never reached its own catch). This
     // is the ONLY place that can classify that case. Release the lock and surface the interactive
-    // Error mask (resume / proceed). A still-fresh lock means another live tab owns the scan, so we
-    // leave it be. A cleanly completed-but-unacknowledged scan is left untouched.
+    // Interrupted mask (resume / proceed). A still-fresh lock means another live tab owns the scan, so
+    // we leave it be. A cleanly completed-but-unacknowledged scan is left untouched.
     async function recoverInterruptedBackfill() {
         if (runtime.demoMode || runtime.backfilling) return;
         const s = getActiveHistory();
@@ -8961,8 +9015,10 @@
         ds.lockOwner = null;
         if (ds.lastResult !== 'complete') {
             ds.lastResult = 'partial';
-            // Preserve a cap stop (its cooldown is real); otherwise treat as an interruption.
-            if (ds.stopReason !== 'cap') ds.stopReason = 'error';
+            // Preserve a cap stop (its cooldown is real); otherwise this lock only goes stale when the
+            // tab/browser closed outright, distinct from an in-session network/API error (see the
+            // 'error' branch in the live finalize path above).
+            if (ds.stopReason !== 'cap') ds.stopReason = 'interrupted';
             ds.acknowledged = false;
         }
         try {
@@ -13137,10 +13193,22 @@ const BestGymController = {
         if (!runtime.demoMode) {
             const h = getActiveHistory();
             if (h && h.today) {
-                const todayE = h.today.eSpent ? (h.today.eSpent.total || 0) : 0;
-                const hasTrainLog = h.today.series && h.today.series.some(s => s.type === 'gym');
+                const today = Formatter.dateLogical();
+                const installDateKey = getInstallDateKey();
+                const rewardStartTs = (h.meta && h.meta.rewardStartDate) || null;
+                let todaySeries = h.today.series || [];
+                // On the exact install day, only entries at/after the precise install moment count —
+                // mirrors buildProgressionCache()'s handling of past days (06-section-v-logic.js).
+                // Without this, today's full eSpent.total (which can include pre-install-moment
+                // entries from the same calendar day) was being counted in full.
+                if (installDateKey && today === installDateKey && rewardStartTs) {
+                    todaySeries = todaySeries.filter(s => s.ts >= rewardStartTs);
+                }
+                const todayE = (todaySeries === h.today.series && h.today.eSpent) ? (h.today.eSpent.total || 0) : todaySeries.filter(s => s.type === 'gym').reduce((sum, s) => sum + (s.cost || 0), 0);
+                const hasTrainLog = todaySeries.some(s => s.type === 'gym');
                 const { hjDaySet } = DataController.getHappyJumpData();
-                totalExp += computeDailyLevelExp(todayE, hasTrainLog, hjDaySet.has(Formatter.dateLogical()));
+                const isHJ = (todaySeries === h.today.series) ? hjDaySet.has(today) : findHappyJumps(todaySeries).length > 0;
+                totalExp += computeDailyLevelExp(todayE, hasTrainLog, isHJ);
             }
         }
         return totalExp;
@@ -14243,7 +14311,7 @@ const BestGymController = {
         DEMO_EXIT: "Exit Demo Mode",
         DEMO_EXIT_HTML: "Exit Demo Mode<i>Stats shown here are for previewing the functions of the script only — they do not reflect realistic Torn growth.</i>",
         REFRESH_COOLDOWN: (remaining) => `Please wait ${remaining}s before refreshing the log again`,
-        BACKFILL_RESUME_COOLDOWN: (t) => `Daily limit reached. Wait ${t} before resuming the Backfill.`,
+        BACKFILL_RESUME_COOLDOWN: (t) => `Torn's daily row cap has been reached. Resume available in ${t}.`,
         BACKFILL_COMPLETE_ORIGIN: "Your full training history was reconstructed back to the very beginning.",
         BACKFILL_COMPLETE_EXHAUSTED: "Scan reached the end of the logs Torn still retains. Any older history is no longer available from Torn's servers.",
         CELL_DATE: (ds) => `Date: ${ds}`
@@ -14410,8 +14478,8 @@ const BestGymController = {
     // with an empty log or reconstruct their history via Big Black Backfill. The panel is already
     // initialized and sitting on the (empty) ledger behind this modal, so dismissing == start fresh.
     function buildBackfillChoiceModalHTML() {
-        const intro = `<div style="padding:6px 4px 14px; color:#ccc; font-size:12px; line-height:1.6; text-align:center;">You're all set. Start a fresh log from today, or use Big Black Backfill to reconstruct your full training history from Torn's logs. You can always run the backfill later from Settings.</div>`;
-        const buttons = `<div style="display:flex; gap:0; margin:0 6px 2px;">${buildButton('bbgl-choice-fresh-btn', 'START LOG FRESH', '', 'flex:1; border-radius:4px 0 0 4px; margin:0;')}${buildButton('bbgl-choice-backfill-btn', 'BIG BLACK BACKFILL', 'purple', 'flex:1; border-radius:0 4px 4px 0; margin:0;')}</div>`;
+        const intro = `<div style="padding:6px 4px 14px; color:#ccc; font-size:12px; line-height:1.6; text-align:center;">Start tracking now with no log history, or use Big Black Backfill to reconstruct your training history from Torn's logs. You can always get Big Black Backfilled later from the Settings.</div>`;
+        const buttons = `<div style="display:flex; gap:0; margin:0 6px 2px;">${buildButton('bbgl-choice-fresh-btn', 'START EMPTY LOG', '', 'flex:1; border-radius:4px 0 0 4px; margin:0;')}${buildButton('bbgl-choice-backfill-btn', 'BIG BLACK BACKFILL', 'purple', 'flex:1; border-radius:0 4px 4px 0; margin:0;')}</div>`;
         return `<div class="bbgl-modal-overlay" id="bbgl-choice-modal"><div class="bbgl-modal-window"><div class="close-settings-btn bbgl-close-x" id="bbgl-choice-close" title="Close">${ICONS.CLOSE}</div>${buildSection('Start Tracking', intro + buttons, 'margin-bottom:8px;')}</div></div>`;
     }
 
@@ -14633,7 +14701,7 @@ const BestGymController = {
 
     function buildSettingsFeaturesSection() {
         const bestGymGroup = buildToggle('set-bestgym-toggle', `<span data-tooltip-html="${TOOLTIPS.BEST_GYM}">BB Best Gym</span>`, 'bbgl-bestgym-lead') + buildToggle('set-bestgym-spec-toggle', `<span data-tooltip-html="${TOOLTIPS.BEST_GYM_SPEC}">Specialty Gyms</span>`, 'bbgl-subgroup-row') + buildToggle('set-bestgym-unpurch-toggle', `<span data-tooltip-html="${TOOLTIPS.BEST_GYM_UNPURCHASED}">Unpurchased Gyms</span>`, 'bbgl-subgroup-row bbgl-subgroup-row-last');
-        const backfillBtn = buildButton('backfill-btn', '<span class="view-std">BB Backfill</span><span class="view-exp">Big Black Backfill</span>', 'purple', 'margin: 8px 10px 8px 10px; width: calc(100% - 20px); display: block;');
+        const backfillBtn = buildButton('backfill-btn', 'Big Black Backfill', 'purple', 'margin: 8px 10px 8px 10px; width: calc(100% - 20px); display: block;');
         return buildSection('Big Black Features', bestGymGroup + buildToggle('set-rate-toggle', `<span data-tooltip-html="${TOOLTIPS.RATES}">Rate Displays</span>`) + buildToggle('set-anim-toggle', `<span data-tooltip-html="${TOOLTIPS.ANIM}">Animations</span>`) + buildRow(`<span data-tooltip-html="${TOOLTIPS.DRUG_TRACKER}">Drug Use Tracker</span>`, `<select id="set-drug-tracker" class="bbgl-native-select"><option value="xanax">Xanax</option><option value="lsd">LSD</option></select>`) + `<div class="bbgl-mask-host bbgl-demo-maskable" data-mask-text="Not available in demo mode">${backfillBtn}</div>`, '', buildResyncBtn());
     }
 
@@ -17486,7 +17554,7 @@ const BestGymController = {
        from render/lifecycle paths without tearing down the live counter or handlers. */
     const SCAN_PAUSE_SVG = `<svg viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="5" width="4" height="14" rx="1"/><rect x="14" y="5" width="4" height="14" rx="1"/></svg>`;
     const SCAN_PLAY_SVG  = `<svg viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>`;
-    let _scanOverlayTimer = null;   // cap countdown OR passenger-staleness poll
+    let _scanOverlayTimer = null;   // passenger-staleness poll
     let _scanOverlayKey = null;     // last rendered visual key; guards idempotent rebuilds
     let _scanCancelConfirm = false; // transient: Cancel clicked, awaiting yes/no
 
@@ -17509,46 +17577,34 @@ const BestGymController = {
             if (ds.lastResult === 'complete') key = 'complete';
             else if (ds.stopReason === 'cap') key = 'cap';
             else if (ds.stopReason === 'paused') key = 'paused';
+            else if (ds.stopReason === 'interrupted') key = 'interrupted';
             else key = 'error';
         }
         return { key, ds };
     }
 
-    function updateScanCapCountdown(ds) {
-        const el = document.querySelector('#bbgl-scan-cap-timer');
-        if (!el) return;
-        const remaining = (ds.cooldownUntil || 0) - Date.now();
-        el.textContent = formatCountdown(remaining);
-        if (remaining <= 0 && _scanOverlayTimer) {
-            clearInterval(_scanOverlayTimer);
-            _scanOverlayTimer = null;
-        }
-    }
-
-    // Placeholder copy — final wording authored separately. Each state returns overlay inner HTML.
+    // Each state returns the overlay's inner HTML. Wording confirmed; see wireScanOverlay for handlers.
     function buildScanOverlayInner(key, ds) {
         const cancelX = `<div id="bbgl-scan-cancel">Cancel</div>`;
         switch (key) {
             case 'settings':
-                return `<div class="bbgl-scan-title">Scan in Progress</div><div class="bbgl-scan-sub">Settings are unavailable while a backfill is running. Return to the log to manage the scan.</div>`;
+                return `<div class="bbgl-scan-title">Scan in Progress</div><div class="bbgl-scan-sub">Settings are locked while Big Black Backfill runs. Head back to the log to pause or check progress.</div>`;
             case 'scanning':
-                return `${cancelX}<div class="bbgl-scan-title">Scanning&hellip; <span id="bbgl-scan-count" class="bbgl-scan-count">0</span></div><div class="bbgl-scan-sub">Reconstructing your training history. You can keep playing &mdash; just don't close this tab until the scan finishes.</div><div class="bbgl-scan-actions"><div id="bbgl-scan-pause" class="bbgl-scan-iconbtn bbgl-scan-play" title="Pause">${SCAN_PAUSE_SVG}</div></div>`;
+                return `${cancelX}<div class="bbgl-scan-title-row"><div class="bbgl-scan-title">Scanning&hellip;</div><div id="bbgl-scan-pause" class="bbgl-scan-iconbtn bbgl-scan-play bbgl-scan-pause-inline" title="Pause">${SCAN_PAUSE_SVG}</div></div><div class="bbgl-scan-count-row"><span class="bbgl-scan-pulse"></span>Rows recovered so far: <span id="bbgl-scan-count" class="bbgl-scan-count">0</span></div><div class="bbgl-scan-sub">This only takes up to a few minutes. Please stay on this page until the scan completes.</div><div class="bbgl-scan-note">If you're on PC, you may continue playing in another tab, but do not close this one.</div>`;
             case 'confirm':
-                return `<div class="bbgl-scan-title">Discard backfill progress?</div><div class="bbgl-scan-sub">This discards all backfilled history and starts your log fresh from installation. Your tracking since install is kept.</div><div class="bbgl-scan-actions"><div id="bbgl-scan-confirm-yes" class="bbgl-scan-iconbtn bbgl-scan-yes" title="Yes, discard">${ICONS.CHECK}</div><div id="bbgl-scan-confirm-no" class="bbgl-scan-iconbtn bbgl-scan-no" title="No, keep scanning">${ICONS.CLOSE}</div></div>`;
+                return `<div class="bbgl-scan-title">Cancel this scan?</div><div class="bbgl-scan-sub">Canceling discards everything recovered during this scan. Your log since installation remains untouched.</div><div class="bbgl-scan-actions"><div id="bbgl-scan-confirm-yes" class="bbgl-scan-iconbtn bbgl-scan-yes" title="Yes, cancel">${ICONS.CHECK}</div><div id="bbgl-scan-confirm-no" class="bbgl-scan-iconbtn bbgl-scan-no" title="No, keep scanning">${ICONS.CLOSE}</div></div>`;
             case 'passenger':
-                return `<div class="bbgl-scan-title">Scanning&hellip;</div><div class="bbgl-scan-sub">A backfill is running in another tab. Switch to that tab to pause or cancel it.</div>`;
+                return `<div class="bbgl-scan-title">Scan Running in Another Tab</div><div class="bbgl-scan-sub">Big Black Backfill is currently active in another tab. Use that tab to pause or cancel the scan.</div>`;
             case 'paused':
-                return `<div class="bbgl-scan-title">Scan Paused</div><div class="bbgl-scan-sub">Your logs are partially filled. Continue now and resume the backfill anytime from the Settings menu.</div><div class="bbgl-scan-actions"><div id="bbgl-scan-resume" class="bbgl-scan-iconbtn bbgl-scan-play" title="Resume">${SCAN_PLAY_SVG}</div><div id="bbgl-scan-proceed" class="bbgl-scan-textbtn bbgl-scan-primary">Proceed to partial logs</div></div>`;
+                return `<div class="bbgl-scan-title">Paused</div><div class="bbgl-scan-sub">You can resume now, or continue with what's been recovered so far.</div><div class="bbgl-scan-actions"><div id="bbgl-scan-resume" class="bbgl-scan-iconbtn bbgl-scan-play" title="Resume">${SCAN_PLAY_SVG}</div><div id="bbgl-scan-proceed" class="bbgl-scan-textbtn bbgl-scan-primary">Continue with what's been recovered</div></div>`;
             case 'error':
-                return `<div class="bbgl-scan-title">Scan Interrupted</div><div class="bbgl-scan-sub">The backfill stopped before finishing. Resume to keep going, or proceed with what's been filled so far.</div><div class="bbgl-scan-actions"><div id="bbgl-scan-resume" class="bbgl-scan-iconbtn bbgl-scan-play" title="Resume">${SCAN_PLAY_SVG}</div><div id="bbgl-scan-proceed" class="bbgl-scan-textbtn bbgl-scan-primary">Proceed to partial logs</div></div>`;
+                return `<div class="bbgl-scan-title">Scan Error</div><div class="bbgl-scan-sub">A network or API error occurred. No progress was lost. Resume to keep going, or continue with what's been recovered so far.</div><div class="bbgl-scan-actions"><div id="bbgl-scan-resume" class="bbgl-scan-iconbtn bbgl-scan-play" title="Resume">${SCAN_PLAY_SVG}</div><div id="bbgl-scan-proceed" class="bbgl-scan-textbtn bbgl-scan-primary">Continue with what's been recovered</div></div>`;
+            case 'interrupted':
+                return `<div class="bbgl-scan-title">Interrupted</div><div class="bbgl-scan-sub">The tab or browser was closed before the scan finished. Your progress up to that point was saved. Resume to keep going, or continue with what's been recovered so far.</div><div class="bbgl-scan-actions"><div id="bbgl-scan-resume" class="bbgl-scan-iconbtn bbgl-scan-play" title="Resume">${SCAN_PLAY_SVG}</div><div id="bbgl-scan-proceed" class="bbgl-scan-textbtn bbgl-scan-primary">Continue with what's been recovered</div></div>`;
             case 'cap':
-                return `<div class="bbgl-scan-title">Daily Row Limit Reached</div><div class="bbgl-scan-sub">Torn limits how much history can be pulled per day. You can resume in <span id="bbgl-scan-cap-timer">--:--:--</span> from the Settings menu.</div><div class="bbgl-scan-actions"><div id="bbgl-scan-proceed" class="bbgl-scan-textbtn bbgl-scan-primary">Proceed to partial logs</div></div>`;
-            case 'complete': {
-                const sub = ds && ds.completion === 'exhausted'
-                    ? "We've pulled back as far as Torn still keeps your logs. Your history is ready."
-                    : "Your full training history has been reconstructed. Welcome to the log.";
-                return `<div class="bbgl-scan-title">Backfill Complete!</div><div class="bbgl-scan-sub">${sub}</div><div class="bbgl-scan-actions"><div id="bbgl-scan-ack" class="bbgl-scan-textbtn bbgl-scan-primary">Enter Logs</div></div>`;
-            }
+                return `<div class="bbgl-scan-title">Daily Limit Reached</div><div class="bbgl-scan-sub">Torn's daily row cap has been reached. Resume from the Settings menu in 24h. Everything recovered so far is fully constructed, none of it is partial.</div><div class="bbgl-scan-actions"><div id="bbgl-scan-proceed" class="bbgl-scan-textbtn bbgl-scan-primary">Continue to Logs</div></div>`;
+            case 'complete':
+                return `<div class="bbgl-scan-title">Fully Backfilled!</div><div class="bbgl-scan-sub">Your training history has been fully reconstructed.</div><div class="bbgl-scan-note">Rewards and stickers only start counting from the day you began tracking, not from backfilled history.</div><div class="bbgl-scan-actions"><div id="bbgl-scan-ack" class="bbgl-scan-textbtn bbgl-scan-primary">Enter Logs</div></div>`;
             default:
                 return '';
         }
@@ -17615,10 +17671,7 @@ const BestGymController = {
         if (!existing) host.appendChild(el);
         wireScanOverlay(el, renderKey, ds);
 
-        if (renderKey === 'cap') {
-            updateScanCapCountdown(ds);
-            _scanOverlayTimer = setInterval(() => updateScanCapCountdown(ds), 1000);
-        } else if (renderKey === 'passenger') {
+        if (renderKey === 'passenger') {
             // No broadcast fires if the driver tab dies; poll so we can promote to the Error mask
             // once its lock goes stale.
             _scanOverlayTimer = setInterval(() => renderScanOverlay(), 3000);
@@ -17634,11 +17687,37 @@ const BestGymController = {
         backfillLogs(document.getElementById('backfill-btn'));
     }
 
+    const BACKFILL_IDLE_LABEL = 'Big Black Backfill';
+    const BACKFILL_RESUME_LABEL = '<span class="view-std">Resume BB Backfill</span><span class="view-exp">Resume Big Black Backfill</span>';
+    const BACKFILL_CONFIRM_LABEL = 'Tap Again to Confirm';
+    let _backfillConfirmTimeout = null;
+
+    // First click arms a "tap again to confirm" state instead of firing immediately; a second click
+    // within the window confirms, letting the timeout expire reverts to the button's normal state via
+    // a full re-render.
+    function armBackfillConfirm(btn, onConfirm) {
+        if (_backfillConfirmTimeout) clearTimeout(_backfillConfirmTimeout);
+        btn.innerHTML = BACKFILL_CONFIRM_LABEL;
+        btn.onclick = function() {
+            this.blur();
+            if (_backfillConfirmTimeout) {
+                clearTimeout(_backfillConfirmTimeout);
+                _backfillConfirmTimeout = null;
+            }
+            onConfirm();
+        };
+        _backfillConfirmTimeout = setTimeout(() => {
+            _backfillConfirmTimeout = null;
+            renderBackfillButton();
+        }, 4000);
+    }
+
     // The full scan state machine now lives in the masked overlay (renderScanOverlay). This just
     // reflects backfill state onto the Settings button and wires its click:
     //  - scanning / masked stop-state (unacknowledged): inert; the overlay owns the UI.
-    //  - cooling down after a cap (acknowledged): inert with a live "resume available in" countdown.
-    //  - partial + resumable, or fresh/complete: clickable, routes into the masked scan.
+    //  - cooling down after a cap (acknowledged): dimmed but still hoverable, so the cooldown tooltip
+    //    can surface (native `disabled`, same pattern as the Resync-cooldown button).
+    //  - partial + resumable, fresh, or fully backfilled: clickable via a tap-to-confirm gate.
     function renderBackfillButton() {
         const btn = document.getElementById('backfill-btn');
         if (!btn) return;
@@ -17646,8 +17725,13 @@ const BestGymController = {
             clearInterval(_backfillCountdownId);
             _backfillCountdownId = null;
         }
+        if (_backfillConfirmTimeout) {
+            clearTimeout(_backfillConfirmTimeout);
+            _backfillConfirmTimeout = null;
+        }
 
         // Reset to a clean baseline before applying the active state.
+        btn.disabled = false;
         btn.style.pointerEvents = '';
         btn.style.opacity = '';
         btn.style.color = '';
@@ -17657,51 +17741,69 @@ const BestGymController = {
 
         if (runtime.demoMode) return;
 
-        const idleLabel = '<span class="view-std">BB Backfill</span><span class="view-exp">Big Black Backfill</span>';
-
         // Scan running, or a masked stop-state awaiting acknowledgement: the overlay covers the panel
-        // (including this button), so keep it inert.
+        // (including this button, or the settings "unavailable" mask on this view), so keep it inert.
+        // The exact label is never actually seen behind that mask.
         const s = getActiveHistory();
         const ds = s.meta && s.meta.backfill;
         if (runtime.backfilling || (ds && ds.acknowledged === false)) {
             btn.style.opacity = '0.6';
             btn.style.pointerEvents = 'none';
-            btn.innerHTML = idleLabel;
+            btn.innerHTML = (ds && ds.lastResult === 'partial') ? BACKFILL_RESUME_LABEL : BACKFILL_IDLE_LABEL;
             return;
         }
 
-        // Acknowledged cap: still cooling down. Inert with a live countdown until resume unlocks.
+        // Acknowledged cap: still cooling down. No live timer on the button itself; hovering (or
+        // tapping, on touch) surfaces the remaining time via tooltip instead.
         if (ds && ds.lastResult === 'partial' && ds.cooldownUntil && Date.now() < ds.cooldownUntil) {
             btn.style.opacity = '0.6';
-            btn.style.pointerEvents = 'none';
-            const render = () => {
+            btn.disabled = true;
+            btn.innerHTML = BACKFILL_RESUME_LABEL;
+            const updateTooltip = () => {
                 const remaining = ds.cooldownUntil - Date.now();
-                if (remaining <= 0) {
+                btn.setAttribute('data-tooltip', TOOLTIPS.BACKFILL_RESUME_COOLDOWN(formatCountdown(Math.max(0, remaining))));
+            };
+            updateTooltip();
+            _backfillCountdownId = setInterval(() => {
+                if (Date.now() >= ds.cooldownUntil) {
+                    clearInterval(_backfillCountdownId);
+                    _backfillCountdownId = null;
                     renderBackfillButton();
                     return;
                 }
-                btn.innerHTML = `Resume available in ${formatCountdown(remaining)}`;
-            };
-            render();
-            _backfillCountdownId = setInterval(render, 1000);
+                updateTooltip();
+            }, 1000);
             return;
         }
 
-        // Partial and resumable now (acknowledged pause/error, or cap cooldown elapsed).
+        // Partial and resumable now (acknowledged pause/error/interrupted, or cap cooldown elapsed).
         if (ds && ds.lastResult === 'partial') {
-            btn.innerHTML = '<span class="view-std">Resume Backfill</span><span class="view-exp">Resume Big Black Backfill</span>';
+            btn.innerHTML = BACKFILL_RESUME_LABEL;
             btn.onclick = function() {
                 this.blur();
-                startBackfillFromSettings();
+                armBackfillConfirm(btn, () => startBackfillFromSettings());
             };
             return;
         }
 
-        // Fresh, or completed-and-acknowledged: start a new scan.
-        btn.innerHTML = idleLabel;
+        // Fully backfilled and acknowledged: a permanent state until the log is cleared. Still
+        // clickable to run the scan again; it will simply re-land on the Complete state.
+        if (ds && ds.lastResult === 'complete') {
+            btn.style.color = '#69f0ae';
+            btn.innerHTML = 'Fully Backfilled!';
+            btn.setAttribute('data-tooltip', ds.completion === 'exhausted' ? TOOLTIPS.BACKFILL_COMPLETE_EXHAUSTED : TOOLTIPS.BACKFILL_COMPLETE_ORIGIN);
+            btn.onclick = function() {
+                this.blur();
+                armBackfillConfirm(btn, () => startBackfillFromSettings());
+            };
+            return;
+        }
+
+        // Never run: start a new scan.
+        btn.innerHTML = BACKFILL_IDLE_LABEL;
         btn.onclick = function() {
             this.blur();
-            startBackfillFromSettings();
+            armBackfillConfirm(btn, () => startBackfillFromSettings());
         };
     }
 

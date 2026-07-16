@@ -258,7 +258,7 @@
             rowsUsed: 0,         // cumulative rows spent; resets on full completion or after a cap cooldown elapses
             cooldownUntil: 0,    // armed to now + COOLDOWN_MS at the moment the cap is hit
             lastResult: null,    // 'partial' | 'complete'
-            stopReason: null,    // null | 'paused' | 'error' | 'cap' — why a partial stopped; drives masked-state copy
+            stopReason: null,    // null | 'paused' | 'error' | 'interrupted' | 'cap' — why a partial stopped; drives masked-state copy
             completion: null,    // 'origin' | 'exhausted' (only meaningful once lastResult === 'complete')
             acknowledged: true,  // false while a masked stop-state (paused/error/cap/complete) awaits the user's dismissal
             lock: 0,             // heartbeat timestamp of the tab currently scanning; 0 = no scan running
@@ -275,7 +275,7 @@
             else if (typeof ds.rowsThisWindow === 'number') d.rowsUsed = ds.rowsThisWindow;
             if (typeof ds.cooldownUntil === 'number') d.cooldownUntil = ds.cooldownUntil;
             if (ds.lastResult === 'complete' || ds.lastResult === 'partial') d.lastResult = ds.lastResult;
-            if (ds.stopReason === 'paused' || ds.stopReason === 'error' || ds.stopReason === 'cap') d.stopReason = ds.stopReason;
+            if (ds.stopReason === 'paused' || ds.stopReason === 'error' || ds.stopReason === 'interrupted' || ds.stopReason === 'cap') d.stopReason = ds.stopReason;
             if (ds.completion === 'origin' || ds.completion === 'exhausted') d.completion = ds.completion;
             if (typeof ds.acknowledged === 'boolean') d.acknowledged = ds.acknowledged;
             if (typeof ds.lock === 'number') d.lock = ds.lock;
@@ -335,6 +335,16 @@
             ok: false,
             msg: "Invalid file format."
         };
+        // Testing-phase reset lever (WIPE_BELOW_VERSION, 02-section-i-constants.js): once armed,
+        // an export from before the cutoff can't be re-imported to resurrect pre-wipe data —
+        // otherwise anyone with an old backup could bypass the forced reset entirely.
+        if (WIPE_BELOW_VERSION !== '0.0.0') {
+            const importedVer = (j.meta && j.meta.version) ? String(j.meta.version) : '';
+            if (!importedVer || compareVersions(importedVer, WIPE_BELOW_VERSION) < 0) return {
+                ok: false,
+                msg: "This export is from before a required data reset and can no longer be imported. Please start tracking fresh."
+            };
+        }
         if (!j.storage || typeof j.storage !== 'object') return {
             ok: false,
             msg: "No training data found in file."
@@ -1194,7 +1204,8 @@
                 ds.stopReason = 'cap';
                 ds.cooldownUntil = Date.now() + BACKFILL.COOLDOWN_MS;
             } else {
-                // Interruption, network, or API error: resumable now.
+                // The scan's own code caught this (network/API failure), as opposed to the tab/browser
+                // closing outright (see recoverInterruptedBackfill's 'interrupted' classification).
                 ds.stopReason = 'error';
             }
         }
@@ -1230,8 +1241,8 @@
     // Crash/refresh recovery: on boot, a backfill heartbeat lock that has gone stale means a scan was
     // interrupted (tab/browser closed outright — the running code never reached its own catch). This
     // is the ONLY place that can classify that case. Release the lock and surface the interactive
-    // Error mask (resume / proceed). A still-fresh lock means another live tab owns the scan, so we
-    // leave it be. A cleanly completed-but-unacknowledged scan is left untouched.
+    // Interrupted mask (resume / proceed). A still-fresh lock means another live tab owns the scan, so
+    // we leave it be. A cleanly completed-but-unacknowledged scan is left untouched.
     async function recoverInterruptedBackfill() {
         if (runtime.demoMode || runtime.backfilling) return;
         const s = getActiveHistory();
@@ -1242,8 +1253,10 @@
         ds.lockOwner = null;
         if (ds.lastResult !== 'complete') {
             ds.lastResult = 'partial';
-            // Preserve a cap stop (its cooldown is real); otherwise treat as an interruption.
-            if (ds.stopReason !== 'cap') ds.stopReason = 'error';
+            // Preserve a cap stop (its cooldown is real); otherwise this lock only goes stale when the
+            // tab/browser closed outright, distinct from an in-session network/API error (see the
+            // 'error' branch in the live finalize path above).
+            if (ds.stopReason !== 'cap') ds.stopReason = 'interrupted';
             ds.acknowledged = false;
         }
         try {

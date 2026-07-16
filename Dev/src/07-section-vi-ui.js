@@ -631,10 +631,22 @@
         if (!runtime.demoMode) {
             const h = getActiveHistory();
             if (h && h.today) {
-                const todayE = h.today.eSpent ? (h.today.eSpent.total || 0) : 0;
-                const hasTrainLog = h.today.series && h.today.series.some(s => s.type === 'gym');
+                const today = Formatter.dateLogical();
+                const installDateKey = getInstallDateKey();
+                const rewardStartTs = (h.meta && h.meta.rewardStartDate) || null;
+                let todaySeries = h.today.series || [];
+                // On the exact install day, only entries at/after the precise install moment count —
+                // mirrors buildProgressionCache()'s handling of past days (06-section-v-logic.js).
+                // Without this, today's full eSpent.total (which can include pre-install-moment
+                // entries from the same calendar day) was being counted in full.
+                if (installDateKey && today === installDateKey && rewardStartTs) {
+                    todaySeries = todaySeries.filter(s => s.ts >= rewardStartTs);
+                }
+                const todayE = (todaySeries === h.today.series && h.today.eSpent) ? (h.today.eSpent.total || 0) : todaySeries.filter(s => s.type === 'gym').reduce((sum, s) => sum + (s.cost || 0), 0);
+                const hasTrainLog = todaySeries.some(s => s.type === 'gym');
                 const { hjDaySet } = DataController.getHappyJumpData();
-                totalExp += computeDailyLevelExp(todayE, hasTrainLog, hjDaySet.has(Formatter.dateLogical()));
+                const isHJ = (todaySeries === h.today.series) ? hjDaySet.has(today) : findHappyJumps(todaySeries).length > 0;
+                totalExp += computeDailyLevelExp(todayE, hasTrainLog, isHJ);
             }
         }
         return totalExp;
@@ -1737,7 +1749,7 @@
         DEMO_EXIT: "Exit Demo Mode",
         DEMO_EXIT_HTML: "Exit Demo Mode<i>Stats shown here are for previewing the functions of the script only — they do not reflect realistic Torn growth.</i>",
         REFRESH_COOLDOWN: (remaining) => `Please wait ${remaining}s before refreshing the log again`,
-        BACKFILL_RESUME_COOLDOWN: (t) => `Daily limit reached. Wait ${t} before resuming the Backfill.`,
+        BACKFILL_RESUME_COOLDOWN: (t) => `Torn's daily row cap has been reached. Resume available in ${t}.`,
         BACKFILL_COMPLETE_ORIGIN: "Your full training history was reconstructed back to the very beginning.",
         BACKFILL_COMPLETE_EXHAUSTED: "Scan reached the end of the logs Torn still retains. Any older history is no longer available from Torn's servers.",
         CELL_DATE: (ds) => `Date: ${ds}`
@@ -1904,8 +1916,8 @@
     // with an empty log or reconstruct their history via Big Black Backfill. The panel is already
     // initialized and sitting on the (empty) ledger behind this modal, so dismissing == start fresh.
     function buildBackfillChoiceModalHTML() {
-        const intro = `<div style="padding:6px 4px 14px; color:#ccc; font-size:12px; line-height:1.6; text-align:center;">You're all set. Start a fresh log from today, or use Big Black Backfill to reconstruct your full training history from Torn's logs. You can always run the backfill later from Settings.</div>`;
-        const buttons = `<div style="display:flex; gap:0; margin:0 6px 2px;">${buildButton('bbgl-choice-fresh-btn', 'START LOG FRESH', '', 'flex:1; border-radius:4px 0 0 4px; margin:0;')}${buildButton('bbgl-choice-backfill-btn', 'BIG BLACK BACKFILL', 'purple', 'flex:1; border-radius:0 4px 4px 0; margin:0;')}</div>`;
+        const intro = `<div style="padding:6px 4px 14px; color:#ccc; font-size:12px; line-height:1.6; text-align:center;">Start tracking now with no log history, or use Big Black Backfill to reconstruct your training history from Torn's logs. You can always get Big Black Backfilled later from the Settings.</div>`;
+        const buttons = `<div style="display:flex; gap:0; margin:0 6px 2px;">${buildButton('bbgl-choice-fresh-btn', 'START EMPTY LOG', '', 'flex:1; border-radius:4px 0 0 4px; margin:0;')}${buildButton('bbgl-choice-backfill-btn', 'BIG BLACK BACKFILL', 'purple', 'flex:1; border-radius:0 4px 4px 0; margin:0;')}</div>`;
         return `<div class="bbgl-modal-overlay" id="bbgl-choice-modal"><div class="bbgl-modal-window"><div class="close-settings-btn bbgl-close-x" id="bbgl-choice-close" title="Close">${ICONS.CLOSE}</div>${buildSection('Start Tracking', intro + buttons, 'margin-bottom:8px;')}</div></div>`;
     }
 
@@ -2127,7 +2139,7 @@
 
     function buildSettingsFeaturesSection() {
         const bestGymGroup = buildToggle('set-bestgym-toggle', `<span data-tooltip-html="${TOOLTIPS.BEST_GYM}">BB Best Gym</span>`, 'bbgl-bestgym-lead') + buildToggle('set-bestgym-spec-toggle', `<span data-tooltip-html="${TOOLTIPS.BEST_GYM_SPEC}">Specialty Gyms</span>`, 'bbgl-subgroup-row') + buildToggle('set-bestgym-unpurch-toggle', `<span data-tooltip-html="${TOOLTIPS.BEST_GYM_UNPURCHASED}">Unpurchased Gyms</span>`, 'bbgl-subgroup-row bbgl-subgroup-row-last');
-        const backfillBtn = buildButton('backfill-btn', '<span class="view-std">BB Backfill</span><span class="view-exp">Big Black Backfill</span>', 'purple', 'margin: 8px 10px 8px 10px; width: calc(100% - 20px); display: block;');
+        const backfillBtn = buildButton('backfill-btn', 'Big Black Backfill', 'purple', 'margin: 8px 10px 8px 10px; width: calc(100% - 20px); display: block;');
         return buildSection('Big Black Features', bestGymGroup + buildToggle('set-rate-toggle', `<span data-tooltip-html="${TOOLTIPS.RATES}">Rate Displays</span>`) + buildToggle('set-anim-toggle', `<span data-tooltip-html="${TOOLTIPS.ANIM}">Animations</span>`) + buildRow(`<span data-tooltip-html="${TOOLTIPS.DRUG_TRACKER}">Drug Use Tracker</span>`, `<select id="set-drug-tracker" class="bbgl-native-select"><option value="xanax">Xanax</option><option value="lsd">LSD</option></select>`) + `<div class="bbgl-mask-host bbgl-demo-maskable" data-mask-text="Not available in demo mode">${backfillBtn}</div>`, '', buildResyncBtn());
     }
 

@@ -52,7 +52,7 @@
     // is below this gets a factoryReset() on next boot (see init() in 10-section-ix-init.js).
     // Left at '0.0.0' this never fires. To force a clean install for everyone still on an
     // older version, bump this to a version below the new SCRIPT_VERSION you're about to ship.
-    const WIPE_BELOW_VERSION = '0.0.0';
+    const WIPE_BELOW_VERSION = '0.9.90';
     // Rewrites a raw.githubusercontent.com URL to the jsDelivr CDN equivalent — raw.github
     // sets weak cache headers and throttles hotlinking, jsDelivr is a real edge CDN and free
     // for public repos.
