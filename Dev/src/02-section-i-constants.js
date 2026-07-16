@@ -38,7 +38,6 @@
         CONFIG: 'bbgl_config_v1',
         SESSION: 'bbgl_trained_flag',
         LAST_SYNC: 'bbgl_last_data_sync_v1',
-        BS_SYNC: 'bbgl_bs_last_sync_v1',
         SESSION_CACHE: 'bbgl_session_cache_v1',
         DEMO: 'bbgl_demo_mode',
         SB_NOTIF: 'bbgl_sb_notif_seen',

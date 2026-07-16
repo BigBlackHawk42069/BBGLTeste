@@ -105,7 +105,6 @@
         CONFIG: 'bbgl_config_v1',
         SESSION: 'bbgl_trained_flag',
         LAST_SYNC: 'bbgl_last_data_sync_v1',
-        BS_SYNC: 'bbgl_bs_last_sync_v1',
         SESSION_CACHE: 'bbgl_session_cache_v1',
         DEMO: 'bbgl_demo_mode',
         SB_NOTIF: 'bbgl_sb_notif_seen',
@@ -1047,6 +1046,9 @@
      */
     const ASSETS = {
         HEADER_IMG: cdnize("https://raw.githubusercontent.com/BigBlackHawk42069/asdfaskijdnfawef/refs/heads/main/ScrptImgs/Calendar/cal-hdr.jpg"),
+        GLASS_OVERLAY: cdnize("https://raw.githubusercontent.com/BigBlackHawk42069/asdfaskijdnfawef/refs/heads/main/ScrptImgs/Calendar/glass-ovly.jpg"),
+        STICKER_BG: cdnize("https://raw.githubusercontent.com/BigBlackHawk42069/asdfaskijdnfawef/refs/heads/main/ScrptImgs/Stickerbook/stkr-bckgr.png"),
+        NEW_STICKER_FRAME: cdnize("https://raw.githubusercontent.com/BigBlackHawk42069/asdfaskijdnfawef/refs/heads/main/ScrptImgs/Calendar/new-stkr.png"),
         GRADIENT: `<defs><linearGradient id="bbgl_silver_grad" x1="0%" y1="0%" x2="0%" y2="100%"><stop offset="0%" style="stop-color:#d9d9d9;stop-opacity:1" /><stop offset="100%" style="stop-color:#999999;stop-opacity:1" /></linearGradient></defs>`
     };
     const ICONS = {
@@ -2343,6 +2345,20 @@
                         background-image: linear-gradient(180deg, #2a0840 0%, #8e24aa 25%, #6a1b9a 60%, #6a1b9a 78%, #2a0840 100%);
                     }
 
+                    /* Panel mode only: #bbgl-bottom-panel is the scroll container here (see its
+                       overflow-y:auto rule below), and #bbgl-demo-exit is its first child, so
+                       sticking it to the top of that box keeps it pinned at the boundary with
+                       #bbgl-top-panel as the calendar scrolls underneath — instead of scrolling
+                       away with the rest of the header/grid content. In tall mode #bbgl-top-panel's
+                       existing negative margin-bottom (z-index:25) overlaps this bar, producing the
+                       "hanging off the top panel" look for free. Page mode leaves it static (its
+                       #bbgl-bottom-panel doesn't scroll internally there). */
+                    #bbgl-panel:not(.bbgl-mode-page) #bbgl-demo-exit {
+                        position: sticky;
+                        top: 0;
+                        z-index: 22;
+                    }
+
                     #bbgl-demo-exit:active {
                         background-image: linear-gradient(0deg, #8e24aa 0%, #6a1b9a 100%);
                     }
@@ -2657,7 +2673,7 @@
                         left: 0;
                         width: 100%;
                         height: 100%;
-                        background-image: url('${cdnize('https://raw.githubusercontent.com/BigBlackHawk42069/asdfaskijdnfawef/refs/heads/main/ScrptImgs/Calendar/glass-ovly.jpg')}');
+                        background-image: url('${ASSETS.GLASS_OVERLAY}');
                         background-size: 100% 100%;
                         background-position: center;
                         opacity: .5;
@@ -3119,7 +3135,7 @@
                         left: 0;
                         width: 100%;
                         height: 100%;
-                        background-image: url('${cdnize('https://raw.githubusercontent.com/BigBlackHawk42069/asdfaskijdnfawef/refs/heads/main/ScrptImgs/Stickerbook/stkr-bckgr.png')}');
+                        background-image: url('${ASSETS.STICKER_BG}');
                         background-size: cover;
                         background-position: center;
                         z-index: 5;
@@ -4495,7 +4511,7 @@
                         left: 4%;
                         width: 92%;
                         height: 92%;
-                        background: url('${cdnize('https://raw.githubusercontent.com/BigBlackHawk42069/asdfaskijdnfawef/refs/heads/main/ScrptImgs/Calendar/new-stkr.png')}') no-repeat center / contain;
+                        background: url('${ASSETS.NEW_STICKER_FRAME}') no-repeat center / contain;
                         z-index: 20;
                         filter: drop-shadow(-2px 4px 5px rgba(0, 0, 0, .4));
                         transform-origin: top right;
@@ -5495,12 +5511,14 @@
                         --dmnd-b: calc(var(--dmnd-s) * (-0.25 + 0.02 * var(--bbgl-page-t)));
                     }
 
-                    /* Main panel diamond — lives on the flag-clip wrapper so it shares the
+                    /* A2 badge slot — main panel. Lives on the flag-clip wrapper so it shares the
                        wrapper's screen-fixed cut line and tucks behind the bar like the text
                        flag. Its offset parent (the wrapper) sits --bbgl-track-h above the
-                       container bottom, so the bottom anchor subtracts that to land the diamond
+                       container bottom, so the bottom anchor subtracts that to land the badge
                        at the same spot the old container-relative anchor did. No self-clip — the
-                       wrapper does the clipping. z-index:-1 keeps the number text in front. */
+                       wrapper does the clipping. z-index:-1 keeps the number text in front.
+                       No background image set — the diamond placeholder was pulled pending a
+                       replacement A2 tier asset; set the background property here once one exists. */
                     #bbgl-panel[data-atrophy="2"] #bbgl-level-flag-clip::before {
                         content: '';
                         position: absolute;
@@ -5510,12 +5528,11 @@
                         transform: translateX(-50%);
                         width: var(--dmnd-s);
                         height: var(--dmnd-s);
-                        background: url('${cdnize('https://raw.githubusercontent.com/BigBlackHawk42069/asdfaskijdnfawef/refs/heads/main/ScrptImgs/Calendar/lvl-dmnd.png')}') center / contain no-repeat;
                         z-index: -1;
                     }
 
-                    /* Gym page diamond — old structure (no flag-clip wrapper), keeps its own
-                       self-clip. */
+                    /* A2 badge slot — gym page, old structure (no flag-clip wrapper), keeps its
+                       own self-clip. No background image set; see main panel slot above. */
                     #bbgl-gym-level-container[data-atrophy="2"]::before {
                         content: '';
                         position: absolute;
@@ -5526,7 +5543,6 @@
                         width: var(--dmnd-s);
                         height: var(--dmnd-s);
                         clip-path: inset(0 0 calc(var(--dmnd-b) * -1 + 2px) 0);
-                        background: url('${cdnize('https://raw.githubusercontent.com/BigBlackHawk42069/asdfaskijdnfawef/refs/heads/main/ScrptImgs/Calendar/lvl-dmnd.png')}') center / contain no-repeat;
                         z-index: 1;
                         pointer-events: none;
                     }
@@ -5767,6 +5783,14 @@
 
                     .bbgl-author-link:hover {
                         border-bottom-color: #69f0ae;
+                    }
+
+                    .bbgl-settings-author-credit {
+                        margin: 8px 10px 0 10px;
+                        font-family: Arial, sans-serif;
+                        font-size: 11px;
+                        color: #888;
+                        text-align: center;
                     }
 
                     .bbgl-settings-scroll-area {
@@ -8240,7 +8264,6 @@
 
             if (mission !== 'TRAIN_SINGLE') {
                 localStorage.setItem(KEYS.LAST_SYNC, ts.toString());
-                localStorage.setItem(KEYS.BS_SYNC, ts.toString());
             }
 
             // Stat enhancer check: if battlestats shows higher values than the last recorded
@@ -13247,6 +13270,25 @@ const BestGymController = {
         }
     }
 
+    // Bypasses runLevelAnimationQueue() entirely — its while-loop only advances when exp goes
+    // up, so an exp DROP (e.g. real -> demo's 0) leaves the bar rendered stale, and an exp jump
+    // (e.g. demo's 0 -> real) replays the level-up climb one tier at a time. Demo mode enter/exit
+    // both need an instant jump to whichever value is now live, so call this instead of relying
+    // on updateLevelBar()'s queue.
+    function snapLevelBar() {
+        const totalExp = getLiveLevelExp();
+        runtime._lastLevelExp = totalExp;
+        runtime._targetLevelExp = totalExp;
+        runtime._isAnimatingLevel = false;
+        getLevelBars().forEach(b => {
+            b.fill.style.transition = 'none';
+            b.container.classList.remove('bbgl-level-up-flash');
+            renderLevelBar(b, totalExp);
+            void b.fill.offsetWidth; // force reflow before re-enabling the CSS transition
+            b.fill.style.transition = '';
+        });
+    }
+
     // Plays the tier-completion sequence: the just-finished tier's crown tucks away
     // (mole-in-hole pop), the next tier's crown rises into place (podium reveal), then
     // "Atrophied!" flashes at the climax. Leaves level/bar reset to the new tier's Lv 1 / 0%
@@ -14509,6 +14551,7 @@ const BestGymController = {
         if (pdeb) pdeb.style.display = 'flex';
         refreshInitLock();
         refreshDemoMasks();
+        snapLevelBar();
         switchView('ledger');
     }
 
@@ -14603,13 +14646,14 @@ const BestGymController = {
     }
 
     function buildSettingsInfoSection() {
+        const authorCredit = `<div class="bbgl-settings-author-credit">By <a class="bbgl-author-link" href="https://www.torn.com/profiles.php?XID=3550896" target="_blank" rel="noopener noreferrer">BigBlackHawk</a></div>`;
         const guideBtn = buildButton('feature-guide-btn', 'FEATURE GUIDE', '', `margin: 8px 10px 0 10px; width: calc(100% - 20px); display: block; ${stackBtnStyle('top')}`);
         const stack = `<div style="margin: 0 10px 0 10px; display: flex; flex-direction: column;">` +
             buildButton('settings-changelog-btn', 'CHANGELOG', '', `width: 100%; ${stackBtnStyle('mid')}`) +
-            buildButton('show-welcome-btn', 'WELCOME PAGE', '', `width: 100%; ${stackBtnStyle('mid')}`) +
+            buildButton('settings-privacy-btn', 'PRIVACY DISCLOSURE', '', `width: 100%; ${stackBtnStyle('mid')}`) +
             `</div>`;
         const demoBtn = buildButton('settings-demo-btn', runtime.demoMode ? 'EXIT DEMO' : 'DEMO MODE', 'purple', `margin: 0 10px 8px 10px; width: calc(100% - 20px); display: block; ${stackBtnStyle('bottom')}`);
-        return buildSection('Information', guideBtn + `<div class="bbgl-mask-host bbgl-demo-maskable" data-mask-text="Not available in demo mode">${stack}</div>${demoBtn}`);
+        return buildSection('Information', authorCredit + guideBtn + `<div class="bbgl-mask-host bbgl-demo-maskable" data-mask-text="Not available in demo mode">${stack}</div>${demoBtn}`);
     }
 
     function getSettingsHTML() {
@@ -14649,7 +14693,7 @@ const BestGymController = {
     function getDashboardHTML() {
         const weekDays = userConfig.weekStartMode === 'mon' ? ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'] : ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
         const weekRowHTML = weekDays.map(d => `<span>${d}</span>`).join('');
-        return `<div class="bbgl-header" id="bbgl-header-bar"><div class="bbgl-header-left">${ICONS.LOGO}<span class="bbgl-header-text"><span class="bbgl-short-title">Big Black Log</span><span class="bbgl-long-title">Big Black Gym Log</span></span></div><div class="bbgl-header-right"><span id="bbgl-demo-exit-btn" class="close-settings-btn bbgl-close-purple" style="display:${runtime.demoMode ? 'flex' : 'none'};" data-tooltip-html="${TOOLTIPS.DEMO_EXIT_HTML}"><span class="bbgl-demo-x-label">Demo</span>${ICONS.CLOSE}</span><span id="bbgl-settings-btn" class="bbgl-custom-icon">⚙</span><span id="bbgl-close-btn" class="bbgl-native-icon">${ICONS.MINIMIZE}</span><span id="bbgl-pop-btn" class="bbgl-native-icon">${viewState.expanded ? ICONS.COMPRESS : ICONS.POPOUT}</span></div></div><div id="bbgl-content-wrapper"><div id="bbgl-top-panel"><div id="bbgl-tall-toggle">${viewState.isTall ? '–' : '+'}</div><div id="bbgl-ledger-toggle" data-tooltip="${TOOLTIPS.LEDGER_VIEW}">${ICONS.LEDGER}</div><div id="bbgl-graph-toggle" data-tooltip="${TOOLTIPS.GRAPH_VIEW}">${ICONS.GRAPH}</div><div id="bbgl-achievements-toggle" data-tooltip="${TOOLTIPS.ACHIEVEMENTS}">${ICONS.ACHIEVEMENTS}</div><div id="bbgl-sticker-toggle" data-tooltip="${TOOLTIPS.STICKERBOOK}">${ICONS.STICKERBOOK}</div><div id="bbgl-item-counters"></div><div id="bbgl-copy-btn" class="copy-hist-btn" data-tooltip="${TOOLTIPS.COPY_SESSION}">${ICONS.CLIPBOARD}</div><div id="bbgl-sticker-title"></div><div class="ui-floating-label" id="bbgl-date-label">LOADING...</div><div class="ui-floating-summary" id="bbgl-summary-label"></div><div id="bbgl-ledger-view" class="ledger-content"></div><div id="bbgl-graph-container"><div class="g-hud"><div class="g-toggles"><div class="g-pill active" data-type="mode" data-val="values">Gains</div><div class="g-pill" data-type="mode" data-val="rates">Rates</div></div><div class="g-toggles"><div class="g-pill p-str active" data-type="stat" data-val="str">STR</div><div class="g-pill p-def" data-type="stat" data-val="def">DEF</div><div class="g-pill p-spd active" data-type="stat" data-val="spd">SPD</div><div class="g-pill p-dex" data-type="stat" data-val="dex">DEX</div><div class="g-pill p-tot" data-type="stat" data-val="total">TOT</div></div></div><svg id="bbgl-graph-svg"></svg></div><div id="bbgl-achievements-container" class="ledger-content"><div class="bbgl-ach-scroll"><div id="bbgl-ach-pages"></div></div><div id="bbgl-ach-footer" class="bbgl-ach-footer"><div class="bbgl-ach-footer-side bbgl-ach-footer-left"><button type="button" class="bbgl-ach-nav bbgl-ach-prev" aria-label="Previous achievements page">\u276e</button></div><div id="bbgl-ach-pageindicator"></div><div class="bbgl-ach-footer-side bbgl-ach-footer-right"><button type="button" class="bbgl-ach-nav bbgl-ach-next" aria-label="Next achievements page">\u276f</button></div></div></div><div id="bbgl-sticker-bg"></div><div id="bbgl-sticker-container"><div id="sticker-sponsor-btn" class="sticker-nav-btn disabled">❮</div><div id="sticker-prev-btn" class="sticker-nav-btn">❮</div><div id="sticker-next-btn" class="sticker-nav-btn">❯</div><div id="bbgl-sticker-grid"></div><div id="bbgl-sticker-pagination"></div></div><div class="glass-overlay"></div></div><div id="bbgl-bottom-panel"><div class="bbgl-header-wrapper"><div class="bbgl-month-header"><div class="title-group"><div class="title-stack"><div class="header-row header-row--alltime"><div class="stats-btn" id="all-time-btn">${ICONS.CHART}</div><div class="header-trigger" id="all-time-trigger">∞</div></div><div class="header-row header-row--year"><div class="stats-btn" id="year-stats-btn">${ICONS.CHART}</div><div class="header-trigger" id="year-trigger"></div><div id="bbgl-year-dropdown" class="bbgl-dropdown-menu"></div></div><div class="header-row header-row--month"><div class="stats-btn" id="month-stats-btn">${ICONS.CHART}</div><div class="header-trigger" id="month-trigger"></div><div id="bbgl-month-dropdown" class="bbgl-dropdown-menu"></div></div></div></div><button class="arrow-btn" id="prev-month-btn">❮</button><button class="arrow-btn" id="next-month-btn">❯</button></div><div id="bbgl-level-bg">${buildEmptyLevelTrackSVG()}</div><div id="bbgl-level-container"><div id="bbgl-level-flag-clip"><span id="bbgl-level-num">Lv 1</span></div><div id="bbgl-level-track"><div id="bbgl-level-fill"></div></div></div></div><div id="bbgl-demo-exit" style="display: ${runtime.demoMode ? 'flex' : 'none'};" data-tooltip="${TOOLTIPS.DEMO_EXIT}" data-tooltip-html="${TOOLTIPS.DEMO_EXIT_HTML}">DEMO MODE</div><div class="bbgl-grid-container"><div class="bbgl-week-row">${weekRowHTML}</div><div class="calendar-wrapper" id="swipe-area"><div id="bbgl-cal-container" class="bbgl-cal-container"></div></div></div></div><div id="bbgl-item-viewer"><div class="viewer-window"><div class="viewer-stage"><div class="viewer-pedestal" id="vi-pedestal-wrapper"><div class="viewer-obj" id="vi-obj-target"><div class="layer-front"></div><div class="layer-back"></div></div></div></div></div><div class="viewer-info-overlay"><div class="vi-name" id="vi-name-target">Item Name</div></div></div><div id="bbgl-settings-view">${getSettingsHTML()}</div><div id="bbgl-welcome-view"></div></div>`;
+        return `<div class="bbgl-header" id="bbgl-header-bar"><div class="bbgl-header-left">${ICONS.LOGO}<span class="bbgl-header-text"><span class="bbgl-short-title">Big Black Log</span><span class="bbgl-long-title">Big Black Gym Log</span></span></div><div class="bbgl-header-right"><span id="bbgl-demo-exit-btn" class="close-settings-btn bbgl-close-purple" style="display:${runtime.demoMode ? 'flex' : 'none'};" data-tooltip-html="${TOOLTIPS.DEMO_EXIT_HTML}"><span class="bbgl-demo-x-label">Demo</span>${ICONS.CLOSE}</span><span id="bbgl-settings-btn" class="bbgl-custom-icon">⚙</span><span id="bbgl-close-btn" class="bbgl-native-icon">${ICONS.MINIMIZE}</span><span id="bbgl-pop-btn" class="bbgl-native-icon">${viewState.expanded ? ICONS.COMPRESS : ICONS.POPOUT}</span></div></div><div id="bbgl-content-wrapper"><div id="bbgl-top-panel"><div id="bbgl-tall-toggle">${viewState.isTall ? '–' : '+'}</div><div id="bbgl-ledger-toggle" data-tooltip="${TOOLTIPS.LEDGER_VIEW}">${ICONS.LEDGER}</div><div id="bbgl-graph-toggle" data-tooltip="${TOOLTIPS.GRAPH_VIEW}">${ICONS.GRAPH}</div><div id="bbgl-achievements-toggle" data-tooltip="${TOOLTIPS.ACHIEVEMENTS}">${ICONS.ACHIEVEMENTS}</div><div id="bbgl-sticker-toggle" data-tooltip="${TOOLTIPS.STICKERBOOK}">${ICONS.STICKERBOOK}</div><div id="bbgl-item-counters"></div><div id="bbgl-copy-btn" class="copy-hist-btn" data-tooltip="${TOOLTIPS.COPY_SESSION}">${ICONS.CLIPBOARD}</div><div id="bbgl-sticker-title"></div><div class="ui-floating-label" id="bbgl-date-label">LOADING...</div><div class="ui-floating-summary" id="bbgl-summary-label"></div><div id="bbgl-ledger-view" class="ledger-content"></div><div id="bbgl-graph-container"><div class="g-hud"><div class="g-toggles"><div class="g-pill active" data-type="mode" data-val="values">Gains</div><div class="g-pill" data-type="mode" data-val="rates">Rates</div></div><div class="g-toggles"><div class="g-pill p-str active" data-type="stat" data-val="str">STR</div><div class="g-pill p-def" data-type="stat" data-val="def">DEF</div><div class="g-pill p-spd active" data-type="stat" data-val="spd">SPD</div><div class="g-pill p-dex" data-type="stat" data-val="dex">DEX</div><div class="g-pill p-tot" data-type="stat" data-val="total">TOT</div></div></div><svg id="bbgl-graph-svg"></svg></div><div id="bbgl-achievements-container" class="ledger-content"><div class="bbgl-ach-scroll"><div id="bbgl-ach-pages"></div></div><div id="bbgl-ach-footer" class="bbgl-ach-footer"><div class="bbgl-ach-footer-side bbgl-ach-footer-left"><button type="button" class="bbgl-ach-nav bbgl-ach-prev" aria-label="Previous achievements page">\u276e</button></div><div id="bbgl-ach-pageindicator"></div><div class="bbgl-ach-footer-side bbgl-ach-footer-right"><button type="button" class="bbgl-ach-nav bbgl-ach-next" aria-label="Next achievements page">\u276f</button></div></div></div><div id="bbgl-sticker-bg"></div><div id="bbgl-sticker-container"><div id="sticker-sponsor-btn" class="sticker-nav-btn disabled">❮</div><div id="sticker-prev-btn" class="sticker-nav-btn">❮</div><div id="sticker-next-btn" class="sticker-nav-btn">❯</div><div id="bbgl-sticker-grid"></div><div id="bbgl-sticker-pagination"></div></div><div class="glass-overlay"></div></div><div id="bbgl-bottom-panel"><div id="bbgl-demo-exit" style="display: ${runtime.demoMode ? 'flex' : 'none'};" data-tooltip="${TOOLTIPS.DEMO_EXIT}" data-tooltip-html="${TOOLTIPS.DEMO_EXIT_HTML}">DEMO MODE</div><div class="bbgl-header-wrapper"><div class="bbgl-month-header"><div class="title-group"><div class="title-stack"><div class="header-row header-row--alltime"><div class="stats-btn" id="all-time-btn">${ICONS.CHART}</div><div class="header-trigger" id="all-time-trigger">∞</div></div><div class="header-row header-row--year"><div class="stats-btn" id="year-stats-btn">${ICONS.CHART}</div><div class="header-trigger" id="year-trigger"></div><div id="bbgl-year-dropdown" class="bbgl-dropdown-menu"></div></div><div class="header-row header-row--month"><div class="stats-btn" id="month-stats-btn">${ICONS.CHART}</div><div class="header-trigger" id="month-trigger"></div><div id="bbgl-month-dropdown" class="bbgl-dropdown-menu"></div></div></div></div><button class="arrow-btn" id="prev-month-btn">❮</button><button class="arrow-btn" id="next-month-btn">❯</button></div><div id="bbgl-level-bg">${buildEmptyLevelTrackSVG()}</div><div id="bbgl-level-container"><div id="bbgl-level-flag-clip"><span id="bbgl-level-num">Lv 1</span></div><div id="bbgl-level-track"><div id="bbgl-level-fill"></div></div></div></div><div class="bbgl-grid-container"><div class="bbgl-week-row">${weekRowHTML}</div><div class="calendar-wrapper" id="swipe-area"><div id="bbgl-cal-container" class="bbgl-cal-container"></div></div></div></div><div id="bbgl-item-viewer"><div class="viewer-window"><div class="viewer-stage"><div class="viewer-pedestal" id="vi-pedestal-wrapper"><div class="viewer-obj" id="vi-obj-target"><div class="layer-front"></div><div class="layer-back"></div></div></div></div></div><div class="viewer-info-overlay"><div class="vi-name" id="vi-name-target">Item Name</div></div></div><div id="bbgl-settings-view">${getSettingsHTML()}</div><div id="bbgl-welcome-view"></div></div>`;
     }
 
     /**
@@ -17048,10 +17092,7 @@ const BestGymController = {
                     const cwb = wv.querySelector('.close-settings-btn');
                     if (cwb) cwb.onclick = (e) => {
                         if (e) e.stopPropagation();
-                        if (runtime.welcomeReturn === 'settings') {
-                            runtime.welcomeReturn = null;
-                            switchView('settings');
-                        } else switchView('ledger');
+                        switchView('ledger');
                     };
                     const iak = wv.querySelector('#init-api-key');
                     if (iak) iak.value = userConfig.apiKey || '';
@@ -17375,6 +17416,7 @@ const BestGymController = {
             if (vp && vp.classList.contains('active')) runtime.returnView = 'viewer';
             else if (tp.classList.contains('viewing-graph')) runtime.returnView = 'graph';
             else if (tp.classList.contains('viewing-stickers')) runtime.returnView = 'stickers';
+            else if (tp.classList.contains('viewing-achievements')) runtime.returnView = 'achievements';
             else runtime.returnView = 'ledger';
             switchView('settings');
             viewState.subView = 'settings';
@@ -17693,7 +17735,7 @@ const BestGymController = {
                 if (userConfig.apiKey) {
                     startBackgroundSync();
                 }
-            });
+            }).finally(() => snapLevelBar());
             calendarState.selectedData = null;
             calendarState.selectedLabel = Formatter.dateLogical();
             viewState.activeViewLabel = null;
@@ -17973,7 +18015,6 @@ const BestGymController = {
             saveConfig();
             ai.value = '';
             localStorage.removeItem(KEYS.LAST_SYNC);
-            localStorage.removeItem(KEYS.BS_SYNC);
             sessionStorage.removeItem(KEYS.SESSION_CACHE);
             sessionStorage.removeItem(KEYS.SESSION);
             const ot = cab.innerText;
@@ -18023,11 +18064,10 @@ const BestGymController = {
             this.blur();
             clearData();
         };
-        const wb = get('show-welcome-btn');
-        if (wb) wb.onclick = function() {
+        const pdb = get('settings-privacy-btn');
+        if (pdb) pdb.onclick = function() {
             this.blur();
-            runtime.welcomeReturn = 'settings';
-            switchView('welcome');
+            openPrivacyModal();
         };
         const cl = get('settings-changelog-btn');
         if (cl) cl.onclick = function() {

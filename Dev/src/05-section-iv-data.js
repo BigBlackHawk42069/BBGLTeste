@@ -546,7 +546,6 @@
 
             if (mission !== 'TRAIN_SINGLE') {
                 localStorage.setItem(KEYS.LAST_SYNC, ts.toString());
-                localStorage.setItem(KEYS.BS_SYNC, ts.toString());
             }
 
             // Stat enhancer check: if battlestats shows higher values than the last recorded

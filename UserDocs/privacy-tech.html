@@ -1,0 +1,46 @@
+<div style="line-height:1.55; font-size:13px; color:#ddd;">
+
+<p style="margin:0 0 16px 0;"><a href="#" data-bbgl-doc="privacy" style="color:#8ecbff; text-decoration:underline;">&larr; Back to Privacy Disclosure</a></p>
+
+<strong style="display:block; font-size:15px; margin:0 0 8px 0;">API Technical Transparency</strong>
+<p style="margin:0 0 16px 0; color:#bbb;">A precise breakdown of every network call this script makes, for anyone who wants to verify the plain-language disclosure against the actual behavior.</p>
+
+<strong style="display:block; font-size:14px; margin:0 0 6px 0;">Key Scope</strong>
+<div style="background:rgba(160,100,255,0.08); border:1px solid rgba(160,100,255,0.25); border-radius:6px; padding:10px 12px; margin:0 0 16px 0; font-size:12px;">
+<div style="margin:0 0 4px 0;"><strong>user:</strong> battlestats, log</div>
+<div style="margin:0;"><strong>faction:</strong> rankedwars, basic</div>
+</div>
+<p style="margin:0 0 16px 0; color:#bbb;">Nothing outside this is ever requested &mdash; no messages, money, bazaar, or other players' data, and no write/POST endpoints of any kind. Every call is a plain read-only GET. After generating your key, you can further restrict its log access to Torn's "Gym" category in your own API settings.</p>
+
+<strong style="display:block; font-size:14px; margin:0 0 6px 0;">Regular Sync</strong>
+<div style="font-size:12px; margin:0 0 16px 0;">
+<div style="margin:0 0 6px 0;"><span style="color:#8ecbff;">&raquo;</span> <strong>Every 30 minutes</strong> &mdash; a background heartbeat while the panel is open. Requests battlestats plus your training/item logs (and, rarely, a 4th call for stat-enhancer logs, only if battlestats shows a stat increase since last sync).</div>
+<div style="margin:0 0 6px 0;"><span style="color:#8ecbff;">&raquo;</span> <strong>On Train click</strong> &mdash; one lightweight call for just that stat's log, debounced 1 second against rapid clicks. Does not request battlestats.</div>
+<div style="margin:0 0 6px 0;"><span style="color:#8ecbff;">&raquo;</span> <strong>On page load</strong> &mdash; if you trained and navigated away before a sync could complete, the next load catches up immediately.</div>
+<div style="margin:0;"><span style="color:#8ecbff;">&raquo;</span> <strong>Manual RESYNC button</strong> &mdash; same as the 30-minute sync, on demand.</div>
+</div>
+<p style="margin:0 0 16px 0; color:#bbb;">Each open tab keeps its own independent 30-minute timer &mdash; with several tabs open, you may see more than one sync over time rather than a single shared one.</p>
+
+<strong style="display:block; font-size:14px; margin:0 0 6px 0;">Log Types Read</strong>
+<div style="font-size:12px; margin:0 0 16px 0;">
+<div style="margin:0 0 6px 0;"><span style="color:#8ecbff;">&raquo;</span> <strong>Training</strong> (4 log types) &mdash; strength, defense, speed, dexterity.</div>
+<div style="margin:0 0 6px 0;"><span style="color:#8ecbff;">&raquo;</span> <strong>Energy items</strong> (6 log types) &mdash; green eggs, Xanax, LSD, energy cans, hotel coupons, points refills.</div>
+<div style="margin:0 0 6px 0;"><span style="color:#8ecbff;">&raquo;</span> <strong>Stat enhancers</strong> (4 log types) &mdash; parachutes, skateboards, boxing gloves, dumbbells.</div>
+<div style="margin:0 0 6px 0;"><span style="color:#8ecbff;">&raquo;</span> <strong>Happy items</strong> (4 log types) &mdash; candy, erotic DVDs, ecstasy, yellow eggs.</div>
+<div style="margin:0 0 6px 0;"><span style="color:#8ecbff;">&raquo;</span> <strong>Overdoses</strong> (3 log types) &mdash; Xanax, LSD, and Ecstasy ODs.</div>
+<div style="margin:0;"><span style="color:#8ecbff;">&raquo;</span> <strong>Faction history</strong> &mdash; join/leave record, read once per Backfill run to line up war dates.</div>
+</div>
+
+<strong style="display:block; font-size:14px; margin:0 0 6px 0;">BB Backfill</strong>
+<div style="font-size:12px; margin:0 0 16px 0;">
+<div style="margin:0 0 6px 0;"><span style="color:#8ecbff;">&raquo;</span> Walks each log category backward in pages, paced at a fixed <strong>700ms between calls</strong> (&asymp;85 calls/minute).</div>
+<div style="margin:0 0 6px 0;"><span style="color:#8ecbff;">&raquo;</span> Budgeted to <strong>40,000 rows/day</strong> (stops starting new days past this), with a <strong>42,000-row hard failsafe</strong> &mdash; kept under Torn's own 50,000-row/day cloud-read cap, which is shared across every script you run.</div>
+<div style="margin:0 0 6px 0;"><span style="color:#8ecbff;">&raquo;</span> If the daily budget is hit, a <strong>~24-hour cooldown</strong> is armed before scanning can resume &mdash; timed so every counted row has aged out of Torn's rolling 24-hour window.</div>
+<div style="margin:0 0 6px 0;"><span style="color:#8ecbff;">&raquo;</span> A separate, much shorter <strong>45-second lock</strong> exists purely to stop two tabs from scanning at once; if a scan is interrupted by a crash or refresh, this lock clears on its own within 45 seconds so Resume isn't blocked. A manual pause has no cooldown at all &mdash; Resume is available immediately.</div>
+<div style="margin:0;"><span style="color:#8ecbff;">&raquo;</span> A scan stops when it reaches the true start of your account history, hits the daily budget, or Torn itself returns a rate-limit/daily-cap error &mdash; in every case it stops cleanly rather than retrying blindly.</div>
+</div>
+
+<strong style="display:block; font-size:14px; margin:0 0 6px 0;">Staying Within Torn's Limits</strong>
+<p style="margin:0 0 8px 0; color:#bbb;">Torn enforces roughly 100 API calls/minute and a 50,000-row/day cloud-data read cap per category. This script doesn't track a live request counter against those numbers &mdash; instead it stays comfortably under them by design: the 700ms Backfill pacing caps it near 85 calls/minute, the 40,000/42,000-row budget leaves headroom under the daily cap, and regular sync only runs once per 30 minutes plus whatever your own Train clicks add. If Torn ever responds with a rate-limit or daily-cap error anyway, the script stops rather than retrying.</p>
+
+</div>

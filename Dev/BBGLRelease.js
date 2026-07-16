@@ -200,17 +200,14 @@
                     border: 1px solid #111; cursor: pointer; box-sizing: border-box; } .bbgl-tab-title-btn:hover {/*----------------------*/
                     background-image: linear-gradient(rgb(51, 51, 51) 0%, rgb(119, 119, 119) 25%, rgb(51, 51, 51) 59%, rgb(102, 102, 102) 78%, rgb(51, 51, 51) 100%);
                     color: #fff; } .bbgl-tab-title-btn .bbgl-rs-done { color: #43a047; }/*------------------------------------------------*/
-                    /* Expanded/page show the longer "RESYNC LOG"/"Syncing..." labels, which don't fit the compact-mode width with comfortable padding — widen the button rather than let its text crowd the edges. */ .bbgl-expanded .bbgl-tab-title-btn, .bbgl-mode-page .bbgl-tab-title-btn {
-                    width: 112px; } .bbgl-btn {/*-----------------------------------------------------------------------------------------*/
+                    /* Expanded/page show the longer "RESYNC LOG"/"Syncing..." labels, which don't fit the compact-mode width with comfortable padding — widen the button rather than let its text crowd the edges. */ .bbgl-expanded .bbgl-tab-title-btn, .bbgl-mode-page .bbgl-tab-title-btn { width: 112px; } .bbgl-btn {
                     background-image: linear-gradient(rgb(17, 17, 17) 0%, rgb(85, 85, 85) 25%, rgb(51, 51, 51) 60%, rgb(51, 51, 51) 78%, rgb(17, 17, 17) 100%);
                     color: #eee; font-family: "Fjalla One", Arial, serif; font-size: 14px; font-weight: 400; line-height: 34px; padding: 0;
                     border: 1px solid #111; border-radius: 5px; width: 100%; height: 34px; cursor: pointer; text-align: center;/*---------*/
                     text-transform: uppercase; box-sizing: border-box; display: block; transition: none; } .bbgl-btn:hover {/*------------*/
                     background-image: linear-gradient(rgb(51, 51, 51) 0%, rgb(119, 119, 119) 25%, rgb(51, 51, 51) 59%, rgb(102, 102, 102) 78%, rgb(51, 51, 51) 100%);
                     color: #fff; } .bbgl-btn:active { background-image: linear-gradient(#000 0%, #333 100%); color: #ddd;/*---------------*/
-                    box-shadow: rgba(255, 255, 255, .07) 0 -1px 0 0 inset; border-color: #ddd; }/*----------------------------------------*/
-                    /* Color-variant buttons share one gradient template;/*---------------------------------------------------------------*/
-                    each variant only supplies its palette. --btn-c1/c2/c3 = edge/highlight/body, *h = hover palette, --btn-ca = active top stop. */ .bbgl-btn-green {
+                    box-shadow: rgba(255, 255, 255, .07) 0 -1px 0 0 inset; border-color: #ddd; } /* Color-variant buttons share one gradient template; each variant only supplies its palette. --btn-c1/c2/c3 = edge/highlight/body, *h = hover palette, --btn-ca = active top stop. */ .bbgl-btn-green {/*------*/
                     --btn-c1: #0e1806; --btn-c2: #3e5e22; --btn-c3: #2b4216; --btn-c1h: #1a2e0b; --btn-c2h: #4f782b; --btn-c3h: #3a591e;
                     --btn-ca: #080f03; } .bbgl-btn-red { --btn-c1: #200505; --btn-c2: #701a1a; --btn-c3: #4f0e0e; --btn-c1h: #360808;/*---*/
                     --btn-c2h: #942222; --btn-c3h: #6e1313; --btn-ca: #140303; } .bbgl-btn-purple { --btn-c1: #1a0529; --btn-c2: #6a1b9a;
@@ -644,9 +641,9 @@
                     width: 100% !important; height: 100% !important; margin: 0 !important; transition: all .2s; } .copy-hist-btn:hover {
                     opacity: 1; transform: scale(1.27); filter: drop-shadow(0 0 5px rgba(255, 255, 255, .4)); }/*-------------------------*/
                     .viewing-stickers .copy-hist-btn { display: none !important; }/*------------------------------------------------------*/
-                    /* Copy session + item counters are ledger-only: hide on every non-ledger view. */ .viewing-graph .copy-hist-btn, .viewing-achievements .copy-hist-btn {
-                    display: none !important; } #bbgl-item-counters { position: absolute; top: 5.5px; right: 10%; display: none; gap: 10px;
-                    align-items: center; z-index: 60; white-space: nowrap; font-size: 10px; font-weight: 500; color: #bbb;/*--------------*/
+                    /* Copy session + item counters are ledger-only: hide on every non-ledger view. */ .viewing-graph .copy-hist-btn, .viewing-achievements .copy-hist-btn { display: none !important; }/*---*/
+                    #bbgl-item-counters { position: absolute; top: 5.5px; right: 10%; display: none; gap: 10px; align-items: center;/*----*/
+                    z-index: 60; white-space: nowrap; font-size: 10px; font-weight: 500; color: #bbb;/*-----------------------------------*/
                     font-family: 'Barlow Condensed', 'Arial Narrow', 'Nimbus Sans Narrow', Tahoma, sans-serif;/*--------------------------*/
                     font-variant-numeric: tabular-nums; height: 14px; pointer-events: auto; }/*-------------------------------------------*/
                     .bbgl-tall #bbgl-item-counters, .bbgl-mode-page #bbgl-item-counters { display: flex; }/*------------------------------*/
@@ -755,40 +752,25 @@
                     text-shadow: 0 0 8px rgba(255, 255, 255, .8); } } .arrow-btn:active { color: #fff; transform: scale(1.3);/*-----------*/
                     text-shadow: 0 0 8px rgba(255, 255, 255, .8); } .title-group { flex-grow: 1; text-align: left; padding-left: 0;/*-----*/
                     transform: translateX(0px); display: flex; flex-direction: column; justify-content: flex-start; align-items: flex-start;
-                    gap: 3px;/*-----------------------------------------------------------------------------------------------------------*/
-                    /* transform makes this a stacking-context root, so the dropdown's z-index is scoped here. */ position: relative; }/*-*/
-                    /* Only lift .title-group above #bbgl-level-container (z-index:10) while a dropdown is actually open, so the menu paints over the exp bar — the rest of the time it stays at its normal stacking position. Elevating it unconditionally (the old approach) made its whole box win any overlap with the level bar's crown/diamond badge beneath it, across the entire header row width, which is more than this ever actually needs. */ .title-group:has(.bbgl-dropdown-menu.show) {
-                    z-index: 30; }/*------------------------------------------------------------------------------------------------------*/
-                    /* gap is the single source of row-to-row spacing, shared across modes by default so every row-pair gap matches. Only override it (paired with a compensating margin-top so the bottom row doesn't move) when a mode genuinely needs a different value — see .bbgl-compact below. */ .title-stack {
-                    display: flex; flex-direction: column; align-items: flex-start; gap: 3px; } #bbgl-panel.bbgl-expanded .title-stack {
-                    margin-top: -4px; } #bbgl-panel.bbgl-expanded .title-group { gap: 6px; transform: translateX(-6px); }/*---------------*/
-                    #bbgl-panel.bbgl-compact .title-group { gap: 1px; } /* Gap reduced 1px (3px -> 2px) for both row-pairs;/*-------------*/
-                    margin-top pushes the whole stack down by 2px (1px per shrunk gap, compounding down to the bottom row) so the month row — the last one — stays exactly where it was before this change. */ #bbgl-panel.bbgl-compact .title-stack {
-                    gap: 2px; margin-top: 2px; }/*----------------------------------------------------------------------------------------*/
-                    /* Gap now fluid: 7px at min panel width -> 15px at max (was a flat 11px, which is why it looked unchanged at max size). margin-top compensates 2px per px of gap growth (both gaps, compounding down to the bottom row) against the true 3px original gap, so month stays anchored across the whole width range, not just at the two ends. NOTE: the original -8px/-12px bounds here were already a dead clamp (backwards min/max order == always evaluates to -8px flat) predating this change — left as-is, just accounted for correctly. */ #bbgl-panel.bbgl-mode-page .title-stack {
-                    gap: clamp(7px, calc(7px + 8px * var(--bbgl-page-t)), 15px);/*--------------------------------------------------------*/
+                    gap: 3px; /* transform makes this a stacking-context root, so the dropdown's z-index is scoped here. */ position: relative; } /* Only lift .title-group above #bbgl-level-container (z-index:10) while a dropdown is actually open, so the menu paints over the exp bar — the rest of the time it stays at its normal stacking position. Elevating it unconditionally (the old approach) made its whole box win any overlap with the level bar's crown/diamond badge beneath it, across the entire header row width, which is more than this ever actually needs. */ .title-group:has(.bbgl-dropdown-menu.show) {/*--------*/
+                    z-index: 30; } /* gap is the single source of row-to-row spacing, shared across modes by default so every row-pair gap matches. Only override it (paired with a compensating margin-top so the bottom row doesn't move) when a mode genuinely needs a different value — see .bbgl-compact below. */ .title-stack { display: flex; flex-direction: column; align-items: flex-start; gap: 3px;
+                    } #bbgl-panel.bbgl-expanded .title-stack { margin-top: -4px; } #bbgl-panel.bbgl-expanded .title-group { gap: 6px;/*---*/
+                    transform: translateX(-6px); } #bbgl-panel.bbgl-compact .title-group { gap: 1px; }/*----------------------------------*/
+                    /* Gap reduced 1px (3px -> 2px) for both row-pairs; margin-top pushes the whole stack down by 2px (1px per shrunk gap, compounding down to the bottom row) so the month row — the last one — stays exactly where it was before this change. */ #bbgl-panel.bbgl-compact .title-stack { gap: 2px; margin-top: 2px; }/*--------------------------------*/
+                    /* Gap now fluid: 7px at min panel width -> 15px at max (was a flat 11px, which is why it looked unchanged at max size). margin-top compensates 2px per px of gap growth (both gaps, compounding down to the bottom row) against the true 3px original gap, so month stays anchored across the whole width range, not just at the two ends. NOTE: the original -8px/-12px bounds here were already a dead clamp (backwards min/max order == always evaluates to -8px flat) predating this change — left as-is, just accounted for correctly. */ #bbgl-panel.bbgl-mode-page .title-stack { gap: clamp(7px, calc(7px + 8px * var(--bbgl-page-t)), 15px);
                     margin-top: clamp(-32px, calc(-16px - 16px * var(--bbgl-page-t)), -16px); } #bbgl-panel.bbgl-mode-page .title-group {
-                    gap: clamp(6px, calc(8px - 2px * var(--bbgl-page-t)), 8px); }/*-------------------------------------------------------*/
-                    /* NOTE: #all-time-btn only ever carries class="stats-btn" — a former .all-time-btn class rule set here never matched anything and was removed. Sizing/hover for the all-time icon comes entirely from the shared .stats-btn rules below. */ /* Row height is pinned to the icon's own height (identical in every row), NOT the label's — labels vary wildly in size (9px-34px) and would otherwise make row height, and thus the gap between icons, inconsistent per row. The icon therefore always exactly fills its row;
-                    a label taller than the row overflows upward, which is harmless. align-items:flex-end (not center) because .stats-btn's SVG is only 78% of its own box and bottom-aligned within it — the box's visual bottom matches its box-bottom exactly, but its visual top doesn't, so bottom-alignment is what actually lines up the visible icon and label;
-                    centering the boxes would not center the visible content. .stats-btn / .header-trigger both add the same hardcoded -6px settled offset so they move together. --trigger-lift / --btn-lift: live per-element tuning knobs (delta from the settled -6px baseline), default 0 = no change. --btn-hover-adjust: per-row hover-jump correction. */ .header-row {
+                    gap: clamp(6px, calc(8px - 2px * var(--bbgl-page-t)), 8px); } /* NOTE: #all-time-btn only ever carries class="stats-btn" — a former .all-time-btn class rule set here never matched anything and was removed. Sizing/hover for the all-time icon comes entirely from the shared .stats-btn rules below. */ /* Row height is pinned to the icon's own height (identical in every row), NOT the label's — labels vary wildly in size (9px-34px) and would otherwise make row height, and thus the gap between icons, inconsistent per row. The icon therefore always exactly fills its row; a label taller than the row overflows upward, which is harmless. align-items:flex-end (not center) because .stats-btn's SVG is only 78% of its own box and bottom-aligned within it — the box's visual bottom matches its box-bottom exactly, but its visual top doesn't, so bottom-alignment is what actually lines up the visible icon and label; centering the boxes would not center the visible content. .stats-btn / .header-trigger both add the same hardcoded -6px settled offset so they move together. --trigger-lift / --btn-lift: live per-element tuning knobs (delta from the settled -6px baseline), default 0 = no change. --btn-hover-adjust: per-row hover-jump correction. */ .header-row {/*---------*/
                     display: flex; align-items: flex-end; gap: 2px; position: relative; height: 16px; --trigger-lift: 0px; --btn-lift: 0px;
                     --btn-hover-adjust: 0px; } #bbgl-panel.bbgl-expanded .header-row { gap: 6px;/*----------------------------------------*/
                     height: clamp(20px, calc(4.86cqi - 1px), 27px); --btn-lift: -4px; } #bbgl-panel.bbgl-expanded .header-row--month {/*--*/
                     --btn-lift: -1px; } #bbgl-panel.bbgl-mode-page .header-row { gap: clamp(3px, calc(3px + 3px * var(--bbgl-page-t)), 6px);
-                    height: clamp(21px, calc(21px + 10px * var(--bbgl-page-t)), 31px); }/*------------------------------------------------*/
-                    /* Row-to-row spacing comes ONLY from .title-stack's gap above — every row is a fixed, identical height (icon-sized), so the gap between any two adjacent rows is guaranteed equal in every panel mode, both mathematically and visually. */ .header-row--year {
-                    --btn-hover-adjust: 1px; --trigger-lift: 2px; }/*---------------------------------------------------------------------*/
-                    /* Year label only: vertically centered against the row/icon, independent of month/all-time which stay bottom-aligned. --trigger-lift is left at its default 0px (NOT cancelled) so the label keeps the same shared -6px shift the icon has — align-self:center centers their pre-transform layout boxes against each other, then both move up together, preserving that centered relationship at the actual rendered position. */ #year-trigger {
-                    align-self: center; }/*-----------------------------------------------------------------------------------------------*/
-                    /* Page mode only: year reverts to the same bottom-alignment as month/all-time (both the align-self override above and the centered-tuning --trigger-lift are undone here). */ #bbgl-panel.bbgl-mode-page .header-row--year {
-                    --trigger-lift: 0px; } #bbgl-panel.bbgl-mode-page #year-trigger { align-self: flex-end; }/*---------------------------*/
-                    /* #all-time-trigger's font is by far the largest of the three (20-34px vs 9-29px), so line-height:1's descent reservation is proportionally biggest here — nudge the label down to compensate. Starting estimate, not measured against a live render;
-                    adjust as needed. */ .header-row--alltime { --trigger-lift: 3px; } .stats-btn { display: flex; align-items: flex-end;
-                    justify-content: center; pointer-events: none; opacity: .95; transition: all .2s; align-self: flex-end;/*-------------*/
-                    transform-origin: center bottom; transform: translate(-5px, calc(-6px + var(--btn-lift, 0px))); }/*-------------------*/
-                    /* Hover jump is a per-mode absolute (not a delta from rest): page -4px, expanded -6px, compact -7px;/*---------------*/
-                    --btn-hover-adjust (set per-row, e.g. .header-row--year) shifts it +1px shallower. */ .stats-btn:hover, .stats-btn.active {
+                    height: clamp(21px, calc(21px + 10px * var(--bbgl-page-t)), 31px); } /* Row-to-row spacing comes ONLY from .title-stack's gap above — every row is a fixed, identical height (icon-sized), so the gap between any two adjacent rows is guaranteed equal in every panel mode, both mathematically and visually. */ .header-row--year {/*-----------*/
+                    --btn-hover-adjust: 1px; --trigger-lift: 2px; } /* Year label only: vertically centered against the row/icon, independent of month/all-time which stay bottom-aligned. --trigger-lift is left at its default 0px (NOT cancelled) so the label keeps the same shared -6px shift the icon has — align-self:center centers their pre-transform layout boxes against each other, then both move up together, preserving that centered relationship at the actual rendered position. */ #year-trigger { align-self: center; }/*--------------*/
+                    /* Page mode only: year reverts to the same bottom-alignment as month/all-time (both the align-self override above and the centered-tuning --trigger-lift are undone here). */ #bbgl-panel.bbgl-mode-page .header-row--year { --trigger-lift: 0px; }/*------------------------------*/
+                    #bbgl-panel.bbgl-mode-page #year-trigger { align-self: flex-end; } /* #all-time-trigger's font is by far the largest of the three (20-34px vs 9-29px), so line-height:1's descent reservation is proportionally biggest here — nudge the label down to compensate. Starting estimate, not measured against a live render; adjust as needed. */ .header-row--alltime {/*----------*/
+                    --trigger-lift: 3px; } .stats-btn { display: flex; align-items: flex-end; justify-content: center; pointer-events: none;
+                    opacity: .95; transition: all .2s; align-self: flex-end; transform-origin: center bottom;/*---------------------------*/
+                    transform: translate(-5px, calc(-6px + var(--btn-lift, 0px))); } /* Hover jump is a per-mode absolute (not a delta from rest): page -4px, expanded -6px, compact -7px; --btn-hover-adjust (set per-row, e.g. .header-row--year) shifts it +1px shallower. */ .stats-btn:hover, .stats-btn.active {
                     opacity: 1; transform: translate(-5px, calc(var(--btn-hover-jump, -6px) + var(--btn-hover-adjust, 0px))) scale(1.15);
                     filter: drop-shadow(0 0 6px rgba(216, 150, 224, 0.9)) drop-shadow(0 0 2px rgba(171, 71, 188, 1)); }/*-----------------*/
                     #bbgl-panel.bbgl-compact .header-row { --btn-hover-jump: -7px; --btn-lift: -2.5px; }/*--------------------------------*/
@@ -836,10 +818,9 @@
                     .bbgl-day-cell { flex: 1; aspect-ratio: 1/1; display: block; position: relative; cursor: pointer; background: 0 0;/*--*/
                     box-shadow: none; border-bottom: 1px solid rgba(255, 255, 255, .05); border-right: 1px solid rgba(255, 255, 255, .05);
                     transition: transform .1s; overflow: hidden; user-select: none; -webkit-user-select: none; } .bbgl-day-cell.empty {/*-*/
-                    background: 0 0; box-shadow: none; cursor: default; pointer-events: none; }/*-----------------------------------------*/
-                    /* Event post-it notes — War and OD visual indicators on calendar cells. */ .bbgl-event-post-it { position: absolute;
-                    top: calc(4% - max(0, var(--stack-total, 1) - 1) * 6% + var(--ei, 0) * 9%); left: 4%; width: 92%; height: 92%;/*------*/
-                    background: no-repeat center / contain; z-index: 17; filter: drop-shadow(-2px 4px 5px rgba(0, 0, 0, .4));/*-----------*/
+                    background: 0 0; box-shadow: none; cursor: default; pointer-events: none; } /* Event post-it notes — War and OD visual indicators on calendar cells. */ .bbgl-event-post-it {/*--*/
+                    position: absolute; top: calc(4% - max(0, var(--stack-total, 1) - 1) * 6% + var(--ei, 0) * 9%); left: 4%; width: 92%;
+                    height: 92%; background: no-repeat center / contain; z-index: 17; filter: drop-shadow(-2px 4px 5px rgba(0, 0, 0, .4));
                     transform-origin: top right; transition: transform .35s ease-out, top .35s ease-out; pointer-events: none;/*----------*/
                     transform: rotate(calc(-4deg + var(--ei, 0) * -3deg)); }/*------------------------------------------------------------*/
                     /* Sticker awarded that day (cleared or not): the whole stack peels together. Staggered so the topmost note (the one covering everything) leaves with zero delay the moment you hover, while notes further down follow in sequence behind it. */ body:not(.is-touch-device) .bbgl-day-cell:not(.empty):has(.sticker-wrapper):hover .bbgl-event-post-it, .bbgl-day-cell.is-scrub-hovered:has(.sticker-wrapper) .bbgl-event-post-it, .bbgl-day-cell.is-viewing:has(.sticker-wrapper) .bbgl-event-post-it {
@@ -860,8 +841,8 @@
                     background: linear-gradient(135deg, transparent 25%, rgba(255, 240, 180, 1) 45%, rgba(255, 255, 255, 1.0) 50%, rgba(255, 240, 180, 1) 55%, transparent 75%);
                     background-size: 200% auto; mix-blend-mode: soft-light; opacity: 0; transition: opacity .2s; }/*----------------------*/
                     .jewel-type-green .jewel-asset { transform: scale(1.23) translateZ(0); backface-visibility: hidden;/*-----------------*/
-                    -webkit-backface-visibility: hidden; } /* Green and diamond jewels share the same shine gradients;/*------------------*/
-                    only the transforms differ per type. */ .jewel-type-green .jewel-shine, .jewel-type-diamond .jewel-shine {/*----------*/
+                    -webkit-backface-visibility: hidden; }/*------------------------------------------------------------------------------*/
+                    /* Green and diamond jewels share the same shine gradients; only the transforms differ per type. */ .jewel-type-green .jewel-shine, .jewel-type-diamond .jewel-shine {/*---------------------------------*/
                     background: linear-gradient(120deg, transparent 10%, rgba(0, 220, 110, .4) 28%, rgba(180, 255, 210, .95) 40%, rgba(255, 255, 255, 1.0) 50%, rgba(180, 255, 210, .95) 60%, rgba(0, 220, 110, .4) 72%, transparent 90%);
                     background-size: 300% auto; mix-blend-mode: screen; opacity: 0; }/*---------------------------------------------------*/
                     .jewel-type-green .jewel-shine-over, .jewel-type-diamond .jewel-shine-over { position: absolute; z-index: 3;/*--------*/
@@ -925,47 +906,40 @@
                     box-shadow: 0 0 5px rgba(255, 255, 255, .3), inset 0 2px 5px rgba(0, 0, 0, .8); } .bbgl-weekly-track.track-polished {
                     box-shadow: 0 1px 3px rgba(0, 0, 0, .5); }/*--------------------------------------------------------------------------*/
                     #bbgl-panel.bbgl-no-animations .bbgl-day-cell.is-viewing :is(.jewel-type-gold .jewel-shine, .jewel-type-green .jewel-shine, .jewel-type-green .jewel-shine-over, .jewel-type-diamond .jewel-shine, .jewel-type-diamond .jewel-shine-over, .sticker-shine) {
-                    animation: none !important; opacity: 0 !important; }/*----------------------------------------------------------------*/
-                    /* Weekly-bar capsule sweep — was per-capsule SMIL (<animateTransform>/<animate>) inside the SVG, then a shared CSS animation on an SVG shape. Neither got a real GPU compositor layer (inline SVG shapes don't reliably get one for transform/opacity, especially combined with clip-path), so both still forced real per-frame repainting. This is now a plain HTML overlay instead: each lit capsule's fill window gets a small position:absolute, overflow:hidden div (bbgl-cap-win) placed over the SVG via percentages of the shared track (the SVG's viewBox scales the same way, so they stay aligned at any panel size), containing the animated gradient band (bbgl-cap-sweep). overflow:hidden is a reliably GPU-composited clip, unlike SVG clip-path, so the animation itself is now genuinely compositor-only. */ .bbgl-cap-overlay {
-                    position: absolute; inset: 0; pointer-events: none; } .bbgl-cap-win { position: absolute; overflow: hidden; }/*-------*/
-                    .bbgl-cap-sweep { position: absolute; inset: 0; opacity: 0; }/*-------------------------------------------------------*/
-                    /* Only animate while the row is actually being looked at — hovered, the currently-viewed week, or touch-scrubbed. At rest the sweep is an inert, non-animating opacity:0 div (near-zero cost);
-                    this cuts the number of simultaneously-animating sweeps from "every completed week on screen" down to "at most the one row the mouse is on". */ .bbgl-weekly-track:hover .bbgl-cap-sweep, .bbgl-weekly-track.is-viewing .bbgl-cap-sweep, .bbgl-weekly-track.is-scrub-hovered .bbgl-cap-sweep {
+                    animation: none !important; opacity: 0 !important; } /* Weekly-bar capsule sweep — was per-capsule SMIL (<animateTransform>/<animate>) inside the SVG, then a shared CSS animation on an SVG shape. Neither got a real GPU compositor layer (inline SVG shapes don't reliably get one for transform/opacity, especially combined with clip-path), so both still forced real per-frame repainting. This is now a plain HTML overlay instead: each lit capsule's fill window gets a small position:absolute, overflow:hidden div (bbgl-cap-win) placed over the SVG via percentages of the shared track (the SVG's viewBox scales the same way, so they stay aligned at any panel size), containing the animated gradient band (bbgl-cap-sweep). overflow:hidden is a reliably GPU-composited clip, unlike SVG clip-path, so the animation itself is now genuinely compositor-only. */ .bbgl-cap-overlay { position: absolute; inset: 0;
+                    pointer-events: none; } .bbgl-cap-win { position: absolute; overflow: hidden; } .bbgl-cap-sweep { position: absolute;
+                    inset: 0; opacity: 0; }/*---------------------------------------------------------------------------------------------*/
+                    /* Only animate while the row is actually being looked at — hovered, the currently-viewed week, or touch-scrubbed. At rest the sweep is an inert, non-animating opacity:0 div (near-zero cost); this cuts the number of simultaneously-animating sweeps from "every completed week on screen" down to "at most the one row the mouse is on". */ .bbgl-weekly-track:hover .bbgl-cap-sweep, .bbgl-weekly-track.is-viewing .bbgl-cap-sweep, .bbgl-weekly-track.is-scrub-hovered .bbgl-cap-sweep {
                     will-change: transform, opacity; }/*----------------------------------------------------------------------------------*/
                     /* Two one-way local passes per capsule (see CAP_WIN_DELAY_FWD_S/BWD_S in buildCapsuleBar) instead of one capsule-local bounce — that's what makes the whole bar read as one band traveling to the far end and back, rather than each capsule bouncing on its own. */ .bbgl-weekly-track:hover .bbgl-cap-sweep-pass-fwd, .bbgl-weekly-track.is-viewing .bbgl-cap-sweep-pass-fwd, .bbgl-weekly-track.is-scrub-hovered .bbgl-cap-sweep-pass-fwd {
                     animation: bbgl-cap-sweep-move-fwd-kf 4s cubic-bezier(.3, 0, .7, 1) infinite, bbgl-cap-sweep-fade-pass-kf 4s linear infinite;
                     }/*-------------------------------------------------------------------------------------------------------------------*/
                     .bbgl-weekly-track:hover .bbgl-cap-sweep-pass-bwd, .bbgl-weekly-track.is-viewing .bbgl-cap-sweep-pass-bwd, .bbgl-weekly-track.is-scrub-hovered .bbgl-cap-sweep-pass-bwd {
                     animation: bbgl-cap-sweep-move-bwd-kf 4s cubic-bezier(.3, 0, .7, 1) infinite, bbgl-cap-sweep-fade-pass-kf 4s linear infinite;
-                    }/*-------------------------------------------------------------------------------------------------------------------*/
-                    /* Wide pure-white plateau at the core (not just a point) flanked by near-white, fading through the tier's own hue at the edges — a bigger, bolder flash. Still a static background, so only transform/opacity animate and the compositor-only behavior from earlier is unaffected. */ .bbgl-cap-sweep-green {
+                    } /* Wide pure-white plateau at the core (not just a point) flanked by near-white, fading through the tier's own hue at the edges — a bigger, bolder flash. Still a static background, so only transform/opacity animate and the compositor-only behavior from earlier is unaffected. */ .bbgl-cap-sweep-green {/*--------------------------------------------------------------------------*/
                     background: linear-gradient(90deg, rgba(68, 255, 0, 0) 0%, rgba(120, 255, 60, .95) 15%, rgba(210, 255, 190, 1) 35%, rgba(255, 255, 255, 1) 45%, rgba(255, 255, 255, 1) 55%, rgba(210, 255, 190, 1) 65%, rgba(120, 255, 60, .95) 85%, rgba(68, 255, 0, 0) 100%);
                     } .bbgl-cap-sweep-gold {/*--------------------------------------------------------------------------------------------*/
                     background: linear-gradient(90deg, rgba(255, 170, 0, 0) 0%, rgba(255, 210, 80, .95) 15%, rgba(255, 252, 230, 1) 35%, rgba(255, 255, 255, 1) 45%, rgba(255, 255, 255, 1) 55%, rgba(255, 252, 230, 1) 65%, rgba(255, 210, 80, .95) 85%, rgba(255, 170, 0, 0) 100%);
                     } .bbgl-cap-sweep-diamond {/*-----------------------------------------------------------------------------------------*/
                     background: linear-gradient(90deg, rgba(170, 68, 255, 0) 0%, rgba(215, 160, 255, .95) 15%, rgba(245, 245, 255, 1) 35%, rgba(255, 255, 255, 1) 45%, rgba(255, 255, 255, 1) 55%, rgba(225, 245, 255, 1) 65%, rgba(160, 215, 255, .95) 85%, rgba(68, 170, 255, 0) 100%);
-                    }/*-------------------------------------------------------------------------------------------------------------------*/
-                    /* One-way local pass, left-to-right — this is the "outbound" leg. Each capsule's own copy is delayed by CAP_WIN_DELAY_FWD_S so the whole row of capsules lights up in left-to-right order, like a single band traveling the length of the bar rather than each capsule bouncing independently. */ @keyframes bbgl-cap-sweep-move-fwd-kf {
-                    0% { transform: translateX(-100%) } 15%, 100% { transform: translateX(100%) } }/*-------------------------------------*/
-                    /* The "return" leg — same shape, opposite direction. Delayed per-capsule by CAP_WIN_DELAY_BWD_S, which runs in REVERSE order (rightmost capsule first) and only starts once every capsule's forward pass has finished, so the band appears to arrive at the right end, then travel all the way back. */ @keyframes bbgl-cap-sweep-move-bwd-kf {
-                    0% { transform: translateX(100%) } 15%, 100% { transform: translateX(-100%) } }/*-------------------------------------*/
-                    /* Shared fade shape for both legs — fade in, a real sustained plateau at full brightness (not just a fleeting peak), fade out, then invisible for the rest of that leg's own idle stretch. */ @keyframes bbgl-cap-sweep-fade-pass-kf {
-                    0%, 15%, 100% { opacity: 0 } 3.75%, 11.25% { opacity: 1 } } #bbgl-panel.bbgl-no-animations .bbgl-cap-sweep {/*--------*/
-                    animation: none; opacity: 0; } #bbgl-panel.bbgl-no-rates .g-pill[data-val="rates"] { display: none; }/*---------------*/
+                    } /* One-way local pass, left-to-right — this is the "outbound" leg. Each capsule's own copy is delayed by CAP_WIN_DELAY_FWD_S so the whole row of capsules lights up in left-to-right order, like a single band traveling the length of the bar rather than each capsule bouncing independently. */ @keyframes bbgl-cap-sweep-move-fwd-kf { 0% { transform: translateX(-100%) } 15%, 100% {/*----------*/
+                    transform: translateX(100%) } } /* The "return" leg — same shape, opposite direction. Delayed per-capsule by CAP_WIN_DELAY_BWD_S, which runs in REVERSE order (rightmost capsule first) and only starts once every capsule's forward pass has finished, so the band appears to arrive at the right end, then travel all the way back. */ @keyframes bbgl-cap-sweep-move-bwd-kf { 0% {/*-----------------------*/
+                    transform: translateX(100%) } 15%, 100% { transform: translateX(-100%) } }/*------------------------------------------*/
+                    /* Shared fade shape for both legs — fade in, a real sustained plateau at full brightness (not just a fleeting peak), fade out, then invisible for the rest of that leg's own idle stretch. */ @keyframes bbgl-cap-sweep-fade-pass-kf { 0%, 15%, 100% { opacity: 0 } 3.75%, 11.25% { opacity: 1 } }
+                    #bbgl-panel.bbgl-no-animations .bbgl-cap-sweep { animation: none; opacity: 0; }/*-------------------------------------*/
+                    #bbgl-panel.bbgl-no-rates .g-pill[data-val="rates"] { display: none; }/*----------------------------------------------*/
                     #bbgl-panel.bbgl-no-rates .c-gain.cell-stack, #bbgl-panel.bbgl-no-rates .c-gain { justify-content: center; }/*--------*/
                     #bbgl-panel.bbgl-no-rates .c-gain .l-bot { min-height: 0; } .bbgl-cap-svg { display: block; width: 100%; height: 100%; }
-                    /* ─── Weekly Bar Handle ─────────────────────────────────── */ .bbgl-bar-handle { position: absolute; bottom: 0;/*---*/
-                    left: 0; width: var(--bbgl-tab-w); height: 24px; z-index: 110; pointer-events: auto; cursor: pointer;/*---------------*/
-                    border-radius: 5px 5px 0 0; box-sizing: border-box; padding: 3px 5px 3px; background-color: #202020;/*----------------*/
+                    /* ─── Weekly Bar Handle ─────────────────────────────────── */ .bbgl-bar-handle { position: absolute; bottom: 0; left: 0; width: var(--bbgl-tab-w); height: 24px;/*-*/
+                    z-index: 110; pointer-events: auto; cursor: pointer; border-radius: 5px 5px 0 0; box-sizing: border-box;/*------------*/
+                    padding: 3px 5px 3px; background-color: #202020;/*--------------------------------------------------------------------*/
                     background-image: linear-gradient(180deg, #202020 0%, #363636 40%, #404040 50%, #363636 60%, #181818 100%);/*---------*/
                     background-size: 100% var(--bbgl-track-h); background-position: bottom center; background-repeat: no-repeat;/*--------*/
-                    /* 3D edge highlights on raised tab — no right-edge shadow to avoid junction seam */ box-shadow: inset 0 1px 0 rgba(255,255,255,.22), inset 1px 0 0 rgba(255,255,255,.14);
+                    /* 3D edge highlights on raised tab — no right-edge shadow to avoid junction seam */ box-shadow: inset 0 1px 0 rgba(255,255,255,.22), inset 1px 0 0 rgba(255,255,255,.14);/*--------------*/
                     transition: height .2s cubic-bezier(.18, .89, .32, 1.28), box-shadow .15s ease; } .bbgl-bar-handle svg { display: block;
-                    width: 100%; height: 100%; overflow: hidden; } /* Compact: shorter tab */ #bbgl-panel.bbgl-compact .bbgl-bar-handle {
-                    height: 20px; padding: 2px 4px 2px; }/*-------------------------------------------------------------------------------*/
-                    /* Expanded: clamp height with panel width */ #bbgl-panel.bbgl-expanded .bbgl-bar-handle {/*--------------------------*/
-                    height: clamp(20px, 4.2cqi, 24px); }/*--------------------------------------------------------------------------------*/
-                    /* Page mode: clamp height with --bbgl-page-t */ #bbgl-panel.bbgl-mode-page .bbgl-bar-handle {/*----------------------*/
+                    width: 100%; height: 100%; overflow: hidden; } /* Compact: shorter tab */ #bbgl-panel.bbgl-compact .bbgl-bar-handle {/*---------*/
+                    height: 20px; padding: 2px 4px 2px; } /* Expanded: clamp height with panel width */ #bbgl-panel.bbgl-expanded .bbgl-bar-handle {/*-----------------*/
+                    height: clamp(20px, 4.2cqi, 24px); } /* Page mode: clamp height with --bbgl-page-t */ #bbgl-panel.bbgl-mode-page .bbgl-bar-handle {/*-----------------*/
                     height: clamp(22px, calc(22px + 4px * var(--bbgl-page-t)), 26px); }/*-------------------------------------------------*/
                     body:not(.is-touch-device) .bbgl-weekly-track:hover ~ .bbgl-bar-handle, .bbgl-weekly-track.is-scrub-hovered ~ .bbgl-bar-handle, .bbgl-weekly-track.is-viewing ~ .bbgl-bar-handle, body:not(.is-touch-device) .bbgl-bar-handle:hover {
                     height: 32px; --bbgl-handle-active-h: 32px;/*-------------------------------------------------------------------------*/
@@ -984,23 +958,16 @@
                     body:not(.is-touch-device) #bbgl-panel.bbgl-mode-page .bbgl-weekly-track:hover ~ .bbgl-bar-handle, #bbgl-panel.bbgl-mode-page .bbgl-weekly-track.is-scrub-hovered ~ .bbgl-bar-handle, #bbgl-panel.bbgl-mode-page .bbgl-weekly-track.is-viewing ~ .bbgl-bar-handle, body:not(.is-touch-device) #bbgl-panel.bbgl-mode-page .bbgl-bar-handle:hover {
                     height: clamp(30px, calc(30px + 6px * var(--bbgl-page-t)), 36px);/*---------------------------------------------------*/
                     --bbgl-handle-active-h: clamp(30px, calc(30px + 6px * var(--bbgl-page-t)), 36px); }/*---------------------------------*/
-                    #bbgl-panel.bbgl-no-animations .bbgl-bar-handle { transition: none; }/*-----------------------------------------------*/
-                    /* ─── Level EXP Bar — Structural ────────────────────── */ #bbgl-level-container { position: absolute; bottom: 0;/*--*/
-                    left: 0; right: 0; height: 18px;/*------------------------------------------------------------------------------------*/
-                    /* Track height for this mode, shared by the flag-clip cut line and the A2 diamond's bottom anchor so they stay in sync. Overridden per mode. */ --bbgl-track-h: 9px;
-                    display: flex; flex-direction: column; align-items: center; justify-content: flex-end; pointer-events: none;/*--------*/
-                    z-index: 10; }/*------------------------------------------------------------------------------------------------------*/
-                    /* Sibling of #bbgl-level-container, painted behind it, holding the housing SVG. Never clipped. */ #bbgl-level-bg {/*-*/
-                    position: absolute; bottom: 0; left: 0; right: 0; height: 9px; pointer-events: none; }/*------------------------------*/
-                    /* Wraps the tucking badge — both the text flag (#bbgl-level-num) and, for A2, the diamond crown (::before). A normal, non-transformed flex item whose bottom edge sits at the top of the bar (track height above the container bottom). The NEGATIVE clip bottom-inset pushes the cut line DOWN from there to about halfway into the bar, so the badge rests fully visible on top of the bar and only gets sliced once it has tucked down past the midpoint. Left/right insets are opened up (-9999px) so the wide diamond isn't clipped on its sides — only the bottom cut matters. Because this wrapper never transforms, that cut line is screen-fixed: the badge translateY()s through it during the crown-tuck/rise animation, instead of the clip boundary sliding along with the badge (which is what happens if the clip is on the transformed badge itself). */ #bbgl-level-flag-clip {
-                    position: relative; z-index: 3; flex-shrink: 0;/*---------------------------------------------------------------------*/
-                    clip-path: inset(-9999px -9999px calc(var(--bbgl-track-h) * -0.5) -9999px);/*-----------------------------------------*/
-                    /* #bbgl-level-container (panel version) is pointer-events:none since it's an absolute overlay that shouldn't block calendar clicks underneath it — re-enable it here so the level tooltip is still hoverable/tappable. */ pointer-events: auto;
-                    }/*-------------------------------------------------------------------------------------------------------------------*/
-                    /* Single shared rule for every atrophy-tier badge graphic (A0 crown, A2 diamond, ...) instead of setting pointer-events on each tier's own ::before block individually — whichever one is actually generated (content: '' set by its own [data-atrophy="N"]-scoped rule) picks this up. */ #bbgl-level-flag-clip::before, #bbgl-gym-level-container::before {
-                    pointer-events: auto; } #bbgl-level-num { font-family: 'Aldrich', 'Fjalla One', 'Arial Narrow', sans-serif;/*---------*/
-                    font-size: clamp(7px, 1.8cqi, 10px); font-weight: 700; letter-spacing: 0.5px; line-height: 1; white-space: nowrap;/*--*/
-                    position: relative; display: block; transform-origin: bottom center; }/*----------------------------------------------*/
+                    #bbgl-panel.bbgl-no-animations .bbgl-bar-handle { transition: none; } /* ─── Level EXP Bar — Structural ────────────────────── */ #bbgl-level-container {/*------*/
+                    position: absolute; bottom: 0; left: 0; right: 0; height: 18px; /* Track height for this mode, shared by the flag-clip cut line and the A2 diamond's bottom anchor so they stay in sync. Overridden per mode. */ --bbgl-track-h: 9px; display: flex;
+                    flex-direction: column; align-items: center; justify-content: flex-end; pointer-events: none; z-index: 10; }/*--------*/
+                    /* Sibling of #bbgl-level-container, painted behind it, holding the housing SVG. Never clipped. */ #bbgl-level-bg { position: absolute; bottom: 0; left: 0; right: 0; height: 9px; pointer-events: none; }
+                    /* Wraps the tucking badge — both the text flag (#bbgl-level-num) and, for A2, the diamond crown (::before). A normal, non-transformed flex item whose bottom edge sits at the top of the bar (track height above the container bottom). The NEGATIVE clip bottom-inset pushes the cut line DOWN from there to about halfway into the bar, so the badge rests fully visible on top of the bar and only gets sliced once it has tucked down past the midpoint. Left/right insets are opened up (-9999px) so the wide diamond isn't clipped on its sides — only the bottom cut matters. Because this wrapper never transforms, that cut line is screen-fixed: the badge translateY()s through it during the crown-tuck/rise animation, instead of the clip boundary sliding along with the badge (which is what happens if the clip is on the transformed badge itself). */ #bbgl-level-flag-clip { position: relative; z-index: 3; flex-shrink: 0;/*----------------------------*/
+                    clip-path: inset(-9999px -9999px calc(var(--bbgl-track-h) * -0.5) -9999px); /* #bbgl-level-container (panel version) is pointer-events:none since it's an absolute overlay that shouldn't block calendar clicks underneath it — re-enable it here so the level tooltip is still hoverable/tappable. */ pointer-events: auto; }
+                    /* Single shared rule for every atrophy-tier badge graphic (A0 crown, A2 diamond, ...) instead of setting pointer-events on each tier's own ::before block individually — whichever one is actually generated (content: '' set by its own [data-atrophy="N"]-scoped rule) picks this up. */ #bbgl-level-flag-clip::before, #bbgl-gym-level-container::before { pointer-events: auto; }/*---------*/
+                    #bbgl-level-num { font-family: 'Aldrich', 'Fjalla One', 'Arial Narrow', sans-serif; font-size: clamp(7px, 1.8cqi, 10px);
+                    font-weight: 700; letter-spacing: 0.5px; line-height: 1; white-space: nowrap; position: relative; display: block;/*---*/
+                    transform-origin: bottom center; }/*----------------------------------------------------------------------------------*/
                     #bbgl-panel.bbgl-compact #bbgl-level-num .bbgl-lv-prefix, #bbgl-gym-level-num .bbgl-lv-prefix { display: none; }/*----*/
                     #bbgl-level-track, #bbgl-gym-level-track { position: relative; z-index: 2; width: 100%; height: 9px; flex-shrink: 0;
                     border-radius: 0; overflow: hidden; background: none; box-shadow: none; pointer-events: auto; }/*---------------------*/
@@ -1022,26 +989,24 @@
                     100% { filter: none; } } @keyframes bbgl-lvl-flash-text-white { 0% { transform: scale(1); } 20% { color: #ffffff;/*---*/
                     text-shadow: 0 0 10px #ffffff, 0 0 20px #ffffff, 0 0 30px #ffffff, 0 0 40px #cccccc, 0 0 60px #cccccc;/*--------------*/
                     transform: scale(1.4); } 100% { transform: scale(1); } }/*------------------------------------------------------------*/
-                    /* ─── Atrophy Tier-Complete Sequence ──────────────────── Crown tucks away (mole-in-hole pop), the next tier's crown rises into place (podium reveal + spotlight), then "Atrophied!" flashes. */ /* No opacity fade here on purpose — the container's clip-path (see #bbgl-level-container) gives a hard cutoff at the bottom of the exp bar as the flag translates past it, so it reads as sliding behind an edge rather than fading out. */ @keyframes bbgl-crown-tuck-kf {
-                    0% { transform: translateX(-50%) translateY(0); } 35% { transform: translateX(-50%) translateY(-16%); } 100% {/*------*/
-                    transform: translateX(-50%) translateY(130%); } } @keyframes bbgl-crown-rise-kf { 0% {/*------------------------------*/
-                    transform: translateX(-50%) translateY(130%); filter: brightness(1) drop-shadow(0 0 0 rgba(255,255,255,0)); } 70% {/*-*/
-                    transform: translateX(-50%) translateY(-8%); filter: brightness(1.7) drop-shadow(0 0 14px rgba(255,255,255,0.7)); }/*-*/
-                    100% { transform: translateX(-50%) translateY(0); filter: brightness(1) drop-shadow(0 0 0 rgba(255,255,255,0)); } }/*-*/
-                    /* Same tuck/rise motion, for the current text-badge flags (A0/A1) which are real DOM elements (not the ::before image slot), so no translateX(-50%) centering hack is needed — they're already centered via flexbox. */ @keyframes bbgl-flag-tuck-kf {
-                    0% { transform: translateY(0); } 35% { transform: translateY(-16%); } 100% { transform: translateY(130%); } }/*-------*/
+                    /* ─── Atrophy Tier-Complete Sequence ──────────────────── Crown tucks away (mole-in-hole pop), the next tier's crown rises into place (podium reveal + spotlight), then "Atrophied!" flashes. */ /* No opacity fade here on purpose — the container's clip-path (see #bbgl-level-container) gives a hard cutoff at the bottom of the exp bar as the flag translates past it, so it reads as sliding behind an edge rather than fading out. */ @keyframes bbgl-crown-tuck-kf { 0% { transform: translateX(-50%) translateY(0); }/*-*/
+                    35% { transform: translateX(-50%) translateY(-16%); } 100% { transform: translateX(-50%) translateY(130%); } }/*------*/
+                    @keyframes bbgl-crown-rise-kf { 0% { transform: translateX(-50%) translateY(130%);/*----------------------------------*/
+                    filter: brightness(1) drop-shadow(0 0 0 rgba(255,255,255,0)); } 70% { transform: translateX(-50%) translateY(-8%);/*--*/
+                    filter: brightness(1.7) drop-shadow(0 0 14px rgba(255,255,255,0.7)); } 100% { transform: translateX(-50%) translateY(0);
+                    filter: brightness(1) drop-shadow(0 0 0 rgba(255,255,255,0)); } } /* Same tuck/rise motion, for the current text-badge flags (A0/A1) which are real DOM elements (not the ::before image slot), so no translateX(-50%) centering hack is needed — they're already centered via flexbox. */ @keyframes bbgl-flag-tuck-kf { 0% {
+                    transform: translateY(0); } 35% { transform: translateY(-16%); } 100% { transform: translateY(130%); } }/*------------*/
                     @keyframes bbgl-flag-rise-kf { 0% { transform: translateY(130%);/*----------------------------------------------------*/
                     filter: brightness(1) drop-shadow(0 0 0 rgba(255,255,255,0)); } 70% { transform: translateY(-8%);/*-------------------*/
                     filter: brightness(1.7) drop-shadow(0 0 14px rgba(255,255,255,0.7)); } 100% { transform: translateY(0);/*-------------*/
                     filter: brightness(1) drop-shadow(0 0 0 rgba(255,255,255,0)); } } @keyframes bbgl-atrophied-flash-kf { 0% { opacity: 0;
                     transform: translateX(-50%) scale(0.6); } 30% { opacity: 1; transform: translateX(-50%) scale(1.15); } 55% { opacity: 1;
                     transform: translateX(-50%) scale(1); } 85% { opacity: 1; } 100% { opacity: 0; transform: translateX(-50%) scale(1); } }
-                    /* The container (flag + track + fill) sits at z-index:10, above .bbgl-grid-container (auto/0), so it always paints in front of the calendar. To let the flag actually dip *behind* the calendar rather than just sliding down over it, drop the whole container below the grid for the middle of the tuck/rise motion, then restore it once the flag is settled (or mid-reveal for the rise) so the bar and the "Atrophied!" flash still read in front as normal. */ @keyframes bbgl-tier-tuck-z-kf {
-                    0% { z-index: 10; } 35% { z-index: 10; } 36% { z-index: 0; } 100% { z-index: 0; } } @keyframes bbgl-tier-rise-z-kf {
-                    0% { z-index: 0; } 69% { z-index: 0; } 70% { z-index: 10; } 100% { z-index: 10; } } .bbgl-crown-tuck {/*--------------*/
-                    animation: bbgl-tier-tuck-z-kf 0.35s steps(1, end) forwards; } .bbgl-crown-rise {/*-----------------------------------*/
-                    animation: bbgl-tier-rise-z-kf 0.9s steps(1, end) forwards; } /* Diamond tuck/rise. The tuck class is on the container;
-                    gym's diamond is the container's own ::before, main panel's is the flag-clip wrapper's ::before, so both are targeted. */ .bbgl-crown-tuck::before, .bbgl-crown-tuck #bbgl-level-flag-clip::before {
+                    /* The container (flag + track + fill) sits at z-index:10, above .bbgl-grid-container (auto/0), so it always paints in front of the calendar. To let the flag actually dip *behind* the calendar rather than just sliding down over it, drop the whole container below the grid for the middle of the tuck/rise motion, then restore it once the flag is settled (or mid-reveal for the rise) so the bar and the "Atrophied!" flash still read in front as normal. */ @keyframes bbgl-tier-tuck-z-kf { 0% { z-index: 10; } 35% { z-index: 10; } 36% { z-index: 0; } 100% {
+                    z-index: 0; } } @keyframes bbgl-tier-rise-z-kf { 0% { z-index: 0; } 69% { z-index: 0; } 70% { z-index: 10; } 100% {/*-*/
+                    z-index: 10; } } .bbgl-crown-tuck { animation: bbgl-tier-tuck-z-kf 0.35s steps(1, end) forwards; } .bbgl-crown-rise {
+                    animation: bbgl-tier-rise-z-kf 0.9s steps(1, end) forwards; }/*-------------------------------------------------------*/
+                    /* Diamond tuck/rise. The tuck class is on the container; gym's diamond is the container's own ::before, main panel's is the flag-clip wrapper's ::before, so both are targeted. */ .bbgl-crown-tuck::before, .bbgl-crown-tuck #bbgl-level-flag-clip::before {/*-------------------------*/
                     animation: bbgl-crown-tuck-kf 0.35s ease-in-out forwards; }/*---------------------------------------------------------*/
                     .bbgl-crown-rise::before, .bbgl-crown-rise #bbgl-level-flag-clip::before {/*------------------------------------------*/
                     animation: bbgl-crown-rise-kf 0.9s ease-out forwards; }/*-------------------------------------------------------------*/
@@ -1065,14 +1030,14 @@
                     --bbgl-track-h: clamp(8px, calc(8px + 6px * var(--bbgl-page-t)), 14px); }/*-------------------------------------------*/
                     #bbgl-panel.bbgl-mode-page #bbgl-level-bg, #bbgl-panel.bbgl-mode-page #bbgl-level-track {/*---------------------------*/
                     height: clamp(8px, calc(8px + 6px * var(--bbgl-page-t)), 14px); } #bbgl-panel.bbgl-mode-page #bbgl-level-num {/*------*/
-                    font-size: clamp(6px, calc(6px + 6px * var(--bbgl-page-t)), 12px); }/*------------------------------------------------*/
-                    /* ─── Gym Page Level Bar — Structural ───────────────── */ #bbgl-gym-level-container { position: relative; width: 100%;
-                    margin-top: 24px; margin-bottom: -4px; --bbgl-track-h: 9px; display: flex; flex-direction: column; align-items: center;
-                    container-type: inline-size; clip-path: inset(-9999px 0 0 0); } #bbgl-gym-level-num {/*-------------------------------*/
-                    font-family: 'Aldrich', 'Fjalla One', 'Arial Narrow', sans-serif; font-size: clamp(6.5px, 1.0cqi, 8.5px);/*-----------*/
-                    font-weight: 700; letter-spacing: 0.5px; line-height: 1; white-space: nowrap; position: relative; z-index: 3; }/*-----*/
-                    .bbgl-level-up-flash #bbgl-gym-level-num { animation: bbgl-lvl-flash-text 0.8s ease-out; }/*--------------------------*/
-                    .bbgl-level-up-flash #bbgl-gym-level-fill { animation: bbgl-lvl-flash-bar 0.8s ease-out; }/*--------------------------*/
+                    font-size: clamp(6px, calc(6px + 6px * var(--bbgl-page-t)), 12px); } /* ─── Gym Page Level Bar — Structural ───────────────── */ #bbgl-gym-level-container {/*---*/
+                    position: relative; width: 100%; margin-top: 24px; margin-bottom: -4px; --bbgl-track-h: 9px; display: flex;/*---------*/
+                    flex-direction: column; align-items: center; container-type: inline-size; clip-path: inset(-9999px 0 0 0); }/*--------*/
+                    #bbgl-gym-level-num { font-family: 'Aldrich', 'Fjalla One', 'Arial Narrow', sans-serif;/*-----------------------------*/
+                    font-size: clamp(6.5px, 1.0cqi, 8.5px); font-weight: 700; letter-spacing: 0.5px; line-height: 1; white-space: nowrap;
+                    position: relative; z-index: 3; } .bbgl-level-up-flash #bbgl-gym-level-num {/*----------------------------------------*/
+                    animation: bbgl-lvl-flash-text 0.8s ease-out; } .bbgl-level-up-flash #bbgl-gym-level-fill {/*-------------------------*/
+                    animation: bbgl-lvl-flash-bar 0.8s ease-out; }/*----------------------------------------------------------------------*/
                     /* ─── Level Bar — A1 flag: structure ────────── --f-bdr (border), --f-bg-top/--f-bg (background gradient), --f-hi (inner highlight) are supplied by the A1 palette below. */ #bbgl-panel[data-atrophy="1"] #bbgl-level-num, #bbgl-gym-level-container[data-atrophy="1"] #bbgl-gym-level-num {
                     --f-r: clamp(5px, 1.3cqi, 8px); padding: 3px clamp(8px, 2cqi, 14px); border-top: 1px solid var(--f-bdr);/*------------*/
                     border-left: none; border-right: none; border-bottom: none; border-radius: 5px 5px 0 0;/*-----------------------------*/
@@ -1083,19 +1048,17 @@
                     content: ''; position: absolute; bottom: 0; left: calc(-1 * var(--f-r) + 1px); right: calc(-1 * var(--f-r) + 1px);/*--*/
                     height: var(--f-r); z-index: -1; pointer-events: none; --f-r-in: calc(var(--f-r) - 1px);/*----------------------------*/
                     background: radial-gradient(circle at 0 0, transparent var(--f-r-in), var(--f-bdr) var(--f-r-in), var(--f-bdr) var(--f-r), var(--f-bg) var(--f-r)) left bottom / var(--f-r) var(--f-r) no-repeat, radial-gradient(circle at 100% 0, transparent var(--f-r-in), var(--f-bdr) var(--f-r-in), var(--f-bdr) var(--f-r), var(--f-bg) var(--f-r)) right bottom / var(--f-r) var(--f-r) no-repeat;
-                    }/*-------------------------------------------------------------------------------------------------------------------*/
-                    /* ─── Level Bar — A0: Crown badge (script logo) ───────── Same icon-badge treatment as A2's diamond: the crown sits behind the bar via a ::before background-image, "Lv X" floats above it as plain text (no flag box). */ #bbgl-panel[data-atrophy="0"] #bbgl-level-container {
-                    --crwn-s: clamp(30px, 8cqi, 38px); } #bbgl-gym-level-container[data-atrophy="0"] { --crwn-s: clamp(30px, 7.5cqi, 34px);
-                    } #bbgl-panel[data-atrophy="0"].bbgl-expanded #bbgl-level-container { --crwn-s: clamp(42px, 12cqi, 52px); }/*---------*/
+                    } /* ─── Level Bar — A0: Crown badge (script logo) ───────── Same icon-badge treatment as A2's diamond: the crown sits behind the bar via a ::before background-image, "Lv X" floats above it as plain text (no flag box). */ #bbgl-panel[data-atrophy="0"] #bbgl-level-container { --crwn-s: clamp(30px, 8cqi, 38px); }/*-------*/
+                    #bbgl-gym-level-container[data-atrophy="0"] { --crwn-s: clamp(30px, 7.5cqi, 34px); }/*--------------------------------*/
+                    #bbgl-panel[data-atrophy="0"].bbgl-expanded #bbgl-level-container { --crwn-s: clamp(42px, 12cqi, 52px); }/*-----------*/
                     #bbgl-panel[data-atrophy="0"].bbgl-mode-page #bbgl-level-container {/*------------------------------------------------*/
                     --crwn-s: calc(clamp(30px, 8cqi, 38px) + 18px * var(--bbgl-page-t)); }/*----------------------------------------------*/
-                    /* Main panel crown — lives on the flag-clip wrapper. The wrapper's own bottom edge already sits at the top of the bar (see the flag-clip comment above), so bottom:0 here lands the crown's bottom edge flush with the top of the track — no overlap into the bar. */ #bbgl-panel[data-atrophy="0"] #bbgl-level-flag-clip::before {
-                    content: ''; position: absolute; bottom: 0; left: 50%; transform-origin: 50% 100%; transform: translateX(-50%);/*-----*/
+                    /* Main panel crown — lives on the flag-clip wrapper. The wrapper's own bottom edge already sits at the top of the bar (see the flag-clip comment above), so bottom:0 here lands the crown's bottom edge flush with the top of the track — no overlap into the bar. */ #bbgl-panel[data-atrophy="0"] #bbgl-level-flag-clip::before { content: ''; position: absolute;/*-----*/
+                    bottom: 0; left: 50%; transform-origin: 50% 100%; transform: translateX(-50%); width: calc(var(--crwn-s) * 1.3);/*----*/
+                    height: calc(var(--crwn-s) * 0.85 + 1px); background: url("${CROWN_BADGE_URL}") center bottom / 100% 100% no-repeat;/*----*/
+                    z-index: -1; } /* Gym page crown — old structure (no flag-clip wrapper): the container's own bottom edge is the bottom of the track, so the top of the track sits --bbgl-track-h above it. Same flush, no-overlap placement as the main panel version. */ #bbgl-gym-level-container[data-atrophy="0"]::before { content: ''; position: absolute;
+                    bottom: var(--bbgl-track-h); left: 50%; transform-origin: 50% 100%; transform: translateX(-50%);/*--------------------*/
                     width: calc(var(--crwn-s) * 1.3); height: calc(var(--crwn-s) * 0.85 + 1px);/*-----------------------------------------*/
-                    background: url("${CROWN_BADGE_URL}") center bottom / 100% 100% no-repeat; z-index: -1; }/*-------------------------------*/
-                    /* Gym page crown — old structure (no flag-clip wrapper): the container's own bottom edge is the bottom of the track, so the top of the track sits --bbgl-track-h above it. Same flush, no-overlap placement as the main panel version. */ #bbgl-gym-level-container[data-atrophy="0"]::before {
-                    content: ''; position: absolute; bottom: var(--bbgl-track-h); left: 50%; transform-origin: 50% 100%;/*----------------*/
-                    transform: translateX(-50%); width: calc(var(--crwn-s) * 1.3); height: calc(var(--crwn-s) * 0.85 + 1px);/*------------*/
                     background: url("${CROWN_BADGE_URL}") center bottom / 100% 100% no-repeat; z-index: 1; }/*--------------------------------*/
                     #bbgl-panel[data-atrophy="0"] #bbgl-level-num, #bbgl-gym-level-container[data-atrophy="0"] #bbgl-gym-level-num {/*----*/
                     color: #f0f0f0; text-shadow: 0 0 1px #000, 0 0 2px #000, 0 0 3px rgba(0,0,0,0.8); margin-bottom: 1px;/*---------------*/
@@ -1106,8 +1069,7 @@
                     color: #b3ffb3; text-shadow: 0 0 2px #33cc00, 0 0 6px #199900, 0 0 12px #199900; --f-bdr: rgba(30, 80, 10, 0.7);/*----*/
                     --f-bg-top: rgba(20, 60, 5, 0.75); --f-bg: rgba(5, 20, 0, 0.9); --f-hi: rgba(150, 255, 100, 0.15); }/*----------------*/
                     #bbgl-panel[data-atrophy="0"] #bbgl-level-track, #bbgl-gym-level-container[data-atrophy="0"] #bbgl-gym-level-track {
-                    backdrop-filter: none; -webkit-backdrop-filter: none; }/*-------------------------------------------------------------*/
-                    /* Suppress backdrop-filter while the compact<->expanded resize is animating: blurring what's behind this element has to be resampled every frame the panel's layer changes, which is one of the more GPU-expensive things to animate. Restored once settled. */ #bbgl-panel.bbgl-resizing #bbgl-level-num {
+                    backdrop-filter: none; -webkit-backdrop-filter: none; } /* Suppress backdrop-filter while the compact<->expanded resize is animating: blurring what's behind this element has to be resampled every frame the panel's layer changes, which is one of the more GPU-expensive things to animate. Restored once settled. */ #bbgl-panel.bbgl-resizing #bbgl-level-num {
                     backdrop-filter: none !important; -webkit-backdrop-filter: none !important; }/*---------------------------------------*/
                     #bbgl-panel[data-atrophy="0"] #bbgl-level-fill, #bbgl-gym-level-container[data-atrophy="0"] #bbgl-gym-level-fill {/*--*/
                     background: linear-gradient(180deg, #404040 0%, #808080 22%, #a8a8a8 38%, #c0c0c0 48%, #b0b0b0 52%, #888888 70%, #484848 100% );
@@ -1121,22 +1083,21 @@
                     /* ─── Level Bar — A1: Green ──────────────────────────── */ #bbgl-panel[data-atrophy="1"] #bbgl-level-fill, #bbgl-gym-level-container[data-atrophy="1"] #bbgl-gym-level-fill {
                     background: linear-gradient(180deg, #003322 0%, #008844 25%, #66bb22 40%, #ccffcc 50%, #00cc88 62%, #44aa00 78%, #001a0d 100% );
                     box-shadow: inset 0 1px 0 rgba(255,255,255,0.2), inset 0 -1px 0 rgba(0,0,0,0.3); }/*----------------------------------*/
-                    /* ─── Level Bar — A2: Diamond ───────────────────────── */ #bbgl-panel[data-atrophy="2"] #bbgl-level-container {/*---*/
-                    --dmnd-s: clamp(60px, 16cqi, 76px); --dmnd-b: calc(var(--dmnd-s) * -0.25); }/*----------------------------------------*/
-                    #bbgl-gym-level-container[data-atrophy="2"] { --dmnd-s: clamp(76px, 12cqi, 90px); --dmnd-b: calc(var(--dmnd-s) * -0.25);
-                    } #bbgl-panel[data-atrophy="2"].bbgl-expanded #bbgl-level-container { --dmnd-s: clamp(70px, 19cqi, 88px);/*-----------*/
+                    /* ─── Level Bar — A2: Diamond ───────────────────────── */ #bbgl-panel[data-atrophy="2"] #bbgl-level-container { --dmnd-s: clamp(60px, 16cqi, 76px);/*----------*/
+                    --dmnd-b: calc(var(--dmnd-s) * -0.25); } #bbgl-gym-level-container[data-atrophy="2"] {/*------------------------------*/
+                    --dmnd-s: clamp(76px, 12cqi, 90px); --dmnd-b: calc(var(--dmnd-s) * -0.25); }/*----------------------------------------*/
+                    #bbgl-panel[data-atrophy="2"].bbgl-expanded #bbgl-level-container { --dmnd-s: clamp(70px, 19cqi, 88px);/*-------------*/
                     --dmnd-b: calc(var(--dmnd-s) * -0.23); } #bbgl-panel[data-atrophy="2"].bbgl-mode-page #bbgl-level-container {/*-------*/
                     --dmnd-s: calc(clamp(60px, 16cqi, 76px) + 28px * var(--bbgl-page-t));/*-----------------------------------------------*/
                     --dmnd-b: calc(var(--dmnd-s) * (-0.25 + 0.02 * var(--bbgl-page-t))); }/*----------------------------------------------*/
-                    /* Main panel diamond — lives on the flag-clip wrapper so it shares the wrapper's screen-fixed cut line and tucks behind the bar like the text flag. Its offset parent (the wrapper) sits --bbgl-track-h above the container bottom, so the bottom anchor subtracts that to land the diamond at the same spot the old container-relative anchor did. No self-clip — the wrapper does the clipping. z-index:-1 keeps the number text in front. */ #bbgl-panel[data-atrophy="2"] #bbgl-level-flag-clip::before {
-                    content: ''; position: absolute; bottom: calc(var(--dmnd-b) - var(--bbgl-track-h)); left: 50%;/*----------------------*/
-                    transform-origin: 50% calc(100% + var(--dmnd-b)); transform: translateX(-50%); width: var(--dmnd-s);/*----------------*/
-                    height: var(--dmnd-s); background: url('${cdnize('https://raw.githubusercontent.com/BigBlackHawk42069/asdfaskijdnfawef/refs/heads/main/ScrptImgs/Calendar/lvl-dmnd.png')}') center / contain no-repeat; z-index: -1; }/*-----------------*/
-                    /* Gym page diamond — old structure (no flag-clip wrapper), keeps its own self-clip. */ #bbgl-gym-level-container[data-atrophy="2"]::before {
-                    content: ''; position: absolute; bottom: var(--dmnd-b); left: 50%; transform-origin: 50% calc(100% + var(--dmnd-b));
+                    /* Main panel diamond — lives on the flag-clip wrapper so it shares the wrapper's screen-fixed cut line and tucks behind the bar like the text flag. Its offset parent (the wrapper) sits --bbgl-track-h above the container bottom, so the bottom anchor subtracts that to land the diamond at the same spot the old container-relative anchor did. No self-clip — the wrapper does the clipping. z-index:-1 keeps the number text in front. */ #bbgl-panel[data-atrophy="2"] #bbgl-level-flag-clip::before { content: ''; position: absolute;/*-----*/
+                    bottom: calc(var(--dmnd-b) - var(--bbgl-track-h)); left: 50%; transform-origin: 50% calc(100% + var(--dmnd-b));/*-----*/
                     transform: translateX(-50%); width: var(--dmnd-s); height: var(--dmnd-s);/*-------------------------------------------*/
-                    clip-path: inset(0 0 calc(var(--dmnd-b) * -1 + 2px) 0); background: url('${cdnize('https://raw.githubusercontent.com/BigBlackHawk42069/asdfaskijdnfawef/refs/heads/main/ScrptImgs/Calendar/lvl-dmnd.png')}') center / contain no-repeat;
-                    z-index: 1; pointer-events: none; }/*---------------------------------------------------------------------------------*/
+                    background: url('${cdnize('https://raw.githubusercontent.com/BigBlackHawk42069/asdfaskijdnfawef/refs/heads/main/ScrptImgs/Calendar/lvl-dmnd.png')}') center / contain no-repeat; z-index: -1; }/*----------------------------------------*/
+                    /* Gym page diamond — old structure (no flag-clip wrapper), keeps its own self-clip. */ #bbgl-gym-level-container[data-atrophy="2"]::before { content: ''; position: absolute;/*-------------*/
+                    bottom: var(--dmnd-b); left: 50%; transform-origin: 50% calc(100% + var(--dmnd-b)); transform: translateX(-50%);/*----*/
+                    width: var(--dmnd-s); height: var(--dmnd-s); clip-path: inset(0 0 calc(var(--dmnd-b) * -1 + 2px) 0);/*----------------*/
+                    background: url('${cdnize('https://raw.githubusercontent.com/BigBlackHawk42069/asdfaskijdnfawef/refs/heads/main/ScrptImgs/Calendar/lvl-dmnd.png')}') center / contain no-repeat; z-index: 1; pointer-events: none; }/*-------------------*/
                     #bbgl-panel[data-atrophy="2"] #bbgl-level-num, #bbgl-gym-level-container[data-atrophy="2"] #bbgl-gym-level-num {/*----*/
                     color: #b3ffb3; text-shadow: 0 0 2px #33cc00, 0 0 6px #199900, 0 0 12px #199900; margin-bottom: 7px; }/*--------------*/
                     #bbgl-panel[data-atrophy="2"].bbgl-expanded #bbgl-level-num { margin-bottom: 10px; }/*--------------------------------*/
@@ -1151,14 +1112,13 @@
                     #bbgl-panel[data-atrophy="2"][data-level="100"] #bbgl-level-fill.level-full, #bbgl-gym-level-container[data-atrophy="2"][data-level="100"] #bbgl-gym-level-fill.level-full {
                     background: linear-gradient(180deg, #220033 0%, #882299 25%, #ee77ff 40%, #eeeeff 50%, #88bbff 62%, #77ffcc 78%, #001122 100% );
                     box-shadow: inset 0 1px 0 rgba(255,255,255,0.25), inset 0 -1px 0 rgba(0,0,0,0.3); }/*---------------------------------*/
-                    /* ─────────────────────────────────────────────────────── */ /* ─── Endocrine Enhancers Page ──────────────────────── */ .bbgl-ach-section-energy .bbgl-ach-section-title {
-                    border-bottom: none; } .bbgl-enh-mode-switch { position: absolute; right: 2px; top: 50%; transform: translateY(-50%);
-                    display: flex; align-items: center; gap: 0; z-index: 3; } .bbgl-enh-sw-opt { font-family: var(--bbgl-ach-font);/*-----*/
-                    font-size: 8px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: #bbb; padding: 1px 5px;/*--*/
-                    cursor: pointer; user-select: none; border: 1px solid #6a6a6a; line-height: 1.4; transition: background .15s;/*-------*/
-                    white-space: nowrap; } .bbgl-enh-sw-opt:first-child { border-radius: 3px 0 0 3px; border-right: none; }/*-------------*/
-                    .bbgl-enh-sw-opt:last-child { border-radius: 0 3px 3px 0; }/*---------------------------------------------------------*/
-                    .bbgl-enh-sw-opt.active, body:not(.is-touch-device) .bbgl-enh-sw-opt:not(.active):hover {/*---------------------------*/
+                    /* ─────────────────────────────────────────────────────── */ /* ─── Endocrine Enhancers Page ──────────────────────── */ .bbgl-ach-section-energy .bbgl-ach-section-title { border-bottom: none; }/*---------*/
+                    .bbgl-enh-mode-switch { position: absolute; right: 2px; top: 50%; transform: translateY(-50%); display: flex;/*-------*/
+                    align-items: center; gap: 0; z-index: 3; } .bbgl-enh-sw-opt { font-family: var(--bbgl-ach-font); font-size: 8px;/*----*/
+                    font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: #bbb; padding: 1px 5px; cursor: pointer;/*-*/
+                    user-select: none; border: 1px solid #6a6a6a; line-height: 1.4; transition: background .15s; white-space: nowrap; }/*-*/
+                    .bbgl-enh-sw-opt:first-child { border-radius: 3px 0 0 3px; border-right: none; } .bbgl-enh-sw-opt:last-child {/*------*/
+                    border-radius: 0 3px 3px 0; } .bbgl-enh-sw-opt.active, body:not(.is-touch-device) .bbgl-enh-sw-opt:not(.active):hover {
                     background: rgba(255, 255, 255, 0.13); }/*----------------------------------------------------------------------------*/
                     body:not(.is-touch-device) .bbgl-ach-section-energy .bbgl-ach-title-row:has(.bbgl-enh-sw-opt:hover) .bbgl-ach-section-title {
                     color: #9a9a9a; }/*---------------------------------------------------------------------------------------------------*/
@@ -1179,20 +1139,18 @@
                     .ach-enh-gained .ach-stat-dex, .bbgl-ach-row .ach-sub.ach-stat-dex, .ach-stat-header.ach-stat-dex, .bbgl-ach-hh-tag.ach-stat-dex {
                     color: #109618; }/*---------------------------------------------------------------------------------------------------*/
                     .bbgl-ach-row .ach-sub.ach-stat-tot, .ach-stat-header.ach-stat-tot, .bbgl-ach-stat-cell .ach-value.ach-stat-tot {/*---*/
-                    color: #9d039d; } /* HH total tag is deliberately neutral, not stat-purple. */ .bbgl-ach-hh-tag.ach-stat-tot {/*------*/
-                    color: #999; } .bbgl-ach-row.bbgl-ach-od-row .ach-k, .bbgl-ach-row.bbgl-ach-od-row .ach-value { color: #aaa; }/*------*/
+                    color: #9d039d; } /* HH total tag is deliberately neutral, not stat-purple. */ .bbgl-ach-hh-tag.ach-stat-tot { color: #999; }/*-----------------------------------*/
+                    .bbgl-ach-row.bbgl-ach-od-row .ach-k, .bbgl-ach-row.bbgl-ach-od-row .ach-value { color: #aaa; }/*---------------------*/
                     .bbgl-ach-row.bbgl-ach-od-row .ach-value.ach-enh-od .ach-enh-e-label { color: #c06060; }/*----------------------------*/
                     /* OD sub-rows: indent the label past the subgroup connector line. The energy-section row padding shorthand (above) outranks the generic .bbgl-subgroup-row padding-left, so restore the indent at higher specificity. */ .bbgl-ach-section-energy .bbgl-ach-row.bbgl-ach-od-row, .bbgl-ach-section-hh .bbgl-ach-row.bbgl-ach-od-row {
                     padding-left: 24px; } .ach-happy-word { color: #f5c518; font-weight: 600; } .ach-od-happy-word { color: #c06060; }/*--*/
-                    /* ─────────────────────────────────────────────────────── */ .bbgl-ach-row.is-scrub-hovered {/*----------------------*/
-                    background: rgba(255, 255, 255, .04); } .sticker-slot.has-item.is-scrub-hovered { z-index: 45; }/*--------------------*/
-                    #bbgl-settings-view, #bbgl-welcome-view { background: #222; color: #ddd; display: none; flex-direction: column;/*-----*/
-                    height: 100%; position: relative; overflow: hidden !important; padding: 0; }/*----------------------------------------*/
-                    #bbgl-settings-view.active-view, #bbgl-welcome-view.active-view { display: flex; } .bbgl-author-block {/*-------------*/
+                    /* ─────────────────────────────────────────────────────── */ .bbgl-ach-row.is-scrub-hovered { background: rgba(255, 255, 255, .04); }/*---------------------------*/
+                    .sticker-slot.has-item.is-scrub-hovered { z-index: 45; } #bbgl-settings-view, #bbgl-welcome-view { background: #222;
+                    color: #ddd; display: none; flex-direction: column; height: 100%; position: relative; overflow: hidden !important;/*--*/
+                    padding: 0; } #bbgl-settings-view.active-view, #bbgl-welcome-view.active-view { display: flex; } .bbgl-author-block {
                     margin: 8px 10px 10px; padding: 8px 10px; background: #2a2a2a; border: 1px solid #3a3a3a; border-radius: 4px;/*-------*/
                     font-family: Arial, sans-serif; font-size: 12px; color: #aaa; line-height: 1.6; } .bbgl-author-block strong {/*-------*/
-                    color: #ddd; display: block; margin-bottom: 4px; font-size: 13px; }/*-------------------------------------------------*/
-                    /* CSP-safe author link (replaces inline onmouseover/onmouseout handlers). */ .bbgl-author-link { color: #69f0ae;/*---*/
+                    color: #ddd; display: block; margin-bottom: 4px; font-size: 13px; } /* CSP-safe author link (replaces inline onmouseover/onmouseout handlers). */ .bbgl-author-link { color: #69f0ae;
                     text-decoration: none; border-bottom: 1px dotted rgba(105, 240, 174, 0.4); transition: border-color .2s; }/*----------*/
                     .bbgl-author-link:hover { border-bottom-color: #69f0ae; } .bbgl-settings-scroll-area { flex: 1; overflow-y: auto;/*---*/
                     overflow-x: hidden; padding: 8px; width: 100%; box-sizing: border-box; }/*--------------------------------------------*/
@@ -1204,18 +1162,17 @@
                     font-size: 12px; font-weight: 700; text-align: center; display: flex; align-items: center; justify-content: center;/*-*/
                     padding: 0 20px; box-sizing: border-box; z-index: 50; pointer-events: all; border-radius: 0 0 5px 5px; }/*------------*/
                     .bbgl-init-locked #bbgl-settings-btn, .bbgl-init-locked #bbgl-page-settings { display: none !important; }/*-----------*/
-                    /* Full-panel Big Black Backfill scan mask. Anchored to #bbgl-content-wrapper (position:relative), so it covers the top + bottom panels and the settings/ welcome views while leaving the header (settings/close) reachable. */ #bbgl-scan-overlay {
-                    position: absolute; inset: 0; z-index: 60; display: flex; flex-direction: column; align-items: center;/*--------------*/
-                    justify-content: center; gap: 14px; padding: 26px 24px; box-sizing: border-box; background: rgba(10, 10, 12, .88);/*--*/
-                    color: #ddd; font-family: Arial, sans-serif; text-align: center; border-radius: 0 0 5px 5px; }/*----------------------*/
-                    #bbgl-scan-overlay .bbgl-scan-title { font-size: 18px; font-weight: 800; color: #fff; letter-spacing: .3px; }/*-------*/
-                    #bbgl-scan-overlay .bbgl-scan-sub { font-size: 12px; line-height: 1.6; color: #b6b6b6; max-width: 300px; }/*----------*/
-                    #bbgl-scan-overlay .bbgl-scan-count { color: #b388ff; font-variant-numeric: tabular-nums; } #bbgl-scan-cancel {/*-----*/
-                    position: absolute; top: 10px; right: 12px; font-size: 11px; font-weight: 700; color: #ff5252; cursor: pointer;/*-----*/
-                    padding: 4px 9px; border-radius: 4px; text-transform: uppercase; letter-spacing: .5px; } #bbgl-scan-cancel:hover {/*--*/
-                    background: rgba(255, 82, 82, .16); } #bbgl-scan-overlay .bbgl-scan-actions { display: flex; gap: 18px;/*-------------*/
-                    align-items: center; justify-content: center; margin-top: 2px; } .bbgl-scan-textbtn { cursor: pointer; font-size: 13px;
-                    font-weight: 700; color: #dcdcdc; padding: 7px 12px; border-radius: 4px; } .bbgl-scan-textbtn:hover {/*---------------*/
+                    /* Full-panel Big Black Backfill scan mask. Anchored to #bbgl-content-wrapper (position:relative), so it covers the top + bottom panels and the settings/ welcome views while leaving the header (settings/close) reachable. */ #bbgl-scan-overlay { position: absolute; inset: 0; z-index: 60; display: flex; flex-direction: column;
+                    align-items: center; justify-content: center; gap: 14px; padding: 26px 24px; box-sizing: border-box;/*----------------*/
+                    background: rgba(10, 10, 12, .88); color: #ddd; font-family: Arial, sans-serif; text-align: center;/*-----------------*/
+                    border-radius: 0 0 5px 5px; } #bbgl-scan-overlay .bbgl-scan-title { font-size: 18px; font-weight: 800; color: #fff;/*-*/
+                    letter-spacing: .3px; } #bbgl-scan-overlay .bbgl-scan-sub { font-size: 12px; line-height: 1.6; color: #b6b6b6;/*------*/
+                    max-width: 300px; } #bbgl-scan-overlay .bbgl-scan-count { color: #b388ff; font-variant-numeric: tabular-nums; }/*-----*/
+                    #bbgl-scan-cancel { position: absolute; top: 10px; right: 12px; font-size: 11px; font-weight: 700; color: #ff5252;/*--*/
+                    cursor: pointer; padding: 4px 9px; border-radius: 4px; text-transform: uppercase; letter-spacing: .5px; }/*-----------*/
+                    #bbgl-scan-cancel:hover { background: rgba(255, 82, 82, .16); } #bbgl-scan-overlay .bbgl-scan-actions { display: flex;
+                    gap: 18px; align-items: center; justify-content: center; margin-top: 2px; } .bbgl-scan-textbtn { cursor: pointer;/*---*/
+                    font-size: 13px; font-weight: 700; color: #dcdcdc; padding: 7px 12px; border-radius: 4px; } .bbgl-scan-textbtn:hover {
                     background: rgba(255, 255, 255, .1); color: #fff; } .bbgl-scan-textbtn.bbgl-scan-primary { color: #b388ff; }/*--------*/
                     .bbgl-scan-textbtn.bbgl-scan-primary:hover { background: rgba(179, 136, 255, .16); } .bbgl-scan-iconbtn {/*-----------*/
                     display: inline-flex; align-items: center; justify-content: center; width: 36px; height: 36px; border-radius: 50%;/*--*/
@@ -1256,8 +1213,8 @@
                     transform: translateY(-50%) scale(1.3) !important; text-shadow: 0 0 8px rgba(255, 255, 255, .8) !important; }/*-------*/
                     .arrow-btn:active { transform: scale(1.3) !important; text-shadow: 0 0 8px rgba(255, 255, 255, .8) !important; }/*----*/
                     #bbgl-panel:not(.bbgl-expanded) { max-height: none !important; }/*----------------------------------------------------*/
-                    /* NOTE: expanded graph .g-pill/.g-toggles/.g-hud/.g-text rules formerly here were dead — overridden at every width <=620px by the later same-specificity fluid rules (see "fluid scaling to replace hard 620px breakpoint" block below). Removed. The .g-text.x-label override below is kept: it has no fluid twin and the fluid .g-text floors at 10px, so it still does real work. */ #bbgl-panel.bbgl-expanded:not(.bbgl-mode-page) #bbgl-graph-container .g-text.x-label {
-                    font-size: 9px; }/*---------------------------------------------------------------------------------------------------*/
+                    /* NOTE: expanded graph .g-pill/.g-toggles/.g-hud/.g-text rules formerly here were dead — overridden at every width <=620px by the later same-specificity fluid rules (see "fluid scaling to replace hard 620px breakpoint" block below). Removed. The .g-text.x-label override below is kept: it has no fluid twin and the fluid .g-text floors at 10px, so it still does real work. */ #bbgl-panel.bbgl-expanded:not(.bbgl-mode-page) #bbgl-graph-container .g-text.x-label { font-size: 9px;
+                    }/*-------------------------------------------------------------------------------------------------------------------*/
                     #bbgl-panel.bbgl-expanded:not(.bbgl-mode-page) #bbgl-ledger-toggle, #bbgl-panel.bbgl-expanded:not(.bbgl-mode-page) #bbgl-achievements-toggle, #bbgl-panel.bbgl-expanded:not(.bbgl-mode-page) #bbgl-copy-btn {
                     width: 15.5px !important; height: 15.5px !important; }/*--------------------------------------------------------------*/
                     #bbgl-panel.bbgl-expanded:not(.bbgl-mode-page) #bbgl-graph-toggle, #bbgl-panel.bbgl-expanded:not(.bbgl-mode-page) #bbgl-sticker-toggle {
@@ -1269,7 +1226,7 @@
                     --bbgl-col-gap: clamp(10px, calc(10px + 12px * (1 - var(--bbgl-dock-t, 0))), 22px);/*---------------------------------*/
                     --bbgl-f-top-mb: clamp(3px, calc(3px + 3px * (1 - var(--bbgl-dock-t, 0))), 6px); }/*----------------------------------*/
                     #bbgl-panel.bbgl-expanded.bbgl-tall:not(.bbgl-mode-page) {/*----------------------------------------------------------*/
-                    /* ledger spacing inverse-scale (tall) */ --bbgl-col-gap: clamp(12px, calc(12px + 14px * (1 - var(--bbgl-dock-t, 0))), 26px);
+                    /* ledger spacing inverse-scale (tall) */ --bbgl-col-gap: clamp(12px, calc(12px + 14px * (1 - var(--bbgl-dock-t, 0))), 26px);/*----------------*/
                     --bbgl-f-top-mb: clamp(3px, calc(3px + 3px * (1 - var(--bbgl-dock-t, 0))), 6px); }/*----------------------------------*/
                     #bbgl-panel:not(.bbgl-mode-page) #bbgl-bottom-panel { overflow-y: auto; overflow-x: hidden; }/*-----------------------*/
                     #bbgl-panel:not(.bbgl-mode-page) .bbgl-grid-container { padding: 0; overflow: visible !important; height: auto;/*-----*/
@@ -1300,19 +1257,17 @@
                     font-size: 10.5px !important; }/*-------------------------------------------------------------------------------------*/
                     #bbgl-panel.bbgl-expanded:not(.bbgl-mode-page) #year-stats-btn, #bbgl-panel.bbgl-expanded:not(.bbgl-mode-page) #month-stats-btn, #bbgl-panel.bbgl-expanded:not(.bbgl-mode-page) #all-time-btn {
                     width: clamp(17px, calc(4.86cqi - 4px), 24px) !important; height: clamp(18px, calc(4.86cqi - 3px), 25px); }/*---------*/
-                    /* Expanded panel graph view: fluid scaling to replace hard 620px breakpoint ---------------------*/ #bbgl-panel.bbgl-expanded:not(.bbgl-mode-page) #bbgl-graph-container .g-pill {
+                    /* Expanded panel graph view: fluid scaling to replace hard 620px breakpoint ---------------------*/ #bbgl-panel.bbgl-expanded:not(.bbgl-mode-page) #bbgl-graph-container .g-pill {/*---------------------*/
                     font-size: clamp(8.45px, 1.62cqi, 10px);/*----------------------------------------------------------------------------*/
-                    /* narrow panels dip below old 9.8px floor --------*/ padding: clamp(.5px, calc(.35px + .16cqi), 1.5px) clamp(5px, 1.39cqi, 8px);
-                    line-height: 1; display: inline-flex !important; align-items: center; justify-content: center; box-sizing: border-box; }
+                    /* narrow panels dip below old 9.8px floor --------*/ padding: clamp(.5px, calc(.35px + .16cqi), 1.5px) clamp(5px, 1.39cqi, 8px); line-height: 1;/*--------*/
+                    display: inline-flex !important; align-items: center; justify-content: center; box-sizing: border-box; }/*------------*/
                     #bbgl-panel.bbgl-expanded:not(.bbgl-mode-page) #bbgl-graph-container .g-toggles { gap: clamp(4px, 1.04cqi, 6px);/*----*/
                     align-items: center; } #bbgl-panel.bbgl-expanded:not(.bbgl-mode-page) #bbgl-graph-container .g-hud {/*----------------*/
                     margin-bottom: clamp(4px, 1.12cqi, 6px); }/*--------------------------------------------------------------------------*/
                     #bbgl-panel.bbgl-expanded:not(.bbgl-mode-page) #bbgl-graph-container .g-text { font-size: clamp(10px, 1.91cqi, 11px); }
                     #bbgl-panel.bbgl-expanded:not(.bbgl-mode-page) #bbgl-graph-container {/*----------------------------------------------*/
                     padding: clamp(5px, .72cqi, 9px) calc(var(--bbgl-gx, 10px) - 2px) clamp(4px, .65cqi, 7px) calc(var(--bbgl-gx, 10px) - 2px);
-                    }/*-------------------------------------------------------------------------------------------------------------------*/
-                    /* Expanded panel sticker grid: fluid sticker slot sizing to keep proportions --------------------*/ /* Switch to size containment on expanded panel only so cqi/cqb can read both axes. --------------*/ #bbgl-panel.bbgl-expanded:not(.bbgl-mode-page) {
-                    container-type: size; }/*---------------------------------------------------------------------------------------------*/
+                    } /* Expanded panel sticker grid: fluid sticker slot sizing to keep proportions --------------------*/ /* Switch to size containment on expanded panel only so cqi/cqb can read both axes. --------------*/ #bbgl-panel.bbgl-expanded:not(.bbgl-mode-page) { container-type: size; }/*--------*/
                     #bbgl-panel:not(.bbgl-mode-page) #bbgl-top-panel.viewing-achievements #bbgl-achievements-container {/*----------------*/
                     --bbgl-ach-inset-x: clamp(0px, .55vw, 6px);/*-------------------------------------------------------------------------*/
                     --bbgl-ach-container-pt: max(0px, calc(clamp(10px, calc(21px - 10.5px * var(--bbgl-dock-t, 0)), 21px) - calc(2px * var(--bbgl-dock-t, 0))));
@@ -1374,7 +1329,7 @@
                     --bbgl-ach-val-font: 'Inconsolata', monospace; --bbgl-ach-inset-x: clamp(2px, 1.1cqi, 12px);/*------------------------*/
                     --bbgl-ach-scroll-pt: clamp(2px, .5cqi, 9px); --bbgl-ach-scroll-pb: clamp(0px, .08cqi, 2px);/*------------------------*/
                     --bbgl-ach-footer-pt: clamp(0px, .08cqi, 2px); --bbgl-ach-footer-pb: 2px; --bbgl-ach-footer-gap: 6px;/*---------------*/
-                    --bbgl-ach-dot-gap: 6px; /* stickerbook #bbgl-sticker-pagination --------*/ --bbgl-ach-dot-w: 6px;/*------------------*/
+                    --bbgl-ach-dot-gap: 6px; /* stickerbook #bbgl-sticker-pagination --------*/ --bbgl-ach-dot-w: 6px;/*----------------------------------------------------*/
                     --bbgl-ach-nav-fs: clamp(7px, calc(1.45 * var(--bbgl-ach-dot-w)), 11px); --bbgl-ach-nav-py: 0;/*----------------------*/
                     --bbgl-ach-nav-px: clamp(2px, .55cqi, 10px); } #bbgl-ach-pages { position: relative; container-type: inline-size;/*---*/
                     container-name: bbgl-ach; width: 100%; box-sizing: border-box; flex: 1; min-height: 0; overflow: hidden; }/*----------*/
@@ -1391,12 +1346,10 @@
                     body:not(.is-touch-device) .bbgl-ach-nav:hover { color: #fff; text-shadow: 0 0 3px #fff; } .bbgl-ach-section {/*------*/
                     margin-bottom: 0; width: 100%; box-sizing: border-box; overflow: visible; }/*-----------------------------------------*/
                     .bbgl-ach-cols, .bbgl-ach-col, .bbgl-ach-row, .ach-v-wrap, .bbgl-ach-row .ach-value { overflow: visible; }/*----------*/
-                    /* height is set inline by achRefreshPageDom() to the real, measured distance between #bbgl-ach-pages' top (already clear of the SVG toggle row) and #bbgl-ach-footer's top (the page-dot/nav bar), so this centers within the actual visible gap in every panel mode instead of guessing box-model math against the grid layout under #bbgl-achievements-container. */ .bbgl-ach-locked {
-                    position: absolute; top: 0; left: 0; right: 0; min-height: 60px; display: flex; flex-direction: column;/*-------------*/
-                    align-items: center; justify-content: center; gap: 8px; text-align: center; box-sizing: border-box;/*-----------------*/
-                    /* Nudge on top of the measured centering above; magnitude differs per mode. */ transform: translateY(-4px); }/*------*/
-                    #bbgl-panel.bbgl-compact .bbgl-ach-locked { transform: translateY(2px); }/*-------------------------------------------*/
-                    /* --ach-gap is stamped by resizeAchLockedPage() (06-section-v-logic.js) to the real measured height of the visible area, so this scales off the container's actual live height rather than the width-only --bbgl-page-t breakpoint. */ #bbgl-panel.bbgl-mode-page .bbgl-ach-locked {
+                    /* height is set inline by achRefreshPageDom() to the real, measured distance between #bbgl-ach-pages' top (already clear of the SVG toggle row) and #bbgl-ach-footer's top (the page-dot/nav bar), so this centers within the actual visible gap in every panel mode instead of guessing box-model math against the grid layout under #bbgl-achievements-container. */ .bbgl-ach-locked { position: absolute; top: 0; left: 0; right: 0; min-height: 60px; display: flex;/*-*/
+                    flex-direction: column; align-items: center; justify-content: center; gap: 8px; text-align: center;/*-----------------*/
+                    box-sizing: border-box; /* Nudge on top of the measured centering above; magnitude differs per mode. */ transform: translateY(-4px); } #bbgl-panel.bbgl-compact .bbgl-ach-locked {/*-*/
+                    transform: translateY(2px); } /* --ach-gap is stamped by resizeAchLockedPage() (06-section-v-logic.js) to the real measured height of the visible area, so this scales off the container's actual live height rather than the width-only --bbgl-page-t breakpoint. */ #bbgl-panel.bbgl-mode-page .bbgl-ach-locked {/*------------------------*/
                     transform: translateY(clamp(-2.5px, calc(0px - var(--ach-gap, 300px) * 0.012), 0px)); } .bbgl-ach-locked-icon {/*-----*/
                     font-size: clamp(28px, 6cqi, 42px); opacity: .55; filter: grayscale(1); } .bbgl-ach-locked-text {/*-------------------*/
                     font-size: clamp(13px, 2.6cqi, 16px); font-weight: 600; color: rgba(255, 255, 255, .75); letter-spacing: .02em;/*-----*/
@@ -1442,9 +1395,8 @@
                     #bbgl-panel:is(.bbgl-expanded, .bbgl-mode-page) .bbgl-ach-row .ach-value.ach-happy-col { display: inline-flex;/*------*/
                     min-width: 5.5em; } .bbgl-ach-row .ach-value.ach-enh-gained { display: none; }/*--------------------------------------*/
                     #bbgl-panel:is(.bbgl-expanded, .bbgl-mode-page) .bbgl-ach-row .ach-value.ach-enh-gained { display: inline-flex;/*-----*/
-                    min-width: 5.5em; }/*-------------------------------------------------------------------------------------------------*/
-                    /* OD sub-rows are detail-only: hidden in the compact panel, shown in expanded panel and page mode. */ .bbgl-ach-od-row {
-                    display: none; } #bbgl-panel:is(.bbgl-expanded, .bbgl-mode-page) .bbgl-ach-od-row { display: flex; }/*----------------*/
+                    min-width: 5.5em; } /* OD sub-rows are detail-only: hidden in the compact panel, shown in expanded panel and page mode. */ .bbgl-ach-od-row { display: none; }/*--------------------------------------------*/
+                    #bbgl-panel:is(.bbgl-expanded, .bbgl-mode-page) .bbgl-ach-od-row { display: flex; }/*---------------------------------*/
                     #bbgl-panel:is(.bbgl-expanded, .bbgl-mode-page) .ach-unit { display: inline; } .ach-date { display: none;/*-----------*/
                     font-size: clamp(10px, 2.1cqi, 12px); font-weight: 500; color: #999; font-family: var(--bbgl-ach-font);/*-------------*/
                     text-align: left; margin-left: 6px; line-height: 1; letter-spacing: .01em; }/*----------------------------------------*/
@@ -1567,7 +1519,7 @@
                     min-width: 0; flex: 1; } #bbgl-panel:is(.bbgl-expanded, .bbgl-mode-page) .bbgl-ach-hh-label { flex-direction: column;
                     align-items: flex-start; gap: 0; } .bbgl-ach-hh-label .ach-k { font-weight: 500; color: #bbb; }/*---------------------*/
                     .bbgl-ach-hh-label .ach-date { font-family: var(--bbgl-ach-val-font); color: #888; line-height: 1.2; margin-top: 1px;
-                    font-variant-numeric: tabular-nums; } /* kept for compat */ .bbgl-ach-hh-cells { display: flex;/*---------------------*/
+                    font-variant-numeric: tabular-nums; } /* kept for compat */ .bbgl-ach-hh-cells { display: flex;/*--------------------------*/
                     gap: clamp(8px, 1.6cqi, 14px); align-items: center; flex-shrink: 0; }/*-----------------------------------------------*/
                     #bbgl-panel:is(.bbgl-expanded, .bbgl-mode-page) .bbgl-ach-hh-cells { align-items: flex-end; } .bbgl-ach-hh-cell {/*---*/
                     display: flex; flex-direction: column; align-items: center; min-width: 32px; } .bbgl-ach-hh-val {/*-------------------*/

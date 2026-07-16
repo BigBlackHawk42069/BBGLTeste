@@ -5,6 +5,9 @@
      */
     const ASSETS = {
         HEADER_IMG: cdnize("https://raw.githubusercontent.com/BigBlackHawk42069/asdfaskijdnfawef/refs/heads/main/ScrptImgs/Calendar/cal-hdr.jpg"),
+        GLASS_OVERLAY: cdnize("https://raw.githubusercontent.com/BigBlackHawk42069/asdfaskijdnfawef/refs/heads/main/ScrptImgs/Calendar/glass-ovly.jpg"),
+        STICKER_BG: cdnize("https://raw.githubusercontent.com/BigBlackHawk42069/asdfaskijdnfawef/refs/heads/main/ScrptImgs/Stickerbook/stkr-bckgr.png"),
+        NEW_STICKER_FRAME: cdnize("https://raw.githubusercontent.com/BigBlackHawk42069/asdfaskijdnfawef/refs/heads/main/ScrptImgs/Calendar/new-stkr.png"),
         GRADIENT: `<defs><linearGradient id="bbgl_silver_grad" x1="0%" y1="0%" x2="0%" y2="100%"><stop offset="0%" style="stop-color:#d9d9d9;stop-opacity:1" /><stop offset="100%" style="stop-color:#999999;stop-opacity:1" /></linearGradient></defs>`
     };
     const ICONS = {
@@ -1301,6 +1304,20 @@
                         background-image: linear-gradient(180deg, #2a0840 0%, #8e24aa 25%, #6a1b9a 60%, #6a1b9a 78%, #2a0840 100%);
                     }
 
+                    /* Panel mode only: #bbgl-bottom-panel is the scroll container here (see its
+                       overflow-y:auto rule below), and #bbgl-demo-exit is its first child, so
+                       sticking it to the top of that box keeps it pinned at the boundary with
+                       #bbgl-top-panel as the calendar scrolls underneath — instead of scrolling
+                       away with the rest of the header/grid content. In tall mode #bbgl-top-panel's
+                       existing negative margin-bottom (z-index:25) overlaps this bar, producing the
+                       "hanging off the top panel" look for free. Page mode leaves it static (its
+                       #bbgl-bottom-panel doesn't scroll internally there). */
+                    #bbgl-panel:not(.bbgl-mode-page) #bbgl-demo-exit {
+                        position: sticky;
+                        top: 0;
+                        z-index: 22;
+                    }
+
                     #bbgl-demo-exit:active {
                         background-image: linear-gradient(0deg, #8e24aa 0%, #6a1b9a 100%);
                     }
@@ -1615,7 +1632,7 @@
                         left: 0;
                         width: 100%;
                         height: 100%;
-                        background-image: url('${cdnize('https://raw.githubusercontent.com/BigBlackHawk42069/asdfaskijdnfawef/refs/heads/main/ScrptImgs/Calendar/glass-ovly.jpg')}');
+                        background-image: url('${ASSETS.GLASS_OVERLAY}');
                         background-size: 100% 100%;
                         background-position: center;
                         opacity: .5;
@@ -2077,7 +2094,7 @@
                         left: 0;
                         width: 100%;
                         height: 100%;
-                        background-image: url('${cdnize('https://raw.githubusercontent.com/BigBlackHawk42069/asdfaskijdnfawef/refs/heads/main/ScrptImgs/Stickerbook/stkr-bckgr.png')}');
+                        background-image: url('${ASSETS.STICKER_BG}');
                         background-size: cover;
                         background-position: center;
                         z-index: 5;
@@ -3453,7 +3470,7 @@
                         left: 4%;
                         width: 92%;
                         height: 92%;
-                        background: url('${cdnize('https://raw.githubusercontent.com/BigBlackHawk42069/asdfaskijdnfawef/refs/heads/main/ScrptImgs/Calendar/new-stkr.png')}') no-repeat center / contain;
+                        background: url('${ASSETS.NEW_STICKER_FRAME}') no-repeat center / contain;
                         z-index: 20;
                         filter: drop-shadow(-2px 4px 5px rgba(0, 0, 0, .4));
                         transform-origin: top right;
@@ -4453,12 +4470,14 @@
                         --dmnd-b: calc(var(--dmnd-s) * (-0.25 + 0.02 * var(--bbgl-page-t)));
                     }
 
-                    /* Main panel diamond — lives on the flag-clip wrapper so it shares the
+                    /* A2 badge slot — main panel. Lives on the flag-clip wrapper so it shares the
                        wrapper's screen-fixed cut line and tucks behind the bar like the text
                        flag. Its offset parent (the wrapper) sits --bbgl-track-h above the
-                       container bottom, so the bottom anchor subtracts that to land the diamond
+                       container bottom, so the bottom anchor subtracts that to land the badge
                        at the same spot the old container-relative anchor did. No self-clip — the
-                       wrapper does the clipping. z-index:-1 keeps the number text in front. */
+                       wrapper does the clipping. z-index:-1 keeps the number text in front.
+                       No background image set — the diamond placeholder was pulled pending a
+                       replacement A2 tier asset; set the background property here once one exists. */
                     #bbgl-panel[data-atrophy="2"] #bbgl-level-flag-clip::before {
                         content: '';
                         position: absolute;
@@ -4468,12 +4487,11 @@
                         transform: translateX(-50%);
                         width: var(--dmnd-s);
                         height: var(--dmnd-s);
-                        background: url('${cdnize('https://raw.githubusercontent.com/BigBlackHawk42069/asdfaskijdnfawef/refs/heads/main/ScrptImgs/Calendar/lvl-dmnd.png')}') center / contain no-repeat;
                         z-index: -1;
                     }
 
-                    /* Gym page diamond — old structure (no flag-clip wrapper), keeps its own
-                       self-clip. */
+                    /* A2 badge slot — gym page, old structure (no flag-clip wrapper), keeps its
+                       own self-clip. No background image set; see main panel slot above. */
                     #bbgl-gym-level-container[data-atrophy="2"]::before {
                         content: '';
                         position: absolute;
@@ -4484,7 +4502,6 @@
                         width: var(--dmnd-s);
                         height: var(--dmnd-s);
                         clip-path: inset(0 0 calc(var(--dmnd-b) * -1 + 2px) 0);
-                        background: url('${cdnize('https://raw.githubusercontent.com/BigBlackHawk42069/asdfaskijdnfawef/refs/heads/main/ScrptImgs/Calendar/lvl-dmnd.png')}') center / contain no-repeat;
                         z-index: 1;
                         pointer-events: none;
                     }
@@ -4725,6 +4742,14 @@
 
                     .bbgl-author-link:hover {
                         border-bottom-color: #69f0ae;
+                    }
+
+                    .bbgl-settings-author-credit {
+                        margin: 8px 10px 0 10px;
+                        font-family: Arial, sans-serif;
+                        font-size: 11px;
+                        color: #888;
+                        text-align: center;
                     }
 
                     .bbgl-settings-scroll-area {

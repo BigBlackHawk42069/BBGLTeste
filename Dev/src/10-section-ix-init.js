@@ -609,10 +609,7 @@
                     const cwb = wv.querySelector('.close-settings-btn');
                     if (cwb) cwb.onclick = (e) => {
                         if (e) e.stopPropagation();
-                        if (runtime.welcomeReturn === 'settings') {
-                            runtime.welcomeReturn = null;
-                            switchView('settings');
-                        } else switchView('ledger');
+                        switchView('ledger');
                     };
                     const iak = wv.querySelector('#init-api-key');
                     if (iak) iak.value = userConfig.apiKey || '';
@@ -936,6 +933,7 @@
             if (vp && vp.classList.contains('active')) runtime.returnView = 'viewer';
             else if (tp.classList.contains('viewing-graph')) runtime.returnView = 'graph';
             else if (tp.classList.contains('viewing-stickers')) runtime.returnView = 'stickers';
+            else if (tp.classList.contains('viewing-achievements')) runtime.returnView = 'achievements';
             else runtime.returnView = 'ledger';
             switchView('settings');
             viewState.subView = 'settings';
@@ -1254,7 +1252,7 @@
                 if (userConfig.apiKey) {
                     startBackgroundSync();
                 }
-            });
+            }).finally(() => snapLevelBar());
             calendarState.selectedData = null;
             calendarState.selectedLabel = Formatter.dateLogical();
             viewState.activeViewLabel = null;
@@ -1534,7 +1532,6 @@
             saveConfig();
             ai.value = '';
             localStorage.removeItem(KEYS.LAST_SYNC);
-            localStorage.removeItem(KEYS.BS_SYNC);
             sessionStorage.removeItem(KEYS.SESSION_CACHE);
             sessionStorage.removeItem(KEYS.SESSION);
             const ot = cab.innerText;
@@ -1584,11 +1581,10 @@
             this.blur();
             clearData();
         };
-        const wb = get('show-welcome-btn');
-        if (wb) wb.onclick = function() {
+        const pdb = get('settings-privacy-btn');
+        if (pdb) pdb.onclick = function() {
             this.blur();
-            runtime.welcomeReturn = 'settings';
-            switchView('welcome');
+            openPrivacyModal();
         };
         const cl = get('settings-changelog-btn');
         if (cl) cl.onclick = function() {
