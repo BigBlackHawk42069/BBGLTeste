@@ -10,7 +10,7 @@
 // @connect      cdn.jsdelivr.net
 // @run-at       document-start
 // @updateURL    https://raw.githubusercontent.com/BigBlackHawk42069/BigBlackGymLog/main/BigBlackGymLog.js
-// @downloadURL  __SCRIPT_URL__
+// @downloadURL  https://raw.githubusercontent.com/BigBlackHawk42069/BigBlackGymLog/main/BigBlackGymLog.js
 // ==/UserScript==
 
 (function() {
