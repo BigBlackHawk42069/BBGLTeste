@@ -1858,7 +1858,7 @@ function gotoAchievementsPage(dir) {
 
 function achLedgerClip(n) {
     if (n === null || n === undefined || (typeof n === 'number' && Number.isNaN(n))) return '\u2014';
-    return (Math.abs(n) >= 1e9) ? Formatter.abbr(n, 4) : Formatter.number(n);
+    return Formatter.achAbbr(n, ACH_FMT.gains);
 }
 
 function achFmtVal(n) {
@@ -2109,7 +2109,7 @@ function achBuildPage1(d) {
     const consVal = d.trainingRestRatio || '—';
     const consDaysShort = '';
     const consDaysLong = '(' + (d.trainingDays || 0) + '/' + (d.calDays || 0) + ' Days)';
-    const consRow = `<div class="bbgl-ach-row bbgl-ach-row-multi bbgl-ach-consistency-row" data-ach-key="consistency" data-tooltip="Your lifetime ratio of active training days versus total calendar days."><div class="bbgl-ach-consistency-text"><span class="ach-cons-short">Consistency: <span class="ach-cons-val">${achEsc(consVal)}</span></span><span class="ach-cons-long">Training Consistency: <span class="ach-cons-val">${achEsc(consVal)}</span> <span class="ach-cons-days">${achEsc(consDaysLong)}</span></span></div></div>`;
+    const consRow = `<div class="bbgl-ach-row bbgl-ach-row-multi bbgl-ach-consistency-row" data-ach-key="consistency" data-tooltip="Your lifetime ratio of active training days versus total calendar days."><div class="bbgl-ach-consistency-text">Training Consistency: <span class="ach-cons-val">${achEsc(consVal)}</span> <span class="ach-cons-days">${achEsc(consDaysLong)}</span></div></div>`;
     return `<div class="bbgl-ach-section bbgl-ach-section-page0 bbgl-ach-section-page1">${header}${rowsHTML}${consRow}</div>`;
 }
 
@@ -2281,16 +2281,16 @@ function achBuildPageOverview(d) {
             const rec = enh[sk] || { count: 0, gain: 0 };
             countHtml = rec.count > 0 ? achEsc(Formatter.number(rec.count)) : NULL;
             // Stat label always shows; number is — when no data
-            const gainNum = rec.gain > 0 ? `+${achEsc(Formatter.gain(rec.gain))}` : NULL;
+            const gainNum = rec.gain > 0 ? `+${achEsc(Formatter.achAbbr(rec.gain, ACH_FMT.enhancers))}` : NULL;
             gainedHtml = `${gainNum} <span class="ach-stat-${sk}">${STAT_ABBR[sk]}</span>`;
-            clipVal = `${label}: ${rec.count} (+${Formatter.gain(rec.gain)} ${STAT_ABBR[sk]})`;
+            clipVal = `${label}: ${rec.count} (+${Formatter.achAbbr(rec.gain, ACH_FMT.enhancers)} ${STAT_ABBR[sk]})`;
             tip = isExpanded ? `Amount of ${tipLabel} · ${achStatFull(sk)} Gained` : `Amount of ${tipLabel}`;
         } else {
             const rec = enrg[id] || { count: 0, energy: 0 };
             countHtml = rec.count > 0 ? achEsc(Formatter.number(rec.count)) : NULL;
-            const gainNum = rec.energy > 0 ? `+${achEsc(Formatter.gain(rec.energy))}` : NULL;
+            const gainNum = rec.energy > 0 ? `+${achEsc(Formatter.achAbbr(rec.energy, ACH_FMT.enhancers))}` : NULL;
             gainedHtml = `${gainNum} <span class="ach-enh-e-label">E</span>`;
-            clipVal = `${label}: ${rec.count} (+${Formatter.gain(rec.energy)} Energy)`;
+            clipVal = `${label}: ${rec.count} (+${Formatter.achAbbr(rec.energy, ACH_FMT.enhancers)} Energy)`;
             tip = isExpanded ? `Amount of ${tipLabel} · Energy Gained` : `Amount of ${tipLabel}`;
         }
 
@@ -2328,10 +2328,10 @@ function achBuildPageOverview(d) {
         const sk = STAT_ENH_MAP[id];
         if (sk) {
             const rec = enh[sk] || { count: 0, gain: 0 };
-            return `${label}: ${rec.count} (+${Formatter.gain(rec.gain)} ${STAT_ABBR[sk]})`;
+            return `${label}: ${rec.count} (+${Formatter.achAbbr(rec.gain, ACH_FMT.enhancers)} ${STAT_ABBR[sk]})`;
         }
         const rec = enrg[id] || { count: 0, energy: 0 };
-        return `${label}: ${rec.count} (+${Formatter.gain(rec.energy)} Energy)`;
+        return `${label}: ${rec.count} (+${Formatter.achAbbr(rec.energy, ACH_FMT.enhancers)} Energy)`;
     }).join('\n');
 
     const cols = `<div class="bbgl-ach-col">${leftHTML}</div><div class="bbgl-ach-col">${rightHTML}</div>`;
@@ -2368,7 +2368,7 @@ function buildAchievementsPage(pageIdx, d) {
         }
         return {
             ...base,
-            dualHtml: Formatter.dual(value),
+            dualHtml: Formatter.achDual(value, ACH_FMT.gains),
             display: '',
             rawVal: opts.rawVal !== undefined ? opts.rawVal : achLedgerClip(value)
         };
@@ -2385,7 +2385,7 @@ function buildAchievementsPage(pageIdx, d) {
         };
         if (suffix) return rec ? mk(label, v, {
             ...o,
-            dualHtml: Formatter.dual(v) + ' E',
+            dualHtml: Formatter.achDual(v, ACH_FMT.gains) + ' E',
             rawVal: achLedgerClip(v) + ' E'
         }) : mk(label, null, {
             ...o,
@@ -2486,7 +2486,7 @@ function buildAchievementsPage(pageIdx, d) {
     }
 }
 
-const achFmtGain = v => Formatter.achGain(v);
+const achFmtGain = v => Formatter.achAbbr(v, ACH_FMT.compact);
 
 function achStatAbbr(s) {
     return s ? s.charAt(0).toUpperCase() + s.slice(1) : '';
@@ -2927,7 +2927,6 @@ function handleAchCopy(el) {
 // or a single-element array [k] for a per-column copy. Energy line uses s[keys[0]].cost for
 // single-stat, s.total.cost for full. Format is identical to the existing copy-session output.
 function buildSessionText(sl, s, keys) {
-    const fM = v => (Math.abs(v) >= 1e9) ? Formatter.abbr(v, 4) : Formatter.number(v);
     const statEmoji = { str: '💪', def: '🛡️', spd: '🎯', dex: '🤺' };
     const statNames = { str: 'Strength', def: 'Defense', spd: 'Speed', dex: 'Dexterity' };
     let ds = '';
@@ -2940,7 +2939,7 @@ function buildSessionText(sl, s, keys) {
     const eTxt = eCost > 0 ? `⚡${Formatter.number(eCost)} E` : '🛌 I was a lazy POS.';
     const statLines = keys
         .filter(k => s[k].gain > 0 || s[k].cost > 0)
-        .map(k => `${statEmoji[k]}${statNames[k]}: +${fM(s[k].gain)} (${fM(s[k].start)} → ${fM(s[k].end)})`);
+        .map(k => `${statEmoji[k]}${statNames[k]}: +${Formatter.achAbbr(s[k].gain, ACH_FMT.gains)} (${Formatter.achAbbr(s[k].start, ACH_FMT.gains)} \u2192 ${Formatter.achAbbr(s[k].end, ACH_FMT.gains)})`);
     return ['👑BBGymLog', `${ds} |${eTxt}`, ...statLines].join('\n');
 }
 

@@ -1,4 +1,4 @@
-﻿    /**
+    /**
      *  [SECTION II] THE SUPPLEMENTS (Utility Belt)
      *  ========================================================================
      *  Your pre-workout, Xanax, and Creatine all in one section.
@@ -18,6 +18,14 @@
         return 0;
     }
 
+    const ACH_FMT = {
+        compact:   [[1e6, 2], [1e4, 1]],    // 1m+ = 2dp, 10k+ = 1dp
+        gains:     [[1e12, 4], [1e9, 3]],   // 1t+ = 4dp,  1b+ = 3dp
+        enhancers: [[1e6, 3], [1e5, 2]],    // 1m+ = 3dp, 100k+ = 2dp
+        rewards:   []                        // always full locale
+        // sexiest streaks + happy hopping reference ACH_FMT.compact directly
+    };
+
     const Formatter = {
         number(n, d = 0) {
             return (n === undefined || n === null) ? '0' : n.toLocaleString('en-US', {
@@ -25,23 +33,23 @@
                 maximumFractionDigits: d
             });
         },
-        abbr(n, d = 1, upper = false, strip = false) {
+        abbr(n, d = 1, strip = false) {
             if (!n && n !== 0) return '0';
             const abs = Math.abs(n);
             if (abs < 1000) return Math.trunc(n).toString();
             const tiers = [
                 [1e15, 'q'],
                 [1e12, 't'],
-                [1e9, 'b'],
-                [1e6, 'm'],
-                [1e3, 'k']
+                [1e9,  'b'],
+                [1e6,  'm'],
+                [1e3,  'k']
             ];
             for (const [mag, suffix] of tiers) {
                 if (abs >= mag) {
                     let dec = typeof d === 'function' ? d(mag, abs) : d;
                     let s = (n / mag).toFixed(dec);
                     if (strip) s = parseFloat(s).toString();
-                    return s + (upper ? suffix.toUpperCase() : suffix);
+                    return s + suffix; // always lowercase
                 }
             }
             return Math.floor(n).toString();
@@ -52,20 +60,22 @@
             if (exp) return this.number(Math.floor(n), 0);
             return this.abbr(n, 1);
         },
-        gain(v) {
-            const a = Math.abs(v);
-            if (a < 1e6) return this.number(v);
-            return this.abbr(v, (m, abs) => m >= 1e9 ? 4 : m === 1e6 ? 3 : 2);
+        achAbbr(n, tiers) {
+            if (!tiers || !tiers.length) return this.number(n);
+            const abs = Math.abs(n);
+            for (const [mag, dec] of tiers) {
+                if (abs >= mag) return this.abbr(n, dec);
+            }
+            return this.number(n);
         },
-        achGain(v) {
-            const a = Math.abs(v);
-            if (a < 100) return this.number(v, 1);
-            if (a < 1000) return this.number(v, 0);
-            return this.abbr(v, (m, abs) => m >= 1e9 ? 4 : m === 1e6 ? 3 : (abs >= 1e4 ? 2 : 1), true, false);
+        achDual(val, expandedTiers = ACH_FMT.compact) {
+            const std = this.achAbbr(val, ACH_FMT.compact);
+            const exp = this.achAbbr(val, expandedTiers);
+            return `<span class="view-std">${std}</span><span class="view-exp">${exp}</span>`;
         },
         ratePct(v) {
             if (Math.abs(v) < 1000) return this.number(v, 0);
-            return this.abbr(v, 2, true, true);
+            return this.abbr(v, 2, true); // strip=true; lowercase via abbr()
         },
         dual(val, r = false) {
             let std, exp;

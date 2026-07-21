@@ -609,7 +609,7 @@
                         --bbgl-f-top-mb: 1px;
                         --bbgl-bot-minh: 12px;
                         --bbgl-col-gap: 8px;
-                        --bbgl-gx: clamp(7px, 1.78cqi, 12px);
+                        --bbgl-gx: clamp(7px, calc(7px + 5px * var(--bbgl-dock-t, 0)), 12px);
                         --bbgl-label-case: uppercase;
                         --bbgl-viewer-title-top-shift: 3px;
                         container-type: inline-size;
@@ -634,12 +634,12 @@
                     }
 
                     #bbgl-panel.bbgl-expanded {
-                        --bbgl-f-label: clamp(12.5px, 2.34cqi, 13.5px);
-                        --bbgl-f-top: clamp(12.5px, 2.34cqi, 13.5px);
-                        --bbgl-f-bot: clamp(10.5px, 1.997cqi, 11.5px);
+                        --bbgl-f-label: clamp(12.5px, calc(12.5px + 1px * var(--bbgl-dock-t)), 13.5px);
+                        --bbgl-f-top: clamp(12.5px, calc(12.5px + 1px * var(--bbgl-dock-t)), 13.5px);
+                        --bbgl-f-bot: clamp(10.5px, calc(10.5px + 1px * var(--bbgl-dock-t)), 11.5px);
                         --bbgl-f-top-mb: 3px;
                         --bbgl-bot-minh: 14px;
-                        --bbgl-col-gap: clamp(8px, 2.78cqi, 16px);
+                        --bbgl-col-gap: clamp(8px, calc(8px + 8px * var(--bbgl-dock-t)), 16px);
                         --bbgl-label-case: none;
                         width: min(576px, calc(100vw - 20px));
                         height: 633px;
@@ -656,10 +656,10 @@
                     }
 
                     #bbgl-panel.bbgl-tall.bbgl-expanded {
-                        --bbgl-f-label: clamp(13.75px, calc(2px + 2.34cqi), 15.5px);
-                        --bbgl-f-top: clamp(13.75px, calc(2px + 2.34cqi), 15.5px);
-                        --bbgl-f-bot: clamp(11.75px, calc(1.5px + 1.997cqi), 13px);
-                        --bbgl-col-gap: clamp(22px, calc(35.5px - 2.34cqi), 24.5px);
+                        --bbgl-f-label: clamp(13.75px, calc(13.75px + 1.75px * var(--bbgl-dock-t)), 15.5px);
+                        --bbgl-f-top: clamp(13.75px, calc(13.75px + 1.75px * var(--bbgl-dock-t)), 15.5px);
+                        --bbgl-f-bot: clamp(11.75px, calc(11.75px + 1.25px * var(--bbgl-dock-t)), 13px);
+                        --bbgl-col-gap: clamp(22px, calc(24.5px - 2.5px * var(--bbgl-dock-t)), 24.5px);
                     }
 
                     #bbgl-panel.bbgl-mode-page {
@@ -685,7 +685,7 @@
                         overflow-x: hidden !important;
                         overflow-y: visible !important;
                         --bbgl-label-case: none !important;
-                        --bbgl-page-t: clamp(0, calc((100cqi - 350px) / 370px), 1);
+                        --bbgl-page-t: clamp(0, calc((100cqi - 300px) / 370px), 1);
                         --bbgl-f-label: clamp(10.75px, calc(10.75px + 5.25px * var(--bbgl-page-t)), 16px);
                         --bbgl-f-top: clamp(10.75px, calc(10.75px + 6.25px * var(--bbgl-page-t)), 17px);
                         --bbgl-f-bot: clamp(9px, calc(9px + 5px * var(--bbgl-page-t)), 14px);
@@ -814,18 +814,21 @@
                         --bbgl-ach-inset-x: clamp(6px, calc(6px + 4px * var(--bbgl-page-t)), 24px);
                         --bbgl-ach-container-pt: 0;
                         --bbgl-ach-scroll-pt: clamp(2px, calc(4px - 1px * var(--bbgl-page-t)), 5px);
-                        --bbgl-ach-footer-pt: clamp(0px, calc(1px + 1px * var(--bbgl-page-t)), 2px);
-                        --bbgl-ach-footer-pb: 0;
+                        --bbgl-ach-scroll-pb: clamp(0px, calc(2px - .5px * var(--bbgl-page-t)), 2px);
+                        padding-top: var(--bbgl-ach-container-pt) !important;
+                        padding-left: var(--bbgl-ach-inset-x) !important;
+                        padding-right: var(--bbgl-ach-inset-x) !important;
+                    }
+
+                    #bbgl-panel.bbgl-mode-page #bbgl-ach-footer,
+                    #bbgl-panel.bbgl-mode-page .bbgl-ach-footer {
                         --bbgl-ach-footer-gap: clamp(4px, calc(4px + 2px * var(--bbgl-page-t)), 6px);
                         --bbgl-ach-dot-gap: clamp(4px, calc(4px + 2px * var(--bbgl-page-t)), 6px);
                         --bbgl-ach-dot-w: clamp(5px, calc(5px + 1px * var(--bbgl-page-t)), 6px);
                         --bbgl-ach-nav-fs: clamp(7px, calc(1.45 * var(--bbgl-ach-dot-w)), 11px);
                         --bbgl-ach-nav-py: 0;
                         --bbgl-ach-nav-px: clamp(2px, calc(2px + 3px * var(--bbgl-page-t)), 8px);
-                        --bbgl-ach-scroll-pb: clamp(0px, calc(2px - .5px * var(--bbgl-page-t)), 2px);
-                        padding-top: var(--bbgl-ach-container-pt) !important;
-                        padding-left: var(--bbgl-ach-inset-x) !important;
-                        padding-right: var(--bbgl-ach-inset-x) !important;
+                        padding: clamp(0px, calc(1px + 1px * var(--bbgl-page-t)), 2px) clamp(6px, calc(6px + 4px * var(--bbgl-page-t)), 24px) 0;
                     }
 
                     #bbgl-panel.bbgl-mode-page .bbgl-ach-scroll {
@@ -1548,19 +1551,19 @@
                     .bbgl-expanded.bbgl-tall #bbgl-graph-toggle {
                         width: 16px;
                         height: 15px;
-                        left: clamp(56px, calc(51.6px + 1.45cqi), 60px);
+                        left: clamp(56px, calc(56px + 4px * var(--bbgl-dock-t)), 60px);
                     }
 
                     .bbgl-expanded.bbgl-tall #bbgl-achievements-toggle {
                         width: 15.5px;
                         height: 15.5px;
-                        left: clamp(80px, calc(71.2px + 2.9cqi), 88px);
+                        left: clamp(80px, calc(80px + 8px * var(--bbgl-dock-t)), 88px);
                     }
 
                     .bbgl-expanded.bbgl-tall #bbgl-sticker-toggle {
                         width: 16px;
                         height: 15px;
-                        left: clamp(104px, calc(90.8px + 4.35cqi), 116px);
+                        left: clamp(104px, calc(104px + 12px * var(--bbgl-dock-t)), 116px);
                     }
 
                     .bbgl-expanded.bbgl-tall #bbgl-copy-btn {
@@ -1669,7 +1672,6 @@
                     .bbgl-expanded .ui-floating-label,
                     .bbgl-expanded .ui-floating-summary {
                         bottom: 4px;
-                        font-size: 12px !important;
                     }
 
                     .viewing-graph .ui-floating-label,
@@ -1704,14 +1706,6 @@
                         box-shadow: inset 1px 1px 1px rgba(255, 255, 255, .2) !important;
                     }
 
-                    #bbgl-panel:not(.bbgl-mode-page) #bbgl-top-panel.viewing-achievements {
-                        padding-top: max(0px, calc(clamp(2px, calc(2px + 18px * var(--bbgl-dock-t, 0)), 20px) - calc(2px * var(--bbgl-dock-t, 0))));
-                    }
-
-                    #bbgl-panel.bbgl-compact #bbgl-top-panel.viewing-achievements {
-                        padding-top: 14px;
-                    }
-
                     .ledger-content {
                         position: relative;
                         flex: 1;
@@ -1740,6 +1734,22 @@
 
                     #bbgl-panel.bbgl-tall.bbgl-expanded .ledger-content {
                         padding-top: 12px;
+                    }
+
+                    /* Achievements diverges from the ledger's top padding, landing at a flat
+                       3px top in both modes, and gets +5px of side padding on top of the
+                       inherited 2px (both modes). */
+                    #bbgl-panel.bbgl-tall.bbgl-expanded #bbgl-achievements-container {
+                        padding-top: 3px;
+                    }
+
+                    #bbgl-panel.bbgl-tall.bbgl-compact #bbgl-achievements-container {
+                        padding-top: 3px !important;
+                    }
+
+                    #bbgl-achievements-container {
+                        padding-left: 7px;
+                        padding-right: 7px;
                     }
 
                     .stat-column {
@@ -1932,7 +1942,6 @@
                         display: flex !important;
                         flex-direction: column !important;
                         flex: 1 !important;
-                        padding: 0;
                     }
 
                     .g-hud {
@@ -2294,7 +2303,7 @@
                     }
 
                     .bbgl-expanded #bbgl-sticker-title {
-                        font-size: 15px;
+                        font-size: clamp(13px, calc(13px + 2px * var(--bbgl-dock-t, 0)), 15px);
                         top: 8px;
                         right: 20px;
                     }
@@ -2379,10 +2388,10 @@
                     }
 
                     .bbgl-expanded #bbgl-item-counters {
-                        font-size: clamp(11px, 2.1cqi, 12px);
+                        font-size: clamp(11px, calc(11px + 1px * var(--bbgl-dock-t)), 12px);
                         top: 6px;
                         right: 38px;
-                        gap: clamp(4px, calc(-7px + 3.6cqi), 14px);
+                        gap: clamp(4px, calc(4px + 10px * var(--bbgl-dock-t)), 14px);
                     }
 
                     #bbgl-panel.bbgl-mode-page #bbgl-item-counters {
@@ -2535,7 +2544,7 @@
                     }
 
                     .bbgl-expanded:not(.bbgl-mode-page) .viewer-obj {
-                        transform: rotateX(5deg) scale(clamp(.75, calc(.75 + .08 * (576px - 100cqi) / 256px), .83)) translateY(-15px);
+                        transform: rotateX(5deg) scale(clamp(.75, calc(.83 - .08 * var(--bbgl-dock-t)), .83)) translateY(-15px);
                     }
 
                     .viewer-obj img {
@@ -2619,12 +2628,12 @@
                     }
 
                     #bbgl-panel.bbgl-expanded:not(.bbgl-mode-page) .viewer-info-overlay {
-                        top: calc(10.35cqi + clamp(10px, 4cqi, 15px) - var(--bbgl-viewer-title-top-shift)) !important;
-                        left: clamp(10px, 4cqi, 15px) !important;
+                        top: calc(43.05px + 31.57px * var(--bbgl-dock-t) - var(--bbgl-viewer-title-top-shift)) !important;
+                        left: clamp(10px, calc(10px + 5px * var(--bbgl-dock-t)), 15px) !important;
                     }
 
                     .bbgl-expanded .vi-name {
-                        font-size: 15px;
+                        font-size: clamp(14px, calc(14px + 1px * var(--bbgl-dock-t)), 15px);
                     }
 
                     .vi-count {
@@ -2767,7 +2776,7 @@
                     }
 
                     #bbgl-panel.bbgl-expanded .bbgl-month-header {
-                        gap: clamp(6px, 2.08cqi, 12px);
+                        gap: clamp(6px, calc(6px + 6px * var(--bbgl-dock-t)), 12px);
                         margin-bottom: 12px;
                     }
 
@@ -2909,7 +2918,7 @@
 
                     #bbgl-panel.bbgl-expanded .header-row {
                         gap: 6px;
-                        height: clamp(20px, calc(4.86cqi - 1px), 27px);
+                        height: clamp(20px, calc(20px + 7px * var(--bbgl-dock-t)), 27px);
                         --btn-lift: -4px;
                     }
 
@@ -3133,7 +3142,7 @@
                     }
 
                     #bbgl-panel.bbgl-expanded .drop-item {
-                        font-size: 13px;
+                        font-size: clamp(11px, calc(11px + 2px * var(--bbgl-dock-t)), 13px);
                     }
 
                     .drop-item:hover {
@@ -3172,7 +3181,7 @@
                     }
 
                     #bbgl-panel.bbgl-expanded .bbgl-week-row {
-                        font-size: 13px;
+                        font-size: clamp(11px, calc(11px + 2px * var(--bbgl-dock-t)), 13px);
                         padding-top: 5px;
                         margin-bottom: 2px;
                     }
@@ -3623,10 +3632,6 @@
                         font-size: 12px !important;
                     }
 
-                    #bbgl-panel.bbgl-expanded .bbgl-day-cell.is-viewing .day-num {
-                        font-size: 19px !important;
-                    }
-
                     .bbgl-weekly-anchor {
                         width: 100%;
                         height: 15px;
@@ -3643,7 +3648,7 @@
                     }
 
                     #bbgl-panel.bbgl-expanded .bbgl-weekly-anchor {
-                        --bbgl-tab-w: clamp(32px, 7.5cqi, 44px);
+                        --bbgl-tab-w: clamp(32px, calc(32px + 12px * var(--bbgl-dock-t)), 44px);
                     }
 
                     #bbgl-panel.bbgl-mode-page .bbgl-weekly-anchor {
@@ -3858,7 +3863,7 @@
 
                     /* Expanded: clamp height with panel width */
                     #bbgl-panel.bbgl-expanded .bbgl-bar-handle {
-                        height: clamp(20px, 4.2cqi, 24px);
+                        height: clamp(20px, calc(20px + 4px * var(--bbgl-dock-t)), 24px);
                     }
 
                     /* Page mode: clamp height with --bbgl-page-t */
@@ -3918,8 +3923,8 @@
                     #bbgl-panel.bbgl-expanded .bbgl-weekly-track.is-scrub-hovered ~ .bbgl-bar-handle,
                     #bbgl-panel.bbgl-expanded .bbgl-weekly-track.is-viewing ~ .bbgl-bar-handle,
                     body:not(.is-touch-device) #bbgl-panel.bbgl-expanded .bbgl-bar-handle:hover {
-                        height: clamp(26px, 5.6cqi, 32px);
-                        --bbgl-handle-active-h: clamp(26px, 5.6cqi, 32px);
+                        height: clamp(26px, calc(26px + 6px * var(--bbgl-dock-t)), 32px);
+                        --bbgl-handle-active-h: clamp(26px, calc(26px + 6px * var(--bbgl-dock-t)), 32px);
                     }
 
                     body:not(.is-touch-device) #bbgl-panel.bbgl-mode-page .bbgl-weekly-track:hover ~ .bbgl-bar-handle,
@@ -4185,7 +4190,7 @@
                         z-index: 4;
                         font-family: 'Fjalla One', 'Arial Narrow', sans-serif;
                         font-weight: 800;
-                        font-size: clamp(11px, 2.4cqi, 16px);
+                        font-size: clamp(11px, calc(11px + 5px * var(--bbgl-dock-t, 0)), 16px);
                         letter-spacing: 0.5px;
                         color: #fff;
                         text-shadow: 0 0 6px #ffee66, 0 0 14px #ffcc00, 0 0 24px #ff8800;
@@ -4221,7 +4226,7 @@
                     }
 
                     #bbgl-panel.bbgl-expanded #bbgl-level-num {
-                        font-size: clamp(9px, 1.8cqi, 11px);
+                        font-size: clamp(9px, calc(9px + 2px * var(--bbgl-dock-t)), 11px);
                     }
 
                     #bbgl-panel.bbgl-mode-page #bbgl-level-container {
@@ -4276,7 +4281,22 @@
                     /* ─── Level Bar — A1 flag: structure ──────────
                        --f-bdr (border), --f-bg-top/--f-bg (background gradient),
                        --f-hi (inner highlight) are supplied by the A1 palette below. */
-                    #bbgl-panel[data-atrophy="1"] #bbgl-level-num,
+                    #bbgl-panel[data-atrophy="1"] #bbgl-level-num {
+                        --f-r: clamp(5px, calc(5px + 3px * var(--bbgl-dock-t, 0)), 8px);
+                        padding: 3px clamp(8px, calc(8px + 6px * var(--bbgl-dock-t, 0)), 14px);
+                        border-top: 1px solid var(--f-bdr);
+                        border-left: none;
+                        border-right: none;
+                        border-bottom: none;
+                        border-radius: 5px 5px 0 0;
+                        background: linear-gradient(180deg, var(--f-bg-top) 0%, var(--f-bg) 100%);
+                        backdrop-filter: blur(4px);
+                        -webkit-backdrop-filter: blur(4px);
+                        box-shadow: inset 0 1px 1px var(--f-hi), 0 -1px 3px rgba(0, 0, 0, 0.4);
+                        margin-bottom: -1px;
+                        z-index: 1;
+                    }
+
                     #bbgl-gym-level-container[data-atrophy="1"] #bbgl-gym-level-num {
                         --f-r: clamp(5px, 1.3cqi, 8px);
                         padding: 3px clamp(8px, 2cqi, 14px);
@@ -4323,7 +4343,7 @@
                     }
 
                     #bbgl-panel[data-atrophy="0"].bbgl-expanded #bbgl-level-container {
-                        --crwn-s: clamp(42px, 12cqi, 52px);
+                        --crwn-s: clamp(42px, calc(42px + 10px * var(--bbgl-dock-t)), 52px);
                     }
 
                     #bbgl-panel[data-atrophy="0"].bbgl-mode-page #bbgl-level-container {
@@ -4461,7 +4481,7 @@
                     }
 
                     #bbgl-panel[data-atrophy="2"].bbgl-expanded #bbgl-level-container {
-                        --dmnd-s: clamp(70px, 19cqi, 88px);
+                        --dmnd-s: clamp(70px, calc(70px + 18px * var(--bbgl-dock-t)), 88px);
                         --dmnd-b: calc(var(--dmnd-s) * -0.23);
                     }
 
@@ -4610,24 +4630,23 @@
                         color: #9a9a9a;
                     }
 
-                    #bbgl-panel.bbgl-expanded:not(.bbgl-mode-page) .bbgl-enh-sw-opt,
+                    #bbgl-panel.bbgl-expanded:not(.bbgl-mode-page) .bbgl-enh-sw-opt {
+                        font-size: clamp(8px, calc(8px + 1px * var(--bbgl-dock-t)), 9px);
+                        padding: 2px 7px;
+                    }
+
                     #bbgl-panel.bbgl-mode-page .bbgl-enh-sw-opt {
-                        font-size: clamp(10px, 1.6cqi, 12px);
+                        font-size: clamp(10px, calc(10px + 2px * var(--bbgl-page-t)), 12px);
                         padding: 2px 7px;
                     }
 
                     .bbgl-ach-section-energy .bbgl-ach-row {
-                        padding: clamp(2px, .4cqi, 4px) 2px;
+                        padding: clamp(2px, calc(2px + 2px * var(--bbgl-dock-t, 0)), 4px) 2px;
                         border-bottom: 1px solid rgba(255, 255, 255, .05);
-                        font-size: clamp(11px, 2.05cqi, 13px) !important;
                     }
 
                     #bbgl-panel.bbgl-compact .bbgl-ach-section-energy .bbgl-ach-row {
                         font-size: clamp(9px, 1.7cqi, 11px) !important;
-                    }
-
-                    #bbgl-panel.bbgl-expanded:not(.bbgl-mode-page) .bbgl-ach-section-energy .bbgl-ach-row {
-                        font-size: clamp(12px, 2.3cqi, 15px);
                     }
 
                     .bbgl-ach-section-energy .bbgl-ach-row:last-of-type {
@@ -5195,7 +5214,7 @@
                     }
 
                     #bbgl-panel:not(.bbgl-mode-page) {
-                        --bbgl-dock-t: clamp(0, calc((100cqi - 350px) / 370px), 1);
+                        --bbgl-dock-t: clamp(0, calc((100cqi - 300px) / 276px), 1);
                     }
 
                     #bbgl-panel.bbgl-expanded:not(.bbgl-mode-page):not(.bbgl-tall) {
@@ -5229,19 +5248,19 @@
 
                     #bbgl-panel.bbgl-expanded:not(.bbgl-mode-page) .bbgl-month-header {
                         padding-left: 8px;
-                        padding-right: clamp(10px, 2.78cqi, 16px);
+                        padding-right: clamp(10px, calc(10px + 6px * var(--bbgl-dock-t)), 16px);
                     }
 
                     #bbgl-panel.bbgl-expanded:not(.bbgl-mode-page) .day-num {
-                        --day-num-size: clamp(20px, 5.2cqi, 30px);
-                        font-size: clamp(11px, 2.78cqi, 16px) !important;
-                        top: clamp(3px, 1.04cqi, 6px) !important;
-                        left: clamp(3px, 1.04cqi, 6px) !important;
+                        --day-num-size: clamp(20px, calc(20px + 10px * var(--bbgl-dock-t)), 30px);
+                        font-size: clamp(11px, calc(11px + 5px * var(--bbgl-dock-t)), 16px) !important;
+                        top: clamp(3px, calc(3px + 3px * var(--bbgl-dock-t)), 6px) !important;
+                        left: clamp(3px, calc(3px + 3px * var(--bbgl-dock-t)), 6px) !important;
                     }
 
                     #bbgl-panel.bbgl-expanded:not(.bbgl-mode-page) .bbgl-day-cell.is-viewing .day-num {
-                        --day-num-size: clamp(22px, 5.7cqi, 33px);
-                        font-size: clamp(15px, 3.82cqi, 22px);
+                        --day-num-size: clamp(22px, calc(22px + 11px * var(--bbgl-dock-t)), 33px);
+                        font-size: clamp(15px, calc(15px + 7px * var(--bbgl-dock-t)), 22px);
                     }
 
                     #bbgl-panel.bbgl-expanded:not(.bbgl-mode-page) #bbgl-ledger-toggle,
@@ -5267,35 +5286,35 @@
                     }
 
                     #bbgl-panel.bbgl-expanded:not(.bbgl-mode-page) #bbgl-graph-toggle {
-                        left: clamp(56px, calc(51.6px + 1.45cqi), 60px) !important;
+                        left: clamp(56px, calc(56px + 4px * var(--bbgl-dock-t)), 60px) !important;
                     }
 
                     #bbgl-panel.bbgl-expanded:not(.bbgl-mode-page) #bbgl-achievements-toggle {
-                        left: clamp(80px, calc(71.2px + 2.9cqi), 88px) !important;
+                        left: clamp(80px, calc(80px + 8px * var(--bbgl-dock-t)), 88px) !important;
                     }
 
                     #bbgl-panel.bbgl-expanded:not(.bbgl-mode-page) #bbgl-sticker-toggle {
-                        left: clamp(104px, calc(90.8px + 4.35cqi), 116px) !important;
+                        left: clamp(104px, calc(104px + 12px * var(--bbgl-dock-t)), 116px) !important;
                     }
 
                     #bbgl-panel.bbgl-expanded:not(.bbgl-mode-page) .arrow-btn {
-                        font-size: clamp(18px, 3.65cqi, 21px);
+                        font-size: clamp(18px, calc(18px + 3px * var(--bbgl-dock-t)), 21px);
                     }
 
 #bbgl-panel.bbgl-expanded:not(.bbgl-mode-page) #year-trigger {
-                        font-size: clamp(13px, calc(2.78cqi - 1px), 15px);
+                        font-size: clamp(13px, calc(13px + 2px * var(--bbgl-dock-t)), 15px);
                     }
 
                     #bbgl-panel.bbgl-expanded:not(.bbgl-mode-page) #month-trigger {
-                        font-size: clamp(20px, 3.99cqi, 23px);
+                        font-size: clamp(20px, calc(20px + 3px * var(--bbgl-dock-t)), 23px);
                     }
                     #bbgl-panel.bbgl-expanded:not(.bbgl-mode-page) #all-time-trigger {
-                        font-size: clamp(28px, 5.58cqi, 32px);
+                        font-size: clamp(28px, calc(28px + 4px * var(--bbgl-dock-t)), 32px);
                     }
 
                     #bbgl-panel.bbgl-expanded:not(.bbgl-mode-page) .ui-floating-label,
                     #bbgl-panel.bbgl-expanded:not(.bbgl-mode-page) .ui-floating-summary {
-                        font-size: clamp(11px, 2.08cqi, 12px);
+                        font-size: clamp(11px, calc(11px + 1px * var(--bbgl-dock-t)), 12px);
                     }
 
                     #bbgl-panel.bbgl-compact .ui-floating-label,
@@ -5306,14 +5325,13 @@
                     #bbgl-panel.bbgl-expanded:not(.bbgl-mode-page) #year-stats-btn,
                     #bbgl-panel.bbgl-expanded:not(.bbgl-mode-page) #month-stats-btn,
                     #bbgl-panel.bbgl-expanded:not(.bbgl-mode-page) #all-time-btn {
-                        width: clamp(17px, calc(4.86cqi - 4px), 24px) !important;
-                        height: clamp(18px, calc(4.86cqi - 3px), 25px);
+                        width: clamp(17px, calc(17px + 7px * var(--bbgl-dock-t)), 24px) !important;
+                        height: clamp(18px, calc(18px + 7px * var(--bbgl-dock-t)), 25px);
                     }
                     /* Expanded panel graph view: fluid scaling to replace hard 620px breakpoint ---------------------*/
                     #bbgl-panel.bbgl-expanded:not(.bbgl-mode-page) #bbgl-graph-container .g-pill {
-                        font-size: clamp(8.45px, 1.62cqi, 10px);
-                        /* narrow panels dip below old 9.8px floor --------*/
-                        padding: clamp(.5px, calc(.35px + .16cqi), 1.5px) clamp(5px, 1.39cqi, 8px);
+                        font-size: clamp(8.45px, calc(8.45px + 1.55px * var(--bbgl-dock-t)), 10px);
+                        padding: clamp(.5px, calc(.5px + 1px * var(--bbgl-dock-t)), 1.5px) clamp(5px, calc(5px + 3px * var(--bbgl-dock-t)), 8px);
                         line-height: 1;
                         display: inline-flex !important;
                         align-items: center;
@@ -5322,38 +5340,40 @@
                     }
 
                     #bbgl-panel.bbgl-expanded:not(.bbgl-mode-page) #bbgl-graph-container .g-toggles {
-                        gap: clamp(4px, 1.04cqi, 6px);
+                        gap: clamp(4px, calc(4px + 2px * var(--bbgl-dock-t)), 6px);
                         align-items: center;
                     }
 
                     #bbgl-panel.bbgl-expanded:not(.bbgl-mode-page) #bbgl-graph-container .g-hud {
-                        margin-bottom: clamp(4px, 1.12cqi, 6px);
+                        margin-bottom: clamp(4px, calc(4px + 2px * var(--bbgl-dock-t)), 6px);
                     }
 
                     #bbgl-panel.bbgl-expanded:not(.bbgl-mode-page) #bbgl-graph-container .g-text {
-                        font-size: clamp(10px, 1.91cqi, 11px);
+                        font-size: clamp(10px, calc(10px + 1px * var(--bbgl-dock-t)), 11px);
                     }
 
                     #bbgl-panel.bbgl-expanded:not(.bbgl-mode-page) #bbgl-graph-container {
-                        padding: clamp(5px, .72cqi, 9px) calc(var(--bbgl-gx, 10px) - 2px) clamp(4px, .65cqi, 7px) calc(var(--bbgl-gx, 10px) - 2px);
+                        padding: clamp(5px, calc(5px + 4px * var(--bbgl-dock-t)), 9px) calc(var(--bbgl-gx, 10px) - 2px) clamp(4px, calc(4px + 3px * var(--bbgl-dock-t)), 7px) calc(var(--bbgl-gx, 10px) - 2px);
                     }
 
                     /* Expanded panel sticker grid: fluid sticker slot sizing to keep proportions --------------------*/
                     /* Switch to size containment on expanded panel only so cqi/cqb can read both axes. --------------*/
                     #bbgl-panel.bbgl-expanded:not(.bbgl-mode-page) {
                         container-type: size;
+                        /* Achievements page font-size levers — one definition per tier, referenced
+                           by every consumer below via var(). Change a size here, not at each call site. */
+                        --bbgl-ach-fs-icon: clamp(27px, calc(27px + 13px * var(--bbgl-dock-t, 0)), 40px);
+                        --bbgl-ach-fs-message: clamp(12px, calc(12px + 2px * var(--bbgl-dock-t, 0)), 14px);
+                        --bbgl-ach-fs-subtitle: 9px;
+                        --bbgl-ach-fs-row: clamp(10px, calc(10px + 1px * var(--bbgl-dock-t, 0)), 11px);
+                        --bbgl-ach-fs-label: clamp(8px, calc(8px + 1px * var(--bbgl-dock-t, 0)), 9px);
+                        --bbgl-ach-fs-date: clamp(9px, calc(9px + 1px * var(--bbgl-dock-t, 0)), 10px);
+                        --bbgl-ach-fs-time: clamp(9px, calc(9px + .5px * var(--bbgl-dock-t, 0)), 9.5px);
+                        --bbgl-ach-fs-hint: clamp(6.5px, calc(6.5px + 1px * var(--bbgl-dock-t, 0)), 7.5px);
+                        --bbgl-ach-fs-tag: clamp(7px, calc(7px + 1px * var(--bbgl-dock-t, 0)), 8px);
                     }
 
                     #bbgl-panel:not(.bbgl-mode-page) #bbgl-top-panel.viewing-achievements #bbgl-achievements-container {
-                        --bbgl-ach-inset-x: clamp(0px, .55vw, 6px);
-                        --bbgl-ach-container-pt: max(0px, calc(clamp(10px, calc(21px - 10.5px * var(--bbgl-dock-t, 0)), 21px) - calc(2px * var(--bbgl-dock-t, 0))));
-                        --bbgl-ach-scroll-pt: clamp(1px, .48cqi, 8px);
-                        --bbgl-ach-scroll-pb: clamp(0px, .06cqi, 2px);
-                        --bbgl-ach-footer-pt: clamp(0px, .06cqi, 1px);
-                        --bbgl-ach-footer-pb: 2px;
-                        padding-top: var(--bbgl-ach-container-pt);
-                        padding-left: var(--bbgl-ach-inset-x);
-                        padding-right: var(--bbgl-ach-inset-x);
                         min-height: 0;
                         flex: 1;
                         overflow: hidden !important;
@@ -5366,29 +5386,24 @@
                         overflow-x: hidden;
                     }
 
-                    #bbgl-panel.bbgl-expanded:not(.bbgl-mode-page) #bbgl-top-panel.viewing-achievements #bbgl-achievements-container {
-                        --bbgl-ach-inset-x: clamp(4px, 1vw, 12px);
-                    }
-
-
                     #bbgl-panel.bbgl-expanded:not(.bbgl-mode-page) .sticker-slot {
                         height: 88px;
                     }
 
                     #bbgl-panel.bbgl-expanded:not(.bbgl-mode-page) .sticker-slot-sponsor {
-                        height: min(clamp(110px, calc(90px + 8.1cqi), 137px), clamp(110px, calc(90px + 7.4cqb), 137px));
-                        max-width: clamp(120px, calc(100px + 9cqi), 152px);
+                        height: min(clamp(110px, calc(110px + 27px * var(--bbgl-dock-t)), 137px), clamp(110px, calc(90px + 7.4cqb), 137px));
+                        max-width: clamp(120px, calc(120px + 32px * var(--bbgl-dock-t)), 152px);
                     }
 
                     #bbgl-panel.bbgl-expanded:not(.bbgl-mode-page) #bbgl-sticker-grid {
-                        column-gap: clamp(1px, calc(.8cqi), 5px);
-                        row-gap: clamp(0px, calc(.4cqi), 3px);
+                        column-gap: clamp(1px, calc(1px + 4px * var(--bbgl-dock-t)), 5px);
+                        row-gap: clamp(0px, calc(3px * var(--bbgl-dock-t)), 3px);
                         align-content: center;
                     }
 
                     #bbgl-panel.bbgl-expanded:not(.bbgl-mode-page) .sticker-nav-btn {
-                        font-size: clamp(20px, calc(14px + 3.1cqi), 32px);
-                        width: clamp(24px, calc(17px + 4cqi), 40px) !important;
+                        font-size: clamp(20px, calc(20px + 12px * var(--bbgl-dock-t)), 32px);
+                        width: clamp(24px, calc(24px + 16px * var(--bbgl-dock-t)), 40px) !important;
                     }
 
                     .bbgl-coming-soon {
@@ -5522,7 +5537,7 @@
                     }
 
                     .bbgl-expanded .sponsor-sticker-label {
-                        font-size: 11px;
+                        font-size: clamp(9px, calc(9px + 2px * var(--bbgl-dock-t, 0)), 11px);
                     }
 
                     #bbgl-panel.bbgl-mode-page .sponsor-sticker-label {
@@ -5542,7 +5557,6 @@
                         min-height: 0;
                         overflow: hidden;
                         overflow-x: hidden;
-                        padding: var(--bbgl-ach-scroll-pt) var(--bbgl-ach-inset-x) var(--bbgl-ach-scroll-pb);
                         box-sizing: border-box;
                     }
 
@@ -5557,15 +5571,6 @@
                         --bbgl-ach-inset-x: clamp(2px, 1.1cqi, 12px);
                         --bbgl-ach-scroll-pt: clamp(2px, .5cqi, 9px);
                         --bbgl-ach-scroll-pb: clamp(0px, .08cqi, 2px);
-                        --bbgl-ach-footer-pt: clamp(0px, .08cqi, 2px);
-                        --bbgl-ach-footer-pb: 2px;
-                        --bbgl-ach-footer-gap: 6px;
-                        --bbgl-ach-dot-gap: 6px;
-                        /* stickerbook #bbgl-sticker-pagination --------*/
-                        --bbgl-ach-dot-w: 6px;
-                        --bbgl-ach-nav-fs: clamp(7px, calc(1.45 * var(--bbgl-ach-dot-w)), 11px);
-                        --bbgl-ach-nav-py: 0;
-                        --bbgl-ach-nav-px: clamp(2px, .55cqi, 10px);
                     }
 
                     #bbgl-ach-pages {
@@ -5581,19 +5586,31 @@
 
                     #bbgl-ach-footer,
                     .bbgl-ach-footer {
+                        --bbgl-ach-footer-gap: 6px;
+                        --bbgl-ach-dot-gap: 6px;
+                        /* stickerbook #bbgl-sticker-pagination uses the same 6px by convention, not a shared variable --------*/
+                        --bbgl-ach-dot-w: 6px;
+                        --bbgl-ach-nav-fs: clamp(7px, calc(1.45 * var(--bbgl-ach-dot-w)), 11px);
+                        --bbgl-ach-nav-py: 0;
+                        --bbgl-ach-nav-px: clamp(2px, calc(2px + 8px * var(--bbgl-dock-t, 0)), 10px);
                         position: absolute;
-                        bottom: 0;
+                        bottom: 5px;
                         left: 0;
                         width: 100%;
-                        z-index: 10;
+                        z-index: 21;
                         flex-shrink: 0;
-                        display: grid;
+                        display: none;
                         grid-template-columns: 1fr auto 1fr;
                         align-items: center;
                         column-gap: var(--bbgl-ach-footer-gap);
                         min-height: 0;
-                        padding: var(--bbgl-ach-footer-pt) var(--bbgl-ach-inset-x) var(--bbgl-ach-footer-pb);
+                        padding: 1px 2px 2px;
                         box-sizing: border-box;
+                    }
+
+                    #bbgl-top-panel.viewing-achievements #bbgl-ach-footer,
+                    #bbgl-top-panel.viewing-achievements .bbgl-ach-footer {
+                        display: grid;
                     }
 
                     #bbgl-panel.bbgl-compact #bbgl-ach-footer {
@@ -5691,13 +5708,13 @@
                     }
 
                     .bbgl-ach-locked-icon {
-                        font-size: clamp(28px, 6cqi, 42px);
+                        font-size: var(--bbgl-ach-fs-icon);
                         opacity: .55;
                         filter: grayscale(1);
                     }
 
                     .bbgl-ach-locked-text {
-                        font-size: clamp(13px, 2.6cqi, 16px);
+                        font-size: var(--bbgl-ach-fs-message);
                         font-weight: 600;
                         color: rgba(255, 255, 255, .75);
                         letter-spacing: .02em;
@@ -5733,7 +5750,7 @@
                         padding: 2px;
                         color: #9a9a9a;
                         font-family: var(--bbgl-ach-font);
-                        font-size: clamp(11px, 2.2cqi, 13px);
+                        font-size: var(--bbgl-ach-fs-row);
                         font-weight: 700;
                         letter-spacing: .10em;
                         text-transform: uppercase;
@@ -5756,7 +5773,7 @@
                         padding: 0px 2px 0px 2px;
                         color: #888;
                         font-family: var(--bbgl-ach-font);
-                        font-size: clamp(10px, 1.8cqi, 11px);
+                        font-size: var(--bbgl-ach-fs-subtitle);
                         font-weight: 600;
                         letter-spacing: .08em;
                         text-transform: uppercase;
@@ -5772,7 +5789,7 @@
                     .bbgl-ach-cols {
                         display: grid;
                         grid-template-columns: repeat(4, minmax(0, 1fr));
-                        column-gap: clamp(8px, 2.2cqi, 18px);
+                        column-gap: clamp(8px, calc(8px + 10px * var(--bbgl-dock-t, 0)), 18px);
                         row-gap: 0;
                         align-items: start;
                         width: 100%;
@@ -5789,7 +5806,7 @@
                     .bbgl-ach-col {
                         display: flex;
                         flex-direction: column;
-                        gap: clamp(2px, .45cqi, 5px);
+                        gap: 0;
                         min-width: 0;
                         text-align: left;
                     }
@@ -5804,7 +5821,7 @@
                     .bbgl-ach-dual-headers {
                         display: grid;
                         grid-template-columns: 1fr 1fr;
-                        column-gap: clamp(8px, 2.2cqi, 18px);
+                        column-gap: clamp(8px, calc(8px + 10px * var(--bbgl-dock-t, 0)), 18px);
                         border-bottom: 1px solid rgba(255, 255, 255, .12);
                         width: 100%;
                         box-sizing: border-box;
@@ -5818,7 +5835,7 @@
                     .bbgl-ach-dual-body {
                         display: grid;
                         grid-template-columns: 1fr 1fr;
-                        column-gap: clamp(8px, 2.2cqi, 18px);
+                        column-gap: clamp(8px, calc(8px + 10px * var(--bbgl-dock-t, 0)), 18px);
                         align-items: start;
                         width: 100%;
                         box-sizing: border-box;
@@ -5836,19 +5853,19 @@
                         display: flex;
                         flex-direction: column;
                         align-items: stretch;
-                        padding: clamp(2px, .4cqi, 4px) 1px;
+                        padding: 4px 1px;
                         margin: 0;
                         border: none;
                         box-shadow: none;
                         background: 0 0;
                         cursor: pointer;
                         position: relative;
-                        font-size: clamp(10px, 2.05cqi, 12px);
+                        font-size: clamp(11px, 2.05cqi, 12px);
                         line-height: 1.4;
                     }
 
                     .bbgl-expanded .bbgl-ach-row {
-                        font-size: clamp(12px, 2.05cqi, 12px);
+                        font-size: var(--bbgl-ach-fs-row);
                         color: #ccc;
                         transition: background-color .12s;
                         border-bottom: 1px solid rgba(255, 255, 255, .04);
@@ -5893,7 +5910,7 @@
                     }
 
                     .ach-sub {
-                        font-size: clamp(7.5px, 1.55cqi, 9px);
+                        font-size: var(--bbgl-ach-fs-hint);
                         font-weight: 600;
                         color: #222;
                         letter-spacing: .3px;
@@ -5965,7 +5982,7 @@
 
                     .ach-date {
                         display: none;
-                        font-size: clamp(10px, 2.1cqi, 12px);
+                        font-size: var(--bbgl-ach-fs-date);
                         font-weight: 500;
                         color: #999;
                         font-family: var(--bbgl-ach-font);
@@ -6076,7 +6093,7 @@
 
                     #bbgl-ach-pageindicator .pg-dot.active {
                         transform: scale(1.2);
-                        box-shadow: 0 0 clamp(3px, calc(2px + .55cqi), 8px) rgba(255, 255, 255, .5);
+                        box-shadow: 0 0 clamp(3px, calc(3px + 5px * var(--bbgl-dock-t, 0)), 8px) rgba(255, 255, 255, .5);
                     }
 
                     .bbgl-ach-section-page0 {
@@ -6088,7 +6105,7 @@
                     .bbgl-ach-section-page0 .bbgl-ach-row-multi {
                         display: grid;
                         grid-template-columns: minmax(0, 20%) repeat(4, minmax(0, 1fr));
-                        column-gap: clamp(4px, 1cqi, 10px);
+                        column-gap: clamp(4px, calc(4px + 6px * var(--bbgl-dock-t, 0)), 10px);
                         align-items: start;
                         width: 100%;
                         box-sizing: border-box;
@@ -6101,7 +6118,7 @@
                     }
 
                     .bbgl-ach-section-page0 .bbgl-ach-row-multi {
-                        padding: clamp(2px, .4cqi, 4px) 2px;
+                        padding: 4px 2px;
                         border-bottom: 1px solid rgba(255, 255, 255, .04);
                         cursor: pointer;
                     }
@@ -6162,7 +6179,7 @@
                         word-break: normal;
                         overflow-wrap: normal;
                         align-self: center;
-                        font-size: clamp(6.5px, 1.25cqi, 8.5px);
+                        font-size: clamp(5.5px, calc(5.5px + 1px * var(--bbgl-dock-t, 0)), 6.5px);
                         line-height: 1.1;
                         max-height: calc(1.1em * 2 + 1px);
                     }
@@ -6170,7 +6187,7 @@
                     .bbgl-ach-section-hint {
                         display: none;
                         font-family: var(--bbgl-ach-font);
-                        font-size: clamp(7px, 1.4cqi, 9px);
+                        font-size: var(--bbgl-ach-fs-hint);
                         color: #666;
                         letter-spacing: .02em;
                         line-height: 1.15;
@@ -6186,7 +6203,7 @@
                     .ach-paren {
                         display: none;
                         font-family: var(--bbgl-ach-font);
-                        font-size: clamp(7.5px, 1.5cqi, 9.5px);
+                        font-size: var(--bbgl-ach-fs-hint);
                         color: #777;
                         font-weight: 400;
                         line-height: 1.15;
@@ -6200,7 +6217,7 @@
 
                     .ach-stat-header {
                         font-family: var(--bbgl-ach-font);
-                        font-size: clamp(9px, 1.85cqi, 11px);
+                        font-size: var(--bbgl-ach-fs-label);
                         font-weight: 700;
                         letter-spacing: .04em;
                         text-align: center;
@@ -6243,7 +6260,7 @@
                     .bbgl-ach-stat-cell .ach-date {
                         display: none;
                         font-family: var(--bbgl-ach-font);
-                        font-size: clamp(11px, 2.15cqi, 13px);
+                        font-size: var(--bbgl-ach-fs-row);
                         color: #999;
                         text-align: center;
                         margin: 1px 0 0;
@@ -6255,7 +6272,7 @@
                     .bbgl-ach-stat-cell .ach-time {
                         display: none;
                         font-family: var(--bbgl-ach-val-font);
-                        font-size: clamp(9.5px, 1.9cqi, 11.5px);
+                        font-size: var(--bbgl-ach-fs-time);
                         color: #888;
                         text-align: center;
                         margin: 0;
@@ -6291,6 +6308,49 @@
 
                     #bbgl-panel.bbgl-compact .bbgl-ach-subsection-title {
                         font-size: clamp(9px, 1.6cqi, 10px);
+                    }
+
+                    /* The -2px expanded-only font reduction below touched several base/unscoped
+                       rules that compact also reads (no dedicated compact override existed for
+                       them). These restore compact's original sizes so the reduction is expanded-only. */
+                    #bbgl-panel.bbgl-compact .bbgl-ach-locked-icon {
+                        font-size: 28px;
+                    }
+
+                    #bbgl-panel.bbgl-compact .bbgl-ach-locked-text {
+                        font-size: 13px;
+                    }
+
+                    #bbgl-panel.bbgl-compact .ach-sub {
+                        font-size: 7.5px;
+                    }
+
+                    #bbgl-panel.bbgl-compact .ach-stat-header {
+                        font-size: 9px;
+                    }
+
+                    #bbgl-panel.bbgl-compact .bbgl-ach-consistency-row .bbgl-ach-consistency-text {
+                        font-size: 10px;
+                    }
+
+                    #bbgl-panel.bbgl-compact .bbgl-ach-section-hh .bbgl-ach-row {
+                        font-size: 11px !important;
+                    }
+
+                    #bbgl-panel.bbgl-compact .bbgl-ach-hh-best-row {
+                        font-size: 11px;
+                    }
+
+                    #bbgl-panel.bbgl-compact .bbgl-ach-hh-val {
+                        font-size: 11px;
+                    }
+
+                    #bbgl-panel.bbgl-compact .bbgl-ach-hh-tag {
+                        font-size: 8px;
+                    }
+
+                    #bbgl-panel.bbgl-compact .bbgl-ach-hh-date-line {
+                        font-size: 10px;
                     }
 
                     .bbgl-ach-section-page1 .ach-streak-date {
@@ -6368,7 +6428,7 @@
                         border-radius: 4px;
                         transition: background-color .12s;
                         font-family: var(--bbgl-ach-font);
-                        font-size: clamp(10px, 2cqi, 13px);
+                        font-size: var(--bbgl-ach-fs-row);
                         color: #bbb;
                         font-weight: 500;
                         letter-spacing: .02em;
@@ -6421,24 +6481,11 @@
                         display: inline;
                     }
 
-                    #bbgl-panel.bbgl-compact .bbgl-ach-section-page0 .bbgl-ach-row-multi {
-                        padding-top: 1px;
-                        padding-bottom: 1px;
-                    }
-
-                    .ach-cons-long {
+                    .ach-cons-days {
                         display: none;
                     }
 
-                    .ach-cons-short {
-                        display: inline;
-                    }
-
-                    #bbgl-panel:is(.bbgl-expanded, .bbgl-mode-page) .ach-cons-short {
-                        display: none;
-                    }
-
-                    #bbgl-panel:is(.bbgl-expanded, .bbgl-mode-page) .ach-cons-long {
+                    #bbgl-panel:is(.bbgl-expanded, .bbgl-mode-page) .ach-cons-days {
                         display: inline;
                     }
 
@@ -6448,9 +6495,9 @@
                     }
 
                     .bbgl-ach-section-hh .bbgl-ach-row {
-                        padding: clamp(2px, .4cqi, 4px) 2px;
+                        padding: 4px 2px;
                         border-bottom: 1px solid rgba(255, 255, 255, .05);
-                        font-size: clamp(11px, 2.05cqi, 13px) !important;
+                        font-size: var(--bbgl-ach-fs-row) !important;
                     }
 
                     .bbgl-ach-hh-best-row {
@@ -6460,10 +6507,10 @@
                         gap: 8px;
                         width: 100%;
                         box-sizing: border-box;
-                        padding: clamp(3px, .5cqi, 5px) 2px;
+                        padding: 5px 2px;
                         border-bottom: 1px solid rgba(255, 255, 255, .05);
                         font-family: var(--bbgl-ach-font);
-                        font-size: clamp(11px, 2.05cqi, 13px);
+                        font-size: var(--bbgl-ach-fs-row);
                         color: #ccc;
                         line-height: 1.4;
                     }
@@ -6507,7 +6554,7 @@
                         display: flex;
                         flex-direction: row;
                         align-items: center;
-                        gap: clamp(6px, 1.2cqi, 10px);
+                        gap: clamp(6px, calc(6px + 4px * var(--bbgl-dock-t, 0)), 10px);
                         min-width: 0;
                         flex: 1;
                     }
@@ -6534,7 +6581,7 @@
                     /* kept for compat */
                     .bbgl-ach-hh-cells {
                         display: flex;
-                        gap: clamp(8px, 1.6cqi, 14px);
+                        gap: clamp(8px, calc(8px + 6px * var(--bbgl-dock-t, 0)), 14px);
                         align-items: center;
                         flex-shrink: 0;
                     }
@@ -6555,14 +6602,14 @@
                         font-variant-numeric: tabular-nums;
                         color: #eaeaea;
                         font-weight: 500;
-                        font-size: clamp(11px, 2.05cqi, 13px);
+                        font-size: var(--bbgl-ach-fs-row);
                         white-space: nowrap;
                         line-height: 1.15;
                     }
 
                     .bbgl-ach-hh-tag {
                         font-family: var(--bbgl-ach-font);
-                        font-size: clamp(8px, 1.4cqi, 10px);
+                        font-size: var(--bbgl-ach-fs-tag);
                         font-weight: 700;
                         letter-spacing: .04em;
                         text-transform: uppercase;
@@ -6575,7 +6622,7 @@
                         color: #888;
                         line-height: 1.2;
                         font-variant-numeric: tabular-nums;
-                        font-size: clamp(10px, 1.8cqi, 11.5px);
+                        font-size: var(--bbgl-ach-fs-time);
                     }
 
                     #bbgl-panel:is(.bbgl-expanded, .bbgl-mode-page) .bbgl-ach-hh-date-line {

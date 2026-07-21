@@ -543,6 +543,14 @@
         return 0;
     }
 
+    const ACH_FMT = {
+        compact:   [[1e6, 2], [1e4, 1]],    // 1m+ = 2dp, 10k+ = 1dp
+        gains:     [[1e12, 4], [1e9, 3]],   // 1t+ = 4dp,  1b+ = 3dp
+        enhancers: [[1e6, 3], [1e5, 2]],    // 1m+ = 3dp, 100k+ = 2dp
+        rewards:   []                        // always full locale
+        // sexiest streaks + happy hopping reference ACH_FMT.compact directly
+    };
+
     const Formatter = {
         number(n, d = 0) {
             return (n === undefined || n === null) ? '0' : n.toLocaleString('en-US', {
@@ -550,23 +558,23 @@
                 maximumFractionDigits: d
             });
         },
-        abbr(n, d = 1, upper = false, strip = false) {
+        abbr(n, d = 1, strip = false) {
             if (!n && n !== 0) return '0';
             const abs = Math.abs(n);
             if (abs < 1000) return Math.trunc(n).toString();
             const tiers = [
                 [1e15, 'q'],
                 [1e12, 't'],
-                [1e9, 'b'],
-                [1e6, 'm'],
-                [1e3, 'k']
+                [1e9,  'b'],
+                [1e6,  'm'],
+                [1e3,  'k']
             ];
             for (const [mag, suffix] of tiers) {
                 if (abs >= mag) {
                     let dec = typeof d === 'function' ? d(mag, abs) : d;
                     let s = (n / mag).toFixed(dec);
                     if (strip) s = parseFloat(s).toString();
-                    return s + (upper ? suffix.toUpperCase() : suffix);
+                    return s + suffix; // always lowercase
                 }
             }
             return Math.floor(n).toString();
@@ -577,20 +585,22 @@
             if (exp) return this.number(Math.floor(n), 0);
             return this.abbr(n, 1);
         },
-        gain(v) {
-            const a = Math.abs(v);
-            if (a < 1e6) return this.number(v);
-            return this.abbr(v, (m, abs) => m >= 1e9 ? 4 : m === 1e6 ? 3 : 2);
+        achAbbr(n, tiers) {
+            if (!tiers || !tiers.length) return this.number(n);
+            const abs = Math.abs(n);
+            for (const [mag, dec] of tiers) {
+                if (abs >= mag) return this.abbr(n, dec);
+            }
+            return this.number(n);
         },
-        achGain(v) {
-            const a = Math.abs(v);
-            if (a < 100) return this.number(v, 1);
-            if (a < 1000) return this.number(v, 0);
-            return this.abbr(v, (m, abs) => m >= 1e9 ? 4 : m === 1e6 ? 3 : (abs >= 1e4 ? 2 : 1), true, false);
+        achDual(val, expandedTiers = ACH_FMT.compact) {
+            const std = this.achAbbr(val, ACH_FMT.compact);
+            const exp = this.achAbbr(val, expandedTiers);
+            return `<span class="view-std">${std}</span><span class="view-exp">${exp}</span>`;
         },
         ratePct(v) {
             if (Math.abs(v) < 1000) return this.number(v, 0);
-            return this.abbr(v, 2, true, true);
+            return this.abbr(v, 2, true); // strip=true; lowercase via abbr()
         },
         dual(val, r = false) {
             let std, exp;
@@ -1650,7 +1660,7 @@
                         --bbgl-f-top-mb: 1px;
                         --bbgl-bot-minh: 12px;
                         --bbgl-col-gap: 8px;
-                        --bbgl-gx: clamp(7px, 1.78cqi, 12px);
+                        --bbgl-gx: clamp(7px, calc(7px + 5px * var(--bbgl-dock-t, 0)), 12px);
                         --bbgl-label-case: uppercase;
                         --bbgl-viewer-title-top-shift: 3px;
                         container-type: inline-size;
@@ -1675,12 +1685,12 @@
                     }
 
                     #bbgl-panel.bbgl-expanded {
-                        --bbgl-f-label: clamp(12.5px, 2.34cqi, 13.5px);
-                        --bbgl-f-top: clamp(12.5px, 2.34cqi, 13.5px);
-                        --bbgl-f-bot: clamp(10.5px, 1.997cqi, 11.5px);
+                        --bbgl-f-label: clamp(12.5px, calc(12.5px + 1px * var(--bbgl-dock-t)), 13.5px);
+                        --bbgl-f-top: clamp(12.5px, calc(12.5px + 1px * var(--bbgl-dock-t)), 13.5px);
+                        --bbgl-f-bot: clamp(10.5px, calc(10.5px + 1px * var(--bbgl-dock-t)), 11.5px);
                         --bbgl-f-top-mb: 3px;
                         --bbgl-bot-minh: 14px;
-                        --bbgl-col-gap: clamp(8px, 2.78cqi, 16px);
+                        --bbgl-col-gap: clamp(8px, calc(8px + 8px * var(--bbgl-dock-t)), 16px);
                         --bbgl-label-case: none;
                         width: min(576px, calc(100vw - 20px));
                         height: 633px;
@@ -1697,10 +1707,10 @@
                     }
 
                     #bbgl-panel.bbgl-tall.bbgl-expanded {
-                        --bbgl-f-label: clamp(13.75px, calc(2px + 2.34cqi), 15.5px);
-                        --bbgl-f-top: clamp(13.75px, calc(2px + 2.34cqi), 15.5px);
-                        --bbgl-f-bot: clamp(11.75px, calc(1.5px + 1.997cqi), 13px);
-                        --bbgl-col-gap: clamp(22px, calc(35.5px - 2.34cqi), 24.5px);
+                        --bbgl-f-label: clamp(13.75px, calc(13.75px + 1.75px * var(--bbgl-dock-t)), 15.5px);
+                        --bbgl-f-top: clamp(13.75px, calc(13.75px + 1.75px * var(--bbgl-dock-t)), 15.5px);
+                        --bbgl-f-bot: clamp(11.75px, calc(11.75px + 1.25px * var(--bbgl-dock-t)), 13px);
+                        --bbgl-col-gap: clamp(22px, calc(24.5px - 2.5px * var(--bbgl-dock-t)), 24.5px);
                     }
 
                     #bbgl-panel.bbgl-mode-page {
@@ -1726,7 +1736,7 @@
                         overflow-x: hidden !important;
                         overflow-y: visible !important;
                         --bbgl-label-case: none !important;
-                        --bbgl-page-t: clamp(0, calc((100cqi - 350px) / 370px), 1);
+                        --bbgl-page-t: clamp(0, calc((100cqi - 300px) / 370px), 1);
                         --bbgl-f-label: clamp(10.75px, calc(10.75px + 5.25px * var(--bbgl-page-t)), 16px);
                         --bbgl-f-top: clamp(10.75px, calc(10.75px + 6.25px * var(--bbgl-page-t)), 17px);
                         --bbgl-f-bot: clamp(9px, calc(9px + 5px * var(--bbgl-page-t)), 14px);
@@ -1855,18 +1865,21 @@
                         --bbgl-ach-inset-x: clamp(6px, calc(6px + 4px * var(--bbgl-page-t)), 24px);
                         --bbgl-ach-container-pt: 0;
                         --bbgl-ach-scroll-pt: clamp(2px, calc(4px - 1px * var(--bbgl-page-t)), 5px);
-                        --bbgl-ach-footer-pt: clamp(0px, calc(1px + 1px * var(--bbgl-page-t)), 2px);
-                        --bbgl-ach-footer-pb: 0;
+                        --bbgl-ach-scroll-pb: clamp(0px, calc(2px - .5px * var(--bbgl-page-t)), 2px);
+                        padding-top: var(--bbgl-ach-container-pt) !important;
+                        padding-left: var(--bbgl-ach-inset-x) !important;
+                        padding-right: var(--bbgl-ach-inset-x) !important;
+                    }
+
+                    #bbgl-panel.bbgl-mode-page #bbgl-ach-footer,
+                    #bbgl-panel.bbgl-mode-page .bbgl-ach-footer {
                         --bbgl-ach-footer-gap: clamp(4px, calc(4px + 2px * var(--bbgl-page-t)), 6px);
                         --bbgl-ach-dot-gap: clamp(4px, calc(4px + 2px * var(--bbgl-page-t)), 6px);
                         --bbgl-ach-dot-w: clamp(5px, calc(5px + 1px * var(--bbgl-page-t)), 6px);
                         --bbgl-ach-nav-fs: clamp(7px, calc(1.45 * var(--bbgl-ach-dot-w)), 11px);
                         --bbgl-ach-nav-py: 0;
                         --bbgl-ach-nav-px: clamp(2px, calc(2px + 3px * var(--bbgl-page-t)), 8px);
-                        --bbgl-ach-scroll-pb: clamp(0px, calc(2px - .5px * var(--bbgl-page-t)), 2px);
-                        padding-top: var(--bbgl-ach-container-pt) !important;
-                        padding-left: var(--bbgl-ach-inset-x) !important;
-                        padding-right: var(--bbgl-ach-inset-x) !important;
+                        padding: clamp(0px, calc(1px + 1px * var(--bbgl-page-t)), 2px) clamp(6px, calc(6px + 4px * var(--bbgl-page-t)), 24px) 0;
                     }
 
                     #bbgl-panel.bbgl-mode-page .bbgl-ach-scroll {
@@ -2589,19 +2602,19 @@
                     .bbgl-expanded.bbgl-tall #bbgl-graph-toggle {
                         width: 16px;
                         height: 15px;
-                        left: clamp(56px, calc(51.6px + 1.45cqi), 60px);
+                        left: clamp(56px, calc(56px + 4px * var(--bbgl-dock-t)), 60px);
                     }
 
                     .bbgl-expanded.bbgl-tall #bbgl-achievements-toggle {
                         width: 15.5px;
                         height: 15.5px;
-                        left: clamp(80px, calc(71.2px + 2.9cqi), 88px);
+                        left: clamp(80px, calc(80px + 8px * var(--bbgl-dock-t)), 88px);
                     }
 
                     .bbgl-expanded.bbgl-tall #bbgl-sticker-toggle {
                         width: 16px;
                         height: 15px;
-                        left: clamp(104px, calc(90.8px + 4.35cqi), 116px);
+                        left: clamp(104px, calc(104px + 12px * var(--bbgl-dock-t)), 116px);
                     }
 
                     .bbgl-expanded.bbgl-tall #bbgl-copy-btn {
@@ -2710,7 +2723,6 @@
                     .bbgl-expanded .ui-floating-label,
                     .bbgl-expanded .ui-floating-summary {
                         bottom: 4px;
-                        font-size: 12px !important;
                     }
 
                     .viewing-graph .ui-floating-label,
@@ -2745,14 +2757,6 @@
                         box-shadow: inset 1px 1px 1px rgba(255, 255, 255, .2) !important;
                     }
 
-                    #bbgl-panel:not(.bbgl-mode-page) #bbgl-top-panel.viewing-achievements {
-                        padding-top: max(0px, calc(clamp(2px, calc(2px + 18px * var(--bbgl-dock-t, 0)), 20px) - calc(2px * var(--bbgl-dock-t, 0))));
-                    }
-
-                    #bbgl-panel.bbgl-compact #bbgl-top-panel.viewing-achievements {
-                        padding-top: 14px;
-                    }
-
                     .ledger-content {
                         position: relative;
                         flex: 1;
@@ -2781,6 +2785,22 @@
 
                     #bbgl-panel.bbgl-tall.bbgl-expanded .ledger-content {
                         padding-top: 12px;
+                    }
+
+                    /* Achievements diverges from the ledger's top padding, landing at a flat
+                       3px top in both modes, and gets +5px of side padding on top of the
+                       inherited 2px (both modes). */
+                    #bbgl-panel.bbgl-tall.bbgl-expanded #bbgl-achievements-container {
+                        padding-top: 3px;
+                    }
+
+                    #bbgl-panel.bbgl-tall.bbgl-compact #bbgl-achievements-container {
+                        padding-top: 3px !important;
+                    }
+
+                    #bbgl-achievements-container {
+                        padding-left: 7px;
+                        padding-right: 7px;
                     }
 
                     .stat-column {
@@ -2973,7 +2993,6 @@
                         display: flex !important;
                         flex-direction: column !important;
                         flex: 1 !important;
-                        padding: 0;
                     }
 
                     .g-hud {
@@ -3335,7 +3354,7 @@
                     }
 
                     .bbgl-expanded #bbgl-sticker-title {
-                        font-size: 15px;
+                        font-size: clamp(13px, calc(13px + 2px * var(--bbgl-dock-t, 0)), 15px);
                         top: 8px;
                         right: 20px;
                     }
@@ -3420,10 +3439,10 @@
                     }
 
                     .bbgl-expanded #bbgl-item-counters {
-                        font-size: clamp(11px, 2.1cqi, 12px);
+                        font-size: clamp(11px, calc(11px + 1px * var(--bbgl-dock-t)), 12px);
                         top: 6px;
                         right: 38px;
-                        gap: clamp(4px, calc(-7px + 3.6cqi), 14px);
+                        gap: clamp(4px, calc(4px + 10px * var(--bbgl-dock-t)), 14px);
                     }
 
                     #bbgl-panel.bbgl-mode-page #bbgl-item-counters {
@@ -3576,7 +3595,7 @@
                     }
 
                     .bbgl-expanded:not(.bbgl-mode-page) .viewer-obj {
-                        transform: rotateX(5deg) scale(clamp(.75, calc(.75 + .08 * (576px - 100cqi) / 256px), .83)) translateY(-15px);
+                        transform: rotateX(5deg) scale(clamp(.75, calc(.83 - .08 * var(--bbgl-dock-t)), .83)) translateY(-15px);
                     }
 
                     .viewer-obj img {
@@ -3660,12 +3679,12 @@
                     }
 
                     #bbgl-panel.bbgl-expanded:not(.bbgl-mode-page) .viewer-info-overlay {
-                        top: calc(10.35cqi + clamp(10px, 4cqi, 15px) - var(--bbgl-viewer-title-top-shift)) !important;
-                        left: clamp(10px, 4cqi, 15px) !important;
+                        top: calc(43.05px + 31.57px * var(--bbgl-dock-t) - var(--bbgl-viewer-title-top-shift)) !important;
+                        left: clamp(10px, calc(10px + 5px * var(--bbgl-dock-t)), 15px) !important;
                     }
 
                     .bbgl-expanded .vi-name {
-                        font-size: 15px;
+                        font-size: clamp(14px, calc(14px + 1px * var(--bbgl-dock-t)), 15px);
                     }
 
                     .vi-count {
@@ -3808,7 +3827,7 @@
                     }
 
                     #bbgl-panel.bbgl-expanded .bbgl-month-header {
-                        gap: clamp(6px, 2.08cqi, 12px);
+                        gap: clamp(6px, calc(6px + 6px * var(--bbgl-dock-t)), 12px);
                         margin-bottom: 12px;
                     }
 
@@ -3950,7 +3969,7 @@
 
                     #bbgl-panel.bbgl-expanded .header-row {
                         gap: 6px;
-                        height: clamp(20px, calc(4.86cqi - 1px), 27px);
+                        height: clamp(20px, calc(20px + 7px * var(--bbgl-dock-t)), 27px);
                         --btn-lift: -4px;
                     }
 
@@ -4174,7 +4193,7 @@
                     }
 
                     #bbgl-panel.bbgl-expanded .drop-item {
-                        font-size: 13px;
+                        font-size: clamp(11px, calc(11px + 2px * var(--bbgl-dock-t)), 13px);
                     }
 
                     .drop-item:hover {
@@ -4213,7 +4232,7 @@
                     }
 
                     #bbgl-panel.bbgl-expanded .bbgl-week-row {
-                        font-size: 13px;
+                        font-size: clamp(11px, calc(11px + 2px * var(--bbgl-dock-t)), 13px);
                         padding-top: 5px;
                         margin-bottom: 2px;
                     }
@@ -4664,10 +4683,6 @@
                         font-size: 12px !important;
                     }
 
-                    #bbgl-panel.bbgl-expanded .bbgl-day-cell.is-viewing .day-num {
-                        font-size: 19px !important;
-                    }
-
                     .bbgl-weekly-anchor {
                         width: 100%;
                         height: 15px;
@@ -4684,7 +4699,7 @@
                     }
 
                     #bbgl-panel.bbgl-expanded .bbgl-weekly-anchor {
-                        --bbgl-tab-w: clamp(32px, 7.5cqi, 44px);
+                        --bbgl-tab-w: clamp(32px, calc(32px + 12px * var(--bbgl-dock-t)), 44px);
                     }
 
                     #bbgl-panel.bbgl-mode-page .bbgl-weekly-anchor {
@@ -4899,7 +4914,7 @@
 
                     /* Expanded: clamp height with panel width */
                     #bbgl-panel.bbgl-expanded .bbgl-bar-handle {
-                        height: clamp(20px, 4.2cqi, 24px);
+                        height: clamp(20px, calc(20px + 4px * var(--bbgl-dock-t)), 24px);
                     }
 
                     /* Page mode: clamp height with --bbgl-page-t */
@@ -4959,8 +4974,8 @@
                     #bbgl-panel.bbgl-expanded .bbgl-weekly-track.is-scrub-hovered ~ .bbgl-bar-handle,
                     #bbgl-panel.bbgl-expanded .bbgl-weekly-track.is-viewing ~ .bbgl-bar-handle,
                     body:not(.is-touch-device) #bbgl-panel.bbgl-expanded .bbgl-bar-handle:hover {
-                        height: clamp(26px, 5.6cqi, 32px);
-                        --bbgl-handle-active-h: clamp(26px, 5.6cqi, 32px);
+                        height: clamp(26px, calc(26px + 6px * var(--bbgl-dock-t)), 32px);
+                        --bbgl-handle-active-h: clamp(26px, calc(26px + 6px * var(--bbgl-dock-t)), 32px);
                     }
 
                     body:not(.is-touch-device) #bbgl-panel.bbgl-mode-page .bbgl-weekly-track:hover ~ .bbgl-bar-handle,
@@ -5226,7 +5241,7 @@
                         z-index: 4;
                         font-family: 'Fjalla One', 'Arial Narrow', sans-serif;
                         font-weight: 800;
-                        font-size: clamp(11px, 2.4cqi, 16px);
+                        font-size: clamp(11px, calc(11px + 5px * var(--bbgl-dock-t, 0)), 16px);
                         letter-spacing: 0.5px;
                         color: #fff;
                         text-shadow: 0 0 6px #ffee66, 0 0 14px #ffcc00, 0 0 24px #ff8800;
@@ -5262,7 +5277,7 @@
                     }
 
                     #bbgl-panel.bbgl-expanded #bbgl-level-num {
-                        font-size: clamp(9px, 1.8cqi, 11px);
+                        font-size: clamp(9px, calc(9px + 2px * var(--bbgl-dock-t)), 11px);
                     }
 
                     #bbgl-panel.bbgl-mode-page #bbgl-level-container {
@@ -5317,7 +5332,22 @@
                     /* ─── Level Bar — A1 flag: structure ──────────
                        --f-bdr (border), --f-bg-top/--f-bg (background gradient),
                        --f-hi (inner highlight) are supplied by the A1 palette below. */
-                    #bbgl-panel[data-atrophy="1"] #bbgl-level-num,
+                    #bbgl-panel[data-atrophy="1"] #bbgl-level-num {
+                        --f-r: clamp(5px, calc(5px + 3px * var(--bbgl-dock-t, 0)), 8px);
+                        padding: 3px clamp(8px, calc(8px + 6px * var(--bbgl-dock-t, 0)), 14px);
+                        border-top: 1px solid var(--f-bdr);
+                        border-left: none;
+                        border-right: none;
+                        border-bottom: none;
+                        border-radius: 5px 5px 0 0;
+                        background: linear-gradient(180deg, var(--f-bg-top) 0%, var(--f-bg) 100%);
+                        backdrop-filter: blur(4px);
+                        -webkit-backdrop-filter: blur(4px);
+                        box-shadow: inset 0 1px 1px var(--f-hi), 0 -1px 3px rgba(0, 0, 0, 0.4);
+                        margin-bottom: -1px;
+                        z-index: 1;
+                    }
+
                     #bbgl-gym-level-container[data-atrophy="1"] #bbgl-gym-level-num {
                         --f-r: clamp(5px, 1.3cqi, 8px);
                         padding: 3px clamp(8px, 2cqi, 14px);
@@ -5364,7 +5394,7 @@
                     }
 
                     #bbgl-panel[data-atrophy="0"].bbgl-expanded #bbgl-level-container {
-                        --crwn-s: clamp(42px, 12cqi, 52px);
+                        --crwn-s: clamp(42px, calc(42px + 10px * var(--bbgl-dock-t)), 52px);
                     }
 
                     #bbgl-panel[data-atrophy="0"].bbgl-mode-page #bbgl-level-container {
@@ -5502,7 +5532,7 @@
                     }
 
                     #bbgl-panel[data-atrophy="2"].bbgl-expanded #bbgl-level-container {
-                        --dmnd-s: clamp(70px, 19cqi, 88px);
+                        --dmnd-s: clamp(70px, calc(70px + 18px * var(--bbgl-dock-t)), 88px);
                         --dmnd-b: calc(var(--dmnd-s) * -0.23);
                     }
 
@@ -5651,24 +5681,23 @@
                         color: #9a9a9a;
                     }
 
-                    #bbgl-panel.bbgl-expanded:not(.bbgl-mode-page) .bbgl-enh-sw-opt,
+                    #bbgl-panel.bbgl-expanded:not(.bbgl-mode-page) .bbgl-enh-sw-opt {
+                        font-size: clamp(8px, calc(8px + 1px * var(--bbgl-dock-t)), 9px);
+                        padding: 2px 7px;
+                    }
+
                     #bbgl-panel.bbgl-mode-page .bbgl-enh-sw-opt {
-                        font-size: clamp(10px, 1.6cqi, 12px);
+                        font-size: clamp(10px, calc(10px + 2px * var(--bbgl-page-t)), 12px);
                         padding: 2px 7px;
                     }
 
                     .bbgl-ach-section-energy .bbgl-ach-row {
-                        padding: clamp(2px, .4cqi, 4px) 2px;
+                        padding: clamp(2px, calc(2px + 2px * var(--bbgl-dock-t, 0)), 4px) 2px;
                         border-bottom: 1px solid rgba(255, 255, 255, .05);
-                        font-size: clamp(11px, 2.05cqi, 13px) !important;
                     }
 
                     #bbgl-panel.bbgl-compact .bbgl-ach-section-energy .bbgl-ach-row {
                         font-size: clamp(9px, 1.7cqi, 11px) !important;
-                    }
-
-                    #bbgl-panel.bbgl-expanded:not(.bbgl-mode-page) .bbgl-ach-section-energy .bbgl-ach-row {
-                        font-size: clamp(12px, 2.3cqi, 15px);
                     }
 
                     .bbgl-ach-section-energy .bbgl-ach-row:last-of-type {
@@ -6236,7 +6265,7 @@
                     }
 
                     #bbgl-panel:not(.bbgl-mode-page) {
-                        --bbgl-dock-t: clamp(0, calc((100cqi - 350px) / 370px), 1);
+                        --bbgl-dock-t: clamp(0, calc((100cqi - 300px) / 276px), 1);
                     }
 
                     #bbgl-panel.bbgl-expanded:not(.bbgl-mode-page):not(.bbgl-tall) {
@@ -6270,19 +6299,19 @@
 
                     #bbgl-panel.bbgl-expanded:not(.bbgl-mode-page) .bbgl-month-header {
                         padding-left: 8px;
-                        padding-right: clamp(10px, 2.78cqi, 16px);
+                        padding-right: clamp(10px, calc(10px + 6px * var(--bbgl-dock-t)), 16px);
                     }
 
                     #bbgl-panel.bbgl-expanded:not(.bbgl-mode-page) .day-num {
-                        --day-num-size: clamp(20px, 5.2cqi, 30px);
-                        font-size: clamp(11px, 2.78cqi, 16px) !important;
-                        top: clamp(3px, 1.04cqi, 6px) !important;
-                        left: clamp(3px, 1.04cqi, 6px) !important;
+                        --day-num-size: clamp(20px, calc(20px + 10px * var(--bbgl-dock-t)), 30px);
+                        font-size: clamp(11px, calc(11px + 5px * var(--bbgl-dock-t)), 16px) !important;
+                        top: clamp(3px, calc(3px + 3px * var(--bbgl-dock-t)), 6px) !important;
+                        left: clamp(3px, calc(3px + 3px * var(--bbgl-dock-t)), 6px) !important;
                     }
 
                     #bbgl-panel.bbgl-expanded:not(.bbgl-mode-page) .bbgl-day-cell.is-viewing .day-num {
-                        --day-num-size: clamp(22px, 5.7cqi, 33px);
-                        font-size: clamp(15px, 3.82cqi, 22px);
+                        --day-num-size: clamp(22px, calc(22px + 11px * var(--bbgl-dock-t)), 33px);
+                        font-size: clamp(15px, calc(15px + 7px * var(--bbgl-dock-t)), 22px);
                     }
 
                     #bbgl-panel.bbgl-expanded:not(.bbgl-mode-page) #bbgl-ledger-toggle,
@@ -6308,35 +6337,35 @@
                     }
 
                     #bbgl-panel.bbgl-expanded:not(.bbgl-mode-page) #bbgl-graph-toggle {
-                        left: clamp(56px, calc(51.6px + 1.45cqi), 60px) !important;
+                        left: clamp(56px, calc(56px + 4px * var(--bbgl-dock-t)), 60px) !important;
                     }
 
                     #bbgl-panel.bbgl-expanded:not(.bbgl-mode-page) #bbgl-achievements-toggle {
-                        left: clamp(80px, calc(71.2px + 2.9cqi), 88px) !important;
+                        left: clamp(80px, calc(80px + 8px * var(--bbgl-dock-t)), 88px) !important;
                     }
 
                     #bbgl-panel.bbgl-expanded:not(.bbgl-mode-page) #bbgl-sticker-toggle {
-                        left: clamp(104px, calc(90.8px + 4.35cqi), 116px) !important;
+                        left: clamp(104px, calc(104px + 12px * var(--bbgl-dock-t)), 116px) !important;
                     }
 
                     #bbgl-panel.bbgl-expanded:not(.bbgl-mode-page) .arrow-btn {
-                        font-size: clamp(18px, 3.65cqi, 21px);
+                        font-size: clamp(18px, calc(18px + 3px * var(--bbgl-dock-t)), 21px);
                     }
 
 #bbgl-panel.bbgl-expanded:not(.bbgl-mode-page) #year-trigger {
-                        font-size: clamp(13px, calc(2.78cqi - 1px), 15px);
+                        font-size: clamp(13px, calc(13px + 2px * var(--bbgl-dock-t)), 15px);
                     }
 
                     #bbgl-panel.bbgl-expanded:not(.bbgl-mode-page) #month-trigger {
-                        font-size: clamp(20px, 3.99cqi, 23px);
+                        font-size: clamp(20px, calc(20px + 3px * var(--bbgl-dock-t)), 23px);
                     }
                     #bbgl-panel.bbgl-expanded:not(.bbgl-mode-page) #all-time-trigger {
-                        font-size: clamp(28px, 5.58cqi, 32px);
+                        font-size: clamp(28px, calc(28px + 4px * var(--bbgl-dock-t)), 32px);
                     }
 
                     #bbgl-panel.bbgl-expanded:not(.bbgl-mode-page) .ui-floating-label,
                     #bbgl-panel.bbgl-expanded:not(.bbgl-mode-page) .ui-floating-summary {
-                        font-size: clamp(11px, 2.08cqi, 12px);
+                        font-size: clamp(11px, calc(11px + 1px * var(--bbgl-dock-t)), 12px);
                     }
 
                     #bbgl-panel.bbgl-compact .ui-floating-label,
@@ -6347,14 +6376,13 @@
                     #bbgl-panel.bbgl-expanded:not(.bbgl-mode-page) #year-stats-btn,
                     #bbgl-panel.bbgl-expanded:not(.bbgl-mode-page) #month-stats-btn,
                     #bbgl-panel.bbgl-expanded:not(.bbgl-mode-page) #all-time-btn {
-                        width: clamp(17px, calc(4.86cqi - 4px), 24px) !important;
-                        height: clamp(18px, calc(4.86cqi - 3px), 25px);
+                        width: clamp(17px, calc(17px + 7px * var(--bbgl-dock-t)), 24px) !important;
+                        height: clamp(18px, calc(18px + 7px * var(--bbgl-dock-t)), 25px);
                     }
                     /* Expanded panel graph view: fluid scaling to replace hard 620px breakpoint ---------------------*/
                     #bbgl-panel.bbgl-expanded:not(.bbgl-mode-page) #bbgl-graph-container .g-pill {
-                        font-size: clamp(8.45px, 1.62cqi, 10px);
-                        /* narrow panels dip below old 9.8px floor --------*/
-                        padding: clamp(.5px, calc(.35px + .16cqi), 1.5px) clamp(5px, 1.39cqi, 8px);
+                        font-size: clamp(8.45px, calc(8.45px + 1.55px * var(--bbgl-dock-t)), 10px);
+                        padding: clamp(.5px, calc(.5px + 1px * var(--bbgl-dock-t)), 1.5px) clamp(5px, calc(5px + 3px * var(--bbgl-dock-t)), 8px);
                         line-height: 1;
                         display: inline-flex !important;
                         align-items: center;
@@ -6363,38 +6391,40 @@
                     }
 
                     #bbgl-panel.bbgl-expanded:not(.bbgl-mode-page) #bbgl-graph-container .g-toggles {
-                        gap: clamp(4px, 1.04cqi, 6px);
+                        gap: clamp(4px, calc(4px + 2px * var(--bbgl-dock-t)), 6px);
                         align-items: center;
                     }
 
                     #bbgl-panel.bbgl-expanded:not(.bbgl-mode-page) #bbgl-graph-container .g-hud {
-                        margin-bottom: clamp(4px, 1.12cqi, 6px);
+                        margin-bottom: clamp(4px, calc(4px + 2px * var(--bbgl-dock-t)), 6px);
                     }
 
                     #bbgl-panel.bbgl-expanded:not(.bbgl-mode-page) #bbgl-graph-container .g-text {
-                        font-size: clamp(10px, 1.91cqi, 11px);
+                        font-size: clamp(10px, calc(10px + 1px * var(--bbgl-dock-t)), 11px);
                     }
 
                     #bbgl-panel.bbgl-expanded:not(.bbgl-mode-page) #bbgl-graph-container {
-                        padding: clamp(5px, .72cqi, 9px) calc(var(--bbgl-gx, 10px) - 2px) clamp(4px, .65cqi, 7px) calc(var(--bbgl-gx, 10px) - 2px);
+                        padding: clamp(5px, calc(5px + 4px * var(--bbgl-dock-t)), 9px) calc(var(--bbgl-gx, 10px) - 2px) clamp(4px, calc(4px + 3px * var(--bbgl-dock-t)), 7px) calc(var(--bbgl-gx, 10px) - 2px);
                     }
 
                     /* Expanded panel sticker grid: fluid sticker slot sizing to keep proportions --------------------*/
                     /* Switch to size containment on expanded panel only so cqi/cqb can read both axes. --------------*/
                     #bbgl-panel.bbgl-expanded:not(.bbgl-mode-page) {
                         container-type: size;
+                        /* Achievements page font-size levers — one definition per tier, referenced
+                           by every consumer below via var(). Change a size here, not at each call site. */
+                        --bbgl-ach-fs-icon: clamp(27px, calc(27px + 13px * var(--bbgl-dock-t, 0)), 40px);
+                        --bbgl-ach-fs-message: clamp(12px, calc(12px + 2px * var(--bbgl-dock-t, 0)), 14px);
+                        --bbgl-ach-fs-subtitle: 9px;
+                        --bbgl-ach-fs-row: clamp(10px, calc(10px + 1px * var(--bbgl-dock-t, 0)), 11px);
+                        --bbgl-ach-fs-label: clamp(8px, calc(8px + 1px * var(--bbgl-dock-t, 0)), 9px);
+                        --bbgl-ach-fs-date: clamp(9px, calc(9px + 1px * var(--bbgl-dock-t, 0)), 10px);
+                        --bbgl-ach-fs-time: clamp(9px, calc(9px + .5px * var(--bbgl-dock-t, 0)), 9.5px);
+                        --bbgl-ach-fs-hint: clamp(6.5px, calc(6.5px + 1px * var(--bbgl-dock-t, 0)), 7.5px);
+                        --bbgl-ach-fs-tag: clamp(7px, calc(7px + 1px * var(--bbgl-dock-t, 0)), 8px);
                     }
 
                     #bbgl-panel:not(.bbgl-mode-page) #bbgl-top-panel.viewing-achievements #bbgl-achievements-container {
-                        --bbgl-ach-inset-x: clamp(0px, .55vw, 6px);
-                        --bbgl-ach-container-pt: max(0px, calc(clamp(10px, calc(21px - 10.5px * var(--bbgl-dock-t, 0)), 21px) - calc(2px * var(--bbgl-dock-t, 0))));
-                        --bbgl-ach-scroll-pt: clamp(1px, .48cqi, 8px);
-                        --bbgl-ach-scroll-pb: clamp(0px, .06cqi, 2px);
-                        --bbgl-ach-footer-pt: clamp(0px, .06cqi, 1px);
-                        --bbgl-ach-footer-pb: 2px;
-                        padding-top: var(--bbgl-ach-container-pt);
-                        padding-left: var(--bbgl-ach-inset-x);
-                        padding-right: var(--bbgl-ach-inset-x);
                         min-height: 0;
                         flex: 1;
                         overflow: hidden !important;
@@ -6407,29 +6437,24 @@
                         overflow-x: hidden;
                     }
 
-                    #bbgl-panel.bbgl-expanded:not(.bbgl-mode-page) #bbgl-top-panel.viewing-achievements #bbgl-achievements-container {
-                        --bbgl-ach-inset-x: clamp(4px, 1vw, 12px);
-                    }
-
-
                     #bbgl-panel.bbgl-expanded:not(.bbgl-mode-page) .sticker-slot {
                         height: 88px;
                     }
 
                     #bbgl-panel.bbgl-expanded:not(.bbgl-mode-page) .sticker-slot-sponsor {
-                        height: min(clamp(110px, calc(90px + 8.1cqi), 137px), clamp(110px, calc(90px + 7.4cqb), 137px));
-                        max-width: clamp(120px, calc(100px + 9cqi), 152px);
+                        height: min(clamp(110px, calc(110px + 27px * var(--bbgl-dock-t)), 137px), clamp(110px, calc(90px + 7.4cqb), 137px));
+                        max-width: clamp(120px, calc(120px + 32px * var(--bbgl-dock-t)), 152px);
                     }
 
                     #bbgl-panel.bbgl-expanded:not(.bbgl-mode-page) #bbgl-sticker-grid {
-                        column-gap: clamp(1px, calc(.8cqi), 5px);
-                        row-gap: clamp(0px, calc(.4cqi), 3px);
+                        column-gap: clamp(1px, calc(1px + 4px * var(--bbgl-dock-t)), 5px);
+                        row-gap: clamp(0px, calc(3px * var(--bbgl-dock-t)), 3px);
                         align-content: center;
                     }
 
                     #bbgl-panel.bbgl-expanded:not(.bbgl-mode-page) .sticker-nav-btn {
-                        font-size: clamp(20px, calc(14px + 3.1cqi), 32px);
-                        width: clamp(24px, calc(17px + 4cqi), 40px) !important;
+                        font-size: clamp(20px, calc(20px + 12px * var(--bbgl-dock-t)), 32px);
+                        width: clamp(24px, calc(24px + 16px * var(--bbgl-dock-t)), 40px) !important;
                     }
 
                     .bbgl-coming-soon {
@@ -6563,7 +6588,7 @@
                     }
 
                     .bbgl-expanded .sponsor-sticker-label {
-                        font-size: 11px;
+                        font-size: clamp(9px, calc(9px + 2px * var(--bbgl-dock-t, 0)), 11px);
                     }
 
                     #bbgl-panel.bbgl-mode-page .sponsor-sticker-label {
@@ -6583,7 +6608,6 @@
                         min-height: 0;
                         overflow: hidden;
                         overflow-x: hidden;
-                        padding: var(--bbgl-ach-scroll-pt) var(--bbgl-ach-inset-x) var(--bbgl-ach-scroll-pb);
                         box-sizing: border-box;
                     }
 
@@ -6598,15 +6622,6 @@
                         --bbgl-ach-inset-x: clamp(2px, 1.1cqi, 12px);
                         --bbgl-ach-scroll-pt: clamp(2px, .5cqi, 9px);
                         --bbgl-ach-scroll-pb: clamp(0px, .08cqi, 2px);
-                        --bbgl-ach-footer-pt: clamp(0px, .08cqi, 2px);
-                        --bbgl-ach-footer-pb: 2px;
-                        --bbgl-ach-footer-gap: 6px;
-                        --bbgl-ach-dot-gap: 6px;
-                        /* stickerbook #bbgl-sticker-pagination --------*/
-                        --bbgl-ach-dot-w: 6px;
-                        --bbgl-ach-nav-fs: clamp(7px, calc(1.45 * var(--bbgl-ach-dot-w)), 11px);
-                        --bbgl-ach-nav-py: 0;
-                        --bbgl-ach-nav-px: clamp(2px, .55cqi, 10px);
                     }
 
                     #bbgl-ach-pages {
@@ -6622,19 +6637,31 @@
 
                     #bbgl-ach-footer,
                     .bbgl-ach-footer {
+                        --bbgl-ach-footer-gap: 6px;
+                        --bbgl-ach-dot-gap: 6px;
+                        /* stickerbook #bbgl-sticker-pagination uses the same 6px by convention, not a shared variable --------*/
+                        --bbgl-ach-dot-w: 6px;
+                        --bbgl-ach-nav-fs: clamp(7px, calc(1.45 * var(--bbgl-ach-dot-w)), 11px);
+                        --bbgl-ach-nav-py: 0;
+                        --bbgl-ach-nav-px: clamp(2px, calc(2px + 8px * var(--bbgl-dock-t, 0)), 10px);
                         position: absolute;
-                        bottom: 0;
+                        bottom: 5px;
                         left: 0;
                         width: 100%;
-                        z-index: 10;
+                        z-index: 21;
                         flex-shrink: 0;
-                        display: grid;
+                        display: none;
                         grid-template-columns: 1fr auto 1fr;
                         align-items: center;
                         column-gap: var(--bbgl-ach-footer-gap);
                         min-height: 0;
-                        padding: var(--bbgl-ach-footer-pt) var(--bbgl-ach-inset-x) var(--bbgl-ach-footer-pb);
+                        padding: 1px 2px 2px;
                         box-sizing: border-box;
+                    }
+
+                    #bbgl-top-panel.viewing-achievements #bbgl-ach-footer,
+                    #bbgl-top-panel.viewing-achievements .bbgl-ach-footer {
+                        display: grid;
                     }
 
                     #bbgl-panel.bbgl-compact #bbgl-ach-footer {
@@ -6732,13 +6759,13 @@
                     }
 
                     .bbgl-ach-locked-icon {
-                        font-size: clamp(28px, 6cqi, 42px);
+                        font-size: var(--bbgl-ach-fs-icon);
                         opacity: .55;
                         filter: grayscale(1);
                     }
 
                     .bbgl-ach-locked-text {
-                        font-size: clamp(13px, 2.6cqi, 16px);
+                        font-size: var(--bbgl-ach-fs-message);
                         font-weight: 600;
                         color: rgba(255, 255, 255, .75);
                         letter-spacing: .02em;
@@ -6774,7 +6801,7 @@
                         padding: 2px;
                         color: #9a9a9a;
                         font-family: var(--bbgl-ach-font);
-                        font-size: clamp(11px, 2.2cqi, 13px);
+                        font-size: var(--bbgl-ach-fs-row);
                         font-weight: 700;
                         letter-spacing: .10em;
                         text-transform: uppercase;
@@ -6797,7 +6824,7 @@
                         padding: 0px 2px 0px 2px;
                         color: #888;
                         font-family: var(--bbgl-ach-font);
-                        font-size: clamp(10px, 1.8cqi, 11px);
+                        font-size: var(--bbgl-ach-fs-subtitle);
                         font-weight: 600;
                         letter-spacing: .08em;
                         text-transform: uppercase;
@@ -6813,7 +6840,7 @@
                     .bbgl-ach-cols {
                         display: grid;
                         grid-template-columns: repeat(4, minmax(0, 1fr));
-                        column-gap: clamp(8px, 2.2cqi, 18px);
+                        column-gap: clamp(8px, calc(8px + 10px * var(--bbgl-dock-t, 0)), 18px);
                         row-gap: 0;
                         align-items: start;
                         width: 100%;
@@ -6830,7 +6857,7 @@
                     .bbgl-ach-col {
                         display: flex;
                         flex-direction: column;
-                        gap: clamp(2px, .45cqi, 5px);
+                        gap: 0;
                         min-width: 0;
                         text-align: left;
                     }
@@ -6845,7 +6872,7 @@
                     .bbgl-ach-dual-headers {
                         display: grid;
                         grid-template-columns: 1fr 1fr;
-                        column-gap: clamp(8px, 2.2cqi, 18px);
+                        column-gap: clamp(8px, calc(8px + 10px * var(--bbgl-dock-t, 0)), 18px);
                         border-bottom: 1px solid rgba(255, 255, 255, .12);
                         width: 100%;
                         box-sizing: border-box;
@@ -6859,7 +6886,7 @@
                     .bbgl-ach-dual-body {
                         display: grid;
                         grid-template-columns: 1fr 1fr;
-                        column-gap: clamp(8px, 2.2cqi, 18px);
+                        column-gap: clamp(8px, calc(8px + 10px * var(--bbgl-dock-t, 0)), 18px);
                         align-items: start;
                         width: 100%;
                         box-sizing: border-box;
@@ -6877,7 +6904,7 @@
                         display: flex;
                         flex-direction: column;
                         align-items: stretch;
-                        padding: clamp(2px, .4cqi, 4px) 1px;
+                        padding: 4px 1px;
                         margin: 0;
                         border: none;
                         box-shadow: none;
@@ -6889,7 +6916,7 @@
                     }
 
                     .bbgl-expanded .bbgl-ach-row {
-                        font-size: clamp(12px, 2.05cqi, 12px);
+                        font-size: var(--bbgl-ach-fs-row);
                         color: #ccc;
                         transition: background-color .12s;
                         border-bottom: 1px solid rgba(255, 255, 255, .04);
@@ -6934,7 +6961,7 @@
                     }
 
                     .ach-sub {
-                        font-size: clamp(7.5px, 1.55cqi, 9px);
+                        font-size: var(--bbgl-ach-fs-hint);
                         font-weight: 600;
                         color: #222;
                         letter-spacing: .3px;
@@ -7006,7 +7033,7 @@
 
                     .ach-date {
                         display: none;
-                        font-size: clamp(10px, 2.1cqi, 12px);
+                        font-size: var(--bbgl-ach-fs-date);
                         font-weight: 500;
                         color: #999;
                         font-family: var(--bbgl-ach-font);
@@ -7117,7 +7144,7 @@
 
                     #bbgl-ach-pageindicator .pg-dot.active {
                         transform: scale(1.2);
-                        box-shadow: 0 0 clamp(3px, calc(2px + .55cqi), 8px) rgba(255, 255, 255, .5);
+                        box-shadow: 0 0 clamp(3px, calc(3px + 5px * var(--bbgl-dock-t, 0)), 8px) rgba(255, 255, 255, .5);
                     }
 
                     .bbgl-ach-section-page0 {
@@ -7129,7 +7156,7 @@
                     .bbgl-ach-section-page0 .bbgl-ach-row-multi {
                         display: grid;
                         grid-template-columns: minmax(0, 20%) repeat(4, minmax(0, 1fr));
-                        column-gap: clamp(4px, 1cqi, 10px);
+                        column-gap: clamp(4px, calc(4px + 6px * var(--bbgl-dock-t, 0)), 10px);
                         align-items: start;
                         width: 100%;
                         box-sizing: border-box;
@@ -7142,7 +7169,7 @@
                     }
 
                     .bbgl-ach-section-page0 .bbgl-ach-row-multi {
-                        padding: clamp(2px, .4cqi, 4px) 2px;
+                        padding: clamp(2px, calc(2px + 2px * var(--bbgl-dock-t, 0)), 4px) 2px;
                         border-bottom: 1px solid rgba(255, 255, 255, .04);
                         cursor: pointer;
                     }
@@ -7203,7 +7230,7 @@
                         word-break: normal;
                         overflow-wrap: normal;
                         align-self: center;
-                        font-size: clamp(6.5px, 1.25cqi, 8.5px);
+                        font-size: clamp(5.5px, calc(5.5px + 1px * var(--bbgl-dock-t, 0)), 6.5px);
                         line-height: 1.1;
                         max-height: calc(1.1em * 2 + 1px);
                     }
@@ -7211,7 +7238,7 @@
                     .bbgl-ach-section-hint {
                         display: none;
                         font-family: var(--bbgl-ach-font);
-                        font-size: clamp(7px, 1.4cqi, 9px);
+                        font-size: var(--bbgl-ach-fs-hint);
                         color: #666;
                         letter-spacing: .02em;
                         line-height: 1.15;
@@ -7227,7 +7254,7 @@
                     .ach-paren {
                         display: none;
                         font-family: var(--bbgl-ach-font);
-                        font-size: clamp(7.5px, 1.5cqi, 9.5px);
+                        font-size: var(--bbgl-ach-fs-hint);
                         color: #777;
                         font-weight: 400;
                         line-height: 1.15;
@@ -7241,7 +7268,7 @@
 
                     .ach-stat-header {
                         font-family: var(--bbgl-ach-font);
-                        font-size: clamp(9px, 1.85cqi, 11px);
+                        font-size: var(--bbgl-ach-fs-label);
                         font-weight: 700;
                         letter-spacing: .04em;
                         text-align: center;
@@ -7284,7 +7311,7 @@
                     .bbgl-ach-stat-cell .ach-date {
                         display: none;
                         font-family: var(--bbgl-ach-font);
-                        font-size: clamp(11px, 2.15cqi, 13px);
+                        font-size: var(--bbgl-ach-fs-row);
                         color: #999;
                         text-align: center;
                         margin: 1px 0 0;
@@ -7296,7 +7323,7 @@
                     .bbgl-ach-stat-cell .ach-time {
                         display: none;
                         font-family: var(--bbgl-ach-val-font);
-                        font-size: clamp(9.5px, 1.9cqi, 11.5px);
+                        font-size: var(--bbgl-ach-fs-time);
                         color: #888;
                         text-align: center;
                         margin: 0;
@@ -7332,6 +7359,49 @@
 
                     #bbgl-panel.bbgl-compact .bbgl-ach-subsection-title {
                         font-size: clamp(9px, 1.6cqi, 10px);
+                    }
+
+                    /* The -2px expanded-only font reduction below touched several base/unscoped
+                       rules that compact also reads (no dedicated compact override existed for
+                       them). These restore compact's original sizes so the reduction is expanded-only. */
+                    #bbgl-panel.bbgl-compact .bbgl-ach-locked-icon {
+                        font-size: 28px;
+                    }
+
+                    #bbgl-panel.bbgl-compact .bbgl-ach-locked-text {
+                        font-size: 13px;
+                    }
+
+                    #bbgl-panel.bbgl-compact .ach-sub {
+                        font-size: 7.5px;
+                    }
+
+                    #bbgl-panel.bbgl-compact .ach-stat-header {
+                        font-size: 9px;
+                    }
+
+                    #bbgl-panel.bbgl-compact .bbgl-ach-consistency-row .bbgl-ach-consistency-text {
+                        font-size: 10px;
+                    }
+
+                    #bbgl-panel.bbgl-compact .bbgl-ach-section-hh .bbgl-ach-row {
+                        font-size: 11px !important;
+                    }
+
+                    #bbgl-panel.bbgl-compact .bbgl-ach-hh-best-row {
+                        font-size: 11px;
+                    }
+
+                    #bbgl-panel.bbgl-compact .bbgl-ach-hh-val {
+                        font-size: 11px;
+                    }
+
+                    #bbgl-panel.bbgl-compact .bbgl-ach-hh-tag {
+                        font-size: 8px;
+                    }
+
+                    #bbgl-panel.bbgl-compact .bbgl-ach-hh-date-line {
+                        font-size: 10px;
                     }
 
                     .bbgl-ach-section-page1 .ach-streak-date {
@@ -7409,7 +7479,7 @@
                         border-radius: 4px;
                         transition: background-color .12s;
                         font-family: var(--bbgl-ach-font);
-                        font-size: clamp(10px, 2cqi, 13px);
+                        font-size: var(--bbgl-ach-fs-row);
                         color: #bbb;
                         font-weight: 500;
                         letter-spacing: .02em;
@@ -7467,19 +7537,11 @@
                         padding-bottom: 1px;
                     }
 
-                    .ach-cons-long {
+                    .ach-cons-days {
                         display: none;
                     }
 
-                    .ach-cons-short {
-                        display: inline;
-                    }
-
-                    #bbgl-panel:is(.bbgl-expanded, .bbgl-mode-page) .ach-cons-short {
-                        display: none;
-                    }
-
-                    #bbgl-panel:is(.bbgl-expanded, .bbgl-mode-page) .ach-cons-long {
+                    #bbgl-panel:is(.bbgl-expanded, .bbgl-mode-page) .ach-cons-days {
                         display: inline;
                     }
 
@@ -7489,9 +7551,9 @@
                     }
 
                     .bbgl-ach-section-hh .bbgl-ach-row {
-                        padding: clamp(2px, .4cqi, 4px) 2px;
+                        padding: clamp(2px, calc(2px + 2px * var(--bbgl-dock-t, 0)), 4px) 2px;
                         border-bottom: 1px solid rgba(255, 255, 255, .05);
-                        font-size: clamp(11px, 2.05cqi, 13px) !important;
+                        font-size: var(--bbgl-ach-fs-row) !important;
                     }
 
                     .bbgl-ach-hh-best-row {
@@ -7501,10 +7563,10 @@
                         gap: 8px;
                         width: 100%;
                         box-sizing: border-box;
-                        padding: clamp(3px, .5cqi, 5px) 2px;
+                        padding: clamp(3px, calc(3px + 2px * var(--bbgl-dock-t, 0)), 5px) 2px;
                         border-bottom: 1px solid rgba(255, 255, 255, .05);
                         font-family: var(--bbgl-ach-font);
-                        font-size: clamp(11px, 2.05cqi, 13px);
+                        font-size: var(--bbgl-ach-fs-row);
                         color: #ccc;
                         line-height: 1.4;
                     }
@@ -7548,7 +7610,7 @@
                         display: flex;
                         flex-direction: row;
                         align-items: center;
-                        gap: clamp(6px, 1.2cqi, 10px);
+                        gap: clamp(6px, calc(6px + 4px * var(--bbgl-dock-t, 0)), 10px);
                         min-width: 0;
                         flex: 1;
                     }
@@ -7575,7 +7637,7 @@
                     /* kept for compat */
                     .bbgl-ach-hh-cells {
                         display: flex;
-                        gap: clamp(8px, 1.6cqi, 14px);
+                        gap: clamp(8px, calc(8px + 6px * var(--bbgl-dock-t, 0)), 14px);
                         align-items: center;
                         flex-shrink: 0;
                     }
@@ -7596,14 +7658,14 @@
                         font-variant-numeric: tabular-nums;
                         color: #eaeaea;
                         font-weight: 500;
-                        font-size: clamp(11px, 2.05cqi, 13px);
+                        font-size: var(--bbgl-ach-fs-row);
                         white-space: nowrap;
                         line-height: 1.15;
                     }
 
                     .bbgl-ach-hh-tag {
                         font-family: var(--bbgl-ach-font);
-                        font-size: clamp(8px, 1.4cqi, 10px);
+                        font-size: var(--bbgl-ach-fs-tag);
                         font-weight: 700;
                         letter-spacing: .04em;
                         text-transform: uppercase;
@@ -7616,7 +7678,7 @@
                         color: #888;
                         line-height: 1.2;
                         font-variant-numeric: tabular-nums;
-                        font-size: clamp(10px, 1.8cqi, 11.5px);
+                        font-size: var(--bbgl-ach-fs-time);
                     }
 
                     #bbgl-panel:is(.bbgl-expanded, .bbgl-mode-page) .bbgl-ach-hh-date-line {
@@ -10892,7 +10954,7 @@ function gotoAchievementsPage(dir) {
 
 function achLedgerClip(n) {
     if (n === null || n === undefined || (typeof n === 'number' && Number.isNaN(n))) return '\u2014';
-    return (Math.abs(n) >= 1e9) ? Formatter.abbr(n, 4) : Formatter.number(n);
+    return Formatter.achAbbr(n, ACH_FMT.gains);
 }
 
 function achFmtVal(n) {
@@ -11143,7 +11205,7 @@ function achBuildPage1(d) {
     const consVal = d.trainingRestRatio || '—';
     const consDaysShort = '';
     const consDaysLong = '(' + (d.trainingDays || 0) + '/' + (d.calDays || 0) + ' Days)';
-    const consRow = `<div class="bbgl-ach-row bbgl-ach-row-multi bbgl-ach-consistency-row" data-ach-key="consistency" data-tooltip="Your lifetime ratio of active training days versus total calendar days."><div class="bbgl-ach-consistency-text"><span class="ach-cons-short">Consistency: <span class="ach-cons-val">${achEsc(consVal)}</span></span><span class="ach-cons-long">Training Consistency: <span class="ach-cons-val">${achEsc(consVal)}</span> <span class="ach-cons-days">${achEsc(consDaysLong)}</span></span></div></div>`;
+    const consRow = `<div class="bbgl-ach-row bbgl-ach-row-multi bbgl-ach-consistency-row" data-ach-key="consistency" data-tooltip="Your lifetime ratio of active training days versus total calendar days."><div class="bbgl-ach-consistency-text">Training Consistency: <span class="ach-cons-val">${achEsc(consVal)}</span> <span class="ach-cons-days">${achEsc(consDaysLong)}</span></div></div>`;
     return `<div class="bbgl-ach-section bbgl-ach-section-page0 bbgl-ach-section-page1">${header}${rowsHTML}${consRow}</div>`;
 }
 
@@ -11315,16 +11377,16 @@ function achBuildPageOverview(d) {
             const rec = enh[sk] || { count: 0, gain: 0 };
             countHtml = rec.count > 0 ? achEsc(Formatter.number(rec.count)) : NULL;
             // Stat label always shows; number is — when no data
-            const gainNum = rec.gain > 0 ? `+${achEsc(Formatter.gain(rec.gain))}` : NULL;
+            const gainNum = rec.gain > 0 ? `+${achEsc(Formatter.achAbbr(rec.gain, ACH_FMT.enhancers))}` : NULL;
             gainedHtml = `${gainNum} <span class="ach-stat-${sk}">${STAT_ABBR[sk]}</span>`;
-            clipVal = `${label}: ${rec.count} (+${Formatter.gain(rec.gain)} ${STAT_ABBR[sk]})`;
+            clipVal = `${label}: ${rec.count} (+${Formatter.achAbbr(rec.gain, ACH_FMT.enhancers)} ${STAT_ABBR[sk]})`;
             tip = isExpanded ? `Amount of ${tipLabel} · ${achStatFull(sk)} Gained` : `Amount of ${tipLabel}`;
         } else {
             const rec = enrg[id] || { count: 0, energy: 0 };
             countHtml = rec.count > 0 ? achEsc(Formatter.number(rec.count)) : NULL;
-            const gainNum = rec.energy > 0 ? `+${achEsc(Formatter.gain(rec.energy))}` : NULL;
+            const gainNum = rec.energy > 0 ? `+${achEsc(Formatter.achAbbr(rec.energy, ACH_FMT.enhancers))}` : NULL;
             gainedHtml = `${gainNum} <span class="ach-enh-e-label">E</span>`;
-            clipVal = `${label}: ${rec.count} (+${Formatter.gain(rec.energy)} Energy)`;
+            clipVal = `${label}: ${rec.count} (+${Formatter.achAbbr(rec.energy, ACH_FMT.enhancers)} Energy)`;
             tip = isExpanded ? `Amount of ${tipLabel} · Energy Gained` : `Amount of ${tipLabel}`;
         }
 
@@ -11362,10 +11424,10 @@ function achBuildPageOverview(d) {
         const sk = STAT_ENH_MAP[id];
         if (sk) {
             const rec = enh[sk] || { count: 0, gain: 0 };
-            return `${label}: ${rec.count} (+${Formatter.gain(rec.gain)} ${STAT_ABBR[sk]})`;
+            return `${label}: ${rec.count} (+${Formatter.achAbbr(rec.gain, ACH_FMT.enhancers)} ${STAT_ABBR[sk]})`;
         }
         const rec = enrg[id] || { count: 0, energy: 0 };
-        return `${label}: ${rec.count} (+${Formatter.gain(rec.energy)} Energy)`;
+        return `${label}: ${rec.count} (+${Formatter.achAbbr(rec.energy, ACH_FMT.enhancers)} Energy)`;
     }).join('\n');
 
     const cols = `<div class="bbgl-ach-col">${leftHTML}</div><div class="bbgl-ach-col">${rightHTML}</div>`;
@@ -11402,7 +11464,7 @@ function buildAchievementsPage(pageIdx, d) {
         }
         return {
             ...base,
-            dualHtml: Formatter.dual(value),
+            dualHtml: Formatter.achDual(value, ACH_FMT.gains),
             display: '',
             rawVal: opts.rawVal !== undefined ? opts.rawVal : achLedgerClip(value)
         };
@@ -11419,7 +11481,7 @@ function buildAchievementsPage(pageIdx, d) {
         };
         if (suffix) return rec ? mk(label, v, {
             ...o,
-            dualHtml: Formatter.dual(v) + ' E',
+            dualHtml: Formatter.achDual(v, ACH_FMT.gains) + ' E',
             rawVal: achLedgerClip(v) + ' E'
         }) : mk(label, null, {
             ...o,
@@ -11520,7 +11582,7 @@ function buildAchievementsPage(pageIdx, d) {
     }
 }
 
-const achFmtGain = v => Formatter.achGain(v);
+const achFmtGain = v => Formatter.achAbbr(v, ACH_FMT.compact);
 
 function achStatAbbr(s) {
     return s ? s.charAt(0).toUpperCase() + s.slice(1) : '';
@@ -11961,7 +12023,6 @@ function handleAchCopy(el) {
 // or a single-element array [k] for a per-column copy. Energy line uses s[keys[0]].cost for
 // single-stat, s.total.cost for full. Format is identical to the existing copy-session output.
 function buildSessionText(sl, s, keys) {
-    const fM = v => (Math.abs(v) >= 1e9) ? Formatter.abbr(v, 4) : Formatter.number(v);
     const statEmoji = { str: '💪', def: '🛡️', spd: '🎯', dex: '🤺' };
     const statNames = { str: 'Strength', def: 'Defense', spd: 'Speed', dex: 'Dexterity' };
     let ds = '';
@@ -11974,7 +12035,7 @@ function buildSessionText(sl, s, keys) {
     const eTxt = eCost > 0 ? `⚡${Formatter.number(eCost)} E` : '🛌 I was a lazy POS.';
     const statLines = keys
         .filter(k => s[k].gain > 0 || s[k].cost > 0)
-        .map(k => `${statEmoji[k]}${statNames[k]}: +${fM(s[k].gain)} (${fM(s[k].start)} → ${fM(s[k].end)})`);
+        .map(k => `${statEmoji[k]}${statNames[k]}: +${Formatter.achAbbr(s[k].gain, ACH_FMT.gains)} (${Formatter.achAbbr(s[k].start, ACH_FMT.gains)} \u2192 ${Formatter.achAbbr(s[k].end, ACH_FMT.gains)})`);
     return ['👑BBGymLog', `${ds} |${eTxt}`, ...statLines].join('\n');
 }
 
@@ -13554,7 +13615,7 @@ const BestGymController = {
                         del = r2 - r1,
                         sg = del >= 0 ? '+' : '',
                         pct = r1 > 0 ? ((r2 - r1) / r1) * 100 : 0;
-                    th = `<div class="rates-group" style="display:flex;flex-direction:column;align-items:center;line-height:1.1"><span>${sg}${Formatter.achGain(del)}</span><span class="view-exp rate-pct" style="font-size:0.8em;opacity:0.7;margin-top:2px;margin-bottom:-2px;">(${sg}${Formatter.ratePct(pct)}%)</span></div>`;
+                    th = `<div class="rates-group" style="display:flex;flex-direction:column;align-items:center;line-height:1.1"><span>${sg}${Formatter.achAbbr(del, ACH_FMT.compact)}</span><span class="view-exp rate-pct" style="font-size:0.8em;opacity:0.7;margin-top:2px;margin-bottom:-2px;">(${sg}${Formatter.ratePct(pct)}%)</span></div>`;
                     rt = mkTip(r1, r2, pct, sg);
                 }
                 rh = userConfig.ratesEnabled ? th : '';
@@ -14786,7 +14847,7 @@ const BestGymController = {
     function getDashboardHTML() {
         const weekDays = userConfig.weekStartMode === 'mon' ? ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'] : ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
         const weekRowHTML = weekDays.map(d => `<span>${d}</span>`).join('');
-        return `<div class="bbgl-header" id="bbgl-header-bar"><div class="bbgl-header-left">${ICONS.LOGO}<span class="bbgl-header-text"><span class="bbgl-short-title">Big Black Log</span><span class="bbgl-long-title">Big Black Gym Log</span></span></div><div class="bbgl-header-right"><span id="bbgl-demo-exit-btn" class="close-settings-btn bbgl-close-purple" style="display:${runtime.demoMode ? 'flex' : 'none'};" data-tooltip-html="${TOOLTIPS.DEMO_EXIT_HTML}"><span class="bbgl-demo-x-label">Demo</span>${ICONS.CLOSE}</span><span id="bbgl-settings-btn" class="bbgl-custom-icon">⚙</span><span id="bbgl-close-btn" class="bbgl-native-icon">${ICONS.MINIMIZE}</span><span id="bbgl-pop-btn" class="bbgl-native-icon">${viewState.expanded ? ICONS.COMPRESS : ICONS.POPOUT}</span></div></div><div id="bbgl-content-wrapper"><div id="bbgl-top-panel"><div id="bbgl-tall-toggle">${viewState.isTall ? '–' : '+'}</div><div id="bbgl-ledger-toggle" data-tooltip="${TOOLTIPS.LEDGER_VIEW}">${ICONS.LEDGER}</div><div id="bbgl-graph-toggle" data-tooltip="${TOOLTIPS.GRAPH_VIEW}">${ICONS.GRAPH}</div><div id="bbgl-achievements-toggle" data-tooltip="${TOOLTIPS.ACHIEVEMENTS}">${ICONS.ACHIEVEMENTS}</div><div id="bbgl-sticker-toggle" data-tooltip="${TOOLTIPS.STICKERBOOK}">${ICONS.STICKERBOOK}</div><div id="bbgl-item-counters"></div><div id="bbgl-copy-btn" class="copy-hist-btn" data-tooltip="${TOOLTIPS.COPY_SESSION}">${ICONS.CLIPBOARD}</div><div id="bbgl-sticker-title"></div><div class="ui-floating-label" id="bbgl-date-label">LOADING...</div><div class="ui-floating-summary" id="bbgl-summary-label"></div><div id="bbgl-ledger-view" class="ledger-content"></div><div id="bbgl-graph-container"><div class="g-hud"><div class="g-toggles"><div class="g-pill active" data-type="mode" data-val="values">Gains</div><div class="g-pill" data-type="mode" data-val="rates">Rates</div></div><div class="g-toggles"><div class="g-pill p-str active" data-type="stat" data-val="str">STR</div><div class="g-pill p-def" data-type="stat" data-val="def">DEF</div><div class="g-pill p-spd active" data-type="stat" data-val="spd">SPD</div><div class="g-pill p-dex" data-type="stat" data-val="dex">DEX</div><div class="g-pill p-tot" data-type="stat" data-val="total">TOT</div></div></div><svg id="bbgl-graph-svg"></svg></div><div id="bbgl-achievements-container" class="ledger-content"><div class="bbgl-ach-scroll"><div id="bbgl-ach-pages"></div></div><div id="bbgl-ach-footer" class="bbgl-ach-footer"><div class="bbgl-ach-footer-side bbgl-ach-footer-left"><button type="button" class="bbgl-ach-nav bbgl-ach-prev" aria-label="Previous achievements page">\u276e</button></div><div id="bbgl-ach-pageindicator"></div><div class="bbgl-ach-footer-side bbgl-ach-footer-right"><button type="button" class="bbgl-ach-nav bbgl-ach-next" aria-label="Next achievements page">\u276f</button></div></div></div><div id="bbgl-sticker-bg"></div><div id="bbgl-sticker-container"><div id="sticker-sponsor-btn" class="sticker-nav-btn disabled">❮</div><div id="sticker-prev-btn" class="sticker-nav-btn">❮</div><div id="sticker-next-btn" class="sticker-nav-btn">❯</div><div id="bbgl-sticker-grid"></div><div id="bbgl-sticker-pagination"></div></div><div class="glass-overlay"></div></div><div id="bbgl-bottom-panel"><div id="bbgl-demo-exit" style="display: ${runtime.demoMode ? 'flex' : 'none'};" data-tooltip="${TOOLTIPS.DEMO_EXIT}" data-tooltip-html="${TOOLTIPS.DEMO_EXIT_HTML}">DEMO MODE</div><div class="bbgl-header-wrapper"><div class="bbgl-month-header"><div class="title-group"><div class="title-stack"><div class="header-row header-row--alltime"><div class="stats-btn" id="all-time-btn">${ICONS.CHART}</div><div class="header-trigger" id="all-time-trigger">∞</div></div><div class="header-row header-row--year"><div class="stats-btn" id="year-stats-btn">${ICONS.CHART}</div><div class="header-trigger" id="year-trigger"></div><div id="bbgl-year-dropdown" class="bbgl-dropdown-menu"></div></div><div class="header-row header-row--month"><div class="stats-btn" id="month-stats-btn">${ICONS.CHART}</div><div class="header-trigger" id="month-trigger"></div><div id="bbgl-month-dropdown" class="bbgl-dropdown-menu"></div></div></div></div><button class="arrow-btn" id="prev-month-btn">❮</button><button class="arrow-btn" id="next-month-btn">❯</button></div><div id="bbgl-level-bg">${buildEmptyLevelTrackSVG()}</div><div id="bbgl-level-container"><div id="bbgl-level-flag-clip"><span id="bbgl-level-num">Lv 1</span></div><div id="bbgl-level-track"><div id="bbgl-level-fill"></div></div></div></div><div class="bbgl-grid-container"><div class="bbgl-week-row">${weekRowHTML}</div><div class="calendar-wrapper" id="swipe-area"><div id="bbgl-cal-container" class="bbgl-cal-container"></div></div></div></div><div id="bbgl-item-viewer"><div class="viewer-window"><div class="viewer-stage"><div class="viewer-pedestal" id="vi-pedestal-wrapper"><div class="viewer-obj" id="vi-obj-target"><div class="layer-front"></div><div class="layer-back"></div></div></div></div></div><div class="viewer-info-overlay"><div class="vi-name" id="vi-name-target">Item Name</div></div></div><div id="bbgl-settings-view">${getSettingsHTML()}</div><div id="bbgl-welcome-view"></div></div>`;
+        return `<div class="bbgl-header" id="bbgl-header-bar"><div class="bbgl-header-left">${ICONS.LOGO}<span class="bbgl-header-text"><span class="bbgl-short-title">Big Black Log</span><span class="bbgl-long-title">Big Black Gym Log</span></span></div><div class="bbgl-header-right"><span id="bbgl-demo-exit-btn" class="close-settings-btn bbgl-close-purple" style="display:${runtime.demoMode ? 'flex' : 'none'};" data-tooltip-html="${TOOLTIPS.DEMO_EXIT_HTML}"><span class="bbgl-demo-x-label">Demo</span>${ICONS.CLOSE}</span><span id="bbgl-settings-btn" class="bbgl-custom-icon">⚙</span><span id="bbgl-close-btn" class="bbgl-native-icon">${ICONS.MINIMIZE}</span><span id="bbgl-pop-btn" class="bbgl-native-icon">${viewState.expanded ? ICONS.COMPRESS : ICONS.POPOUT}</span></div></div><div id="bbgl-content-wrapper"><div id="bbgl-top-panel"><div id="bbgl-tall-toggle">${viewState.isTall ? '–' : '+'}</div><div id="bbgl-ledger-toggle" data-tooltip="${TOOLTIPS.LEDGER_VIEW}">${ICONS.LEDGER}</div><div id="bbgl-graph-toggle" data-tooltip="${TOOLTIPS.GRAPH_VIEW}">${ICONS.GRAPH}</div><div id="bbgl-achievements-toggle" data-tooltip="${TOOLTIPS.ACHIEVEMENTS}">${ICONS.ACHIEVEMENTS}</div><div id="bbgl-sticker-toggle" data-tooltip="${TOOLTIPS.STICKERBOOK}">${ICONS.STICKERBOOK}</div><div id="bbgl-item-counters"></div><div id="bbgl-copy-btn" class="copy-hist-btn" data-tooltip="${TOOLTIPS.COPY_SESSION}">${ICONS.CLIPBOARD}</div><div id="bbgl-sticker-title"></div><div class="ui-floating-label" id="bbgl-date-label">LOADING...</div><div class="ui-floating-summary" id="bbgl-summary-label"></div><div id="bbgl-ledger-view" class="ledger-content"></div><div id="bbgl-graph-container"><div class="g-hud"><div class="g-toggles"><div class="g-pill active" data-type="mode" data-val="values">Gains</div><div class="g-pill" data-type="mode" data-val="rates">Rates</div></div><div class="g-toggles"><div class="g-pill p-str active" data-type="stat" data-val="str">STR</div><div class="g-pill p-def" data-type="stat" data-val="def">DEF</div><div class="g-pill p-spd active" data-type="stat" data-val="spd">SPD</div><div class="g-pill p-dex" data-type="stat" data-val="dex">DEX</div><div class="g-pill p-tot" data-type="stat" data-val="total">TOT</div></div></div><svg id="bbgl-graph-svg"></svg></div><div id="bbgl-achievements-container" class="ledger-content"><div class="bbgl-ach-scroll"><div id="bbgl-ach-pages"></div></div></div><div id="bbgl-ach-footer" class="bbgl-ach-footer"><div class="bbgl-ach-footer-side bbgl-ach-footer-left"><button type="button" class="bbgl-ach-nav bbgl-ach-prev" aria-label="Previous achievements page">\u276e</button></div><div id="bbgl-ach-pageindicator"></div><div class="bbgl-ach-footer-side bbgl-ach-footer-right"><button type="button" class="bbgl-ach-nav bbgl-ach-next" aria-label="Next achievements page">\u276f</button></div></div><div id="bbgl-sticker-bg"></div><div id="bbgl-sticker-container"><div id="sticker-sponsor-btn" class="sticker-nav-btn disabled">❮</div><div id="sticker-prev-btn" class="sticker-nav-btn">❮</div><div id="sticker-next-btn" class="sticker-nav-btn">❯</div><div id="bbgl-sticker-grid"></div><div id="bbgl-sticker-pagination"></div></div><div class="glass-overlay"></div></div><div id="bbgl-bottom-panel"><div id="bbgl-demo-exit" style="display: ${runtime.demoMode ? 'flex' : 'none'};" data-tooltip="${TOOLTIPS.DEMO_EXIT}" data-tooltip-html="${TOOLTIPS.DEMO_EXIT_HTML}">DEMO MODE</div><div class="bbgl-header-wrapper"><div class="bbgl-month-header"><div class="title-group"><div class="title-stack"><div class="header-row header-row--alltime"><div class="stats-btn" id="all-time-btn">${ICONS.CHART}</div><div class="header-trigger" id="all-time-trigger">∞</div></div><div class="header-row header-row--year"><div class="stats-btn" id="year-stats-btn">${ICONS.CHART}</div><div class="header-trigger" id="year-trigger"></div><div id="bbgl-year-dropdown" class="bbgl-dropdown-menu"></div></div><div class="header-row header-row--month"><div class="stats-btn" id="month-stats-btn">${ICONS.CHART}</div><div class="header-trigger" id="month-trigger"></div><div id="bbgl-month-dropdown" class="bbgl-dropdown-menu"></div></div></div></div><button class="arrow-btn" id="prev-month-btn">❮</button><button class="arrow-btn" id="next-month-btn">❯</button></div><div id="bbgl-level-bg">${buildEmptyLevelTrackSVG()}</div><div id="bbgl-level-container"><div id="bbgl-level-flag-clip"><span id="bbgl-level-num">Lv 1</span></div><div id="bbgl-level-track"><div id="bbgl-level-fill"></div></div></div></div><div class="bbgl-grid-container"><div class="bbgl-week-row">${weekRowHTML}</div><div class="calendar-wrapper" id="swipe-area"><div id="bbgl-cal-container" class="bbgl-cal-container"></div></div></div></div><div id="bbgl-item-viewer"><div class="viewer-window"><div class="viewer-stage"><div class="viewer-pedestal" id="vi-pedestal-wrapper"><div class="viewer-obj" id="vi-obj-target"><div class="layer-front"></div><div class="layer-back"></div></div></div></div></div><div class="viewer-info-overlay"><div class="vi-name" id="vi-name-target">Item Name</div></div></div><div id="bbgl-settings-view">${getSettingsHTML()}</div><div id="bbgl-welcome-view"></div></div>`;
     }
 
     /**
