@@ -634,12 +634,11 @@
                     }
 
                     #bbgl-panel.bbgl-expanded {
-                        --bbgl-f-label: clamp(12.5px, calc(12.5px + 1px * var(--bbgl-dock-t)), 13.5px);
-                        --bbgl-f-top: clamp(12.5px, calc(12.5px + 1px * var(--bbgl-dock-t)), 13.5px);
-                        --bbgl-f-bot: clamp(10.5px, calc(10.5px + 1px * var(--bbgl-dock-t)), 11.5px);
+                        --bbgl-f-label: clamp(12px, calc(12px + 1.5px * var(--bbgl-dock-t)), 13.5px);
+                        --bbgl-f-top: clamp(12px, calc(12px + 1.5px * var(--bbgl-dock-t)), 13.5px);
+                        --bbgl-f-bot: clamp(10px, calc(10px + 1.5px * var(--bbgl-dock-t)), 11.5px);
                         --bbgl-f-top-mb: 3px;
                         --bbgl-bot-minh: 14px;
-                        --bbgl-col-gap: clamp(8px, calc(8px + 8px * var(--bbgl-dock-t)), 16px);
                         --bbgl-label-case: none;
                         width: min(576px, calc(100vw - 20px));
                         height: 633px;
@@ -649,17 +648,16 @@
                     }
 
                     #bbgl-panel.bbgl-tall {
-                        --bbgl-f-label: 12px;
-                        --bbgl-f-top: 12px;
-                        --bbgl-f-bot: 11px;
+                        --bbgl-f-label: 11px;
+                        --bbgl-f-top: 11px;
+                        --bbgl-f-bot: 10px;
                         --bbgl-col-gap: 13px;
                     }
 
                     #bbgl-panel.bbgl-tall.bbgl-expanded {
-                        --bbgl-f-label: clamp(13.75px, calc(13.75px + 1.75px * var(--bbgl-dock-t)), 15.5px);
-                        --bbgl-f-top: clamp(13.75px, calc(13.75px + 1.75px * var(--bbgl-dock-t)), 15.5px);
-                        --bbgl-f-bot: clamp(11.75px, calc(11.75px + 1.25px * var(--bbgl-dock-t)), 13px);
-                        --bbgl-col-gap: clamp(22px, calc(24.5px - 2.5px * var(--bbgl-dock-t)), 24.5px);
+                        --bbgl-f-label: clamp(13px, calc(13px + 1.5px * var(--bbgl-dock-t)), 14.5px);
+                        --bbgl-f-top: clamp(13px, calc(13px + 1.5px * var(--bbgl-dock-t)), 14.5px);
+                        --bbgl-f-bot: clamp(11px, calc(11px + 1.5px * var(--bbgl-dock-t)), 12.5px);
                     }
 
                     #bbgl-panel.bbgl-mode-page {
@@ -811,6 +809,7 @@
                     }
 
                     #bbgl-panel.bbgl-mode-page #bbgl-achievements-container {
+                        --bbgl-ach-row-pad-v: clamp(3px, calc(3px + 1px * var(--bbgl-page-t, 0)), 4px);
                         --bbgl-ach-inset-x: clamp(6px, calc(6px + 4px * var(--bbgl-page-t)), 24px);
                         --bbgl-ach-container-pt: 0;
                         --bbgl-ach-scroll-pt: clamp(2px, calc(4px - 1px * var(--bbgl-page-t)), 5px);
@@ -840,41 +839,9 @@
                         height: var(--bbgl-ach-dot-w);
                     }
 
-                    #bbgl-panel.bbgl-mode-page .bbgl-ach-section-title {
-                        font-size: clamp(9.5px, calc(9.5px + 4.5px * var(--bbgl-page-t)), 14px) !important;
-                    }
-
-                    #bbgl-panel.bbgl-mode-page .bbgl-ach-row {
-                        font-size: clamp(9px, calc(9px + 4px * var(--bbgl-page-t)), 13px) !important;
-                    }
-
-                    #bbgl-panel.bbgl-mode-page .bbgl-ach-hh-group .bbgl-ach-row,
-                    #bbgl-panel.bbgl-mode-page .bbgl-ach-hh-group .bbgl-ach-hh-best-row {
-                        font-size: clamp(9px, calc(9px + 4px * var(--bbgl-page-t)), 13px);
-                    }
-
-                    #bbgl-panel.bbgl-mode-page .ach-sub {
-                        font-size: clamp(7px, calc(7px + 3px * var(--bbgl-page-t)), 10px);
-                    }
-
-                    #bbgl-panel.bbgl-mode-page .ach-date {
-                        font-size: clamp(7.5px, calc(7.5px + 3.5px * var(--bbgl-page-t)), 11px);
-                    }
-
-                    #bbgl-panel.bbgl-mode-page .bbgl-ach-hh-val {
-                        font-size: clamp(9px, calc(9px + 4px * var(--bbgl-page-t)), 13px);
-                    }
-
-                    #bbgl-panel.bbgl-mode-page .bbgl-ach-hh-tag {
-                        font-size: clamp(7px, calc(7px + 3px * var(--bbgl-page-t)), 10px);
-                    }
-
-                    #bbgl-panel.bbgl-mode-page .bbgl-ach-hh-date-line {
-                        font-size: clamp(8px, calc(8px + 3.5px * var(--bbgl-page-t)), 11.5px);
-                    }
-
-                    #bbgl-panel.bbgl-mode-page .bbgl-ach-subsection-title {
-                        font-size: clamp(8px, calc(8px + 3px * var(--bbgl-page-t)), 11px);
+                    #bbgl-panel.bbgl-mode-page #bbgl-ach-pageindicator,
+                    #bbgl-panel.bbgl-mode-page .bbgl-ach-nav {
+                        transform: translateY(calc(-2px * var(--bbgl-page-t, 0)));
                     }
 
                     #bbgl-panel.bbgl-mode-page .col-header,
@@ -896,7 +863,7 @@
 
                     #bbgl-panel.bbgl-mode-page .ui-floating-label,
                     #bbgl-panel.bbgl-mode-page .ui-floating-summary {
-                        font-size: clamp(11px, calc(11px + 4px * var(--bbgl-page-t)), 15px);
+                        font-size: clamp(9px, calc(9px + 6px * var(--bbgl-page-t)), 15px);
                         bottom: clamp(4px, calc(4px + 2px * var(--bbgl-page-t)), 6px);
                     }
 
@@ -1826,6 +1793,24 @@
                     .bbgl-mode-page .rates-group {
                         margin-top: 2px;
                         margin-bottom: -2px;
+                    }
+
+                    @media (max-width: 375px) {
+                        .ui-floating-label .view-exp,
+                        .ui-floating-summary .view-exp {
+                            display: none !important;
+                        }
+
+                        .ui-floating-label .view-std,
+                        .ui-floating-summary .view-std {
+                            display: inline !important;
+                        }
+                    }
+
+                    @media (max-width: 450px) {
+                        #bbgl-item-counters .bbgl-ic-dyn {
+                            display: none !important;
+                        }
                     }
 
                     .rate-pct {
@@ -4636,17 +4621,13 @@
                     }
 
                     #bbgl-panel.bbgl-mode-page .bbgl-enh-sw-opt {
-                        font-size: clamp(10px, calc(10px + 2px * var(--bbgl-page-t)), 12px);
+                        font-size: clamp(6px, calc(6px + 4px * var(--bbgl-page-t)), 10px);
                         padding: 2px 7px;
                     }
 
                     .bbgl-ach-section-energy .bbgl-ach-row {
-                        padding: clamp(2px, calc(2px + 2px * var(--bbgl-dock-t, 0)), 4px) 2px;
+                        padding: var(--bbgl-ach-row-pad-v, 4px) 2px;
                         border-bottom: 1px solid rgba(255, 255, 255, .05);
-                    }
-
-                    #bbgl-panel.bbgl-compact .bbgl-ach-section-energy .bbgl-ach-row {
-                        font-size: clamp(9px, 1.7cqi, 11px) !important;
                     }
 
                     .bbgl-ach-section-energy .bbgl-ach-row:last-of-type {
@@ -5217,15 +5198,13 @@
                         --bbgl-dock-t: clamp(0, calc((100cqi - 300px) / 276px), 1);
                     }
 
-                    #bbgl-panel.bbgl-expanded:not(.bbgl-mode-page):not(.bbgl-tall) {
-                        --bbgl-col-gap: clamp(10px, calc(10px + 12px * (1 - var(--bbgl-dock-t, 0))), 22px);
+                    #bbgl-panel.bbgl-expanded:not(.bbgl-mode-page) {
+                        --bbgl-col-gap: 18px;
                         --bbgl-f-top-mb: clamp(3px, calc(3px + 3px * (1 - var(--bbgl-dock-t, 0))), 6px);
                     }
 
                     #bbgl-panel.bbgl-expanded.bbgl-tall:not(.bbgl-mode-page) {
-                        /* ledger spacing inverse-scale (tall) */
-                        --bbgl-col-gap: clamp(12px, calc(12px + 14px * (1 - var(--bbgl-dock-t, 0))), 26px);
-                        --bbgl-f-top-mb: clamp(3px, calc(3px + 3px * (1 - var(--bbgl-dock-t, 0))), 6px);
+                        --bbgl-col-gap: 24px;
                     }
 
                     #bbgl-panel:not(.bbgl-mode-page) #bbgl-bottom-panel {
@@ -5314,12 +5293,12 @@
 
                     #bbgl-panel.bbgl-expanded:not(.bbgl-mode-page) .ui-floating-label,
                     #bbgl-panel.bbgl-expanded:not(.bbgl-mode-page) .ui-floating-summary {
-                        font-size: clamp(11px, calc(11px + 1px * var(--bbgl-dock-t)), 12px);
+                        font-size: clamp(10px, calc(10px + 2px * var(--bbgl-dock-t)), 12px);
                     }
 
                     #bbgl-panel.bbgl-compact .ui-floating-label,
                     #bbgl-panel.bbgl-compact .ui-floating-summary {
-                        font-size: 10.5px !important;
+                        font-size: 10px !important;
                     }
 
                     #bbgl-panel.bbgl-expanded:not(.bbgl-mode-page) #year-stats-btn,
@@ -5360,17 +5339,36 @@
                     /* Switch to size containment on expanded panel only so cqi/cqb can read both axes. --------------*/
                     #bbgl-panel.bbgl-expanded:not(.bbgl-mode-page) {
                         container-type: size;
-                        /* Achievements page font-size levers — one definition per tier, referenced
-                           by every consumer below via var(). Change a size here, not at each call site. */
-                        --bbgl-ach-fs-icon: clamp(27px, calc(27px + 13px * var(--bbgl-dock-t, 0)), 40px);
-                        --bbgl-ach-fs-message: clamp(12px, calc(12px + 2px * var(--bbgl-dock-t, 0)), 14px);
+                    }
+
+                    /* Achievements page font-size levers — one definition per tier, referenced
+                       by every consumer below via var(). Change a size here, not at each call site.
+                       Shared by expanded and page mode: falls back from --bbgl-dock-t (expanded/
+                       compact width ratio) to --bbgl-page-t (page mode's own width ratio) so both
+                       modes scale identically off the same formulas. */
+                    #bbgl-panel:is(.bbgl-expanded, .bbgl-mode-page) {
+                        --bbgl-ach-fs-icon: clamp(27px, calc(27px + 13px * var(--bbgl-dock-t, var(--bbgl-page-t, 0))), 40px);
+                        --bbgl-ach-fs-message: clamp(12px, calc(12px + 2px * var(--bbgl-dock-t, var(--bbgl-page-t, 0))), 14px);
                         --bbgl-ach-fs-subtitle: 9px;
-                        --bbgl-ach-fs-row: clamp(10px, calc(10px + 1px * var(--bbgl-dock-t, 0)), 11px);
-                        --bbgl-ach-fs-label: clamp(8px, calc(8px + 1px * var(--bbgl-dock-t, 0)), 9px);
-                        --bbgl-ach-fs-date: clamp(9px, calc(9px + 1px * var(--bbgl-dock-t, 0)), 10px);
-                        --bbgl-ach-fs-time: clamp(9px, calc(9px + .5px * var(--bbgl-dock-t, 0)), 9.5px);
-                        --bbgl-ach-fs-hint: clamp(6.5px, calc(6.5px + 1px * var(--bbgl-dock-t, 0)), 7.5px);
-                        --bbgl-ach-fs-tag: clamp(7px, calc(7px + 1px * var(--bbgl-dock-t, 0)), 8px);
+                        --bbgl-ach-fs-row: clamp(10px, calc(10px + 1px * var(--bbgl-dock-t, var(--bbgl-page-t, 0))), 11px);
+                        --bbgl-ach-fs-label: clamp(8px, calc(8px + 1px * var(--bbgl-dock-t, var(--bbgl-page-t, 0))), 9px);
+                        --bbgl-ach-fs-date: clamp(9px, calc(9px + 1px * var(--bbgl-dock-t, var(--bbgl-page-t, 0))), 10px);
+                        --bbgl-ach-fs-time: clamp(9px, calc(9px + .5px * var(--bbgl-dock-t, var(--bbgl-page-t, 0))), 9.5px);
+                        --bbgl-ach-fs-hint: clamp(6.5px, calc(6.5px + 1px * var(--bbgl-dock-t, var(--bbgl-page-t, 0))), 7.5px);
+                        --bbgl-ach-fs-tag: clamp(7px, calc(7px + 1px * var(--bbgl-dock-t, var(--bbgl-page-t, 0))), 8px);
+                    }
+
+                    /* Page mode gets a wider min/max spread than expanded on the same font tiers,
+                       since its width range is bigger and the 1px expanded swing reads as static. */
+                    #bbgl-panel.bbgl-mode-page {
+                        --bbgl-ach-fs-icon: clamp(25px, calc(25px + 17px * var(--bbgl-page-t, 0)), 42px);
+                        --bbgl-ach-fs-message: clamp(10px, calc(10px + 6px * var(--bbgl-page-t, 0)), 16px);
+                        --bbgl-ach-fs-row: clamp(8px, calc(8px + 5px * var(--bbgl-page-t, 0)), 13px);
+                        --bbgl-ach-fs-label: clamp(6px, calc(6px + 5px * var(--bbgl-page-t, 0)), 11px);
+                        --bbgl-ach-fs-date: clamp(7px, calc(7px + 5px * var(--bbgl-page-t, 0)), 12px);
+                        --bbgl-ach-fs-time: clamp(7px, calc(7px + 4.5px * var(--bbgl-page-t, 0)), 11.5px);
+                        --bbgl-ach-fs-hint: clamp(4.5px, calc(4.5px + 5px * var(--bbgl-page-t, 0)), 9.5px);
+                        --bbgl-ach-fs-tag: clamp(5px, calc(5px + 5px * var(--bbgl-page-t, 0)), 10px);
                     }
 
                     #bbgl-panel:not(.bbgl-mode-page) #bbgl-top-panel.viewing-achievements #bbgl-achievements-container {
@@ -5849,22 +5847,26 @@
                         min-width: 0;
                     }
 
+                    #bbgl-panel.bbgl-compact {
+                        --bbgl-ach-fs-row-compact: clamp(9px, 1.7cqi, 11px);
+                    }
+
                     .bbgl-ach-row {
                         display: flex;
                         flex-direction: column;
                         align-items: stretch;
-                        padding: 4px 1px;
+                        padding: var(--bbgl-ach-row-pad-v, 4px) 1px;
                         margin: 0;
                         border: none;
                         box-shadow: none;
                         background: 0 0;
                         cursor: pointer;
                         position: relative;
-                        font-size: clamp(11px, 2.05cqi, 12px);
+                        font-size: var(--bbgl-ach-fs-row-compact, clamp(11px, 2.05cqi, 12px));
                         line-height: 1.4;
                     }
 
-                    .bbgl-expanded .bbgl-ach-row {
+                    #bbgl-panel:is(.bbgl-expanded, .bbgl-mode-page) .bbgl-ach-row {
                         font-size: var(--bbgl-ach-fs-row);
                         color: #ccc;
                         transition: background-color .12s;
@@ -5954,7 +5956,7 @@
 
                     #bbgl-panel:is(.bbgl-expanded, .bbgl-mode-page) .bbgl-ach-row .ach-value.ach-happy-col {
                         display: inline-flex;
-                        min-width: 5.5em;
+                        min-width: clamp(4.5em, calc(4.5em + 1em * var(--bbgl-dock-t, 0)), 5.5em);
                     }
 
                     .bbgl-ach-row .ach-value.ach-enh-gained {
@@ -5963,7 +5965,7 @@
 
                     #bbgl-panel:is(.bbgl-expanded, .bbgl-mode-page) .bbgl-ach-row .ach-value.ach-enh-gained {
                         display: inline-flex;
-                        min-width: 5.5em;
+                        min-width: clamp(4.5em, calc(4.5em + 1em * var(--bbgl-dock-t, 0)), 5.5em);
                     }
 
                     /* OD sub-rows are detail-only: hidden in the compact panel, shown in
@@ -6334,11 +6336,11 @@
                     }
 
                     #bbgl-panel.bbgl-compact .bbgl-ach-section-hh .bbgl-ach-row {
-                        font-size: 11px !important;
+                        font-size: var(--bbgl-ach-fs-row-compact) !important;
                     }
 
                     #bbgl-panel.bbgl-compact .bbgl-ach-hh-best-row {
-                        font-size: 11px;
+                        font-size: var(--bbgl-ach-fs-row-compact);
                     }
 
                     #bbgl-panel.bbgl-compact .bbgl-ach-hh-val {
@@ -6495,7 +6497,7 @@
                     }
 
                     .bbgl-ach-section-hh .bbgl-ach-row {
-                        padding: 4px 2px;
+                        padding: var(--bbgl-ach-row-pad-v, 4px) 2px;
                         border-bottom: 1px solid rgba(255, 255, 255, .05);
                         font-size: var(--bbgl-ach-fs-row) !important;
                     }

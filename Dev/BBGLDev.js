@@ -1685,12 +1685,11 @@
                     }
 
                     #bbgl-panel.bbgl-expanded {
-                        --bbgl-f-label: clamp(12.5px, calc(12.5px + 1px * var(--bbgl-dock-t)), 13.5px);
-                        --bbgl-f-top: clamp(12.5px, calc(12.5px + 1px * var(--bbgl-dock-t)), 13.5px);
-                        --bbgl-f-bot: clamp(10.5px, calc(10.5px + 1px * var(--bbgl-dock-t)), 11.5px);
+                        --bbgl-f-label: clamp(12px, calc(12px + 1.5px * var(--bbgl-dock-t)), 13.5px);
+                        --bbgl-f-top: clamp(12px, calc(12px + 1.5px * var(--bbgl-dock-t)), 13.5px);
+                        --bbgl-f-bot: clamp(10px, calc(10px + 1.5px * var(--bbgl-dock-t)), 11.5px);
                         --bbgl-f-top-mb: 3px;
                         --bbgl-bot-minh: 14px;
-                        --bbgl-col-gap: clamp(8px, calc(8px + 8px * var(--bbgl-dock-t)), 16px);
                         --bbgl-label-case: none;
                         width: min(576px, calc(100vw - 20px));
                         height: 633px;
@@ -1700,17 +1699,16 @@
                     }
 
                     #bbgl-panel.bbgl-tall {
-                        --bbgl-f-label: 12px;
-                        --bbgl-f-top: 12px;
-                        --bbgl-f-bot: 11px;
+                        --bbgl-f-label: 11px;
+                        --bbgl-f-top: 11px;
+                        --bbgl-f-bot: 10px;
                         --bbgl-col-gap: 13px;
                     }
 
                     #bbgl-panel.bbgl-tall.bbgl-expanded {
-                        --bbgl-f-label: clamp(13.75px, calc(13.75px + 1.75px * var(--bbgl-dock-t)), 15.5px);
-                        --bbgl-f-top: clamp(13.75px, calc(13.75px + 1.75px * var(--bbgl-dock-t)), 15.5px);
-                        --bbgl-f-bot: clamp(11.75px, calc(11.75px + 1.25px * var(--bbgl-dock-t)), 13px);
-                        --bbgl-col-gap: clamp(22px, calc(24.5px - 2.5px * var(--bbgl-dock-t)), 24.5px);
+                        --bbgl-f-label: clamp(13px, calc(13px + 1.5px * var(--bbgl-dock-t)), 14.5px);
+                        --bbgl-f-top: clamp(13px, calc(13px + 1.5px * var(--bbgl-dock-t)), 14.5px);
+                        --bbgl-f-bot: clamp(11px, calc(11px + 1.5px * var(--bbgl-dock-t)), 12.5px);
                     }
 
                     #bbgl-panel.bbgl-mode-page {
@@ -1862,6 +1860,7 @@
                     }
 
                     #bbgl-panel.bbgl-mode-page #bbgl-achievements-container {
+                        --bbgl-ach-row-pad-v: clamp(3px, calc(3px + 1px * var(--bbgl-page-t, 0)), 4px);
                         --bbgl-ach-inset-x: clamp(6px, calc(6px + 4px * var(--bbgl-page-t)), 24px);
                         --bbgl-ach-container-pt: 0;
                         --bbgl-ach-scroll-pt: clamp(2px, calc(4px - 1px * var(--bbgl-page-t)), 5px);
@@ -1891,41 +1890,9 @@
                         height: var(--bbgl-ach-dot-w);
                     }
 
-                    #bbgl-panel.bbgl-mode-page .bbgl-ach-section-title {
-                        font-size: clamp(9.5px, calc(9.5px + 4.5px * var(--bbgl-page-t)), 14px) !important;
-                    }
-
-                    #bbgl-panel.bbgl-mode-page .bbgl-ach-row {
-                        font-size: clamp(9px, calc(9px + 4px * var(--bbgl-page-t)), 13px) !important;
-                    }
-
-                    #bbgl-panel.bbgl-mode-page .bbgl-ach-hh-group .bbgl-ach-row,
-                    #bbgl-panel.bbgl-mode-page .bbgl-ach-hh-group .bbgl-ach-hh-best-row {
-                        font-size: clamp(9px, calc(9px + 4px * var(--bbgl-page-t)), 13px);
-                    }
-
-                    #bbgl-panel.bbgl-mode-page .ach-sub {
-                        font-size: clamp(7px, calc(7px + 3px * var(--bbgl-page-t)), 10px);
-                    }
-
-                    #bbgl-panel.bbgl-mode-page .ach-date {
-                        font-size: clamp(7.5px, calc(7.5px + 3.5px * var(--bbgl-page-t)), 11px);
-                    }
-
-                    #bbgl-panel.bbgl-mode-page .bbgl-ach-hh-val {
-                        font-size: clamp(9px, calc(9px + 4px * var(--bbgl-page-t)), 13px);
-                    }
-
-                    #bbgl-panel.bbgl-mode-page .bbgl-ach-hh-tag {
-                        font-size: clamp(7px, calc(7px + 3px * var(--bbgl-page-t)), 10px);
-                    }
-
-                    #bbgl-panel.bbgl-mode-page .bbgl-ach-hh-date-line {
-                        font-size: clamp(8px, calc(8px + 3.5px * var(--bbgl-page-t)), 11.5px);
-                    }
-
-                    #bbgl-panel.bbgl-mode-page .bbgl-ach-subsection-title {
-                        font-size: clamp(8px, calc(8px + 3px * var(--bbgl-page-t)), 11px);
+                    #bbgl-panel.bbgl-mode-page #bbgl-ach-pageindicator,
+                    #bbgl-panel.bbgl-mode-page .bbgl-ach-nav {
+                        transform: translateY(calc(-2px * var(--bbgl-page-t, 0)));
                     }
 
                     #bbgl-panel.bbgl-mode-page .col-header,
@@ -1947,7 +1914,7 @@
 
                     #bbgl-panel.bbgl-mode-page .ui-floating-label,
                     #bbgl-panel.bbgl-mode-page .ui-floating-summary {
-                        font-size: clamp(11px, calc(11px + 4px * var(--bbgl-page-t)), 15px);
+                        font-size: clamp(9px, calc(9px + 6px * var(--bbgl-page-t)), 15px);
                         bottom: clamp(4px, calc(4px + 2px * var(--bbgl-page-t)), 6px);
                     }
 
@@ -2877,6 +2844,24 @@
                     .bbgl-mode-page .rates-group {
                         margin-top: 2px;
                         margin-bottom: -2px;
+                    }
+
+                    @media (max-width: 375px) {
+                        .ui-floating-label .view-exp,
+                        .ui-floating-summary .view-exp {
+                            display: none !important;
+                        }
+
+                        .ui-floating-label .view-std,
+                        .ui-floating-summary .view-std {
+                            display: inline !important;
+                        }
+                    }
+
+                    @media (max-width: 450px) {
+                        #bbgl-item-counters .bbgl-ic-dyn {
+                            display: none !important;
+                        }
                     }
 
                     .rate-pct {
@@ -5687,17 +5672,13 @@
                     }
 
                     #bbgl-panel.bbgl-mode-page .bbgl-enh-sw-opt {
-                        font-size: clamp(10px, calc(10px + 2px * var(--bbgl-page-t)), 12px);
+                        font-size: clamp(6px, calc(6px + 4px * var(--bbgl-page-t)), 10px);
                         padding: 2px 7px;
                     }
 
                     .bbgl-ach-section-energy .bbgl-ach-row {
-                        padding: clamp(2px, calc(2px + 2px * var(--bbgl-dock-t, 0)), 4px) 2px;
+                        padding: var(--bbgl-ach-row-pad-v, 4px) 2px;
                         border-bottom: 1px solid rgba(255, 255, 255, .05);
-                    }
-
-                    #bbgl-panel.bbgl-compact .bbgl-ach-section-energy .bbgl-ach-row {
-                        font-size: clamp(9px, 1.7cqi, 11px) !important;
                     }
 
                     .bbgl-ach-section-energy .bbgl-ach-row:last-of-type {
@@ -6268,15 +6249,13 @@
                         --bbgl-dock-t: clamp(0, calc((100cqi - 300px) / 276px), 1);
                     }
 
-                    #bbgl-panel.bbgl-expanded:not(.bbgl-mode-page):not(.bbgl-tall) {
-                        --bbgl-col-gap: clamp(10px, calc(10px + 12px * (1 - var(--bbgl-dock-t, 0))), 22px);
+                    #bbgl-panel.bbgl-expanded:not(.bbgl-mode-page) {
+                        --bbgl-col-gap: 18px;
                         --bbgl-f-top-mb: clamp(3px, calc(3px + 3px * (1 - var(--bbgl-dock-t, 0))), 6px);
                     }
 
                     #bbgl-panel.bbgl-expanded.bbgl-tall:not(.bbgl-mode-page) {
-                        /* ledger spacing inverse-scale (tall) */
-                        --bbgl-col-gap: clamp(12px, calc(12px + 14px * (1 - var(--bbgl-dock-t, 0))), 26px);
-                        --bbgl-f-top-mb: clamp(3px, calc(3px + 3px * (1 - var(--bbgl-dock-t, 0))), 6px);
+                        --bbgl-col-gap: 24px;
                     }
 
                     #bbgl-panel:not(.bbgl-mode-page) #bbgl-bottom-panel {
@@ -6365,12 +6344,12 @@
 
                     #bbgl-panel.bbgl-expanded:not(.bbgl-mode-page) .ui-floating-label,
                     #bbgl-panel.bbgl-expanded:not(.bbgl-mode-page) .ui-floating-summary {
-                        font-size: clamp(11px, calc(11px + 1px * var(--bbgl-dock-t)), 12px);
+                        font-size: clamp(10px, calc(10px + 2px * var(--bbgl-dock-t)), 12px);
                     }
 
                     #bbgl-panel.bbgl-compact .ui-floating-label,
                     #bbgl-panel.bbgl-compact .ui-floating-summary {
-                        font-size: 10.5px !important;
+                        font-size: 10px !important;
                     }
 
                     #bbgl-panel.bbgl-expanded:not(.bbgl-mode-page) #year-stats-btn,
@@ -6411,17 +6390,36 @@
                     /* Switch to size containment on expanded panel only so cqi/cqb can read both axes. --------------*/
                     #bbgl-panel.bbgl-expanded:not(.bbgl-mode-page) {
                         container-type: size;
-                        /* Achievements page font-size levers — one definition per tier, referenced
-                           by every consumer below via var(). Change a size here, not at each call site. */
-                        --bbgl-ach-fs-icon: clamp(27px, calc(27px + 13px * var(--bbgl-dock-t, 0)), 40px);
-                        --bbgl-ach-fs-message: clamp(12px, calc(12px + 2px * var(--bbgl-dock-t, 0)), 14px);
+                    }
+
+                    /* Achievements page font-size levers — one definition per tier, referenced
+                       by every consumer below via var(). Change a size here, not at each call site.
+                       Shared by expanded and page mode: falls back from --bbgl-dock-t (expanded/
+                       compact width ratio) to --bbgl-page-t (page mode's own width ratio) so both
+                       modes scale identically off the same formulas. */
+                    #bbgl-panel:is(.bbgl-expanded, .bbgl-mode-page) {
+                        --bbgl-ach-fs-icon: clamp(27px, calc(27px + 13px * var(--bbgl-dock-t, var(--bbgl-page-t, 0))), 40px);
+                        --bbgl-ach-fs-message: clamp(12px, calc(12px + 2px * var(--bbgl-dock-t, var(--bbgl-page-t, 0))), 14px);
                         --bbgl-ach-fs-subtitle: 9px;
-                        --bbgl-ach-fs-row: clamp(10px, calc(10px + 1px * var(--bbgl-dock-t, 0)), 11px);
-                        --bbgl-ach-fs-label: clamp(8px, calc(8px + 1px * var(--bbgl-dock-t, 0)), 9px);
-                        --bbgl-ach-fs-date: clamp(9px, calc(9px + 1px * var(--bbgl-dock-t, 0)), 10px);
-                        --bbgl-ach-fs-time: clamp(9px, calc(9px + .5px * var(--bbgl-dock-t, 0)), 9.5px);
-                        --bbgl-ach-fs-hint: clamp(6.5px, calc(6.5px + 1px * var(--bbgl-dock-t, 0)), 7.5px);
-                        --bbgl-ach-fs-tag: clamp(7px, calc(7px + 1px * var(--bbgl-dock-t, 0)), 8px);
+                        --bbgl-ach-fs-row: clamp(10px, calc(10px + 1px * var(--bbgl-dock-t, var(--bbgl-page-t, 0))), 11px);
+                        --bbgl-ach-fs-label: clamp(8px, calc(8px + 1px * var(--bbgl-dock-t, var(--bbgl-page-t, 0))), 9px);
+                        --bbgl-ach-fs-date: clamp(9px, calc(9px + 1px * var(--bbgl-dock-t, var(--bbgl-page-t, 0))), 10px);
+                        --bbgl-ach-fs-time: clamp(9px, calc(9px + .5px * var(--bbgl-dock-t, var(--bbgl-page-t, 0))), 9.5px);
+                        --bbgl-ach-fs-hint: clamp(6.5px, calc(6.5px + 1px * var(--bbgl-dock-t, var(--bbgl-page-t, 0))), 7.5px);
+                        --bbgl-ach-fs-tag: clamp(7px, calc(7px + 1px * var(--bbgl-dock-t, var(--bbgl-page-t, 0))), 8px);
+                    }
+
+                    /* Page mode gets a wider min/max spread than expanded on the same font tiers,
+                       since its width range is bigger and the 1px expanded swing reads as static. */
+                    #bbgl-panel.bbgl-mode-page {
+                        --bbgl-ach-fs-icon: clamp(25px, calc(25px + 17px * var(--bbgl-page-t, 0)), 42px);
+                        --bbgl-ach-fs-message: clamp(10px, calc(10px + 6px * var(--bbgl-page-t, 0)), 16px);
+                        --bbgl-ach-fs-row: clamp(8px, calc(8px + 5px * var(--bbgl-page-t, 0)), 13px);
+                        --bbgl-ach-fs-label: clamp(6px, calc(6px + 5px * var(--bbgl-page-t, 0)), 11px);
+                        --bbgl-ach-fs-date: clamp(7px, calc(7px + 5px * var(--bbgl-page-t, 0)), 12px);
+                        --bbgl-ach-fs-time: clamp(7px, calc(7px + 4.5px * var(--bbgl-page-t, 0)), 11.5px);
+                        --bbgl-ach-fs-hint: clamp(4.5px, calc(4.5px + 5px * var(--bbgl-page-t, 0)), 9.5px);
+                        --bbgl-ach-fs-tag: clamp(5px, calc(5px + 5px * var(--bbgl-page-t, 0)), 10px);
                     }
 
                     #bbgl-panel:not(.bbgl-mode-page) #bbgl-top-panel.viewing-achievements #bbgl-achievements-container {
@@ -6900,22 +6898,26 @@
                         min-width: 0;
                     }
 
+                    #bbgl-panel.bbgl-compact {
+                        --bbgl-ach-fs-row-compact: clamp(9px, 1.7cqi, 11px);
+                    }
+
                     .bbgl-ach-row {
                         display: flex;
                         flex-direction: column;
                         align-items: stretch;
-                        padding: 4px 1px;
+                        padding: var(--bbgl-ach-row-pad-v, 4px) 1px;
                         margin: 0;
                         border: none;
                         box-shadow: none;
                         background: 0 0;
                         cursor: pointer;
                         position: relative;
-                        font-size: clamp(10px, 2.05cqi, 12px);
+                        font-size: var(--bbgl-ach-fs-row-compact, clamp(11px, 2.05cqi, 12px));
                         line-height: 1.4;
                     }
 
-                    .bbgl-expanded .bbgl-ach-row {
+                    #bbgl-panel:is(.bbgl-expanded, .bbgl-mode-page) .bbgl-ach-row {
                         font-size: var(--bbgl-ach-fs-row);
                         color: #ccc;
                         transition: background-color .12s;
@@ -7005,7 +7007,7 @@
 
                     #bbgl-panel:is(.bbgl-expanded, .bbgl-mode-page) .bbgl-ach-row .ach-value.ach-happy-col {
                         display: inline-flex;
-                        min-width: 5.5em;
+                        min-width: clamp(4.5em, calc(4.5em + 1em * var(--bbgl-dock-t, 0)), 5.5em);
                     }
 
                     .bbgl-ach-row .ach-value.ach-enh-gained {
@@ -7014,7 +7016,7 @@
 
                     #bbgl-panel:is(.bbgl-expanded, .bbgl-mode-page) .bbgl-ach-row .ach-value.ach-enh-gained {
                         display: inline-flex;
-                        min-width: 5.5em;
+                        min-width: clamp(4.5em, calc(4.5em + 1em * var(--bbgl-dock-t, 0)), 5.5em);
                     }
 
                     /* OD sub-rows are detail-only: hidden in the compact panel, shown in
@@ -7169,7 +7171,7 @@
                     }
 
                     .bbgl-ach-section-page0 .bbgl-ach-row-multi {
-                        padding: clamp(2px, calc(2px + 2px * var(--bbgl-dock-t, 0)), 4px) 2px;
+                        padding: 4px 2px;
                         border-bottom: 1px solid rgba(255, 255, 255, .04);
                         cursor: pointer;
                     }
@@ -7385,11 +7387,11 @@
                     }
 
                     #bbgl-panel.bbgl-compact .bbgl-ach-section-hh .bbgl-ach-row {
-                        font-size: 11px !important;
+                        font-size: var(--bbgl-ach-fs-row-compact) !important;
                     }
 
                     #bbgl-panel.bbgl-compact .bbgl-ach-hh-best-row {
-                        font-size: 11px;
+                        font-size: var(--bbgl-ach-fs-row-compact);
                     }
 
                     #bbgl-panel.bbgl-compact .bbgl-ach-hh-val {
@@ -7532,11 +7534,6 @@
                         display: inline;
                     }
 
-                    #bbgl-panel.bbgl-compact .bbgl-ach-section-page0 .bbgl-ach-row-multi {
-                        padding-top: 1px;
-                        padding-bottom: 1px;
-                    }
-
                     .ach-cons-days {
                         display: none;
                     }
@@ -7551,7 +7548,7 @@
                     }
 
                     .bbgl-ach-section-hh .bbgl-ach-row {
-                        padding: clamp(2px, calc(2px + 2px * var(--bbgl-dock-t, 0)), 4px) 2px;
+                        padding: var(--bbgl-ach-row-pad-v, 4px) 2px;
                         border-bottom: 1px solid rgba(255, 255, 255, .05);
                         font-size: var(--bbgl-ach-fs-row) !important;
                     }
@@ -7563,7 +7560,7 @@
                         gap: 8px;
                         width: 100%;
                         box-sizing: border-box;
-                        padding: clamp(3px, calc(3px + 2px * var(--bbgl-dock-t, 0)), 5px) 2px;
+                        padding: 5px 2px;
                         border-bottom: 1px solid rgba(255, 255, 255, .05);
                         font-family: var(--bbgl-ach-font);
                         font-size: var(--bbgl-ach-fs-row);
@@ -13503,18 +13500,18 @@ const BestGymController = {
             if (sl.resolution === 'WEEK') {
                 const start = sl._weekStart || (sl._dailyList && sl._dailyList.length > 0 ? sl._dailyList[0].date : null) || sl.date;
                 const end = sl._weekEnd || (sl._dailyList && sl._dailyList.length > 0 ? sl._dailyList[sl._dailyList.length - 1].date : null) || sl.date;
-                l = isExp ? `Week of ${Formatter.dateMonthDay(start)} - ${Formatter.dateMonthDay(end)}` : `Week of ${Formatter.dateMonthDay(start)}`;
+                l = `Week of ${Formatter.dateMonthDay(start)}<span class="view-exp"> - ${Formatter.dateMonthDay(end)}</span>`;
             } else {
                 l = isExp ? Formatter.dateFull(sl.label) : Formatter.datePretty(sl.label);
                 if (!l) l = sl.label;
                 if (sl.resolution === 'MONTH') {
                     l = sl.label + ' ' + calendarState.year;
-                } else if (isExp && isP && sl._dailyList.length > 0 && sl.resolution !== 'ALL') {
+                } else if (isP && sl._dailyList.length > 0 && sl.resolution !== 'ALL') {
                     const endLabel = Formatter.dateMonthDay(sl._dailyList[sl._dailyList.length - 1].date);
-                    l += ` (${Formatter.dateMonthDay(sl._dailyList[0].date)} - ${endLabel})`;
+                    l += `<span class="view-exp"> (${Formatter.dateMonthDay(sl._dailyList[0].date)} - ${endLabel})</span>`;
                 }
             }
-            dEl.innerText = l;
+            dEl.innerHTML = l;
         }
         const sumEl = dom.summaryLabel;
         if (sumEl) sumEl.innerHTML = `Total E: ${Formatter.dual(s.total.cost)} <span style="opacity:0.3; margin:0 6px">|</span> Total Gains: ${Formatter.dual(s.total.gain)}`;
@@ -13542,13 +13539,14 @@ const BestGymController = {
             const secondaryCode = userConfig.drugTracker === 'lsd' ? XANAX_LOG : 2230;
             const parts = [];
 
-            // 1. Primary drug (always). Avg/day parens are week+ only, and expanded/page only; daily
-            // view shows just the count (a single-day avg changes daily and is confusing).
+            // 1. Primary drug (always). Avg/day parens are week+ only, shown in every panel mode
+            // (including compact); daily view shows just the count (a single-day avg changes daily
+            // and is confusing).
             let drugSub = '';
             if (!isDay) {
                 const days = DataController.periodCalendarDays(sl);
                 const drugAvg = days > 0 ? cnt(drugCode) / days : 0;
-                drugSub = sl.resolution === 'ALL' ? '' : `<span class="bbgl-ic-sub view-exp">(${drugAvg.toFixed(2)})</span>`;
+                drugSub = sl.resolution === 'ALL' ? '' : `<span class="bbgl-ic-sub">(${drugAvg.toFixed(2)})</span>`;
             }
             const nameOf = (c) => {
                 if (c === 2290) return 'Xanax';
@@ -13705,7 +13703,16 @@ const BestGymController = {
                 if (showFooter && gtCached && dom.notesBtn && dom.notesBtn.isConnected && gtCached.nextSibling !== dom.notesBtn) {
                     dom.notesBtn.parentNode.insertBefore(gtCached, dom.notesBtn);
                 }
-                if (showSidebar) syncSidebarState();
+                if (showSidebar) {
+                    syncSidebarState();
+                    if (!dom.sbFlyout || !dom.sbFlyout.isConnected) {
+                        const ft = document.querySelector(SB_FLYOUT.target);
+                        if (ft) {
+                            injectSidebarButton(SB_FLYOUT, true);
+                            dom.sbFlyout = document.getElementById(SB_FLYOUT.id);
+                        }
+                    }
+                }
                 settleDomObs();
                 return;
             }
@@ -13724,9 +13731,13 @@ const BestGymController = {
         const mb = dom.gymTab;
         if (!dom.sbDesktop || !dom.sbDesktop.isConnected) dom.sbDesktop = document.getElementById(SB_DESKTOP.id);
         if (!dom.sbMobile || !dom.sbMobile.isConnected) dom.sbMobile = document.getElementById(SB_MOBILE.id);
+        if (!dom.sbFlyout || !dom.sbFlyout.isConnected) dom.sbFlyout = document.getElementById(SB_FLYOUT.id);
         if (showSidebar && (!dom.sbDesktop || !dom.sbMobile)) {
             if (!dom.sbDesktopTarget || !dom.sbDesktopTarget.isConnected) dom.sbDesktopTarget = document.querySelector(SB_DESKTOP.target);
             if (!dom.sbMobileTarget || !dom.sbMobileTarget.isConnected) dom.sbMobileTarget = document.querySelector(SB_MOBILE.target);
+        }
+        if (showSidebar && !dom.sbFlyout) {
+            if (!dom.sbFlyoutTarget || !dom.sbFlyoutTarget.isConnected) dom.sbFlyoutTarget = document.querySelector(SB_FLYOUT.target);
         }
         const nb = dom.notesBtn;
         if (showFooter && nb && !mb) {
@@ -13739,7 +13750,8 @@ const BestGymController = {
             dom.gymTab = null;
         }
         const dt = dom.sbDesktopTarget,
-            mt = dom.sbMobileTarget;
+            mt = dom.sbMobileTarget,
+            ft = dom.sbFlyoutTarget;
         if (showSidebar) {
             if (dt && !dom.sbDesktop) {
                 injectSidebarButton(SB_DESKTOP, false);
@@ -13749,9 +13761,14 @@ const BestGymController = {
                 injectSidebarButton(SB_MOBILE, true);
                 dom.sbMobile = document.getElementById(SB_MOBILE.id);
             }
+            if (ft && !dom.sbFlyout) {
+                injectSidebarButton(SB_FLYOUT, true);
+                dom.sbFlyout = document.getElementById(SB_FLYOUT.id);
+            }
         } else {
             const dEl = dom.sbDesktop,
-                mEl = dom.sbMobile;
+                mEl = dom.sbMobile,
+                fEl = dom.sbFlyout;
             if (dEl) {
                 const sl = dEl.closest('.swiper-slide');
                 sl ? sl.remove() : dEl.remove();
@@ -13761,6 +13778,10 @@ const BestGymController = {
                 const sl = mEl.closest('.swiper-slide');
                 sl ? sl.remove() : mEl.remove();
                 dom.sbMobile = null;
+            }
+            if (fEl) {
+                fEl.remove();
+                dom.sbFlyout = null;
             }
         }
         _lastButtonLocation = loc;
@@ -13790,7 +13811,7 @@ const BestGymController = {
             runtime._domGuards.push(o);
         };
         const seen = new Set();
-        [dom.gymTab && dom.gymTab.parentNode, dom.sbDesktop && dom.sbDesktop.parentNode, dom.sbMobile && dom.sbMobile.parentNode].forEach(p => {
+        [dom.gymTab && dom.gymTab.parentNode, dom.sbDesktop && dom.sbDesktop.parentNode, dom.sbMobile && dom.sbMobile.parentNode, dom.sbFlyout && dom.sbFlyout.parentNode].forEach(p => {
             if (p && !seen.has(p)) {
                 seen.add(p);
                 guard(p);
@@ -13821,18 +13842,25 @@ const BestGymController = {
             id: 'nav-gym-log-desktop'
         },
         SB_MOBILE = {
-            target: '#nav-gym[class*="area-mobile"]',
+            target: '#nav-gym[class*="area-mobile"]:not(#fly-out-panel *)',
             container: 'area-mobile___sx8BQ',
             link: 'mobileLink___xTgRa sidebarMobileLink',
             row: 'area-row___iBD8N',
             slide: 'swiper-slide slide___se7hj',
             id: 'nav-gym-log-mobile'
         },
+        SB_FLYOUT = {
+            target: '#fly-out-panel [id="nav-gym"]',
+            container: 'area-mobile___AK1cR notList___jrp60',
+            link: 'link___tg6eQ mobileLink___NbSV4',
+            row: 'areaRow___Eheay',
+            id: 'nav-gym-log-flyout'
+        },
         GYM_LOG_ICON = `<svg xmlns="http://www.w3.org/2000/svg" stroke="transparent" stroke-width="0" width="18" height="18" viewBox="60 20 280 215"><g transform="scale(1, 1.15)"><path d="${ICONS.LOGO_PATH}"></path></g></svg>`;
 
     function syncSidebarState() {
         const a = window.location.hash.includes('gymlog'),
-            ids = [SB_DESKTOP.id, SB_MOBILE.id];
+            ids = [SB_DESKTOP.id, SB_MOBILE.id, SB_FLYOUT.id];
         // Our own CSS lights the icon via the substring selector [class*="active___"], so the
         // literal sentinel below guarantees the SVG glows even when nothing native is active
         // (on /calendar.php Torn marks no nav item active, which is why the old hash-borrow
@@ -13844,7 +13872,7 @@ const BestGymController = {
         // reapply it on the gym-log page and get the full native bar (not just the icon). If it's
         // never been seen this session we simply fall back to the icon-only glow — no regression.
         const probe = document.querySelector('[id^="nav-"][class*="active___"]');
-        if (probe && probe.id !== SB_DESKTOP.id && probe.id !== SB_MOBILE.id) {
+        if (probe && !ids.includes(probe.id)) {
             const real = Array.from(probe.classList).find(c => c.startsWith('active___') && c !== BBGL_ACTIVE);
             if (real) runtime._sidebarActiveCls = real;
         }
@@ -14135,7 +14163,7 @@ const BestGymController = {
     }
 
     function syncChangelogNotif(active) {
-        const ids = [SB_DESKTOP.id, SB_MOBILE.id];
+        const ids = [SB_DESKTOP.id, SB_MOBILE.id, SB_FLYOUT.id];
         ids.forEach(id => {
             const c = document.getElementById(id);
             if (!c) return;
@@ -14247,34 +14275,35 @@ const BestGymController = {
         r.appendChild(l);
         c.appendChild(r);
         document.querySelectorAll(cfg.target).forEach(n => {
-            const _liveContainer = Array.from(n.classList).find(cl => cl.startsWith(mob ? 'area-mobile___' : 'area-desktop___'));
+            const _liveContainer = Array.from(n.classList).filter(cl => !cl.startsWith('active___')).join(' ');
             if (_liveContainer) {
                 const hasNotif = c.classList.contains('bbgl-sb-notif');
                 c.className = _liveContainer;
                 if (hasNotif) c.classList.add('bbgl-sb-notif');
             }
-            const _liveRow = n.querySelector('[class*="area-row"]');
+            const _liveRow = n.querySelector('[class*="area-row"], [class*="areaRow"]') || n.firstElementChild;
             if (_liveRow) r.className = _liveRow.className;
+            const _scopedSiblings = n.parentNode ? Array.from(n.parentNode.children).filter(el => el !== n && el.id !== cfg.id && el.querySelector('a')) : [];
             const _siblingSelector = mob ? '[id^="nav-"][class*="area-mobile"]' : '[id^="nav-"][class*="area-desktop"]';
-            const _allSiblings = Array.from(document.querySelectorAll(_siblingSelector)).filter(el => el !== n && el.id !== cfg.id && el.querySelector('a'));
+            const _allSiblings = _scopedSiblings.length ? _scopedSiblings : Array.from(document.querySelectorAll(_siblingSelector)).filter(el => el !== n && el.id !== cfg.id && el.querySelector('a'));
             const _inactiveSibling = _allSiblings.find(el => !Array.from(el.classList).some(cls => cls.startsWith('active___')));
             const _siblingSection = _inactiveSibling || _allSiblings[0];
             const _extractClass = (cn, prefixes) => (cn || '').split(/\s+/).filter(x => x && prefixes.some(p => x.startsWith(p))).join(' ');
             const _neutralLink = _siblingSection ? _siblingSection.querySelector('a') : null;
             if (_neutralLink) {
-                l.className = _extractClass(_neutralLink.className, ['desktopLink', 'mobileLink', 'sidebarMobileLink']);
+                l.className = _extractClass(_neutralLink.className, ['link___', 'desktopLink', 'mobileLink', 'sidebarMobileLink']);
                 const _sw = _neutralLink.querySelector('[class*="svgIconWrap"]');
                 const _di = _neutralLink.querySelector('[class*="defaultIcon"]');
                 const _ln = _neutralLink.querySelector('[class*="linkName"]');
                 const _liveSvgWrap = _sw ? _extractClass(_sw.className, ['svgIconWrap']) : 'svgIconWrap___AMIqR';
                 const _liveDefIcon = _di ? _extractClass(_di.className, ['defaultIcon', 'mobile']) : 'defaultIcon___iiNis mobile___paLva';
                 const _liveLinkName = _ln ? _extractClass(_ln.className, ['linkName']) : 'linkName___FoKha';
-                l.innerHTML = `<span class="${_liveSvgWrap}"><span class="${_liveDefIcon}">${GYM_LOG_ICON}</span></span>${mob ? '<span>Gym Log</span>' : `<span class="${_liveLinkName}">Gym Log</span>`}`;
+                l.innerHTML = `<span class="${_liveSvgWrap}"><span class="${_liveDefIcon}">${GYM_LOG_ICON}</span></span>${_ln ? `<span class="${_liveLinkName}">Gym Log</span>` : '<span>Gym Log</span>'}`;
             }
             const p = n.closest('.swiper-slide');
-            if (mob && p) {
+            if (p) {
                 const s = document.createElement('div');
-                s.className = cfg.slide;
+                s.className = cfg.slide || 'swiper-slide slide___se7hj';
                 s.style.width = n.parentNode.style.width || '43.375px';
                 s.appendChild(c);
                 const _wr = n.parentNode.parentNode;
@@ -14304,7 +14333,7 @@ const BestGymController = {
                         }, 5000);
                     }
                 }
-            } else if (!mob && !p) {
+            } else {
                 n.parentNode.insertBefore(c, n.nextSibling);
             }
         });
