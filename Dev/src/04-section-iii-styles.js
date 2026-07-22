@@ -812,7 +812,6 @@
                     }
 
                     #bbgl-panel.bbgl-mode-page #bbgl-achievements-container {
-                        --bbgl-ach-row-pad-v: clamp(3px, calc(3px + 1px * var(--bbgl-page-t, 0)), 4px);
                         --bbgl-ach-inset-x: clamp(6px, calc(6px + 4px * var(--bbgl-page-t)), 24px);
                         --bbgl-ach-container-pt: 0;
                         --bbgl-ach-scroll-pt: clamp(2px, calc(4px - 1px * var(--bbgl-page-t)), 5px);
@@ -1376,12 +1375,12 @@
                     }
 
                     .bbgl-expanded #bbgl-top-panel {
-                        flex: 0 0 28%;
+                        flex: 0 0 177px;
                     }
 
                     .bbgl-expanded.bbgl-tall #bbgl-top-panel {
-                        flex: 0 0 38%;
-                        margin-bottom: -10.35%;
+                        flex: 0 0 241px;
+                        margin-bottom: -66px;
                         padding-top: 20px;
                     }
 
@@ -2445,6 +2444,10 @@
 
                     #bbgl-panel.bbgl-mode-page #bbgl-graph-container .g-text {
                         font-size: clamp(10px, calc(10px + 1px * var(--bbgl-page-t)), 11px);
+                    }
+
+                    #bbgl-panel.bbgl-mode-page #bbgl-graph-container .g-text.x-label {
+                        font-size: clamp(8px, calc(8px + 2px * var(--bbgl-page-t)), 10px);
                     }
 
                     #bbgl-panel.bbgl-mode-page #bbgl-sticker-pagination {
@@ -5158,10 +5161,10 @@
                            formerly here were dead — overridden at every width <=620px by
                            the later same-specificity fluid rules (see "fluid scaling to
                            replace hard 620px breakpoint" block below). Removed. The
-                           .g-text.x-label override below is kept: it has no fluid twin and
-                           the fluid .g-text floors at 10px, so it still does real work. */
+                           .g-text.x-label override below is kept: the fluid .g-text floors
+                           at 10px, so x-label still needs its own smaller, now-fluid size. */
                         #bbgl-panel.bbgl-expanded:not(.bbgl-mode-page) #bbgl-graph-container .g-text.x-label {
-                            font-size: 9px;
+                            font-size: clamp(8px, calc(8px + 1px * var(--bbgl-dock-t, 0)), 9px);
                         }
 
                         #bbgl-panel.bbgl-expanded:not(.bbgl-mode-page) #bbgl-ledger-toggle,
@@ -5345,7 +5348,7 @@
                         --bbgl-ach-fs-row: clamp(10px, calc(10px + 1px * var(--bbgl-dock-t, var(--bbgl-page-t, 0))), 11px);
                         --bbgl-ach-fs-label: clamp(8px, calc(8px + 1px * var(--bbgl-dock-t, var(--bbgl-page-t, 0))), 9px);
                         --bbgl-ach-fs-date: clamp(9px, calc(9px + 1px * var(--bbgl-dock-t, var(--bbgl-page-t, 0))), 10px);
-                        --bbgl-ach-fs-time: clamp(9px, calc(9px + .5px * var(--bbgl-dock-t, var(--bbgl-page-t, 0))), 9.5px);
+                        --bbgl-ach-fs-time: clamp(8px, calc(8px + .5px * var(--bbgl-dock-t, var(--bbgl-page-t, 0))), 8.5px);
                         --bbgl-ach-fs-hint: clamp(6.5px, calc(6.5px + 1px * var(--bbgl-dock-t, var(--bbgl-page-t, 0))), 7.5px);
                         --bbgl-ach-fs-tag: clamp(7px, calc(7px + 1px * var(--bbgl-dock-t, var(--bbgl-page-t, 0))), 8px);
                     }
@@ -5355,10 +5358,11 @@
                     #bbgl-panel.bbgl-mode-page {
                         --bbgl-ach-fs-icon: clamp(25px, calc(25px + 17px * var(--bbgl-page-t, 0)), 42px);
                         --bbgl-ach-fs-message: clamp(10px, calc(10px + 6px * var(--bbgl-page-t, 0)), 16px);
-                        --bbgl-ach-fs-row: clamp(8px, calc(8px + 5px * var(--bbgl-page-t, 0)), 13px);
-                        --bbgl-ach-fs-label: clamp(6px, calc(6px + 5px * var(--bbgl-page-t, 0)), 11px);
+                        --bbgl-ach-fs-subtitle: clamp(8px, calc(8px + 4px * var(--bbgl-page-t, 0)), 12px);
+                        --bbgl-ach-fs-row: clamp(9px, calc(9px + 4px * var(--bbgl-page-t, 0)), 13px);
+                        --bbgl-ach-fs-label: clamp(7px, calc(7px + 4px * var(--bbgl-page-t, 0)), 11px);
                         --bbgl-ach-fs-date: clamp(7px, calc(7px + 5px * var(--bbgl-page-t, 0)), 12px);
-                        --bbgl-ach-fs-time: clamp(7px, calc(7px + 4.5px * var(--bbgl-page-t, 0)), 11.5px);
+                        --bbgl-ach-fs-time: clamp(6px, calc(6px + 4.5px * var(--bbgl-page-t, 0)), 10.5px);
                         --bbgl-ach-fs-hint: clamp(4.5px, calc(4.5px + 5px * var(--bbgl-page-t, 0)), 9.5px);
                         --bbgl-ach-fs-tag: clamp(5px, calc(5px + 5px * var(--bbgl-page-t, 0)), 10px);
                     }
@@ -5561,6 +5565,7 @@
                         --bbgl-ach-inset-x: clamp(2px, 1.1cqi, 12px);
                         --bbgl-ach-scroll-pt: clamp(2px, .5cqi, 9px);
                         --bbgl-ach-scroll-pb: clamp(0px, .08cqi, 2px);
+                        --bbgl-ach-row-pad-v: clamp(1px, 1.4cqi, 3px);
                     }
 
                     #bbgl-ach-pages {
@@ -5718,7 +5723,7 @@
                         display: flex;
                         align-items: center;
                         border-bottom: 1px solid rgba(255, 255, 255, .12);
-                        padding: 2px;
+                        padding: 2px 2px 1px 2px;
                     }
 
                     .bbgl-ach-title-row .bbgl-ach-section-title {
@@ -5847,7 +5852,7 @@
                         display: flex;
                         flex-direction: column;
                         align-items: stretch;
-                        padding: var(--bbgl-ach-row-pad-v, 4px) 1px;
+                        padding: var(--bbgl-ach-row-pad-v, 4px) 2px;
                         margin: 0;
                         border: none;
                         box-shadow: none;
@@ -6107,12 +6112,12 @@
 
                     .bbgl-ach-section-page0 .bbgl-ach-grid-header {
                         border-bottom: 1px solid rgba(255, 255, 255, .12);
-                        padding: 2px 2px 4px;
+                        padding: 2px 2px 2px;
                         align-items: end;
                     }
 
                     .bbgl-ach-section-page0 .bbgl-ach-row-multi {
-                        padding: 4px 2px;
+                        padding: var(--bbgl-ach-row-pad-v, 4px) 2px;
                         border-bottom: 1px solid rgba(255, 255, 255, .04);
                         cursor: pointer;
                     }
@@ -6254,7 +6259,7 @@
                     .bbgl-ach-stat-cell .ach-date {
                         display: none;
                         font-family: var(--bbgl-ach-font);
-                        font-size: var(--bbgl-ach-fs-row);
+                        font-size: var(--bbgl-ach-fs-date);
                         color: #999;
                         text-align: center;
                         margin: 1px 0 0;
@@ -6418,7 +6423,7 @@
                         grid-column: 1 / -1;
                         justify-self: end;
                         text-align: right;
-                        padding: 2px 6px;
+                        padding: 1px 6px;
                         border-radius: 4px;
                         transition: background-color .12s;
                         font-family: var(--bbgl-ach-font);
@@ -6501,7 +6506,7 @@
                         gap: 8px;
                         width: 100%;
                         box-sizing: border-box;
-                        padding: 5px 2px;
+                        padding: var(--bbgl-ach-row-pad-v, 4px) 2px;
                         border-bottom: 1px solid rgba(255, 255, 255, .05);
                         font-family: var(--bbgl-ach-font);
                         font-size: var(--bbgl-ach-fs-row);

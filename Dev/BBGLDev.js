@@ -1899,7 +1899,6 @@
                     }
 
                     #bbgl-panel.bbgl-mode-page #bbgl-achievements-container {
-                        --bbgl-ach-row-pad-v: clamp(3px, calc(3px + 1px * var(--bbgl-page-t, 0)), 4px);
                         --bbgl-ach-inset-x: clamp(6px, calc(6px + 4px * var(--bbgl-page-t)), 24px);
                         --bbgl-ach-container-pt: 0;
                         --bbgl-ach-scroll-pt: clamp(2px, calc(4px - 1px * var(--bbgl-page-t)), 5px);
@@ -2463,12 +2462,12 @@
                     }
 
                     .bbgl-expanded #bbgl-top-panel {
-                        flex: 0 0 28%;
+                        flex: 0 0 177px;
                     }
 
                     .bbgl-expanded.bbgl-tall #bbgl-top-panel {
-                        flex: 0 0 38%;
-                        margin-bottom: -10.35%;
+                        flex: 0 0 241px;
+                        margin-bottom: -66px;
                         padding-top: 20px;
                     }
 
@@ -3532,6 +3531,10 @@
 
                     #bbgl-panel.bbgl-mode-page #bbgl-graph-container .g-text {
                         font-size: clamp(10px, calc(10px + 1px * var(--bbgl-page-t)), 11px);
+                    }
+
+                    #bbgl-panel.bbgl-mode-page #bbgl-graph-container .g-text.x-label {
+                        font-size: clamp(8px, calc(8px + 2px * var(--bbgl-page-t)), 10px);
                     }
 
                     #bbgl-panel.bbgl-mode-page #bbgl-sticker-pagination {
@@ -6245,10 +6248,10 @@
                            formerly here were dead — overridden at every width <=620px by
                            the later same-specificity fluid rules (see "fluid scaling to
                            replace hard 620px breakpoint" block below). Removed. The
-                           .g-text.x-label override below is kept: it has no fluid twin and
-                           the fluid .g-text floors at 10px, so it still does real work. */
+                           .g-text.x-label override below is kept: the fluid .g-text floors
+                           at 10px, so x-label still needs its own smaller, now-fluid size. */
                         #bbgl-panel.bbgl-expanded:not(.bbgl-mode-page) #bbgl-graph-container .g-text.x-label {
-                            font-size: 9px;
+                            font-size: clamp(8px, calc(8px + 1px * var(--bbgl-dock-t, 0)), 9px);
                         }
 
                         #bbgl-panel.bbgl-expanded:not(.bbgl-mode-page) #bbgl-ledger-toggle,
@@ -6432,7 +6435,7 @@
                         --bbgl-ach-fs-row: clamp(10px, calc(10px + 1px * var(--bbgl-dock-t, var(--bbgl-page-t, 0))), 11px);
                         --bbgl-ach-fs-label: clamp(8px, calc(8px + 1px * var(--bbgl-dock-t, var(--bbgl-page-t, 0))), 9px);
                         --bbgl-ach-fs-date: clamp(9px, calc(9px + 1px * var(--bbgl-dock-t, var(--bbgl-page-t, 0))), 10px);
-                        --bbgl-ach-fs-time: clamp(9px, calc(9px + .5px * var(--bbgl-dock-t, var(--bbgl-page-t, 0))), 9.5px);
+                        --bbgl-ach-fs-time: clamp(8px, calc(8px + .5px * var(--bbgl-dock-t, var(--bbgl-page-t, 0))), 8.5px);
                         --bbgl-ach-fs-hint: clamp(6.5px, calc(6.5px + 1px * var(--bbgl-dock-t, var(--bbgl-page-t, 0))), 7.5px);
                         --bbgl-ach-fs-tag: clamp(7px, calc(7px + 1px * var(--bbgl-dock-t, var(--bbgl-page-t, 0))), 8px);
                     }
@@ -6442,10 +6445,11 @@
                     #bbgl-panel.bbgl-mode-page {
                         --bbgl-ach-fs-icon: clamp(25px, calc(25px + 17px * var(--bbgl-page-t, 0)), 42px);
                         --bbgl-ach-fs-message: clamp(10px, calc(10px + 6px * var(--bbgl-page-t, 0)), 16px);
-                        --bbgl-ach-fs-row: clamp(8px, calc(8px + 5px * var(--bbgl-page-t, 0)), 13px);
-                        --bbgl-ach-fs-label: clamp(6px, calc(6px + 5px * var(--bbgl-page-t, 0)), 11px);
+                        --bbgl-ach-fs-subtitle: clamp(8px, calc(8px + 4px * var(--bbgl-page-t, 0)), 12px);
+                        --bbgl-ach-fs-row: clamp(9px, calc(9px + 4px * var(--bbgl-page-t, 0)), 13px);
+                        --bbgl-ach-fs-label: clamp(7px, calc(7px + 4px * var(--bbgl-page-t, 0)), 11px);
                         --bbgl-ach-fs-date: clamp(7px, calc(7px + 5px * var(--bbgl-page-t, 0)), 12px);
-                        --bbgl-ach-fs-time: clamp(7px, calc(7px + 4.5px * var(--bbgl-page-t, 0)), 11.5px);
+                        --bbgl-ach-fs-time: clamp(6px, calc(6px + 4.5px * var(--bbgl-page-t, 0)), 10.5px);
                         --bbgl-ach-fs-hint: clamp(4.5px, calc(4.5px + 5px * var(--bbgl-page-t, 0)), 9.5px);
                         --bbgl-ach-fs-tag: clamp(5px, calc(5px + 5px * var(--bbgl-page-t, 0)), 10px);
                     }
@@ -6648,6 +6652,7 @@
                         --bbgl-ach-inset-x: clamp(2px, 1.1cqi, 12px);
                         --bbgl-ach-scroll-pt: clamp(2px, .5cqi, 9px);
                         --bbgl-ach-scroll-pb: clamp(0px, .08cqi, 2px);
+                        --bbgl-ach-row-pad-v: clamp(1px, 1.4cqi, 3px);
                     }
 
                     #bbgl-ach-pages {
@@ -6805,7 +6810,7 @@
                         display: flex;
                         align-items: center;
                         border-bottom: 1px solid rgba(255, 255, 255, .12);
-                        padding: 2px;
+                        padding: 2px 2px 1px 2px;
                     }
 
                     .bbgl-ach-title-row .bbgl-ach-section-title {
@@ -6934,7 +6939,7 @@
                         display: flex;
                         flex-direction: column;
                         align-items: stretch;
-                        padding: var(--bbgl-ach-row-pad-v, 4px) 1px;
+                        padding: var(--bbgl-ach-row-pad-v, 4px) 2px;
                         margin: 0;
                         border: none;
                         box-shadow: none;
@@ -7194,12 +7199,12 @@
 
                     .bbgl-ach-section-page0 .bbgl-ach-grid-header {
                         border-bottom: 1px solid rgba(255, 255, 255, .12);
-                        padding: 2px 2px 4px;
+                        padding: 2px 2px 2px;
                         align-items: end;
                     }
 
                     .bbgl-ach-section-page0 .bbgl-ach-row-multi {
-                        padding: 4px 2px;
+                        padding: var(--bbgl-ach-row-pad-v, 4px) 2px;
                         border-bottom: 1px solid rgba(255, 255, 255, .04);
                         cursor: pointer;
                     }
@@ -7341,7 +7346,7 @@
                     .bbgl-ach-stat-cell .ach-date {
                         display: none;
                         font-family: var(--bbgl-ach-font);
-                        font-size: var(--bbgl-ach-fs-row);
+                        font-size: var(--bbgl-ach-fs-date);
                         color: #999;
                         text-align: center;
                         margin: 1px 0 0;
@@ -7505,7 +7510,7 @@
                         grid-column: 1 / -1;
                         justify-self: end;
                         text-align: right;
-                        padding: 2px 6px;
+                        padding: 1px 6px;
                         border-radius: 4px;
                         transition: background-color .12s;
                         font-family: var(--bbgl-ach-font);
@@ -7588,7 +7593,7 @@
                         gap: 8px;
                         width: 100%;
                         box-sizing: border-box;
-                        padding: 5px 2px;
+                        padding: var(--bbgl-ach-row-pad-v, 4px) 2px;
                         border-bottom: 1px solid rgba(255, 255, 255, .05);
                         font-family: var(--bbgl-ach-font);
                         font-size: var(--bbgl-ach-fs-row);
@@ -11331,7 +11336,7 @@ function achBuildPage2(d) {
             }
             const clipHelpers = helpers.map(h => `${h.label}: ${h.count} (${Formatter.number(h.happy)} Happy)`).join('\n');
             clipAll += '\n\n— Happy Helpers —\n' + clipHelpers;
-            helpersHTML = `<div class="bbgl-ach-subsection-title" style="margin-top:2px" data-ach-section="happy-helpers" data-clip-section="${achEsc(clipHelpers)}" data-clip-title="Happy Helpers" data-tooltip="Click any stat or row to copy its data, or click this title to copy the entire section to your clipboard.">HAPPY HELPERS</div><div class="bbgl-ach-cols" style="grid-template-columns:repeat(${colCount},minmax(0,1fr)); padding-top:1px; padding-bottom:0;">${cols.join('')}</div>`;
+            helpersHTML = `<div class="bbgl-ach-cols" style="grid-template-columns:repeat(${colCount},minmax(0,1fr)); padding-top:1px; padding-bottom:0;">${cols.join('')}</div>`;
         }
     }
 
@@ -15961,7 +15966,28 @@ const BestGymController = {
             const _yCap = Math.max(20, Math.floor(w * 0.28) - 5);
             if (_yLW > _yCap) _yLW = _yCap;
             svg.removeChild(_yMT);
-            const xLabDrop = (cmp ? 8 : (expandedPanel ? 9 : 11)) + 1;
+            let xLabDrop;
+            if (cmp) {
+                xLabDrop = 8 + 1;
+            } else if (expandedPanel) {
+                xLabDrop = 9 + 1;
+            } else if (isPageMode) {
+                // Page-mode x-label font-size is a --bbgl-page-t clamp (8px narrow to 10px wide,
+                // see .g-text.x-label in the styles). getComputedStyle can't resolve a plain
+                // custom property's clamp()/cqi math — it only returns the unresolved specified
+                // string — so measure the label's actual rendered font-size instead, the same
+                // way _yFontPx does above, and ease the drop down with it as the page narrows
+                // (8px font -> 6, 10px font -> 11, the confirmed-good value at each end).
+                const _xLabT = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+                _xLabT.setAttribute('class', 'g-text x-label');
+                _xLabT.style.cssText = 'visibility:hidden;pointer-events:none;';
+                svg.appendChild(_xLabT);
+                const _xLabFontPx = parseFloat(window.getComputedStyle(_xLabT).fontSize) || 10;
+                svg.removeChild(_xLabT);
+                xLabDrop = (6 + (_xLabFontPx - 8) * 2.5) + 1;
+            } else {
+                xLabDrop = 11 + 1;
+            }
             const _topMar = isPageMode ? 6 : (expandedPanel ? 8 : 6);
             let mar = {
                 top: _topMar,
@@ -18819,8 +18845,11 @@ const BestGymController = {
             const t = TooltipController.resolve(e.target);
             // The footer tab performs an immediate action on tap (opens the panel), so it
             // shouldn't participate in the tap-to-show/tap-to-hide tooltip toggle below —
-            // its tooltip should only ever appear on real :hover.
-            if (t && _TOOLBAR_TOGGLE_IDS.has(t.id)) {
+            // its tooltip should only ever appear on real :hover. Exception: in page mode
+            // togglePanel() is a no-op (see the location.hash guard), so tapping does nothing —
+            // it needs the same brief tap tooltip as the toolbar toggles below to tell the
+            // user why, since touch devices have no :hover to fall back on.
+            if (t && (_TOOLBAR_TOGGLE_IDS.has(t.id) || (t.id === 'bbgl-gym-tab' && document.body.classList.contains('bbgl-page-mode-active')))) {
                 // These switch views on tap (like the footer tab), but unlike the footer tab
                 // they're tapped repeatedly in a row while browsing views, so a brief 1s
                 // auto-dismissing tooltip (rather than none at all) confirms what was just

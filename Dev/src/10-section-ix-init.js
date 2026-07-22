@@ -2118,8 +2118,11 @@
             const t = TooltipController.resolve(e.target);
             // The footer tab performs an immediate action on tap (opens the panel), so it
             // shouldn't participate in the tap-to-show/tap-to-hide tooltip toggle below —
-            // its tooltip should only ever appear on real :hover.
-            if (t && _TOOLBAR_TOGGLE_IDS.has(t.id)) {
+            // its tooltip should only ever appear on real :hover. Exception: in page mode
+            // togglePanel() is a no-op (see the location.hash guard), so tapping does nothing —
+            // it needs the same brief tap tooltip as the toolbar toggles below to tell the
+            // user why, since touch devices have no :hover to fall back on.
+            if (t && (_TOOLBAR_TOGGLE_IDS.has(t.id) || (t.id === 'bbgl-gym-tab' && document.body.classList.contains('bbgl-page-mode-active')))) {
                 // These switch views on tap (like the footer tab), but unlike the footer tab
                 // they're tapped repeatedly in a row while browsing views, so a brief 1s
                 // auto-dismissing tooltip (rather than none at all) confirms what was just

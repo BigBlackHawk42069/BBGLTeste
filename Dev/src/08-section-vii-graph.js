@@ -1039,7 +1039,28 @@
             const _yCap = Math.max(20, Math.floor(w * 0.28) - 5);
             if (_yLW > _yCap) _yLW = _yCap;
             svg.removeChild(_yMT);
-            const xLabDrop = (cmp ? 8 : (expandedPanel ? 9 : 11)) + 1;
+            let xLabDrop;
+            if (cmp) {
+                xLabDrop = 8 + 1;
+            } else if (expandedPanel) {
+                xLabDrop = 9 + 1;
+            } else if (isPageMode) {
+                // Page-mode x-label font-size is a --bbgl-page-t clamp (8px narrow to 10px wide,
+                // see .g-text.x-label in the styles). getComputedStyle can't resolve a plain
+                // custom property's clamp()/cqi math — it only returns the unresolved specified
+                // string — so measure the label's actual rendered font-size instead, the same
+                // way _yFontPx does above, and ease the drop down with it as the page narrows
+                // (8px font -> 6, 10px font -> 11, the confirmed-good value at each end).
+                const _xLabT = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+                _xLabT.setAttribute('class', 'g-text x-label');
+                _xLabT.style.cssText = 'visibility:hidden;pointer-events:none;';
+                svg.appendChild(_xLabT);
+                const _xLabFontPx = parseFloat(window.getComputedStyle(_xLabT).fontSize) || 10;
+                svg.removeChild(_xLabT);
+                xLabDrop = (6 + (_xLabFontPx - 8) * 2.5) + 1;
+            } else {
+                xLabDrop = 11 + 1;
+            }
             const _topMar = isPageMode ? 6 : (expandedPanel ? 8 : 6);
             let mar = {
                 top: _topMar,
