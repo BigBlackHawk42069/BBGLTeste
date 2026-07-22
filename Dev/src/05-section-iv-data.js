@@ -113,7 +113,7 @@
                         const err = e.target.error;
                         Log.error('IndexedDB write failed', err);
                         if (err && err.name === 'QuotaExceededError') {
-                            alert("⚠️ STORAGE ERROR: Browser quota exceeded.\n\nYour data could not be saved. Please export your history and then 'Clear Data' to free up space.");
+                            bbglError("⚠️ STORAGE ERROR: Browser quota exceeded.\n\nYour data could not be saved. Please export your history and then 'Clear Data' to free up space.");
                         }
                         reject(err);
                     };
@@ -371,26 +371,16 @@
         const lastSync = parseInt(localStorage.getItem(KEYS.WARS_SYNC) || '0');
         if (!manual && (Date.now() - lastSync) < TWENTY_FOUR_HOURS) return;
         try {
-            // Fetch ranked wars and current faction ID in parallel. The faction ID comes from
-            // user/?selections=faction (part of the required key permissions) rather than
-            // faction/?selections=basic, which would need a separate key permission.
-            incrementApiCount(2);
-            const [warsRes, userFactionRes] = await Promise.all([
-                fetch(`https://api.torn.com/faction/?selections=rankedwars&key=${userConfig.apiKey}`),
-                fetch(`https://api.torn.com/user/?selections=faction&key=${userConfig.apiKey}`)
-            ]);
-            if (!warsRes.ok) return;
-            const data = await warsRes.json();
+            // user/?selections=faction is API v2-only (v1 returns error code 23), so the faction
+            // ID has to come from the same v1 faction/rankedwars request via the "basic" selection.
+            incrementApiCount(1);
+            const res = await fetch(`https://api.torn.com/faction/?selections=rankedwars,basic&key=${userConfig.apiKey}`);
+            if (!res.ok) return;
+            const data = await res.json();
             if (data.error) return;
             const wars = data.rankedwars || {};
             // Resolve the player's current faction ID to tag each war with win/loss outcome.
-            let myFactionId = null;
-            if (userFactionRes.ok) {
-                const userFactionData = await userFactionRes.json();
-                if (!userFactionData.error && userFactionData.faction) {
-                    myFactionId = userFactionData.faction.faction_id;
-                }
-            }
+            const myFactionId = data.ID || null;
             if (myFactionId) {
                 Object.values(wars).forEach(w => {
                     if (!w || !w.war) return;
@@ -544,7 +534,11 @@
         try {
             // This safely performs the official Torn API request using your provided key.
             const res = await Promise.all(reqs.map(c => fetch(c.url).then(r => {
-                if (!r.ok) throw new Error(r.status);
+                if (!r.ok) {
+                    const se = new Error(`Torn returned an unexpected error (HTTP ${r.status}).`);
+                    se.isTornError = true;
+                    throw se;
+                }
                 return r.json();
             }).then(d => ({
                 cfg: c,
@@ -552,7 +546,9 @@
             }))));
             const errObj = res.find(r => r.data.error);
             if (errObj) {
-                throw new Error(errObj.data.error.error);
+                const te = new Error(tornKeyErrorText(errObj.data));
+                te.isTornError = true;
+                throw te;
             }
 
             let logs = {},
@@ -604,9 +600,13 @@
         } catch (e) {
             Log.error('Sync failed', e);
             const isQuota = e.name === 'QuotaExceededError' || (e.message && e.message.toLowerCase().includes('quota'));
-            const errorMsg = isQuota ?
-                'Sync failed because your browser ran out of local storage space. Close all open Torn tabs, clear your browser cache, and reload the page.\n\nError Code: 69' :
-                (e.message || 'Network Error');
+            // Torn-tagged errors (bad HTTP status or an explicit error body) already carry a
+            // tailored message via tornKeyErrorText — anything else here is a real fetch()-level
+            // failure (offline, DNS, blocked, etc.), so it never leaks a raw browser exception
+            // string like "Failed to fetch" to the user.
+            const errorMsg = isQuota ? MSG_SYNC_QUOTA :
+                e.isTornError ? e.message :
+                MSG_SYNC_NETWORK_ERROR;
             return {
                 ok: false,
                 error: errorMsg
@@ -641,7 +641,7 @@
             // A backfill is running and owns the daily row pool; quietly stand down, no error.
             resetRefreshBtn(btn);
         } else {
-            alert("Sync Error: " + result.error);
+            bbglError("Sync Error: " + result.error);
             resetRefreshBtn(btn);
         }
         Perf.end('syncWithFeedback');

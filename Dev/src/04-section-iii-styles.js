@@ -493,7 +493,8 @@
                         filter: drop-shadow(0 0 4px rgba(255, 255, 255, .55));
                     }
 
-                    .bbgl-sb-notif [class*="desktopLink___"] {
+                    .bbgl-sb-notif [class*="desktopLink___"],
+                    .bbgl-sb-notif [class*="mobileLink___"] {
                         background: linear-gradient(to right, rgba(171, 71, 188, .28), rgba(171, 71, 188, .12)) !important;
                     }
 
@@ -614,6 +615,8 @@
                         --bbgl-viewer-title-top-shift: 3px;
                         container-type: inline-size;
                         container-name: bbgl-panel;
+                        -webkit-text-size-adjust: 100%;
+                        text-size-adjust: 100%;
                         position: fixed;
                         bottom: ${LAYOUT.LIFT_HEIGHT}px;
                         right: 10px;
@@ -728,7 +731,7 @@
                     }
 
                     #bbgl-panel.bbgl-mode-page .bbgl-month-header {
-                        padding-left: clamp(4px, calc(4px + 3px * var(--bbgl-page-t)), 7px);
+                        padding-left: clamp(14px, calc(14px + 3px * var(--bbgl-page-t)), 17px);
                         padding-right: clamp(16px, calc(16px + 16px * var(--bbgl-page-t)), 32px);
                         gap: clamp(8px, calc(8px + 8px * var(--bbgl-page-t)), 16px);
                         margin-bottom: clamp(4px, calc(4px + 4px * var(--bbgl-page-t)), 8px);
@@ -2714,7 +2717,7 @@
 
                     .bbgl-header-wrapper {
                         position: relative;
-                        padding: 4px 0 2px 10px;
+                        padding: 0 0 2px 0;
                         margin-bottom: 0;
                         border-bottom: none;
                         flex: 0 0 95px;
@@ -2753,7 +2756,7 @@
                         display: flex;
                         justify-content: space-between;
                         align-items: center;
-                        padding: 0 8px 0 2px;
+                        padding: 4px 8px 0 12px;
                         gap: 8px;
                         position: relative;
                         margin-bottom: 4px;
@@ -2837,7 +2840,6 @@
                     }
                     #bbgl-panel.bbgl-expanded .title-group {
                         gap: 6px;
-                        transform: translateX(-6px);
                     }
                     #bbgl-panel.bbgl-compact .title-group {
                         gap: 1px;
@@ -2923,29 +2925,16 @@
 
                     .header-row--year {
                         --btn-hover-adjust: 1px;
-                        --trigger-lift: 2px;
+                        --trigger-lift: -4px;
                     }
 
-                    /* Year label only: vertically centered against the row/icon,
-                       independent of month/all-time which stay bottom-aligned.
-                       --trigger-lift is left at its default 0px (NOT cancelled) so
-                       the label keeps the same shared -6px shift the icon has —
-                       align-self:center centers their pre-transform layout boxes
-                       against each other, then both move up together, preserving
-                       that centered relationship at the actual rendered position. */
-                    #year-trigger {
-                        align-self: center;
-                    }
-
-                    /* Page mode only: year reverts to the same bottom-alignment as
-                       month/all-time (both the align-self override above and the
-                       centered-tuning --trigger-lift are undone here). */
-                    #bbgl-panel.bbgl-mode-page .header-row--year {
-                        --trigger-lift: 0px;
-                    }
-                    #bbgl-panel.bbgl-mode-page #year-trigger {
-                        align-self: flex-end;
-                    }
+                    /* Year label is bottom-aligned like month/all-time (align-items:flex-end
+                       on .header-row, inherited — no per-element override needed), so its
+                       position stays pinned to the row's bottom edge regardless of the row's
+                       own height. Previously this was align-self:center, which made the
+                       label's position depend on the row's total height — fine at a fixed
+                       height, but it drifted as the row's fluid height clamp (expanded mode)
+                       changed with panel width. flex-end sidesteps that entirely. */
 
                     /* #all-time-trigger's font is by far the largest of the three
                        (20-34px vs 9-29px), so line-height:1's descent reservation
@@ -2986,6 +2975,9 @@
 
                     #bbgl-panel.bbgl-compact .header-row--month {
                         --btn-lift: -1.5px;
+                    }
+                    #bbgl-panel.bbgl-compact .header-row--year {
+                        --trigger-lift: -3px;
                     }
                     #bbgl-panel.bbgl-mode-page .header-row {
                         --btn-hover-jump: -4px;
@@ -5226,7 +5218,7 @@
                     }
 
                     #bbgl-panel.bbgl-expanded:not(.bbgl-mode-page) .bbgl-month-header {
-                        padding-left: 8px;
+                        padding-left: 12px;
                         padding-right: clamp(10px, calc(10px + 6px * var(--bbgl-dock-t)), 16px);
                     }
 

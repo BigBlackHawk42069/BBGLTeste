@@ -2981,11 +2981,11 @@ async function exportData() {
     try {
         s = await DBManager.getStorage();
         if (!s) {
-            alert("Export Error: Local database is inaccessible or empty. Cannot export data.\n\nRecommendation: Please refresh the page and try again. If you are using Private Browsing or have strict storage limits enabled, you may need to disable them for Torn.com to allow the Gym Log to save and export data.");
+            bbglError("Export Error: Local database is inaccessible or empty. Cannot export data.\n\nRecommendation: Please refresh the page and try again. If you are using Private Browsing or have strict storage limits enabled, you may need to disable them for Torn.com to allow the Gym Log to save and export data.");
             return;
         }
     } catch (e) {
-        alert("Export Error: " + (e.message || "Failed to read local database.") + "\n\nRecommendation: Please refresh the page. Ensure your browser is not blocking local storage for Torn.com.");
+        bbglError("Export Error: " + (e.message || "Failed to read local database.") + "\n\nRecommendation: Please refresh the page. Ensure your browser is not blocking local storage for Torn.com.");
         return;
     }
     const active = getActiveHistory();
@@ -3223,7 +3223,7 @@ function importData(f, onDone, opts = {}) {
             const j = JSON.parse(e.target.result);
             const val = validateImportSchema(j);
             if (!val.ok) {
-                if (!silent) alert(`Import Failed: ${val.msg}`);
+                if (!silent) bbglError(`Import Failed: ${val.msg}`);
                 if (onDone) onDone(false);
                 return;
             }
@@ -3301,9 +3301,9 @@ function importData(f, onDone, opts = {}) {
                 ok = true;
                 if (!silent) renderPanelContent();
                 if (!silent) alert("Training Data Imported Successfully.");
-            } else if (!silent) alert("Error: No valid training data found.");
+            } else if (!silent) bbglError("Error: No valid training data found.");
         } catch (err) {
-            if (!silent) alert("Error importing file: " + (err.message === "Database not initialized" ? "Database not initialized.\n\nRecommendation: Refresh the page and ensure your browser is not blocking local storage for Torn.com." : "Invalid JSON format."));
+            if (!silent) bbglError("Error importing file: " + (err.message === "Database not initialized" ? "Database not initialized.\n\nRecommendation: Refresh the page and ensure your browser is not blocking local storage for Torn.com." : "Invalid JSON format."));
         }
         const inp = document.getElementById('import-file');
         if (inp) inp.value = '';
@@ -3328,7 +3328,7 @@ function importDataFromWelcome(f) {
             const res = await fetch(`https://api.torn.com/user/?selections=battlestats,log&log=5300&key=${userConfig.apiKey}`);
             const data = await res.json();
             if (data.error) {
-                alert(`Saved API key is no longer valid: ${data.error.error}\n\nPlease enter a new key to continue.`);
+                bbglError(`Saved API key is no longer valid: ${tornKeyErrorText(data)}\n\nPlease enter a new key to continue.`);
                 userConfig.apiKey = '';
                 saveConfig();
                 refreshInitLock();
@@ -3349,7 +3349,7 @@ function importDataFromWelcome(f) {
             switchView('ledger');
             syncWithFeedback('FULL_SYNC');
         } catch (e) {
-            alert("Network error during API key verification. Please try again.");
+            bbglError(MSG_KEY_NETWORK_ERROR);
             renderPanelContent();
             const wv = dom.welcomeView;
             if (wv && wv.classList.contains('active-view')) refreshInitMask(wv);

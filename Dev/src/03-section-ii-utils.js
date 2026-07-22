@@ -274,6 +274,42 @@
         if (hud) hud.innerHTML = `API Calls: ${runtime.apiCallTotal}`;
     }
 
+    // ─── Error messaging ────────────────────────────────────────────────────
+    // Single funnel for every user-facing error popup, so the joke code stays
+    // consistent everywhere without being copy-pasted into each alert() call.
+    const BBGL_ERROR_CODE = 'Error Code: 69420';
+    function bbglError(msg) {
+        alert(msg + `\n\n${BBGL_ERROR_CODE}`);
+    }
+
+    // Shared text for error situations that were previously duplicated verbatim
+    // (or near-verbatim) across multiple call sites.
+    const MSG_KEY_FORMAT_INVALID = "Invalid Format.\nA Torn API Key must be exactly 16 alphanumeric characters.";
+    const MSG_CLIPBOARD_DENIED = "Clipboard access denied. Please paste manually.";
+    const MSG_KEY_NETWORK_ERROR = "Network error while verifying your API key. Please try again.";
+    const MSG_SYNC_NETWORK_ERROR = "Couldn't reach Torn's servers. Check your connection and try again.";
+    const MSG_SYNC_QUOTA = "Sync failed because your browser ran out of local storage space. Close all open Torn tabs, clear your browser cache, and reload the page.";
+
+    // Torn's own per-key error codes (data.error.code), mapped to plain-language
+    // explanations of what's actually wrong and what to do about it, instead of
+    // surfacing Torn's raw dev-facing error string. Falls back to that raw string
+    // for any code not covered here, so nothing is ever silently swallowed.
+    const TORN_KEY_ERROR_MAP = {
+        2: "That key doesn't look valid — double-check you copied it correctly.",
+        5: "Torn's API rate limit was hit. Wait a moment and try again.",
+        8: "Torn has temporarily blocked API requests from your network. Wait a bit and try again.",
+        10: "This key's owner is in federal jail, which disables their API key until release.",
+        13: "This key's owner has been inactive too long and Torn has temporarily disabled it.",
+        14: "Torn's daily API read limit has been reached for this key. Try again tomorrow.",
+        16: "This key doesn't have the access level BBGL needs. Make sure it's a Custom key with Basic, Battle Stats, Log, and Faction access — not Public or Minimal.",
+        18: "This key has been paused by its owner in Torn's API settings. Re-enable it there, or generate a new one."
+    };
+    function tornKeyErrorText(data) {
+        const err = data && data.error;
+        if (!err) return 'Torn rejected this key for an unknown reason.';
+        return TORN_KEY_ERROR_MAP[err.code] || `Torn says: "${err.error}".`;
+    }
+
     function saveViewState() {
         if (runtime.isSyncing) return;
         localStorage.setItem(KEYS.STATE, JSON.stringify(viewState));

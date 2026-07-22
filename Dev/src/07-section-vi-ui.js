@@ -1071,7 +1071,7 @@
             const sbDCached = dom.sbDesktop && dom.sbDesktop.isConnected ? dom.sbDesktop : null;
             const sbMCached = dom.sbMobile && dom.sbMobile.isConnected ? dom.sbMobile : null;
             const footerOk = !showFooter || !!gtCached;
-            const sidebarOk = !showSidebar || (!!sbDCached && !!sbMCached);
+            const sidebarOk = !showSidebar || !!sbDCached;
             if (footerOk && sidebarOk) {
                 if (!gtCached) dom.gymTab = null;
                 if (!sbDCached) dom.sbDesktop = null;
@@ -1081,6 +1081,13 @@
                 }
                 if (showSidebar) {
                     syncSidebarState();
+                    if (!dom.sbMobile || !dom.sbMobile.isConnected) {
+                        const mt = document.querySelector(SB_MOBILE.target);
+                        if (mt) {
+                            injectSidebarButton(SB_MOBILE, true);
+                            dom.sbMobile = document.getElementById(SB_MOBILE.id);
+                        }
+                    }
                     if (!dom.sbFlyout || !dom.sbFlyout.isConnected) {
                         const ft = document.querySelector(SB_FLYOUT.target);
                         if (ft) {
@@ -1171,7 +1178,7 @@
             showFooter = loc === 'notes' || loc === 'both',
             showSb = loc === 'sidebar' || loc === 'both';
         const footerOk = !showFooter || (dom.gymTab && dom.gymTab.isConnected);
-        const sidebarOk = !showSb || (dom.sbDesktop && dom.sbDesktop.isConnected && dom.sbMobile && dom.sbMobile.isConnected);
+        const sidebarOk = !showSb || (dom.sbDesktop && dom.sbDesktop.isConnected);
         if (!footerOk || !sidebarOk) return;
         if (!runtime.domObs || !runtime._domObsArmed) return;
         runtime.domObs.disconnect();
@@ -1659,7 +1666,7 @@
             }
             const _liveRow = n.querySelector('[class*="area-row"], [class*="areaRow"]') || n.firstElementChild;
             if (_liveRow) r.className = _liveRow.className;
-            const _scopedSiblings = n.parentNode ? Array.from(n.parentNode.children).filter(el => el !== n && el.id !== cfg.id && el.querySelector('a')) : [];
+            const _scopedSiblings = n.parentNode ? Array.from(n.parentNode.children).filter(el => el !== n && el.id && el.id.startsWith('nav-') && el.id !== cfg.id && el.querySelector('a')) : [];
             const _siblingSelector = mob ? '[id^="nav-"][class*="area-mobile"]' : '[id^="nav-"][class*="area-desktop"]';
             const _allSiblings = _scopedSiblings.length ? _scopedSiblings : Array.from(document.querySelectorAll(_siblingSelector)).filter(el => el !== n && el.id !== cfg.id && el.querySelector('a'));
             const _inactiveSibling = _allSiblings.find(el => !Array.from(el.classList).some(cls => cls.startsWith('active___')));

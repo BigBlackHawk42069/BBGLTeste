@@ -619,7 +619,7 @@
                             const t = await navigator.clipboard.readText();
                             if (t) iak.value = t.trim();
                         } catch (e) {
-                            alert("Clipboard access denied. Please paste manually.");
+                            bbglError(MSG_CLIPBOARD_DENIED);
                         }
                     };
                     const ilocSel = wv.querySelector('#init-loc-select');
@@ -647,7 +647,7 @@
                         this.blur();
                         const v = iak.value.trim();
                         if (!/^[a-zA-Z0-9]{16}$/.test(v)) {
-                            alert("Invalid Format.\nA Torn API Key must be exactly 16 alphanumeric characters.");
+                            bbglError(MSG_KEY_FORMAT_INVALID);
                             return;
                         }
                         isb.style.color = '#69f0ae';
@@ -657,7 +657,7 @@
                             const res = await fetch(`https://api.torn.com/user/?selections=battlestats,log&log=5300&key=${v}`),
                                 data = await res.json();
                             if (data.error) {
-                                alert(`Key Verification Failed: ${data.error.error}\n\nPlease generate a key properly configured with 'battlestats' and 'log' access.`);
+                                bbglError(`Key Verification Failed: ${tornKeyErrorText(data)}`);
                                 isb.style.color = '';
                                 isb.innerText = 'START TRACKING';
                                 isb.disabled = false;
@@ -675,7 +675,7 @@
                             // The choice modal's buttons handle switchView('ledger') themselves.
                             openBackfillChoiceModal();
                         } catch (e) {
-                            alert("Network error during verification.");
+                            bbglError(MSG_KEY_NETWORK_ERROR);
                             isb.style.color = '';
                             isb.innerText = 'START TRACKING';
                             isb.disabled = false;
@@ -684,7 +684,7 @@
                     const cb = wv.querySelector('#init-create-api-btn');
                     if (cb) cb.onclick = function() {
                         this.blur();
-                        window.open('https://www.torn.com/preferences.php#tab=api?step=addNewKey&user=faction,battlestats,log&faction=rankedwars&logIds=54,50,23,52,56,80,6&title=BigBlackGymLog', '_blank');
+                        window.open('https://www.torn.com/preferences.php#tab=api?step=addNewKey&user=basic,battlestats,log&faction=rankedwars&logIds=54,50,23,6,52,56,3&title=BigBlackGymLog', '_blank');
                     };
                     const rib = wv.querySelector('#init-returning-import-btn'),
                         rif = wv.querySelector('#init-import-file');
@@ -1523,7 +1523,7 @@
                 const t = await navigator.clipboard.readText();
                 if (t) ai.value = t.trim();
             } catch (e) {
-                alert("Clipboard access denied. Please paste manually.");
+                bbglError(MSG_CLIPBOARD_DENIED);
             }
         };
         const ub = get('updt-settings-btn');
@@ -1531,7 +1531,7 @@
             this.blur();
             const v = ai.value.trim();
             if (!/^[a-zA-Z0-9]{16}$/.test(v)) {
-                alert("Invalid Format.\nA Torn API Key must be exactly 16 alphanumeric characters.");
+                bbglError(MSG_KEY_FORMAT_INVALID);
                 return;
             }
             const ot = ub.innerText;
@@ -1540,7 +1540,7 @@
                 const res = await fetch(`https://api.torn.com/user/?selections=battlestats,log&log=5300&key=${v}`),
                     data = await res.json();
                 if (data.error) {
-                    alert(`Key Verification Failed: ${data.error.error}\n\nPlease generate a key properly configured with 'battlestats' and 'log' access.`);
+                    bbglError(`Key Verification Failed: ${tornKeyErrorText(data)}`);
                     ub.innerText = ot;
                     return;
                 }
@@ -1557,7 +1557,7 @@
                     ub.innerText = ot;
                 }, 2000);
             } catch (e) {
-                alert("Network error during verification.");
+                bbglError(MSG_KEY_NETWORK_ERROR);
                 ub.innerText = ot;
             }
         };
@@ -1579,7 +1579,7 @@
         const crb = get('create-api-btn');
         if (crb) crb.onclick = function() {
             this.blur();
-            window.open('https://www.torn.com/preferences.php#tab=api?step=addNewKey&user=faction,battlestats,log&faction=rankedwars&logIds=54,50,23,52,56,80,6&title=BigBlackGymLog', '_blank');
+            window.open('https://www.torn.com/preferences.php#tab=api?step=addNewKey&user=basic,battlestats,log&faction=rankedwars&logIds=54,50,23,6,52,56,3&title=BigBlackGymLog', '_blank');
         };
         const rb = get('refresh-log-btn');
         if (rb) rb.onclick = function() {
@@ -1994,7 +1994,9 @@
             _tY = 0,
             _tTimer = null,
             _scrubMode = false,
-            _scrubMoveBound = null;
+            _scrubMoveBound = null,
+            _toolbarTipTimer = null;
+        const _TOOLBAR_TOGGLE_IDS = new Set(['bbgl-ledger-toggle', 'bbgl-graph-toggle', 'bbgl-achievements-toggle', 'bbgl-sticker-toggle']);
         const _onScrubMove = (e) => {
             if (!_scrubMode) return;
             if (e.cancelable) e.preventDefault();
@@ -2114,7 +2116,29 @@
                 return;
             }
             const t = TooltipController.resolve(e.target);
-            if (t) {
+            // The footer tab performs an immediate action on tap (opens the panel), so it
+            // shouldn't participate in the tap-to-show/tap-to-hide tooltip toggle below —
+            // its tooltip should only ever appear on real :hover.
+            if (t && _TOOLBAR_TOGGLE_IDS.has(t.id)) {
+                // These switch views on tap (like the footer tab), but unlike the footer tab
+                // they're tapped repeatedly in a row while browsing views, so a brief 1s
+                // auto-dismissing tooltip (rather than none at all) confirms what was just
+                // tapped without lingering indefinitely like the generic toggle below.
+                if (_toolbarTipTimer) {
+                    clearTimeout(_toolbarTipTimer);
+                    _toolbarTipTimer = null;
+                }
+                const txt = t.getAttribute('data-tooltip'),
+                    h = t.getAttribute('data-tooltip-html');
+                if (h || txt) {
+                    TooltipController.currentTarget = t;
+                    TooltipController.show(h || '<div style="text-align:center; color:#ddd;">' + txt + '</div>', t.getBoundingClientRect());
+                    _toolbarTipTimer = setTimeout(() => {
+                        _toolbarTipTimer = null;
+                        if (TooltipController.currentTarget === t) TooltipController.hide();
+                    }, 500);
+                }
+            } else if (t && t.id !== 'bbgl-gym-tab') {
                 const h = t.getAttribute('data-tooltip-html'),
                     txt = t.getAttribute('data-tooltip');
                 if (h) {

@@ -1,5 +1,19 @@
 # Big Black Gym Log - Testing Phase Changelog
 
+Version 0.9.91 - Pending
+
+### Bug Fixes:
+- **Fly-Out Sidebar Button Styling**: Fixed the Gym Log sidebar button rendering unstyled (missing background pill, wrong link classes) on PC. Torn's new "Fly-Out Sidebar" account setting changes the desktop sidebar's underlying CSS class names even while actually browsing on PC — where the flyout itself never renders — and the button's live style-copy logic wasn't accounting for the new class shape, including a container class and row class it was silently dropping.
+- **War Win/Loss Post-Its Not Appearing**: Fixed ranked-war win/loss markers never appearing on the calendar. The faction-ID lookup used to tag war outcomes was calling `user/?selections=faction`, which is an API v2-only selection and always errors out under v1, silently failing the lookup every time. Reverted to resolving the faction ID from the same `faction/?selections=rankedwars,basic` request already used to fetch the wars themselves. Requires generating a new API key via the updated Create API Key flow to pick up the added "basic" permission.
+
+### Improvements:
+- **Fly-Out Sidebar Support**: Added the Gym Log button to Torn's new mobile Fly-Out Sidebar, alongside its existing placement in the desktop sidebar and footer tab.
+- **Calendar Header CSS Cleanup**: Reworked padding and alignment handling across the calendar header (month/year/all-time summary rows, title stack, header wrapper) to remove several stacked/duplicated padding values and brute-forced positioning offsets left over from earlier layout passes, improving alignment consistency across panel widths and modes.
+- **Footer Tab Tap Tooltip Suppression**: Suppressed the Big Black Gym Log tooltip from appearing when tapping (rather than hovering) the footer tab on mobile. It's now hover-only, matching desktop behavior, since tapping the footer tab already performs an immediate action (opening the panel) and didn't need the tap-to-show tooltip treatment used elsewhere.
+- **Toolbar & Footer Tab Mobile Tooltip Behavior**: Reworked touch tooltip handling for the ledger/graph/achievements/stickers toolbar and the footer tab. Tap-and-hold on the toolbar now previews the tooltip like a real hover (via the existing panel-wide scrub system) and releases cleanly without also triggering the view switch; a quick tap still switches views but now also shows the tooltip briefly (500ms auto-dismiss) instead of leaving it open indefinitely. The footer tab was excluded from tap-triggered tooltips entirely, since tapping it performs an immediate action (opening the panel) and doesn't need one.
+
+--------------------------------------------------
+
 Version 0.9.90 - Pending
 
 ### New Features:

@@ -799,6 +799,42 @@
         if (hud) hud.innerHTML = `API Calls: ${runtime.apiCallTotal}`;
     }
 
+    // ─── Error messaging ────────────────────────────────────────────────────
+    // Single funnel for every user-facing error popup, so the joke code stays
+    // consistent everywhere without being copy-pasted into each alert() call.
+    const BBGL_ERROR_CODE = 'Error Code: 69420';
+    function bbglError(msg) {
+        alert(msg + `\n\n${BBGL_ERROR_CODE}`);
+    }
+
+    // Shared text for error situations that were previously duplicated verbatim
+    // (or near-verbatim) across multiple call sites.
+    const MSG_KEY_FORMAT_INVALID = "Invalid Format.\nA Torn API Key must be exactly 16 alphanumeric characters.";
+    const MSG_CLIPBOARD_DENIED = "Clipboard access denied. Please paste manually.";
+    const MSG_KEY_NETWORK_ERROR = "Network error while verifying your API key. Please try again.";
+    const MSG_SYNC_NETWORK_ERROR = "Couldn't reach Torn's servers. Check your connection and try again.";
+    const MSG_SYNC_QUOTA = "Sync failed because your browser ran out of local storage space. Close all open Torn tabs, clear your browser cache, and reload the page.";
+
+    // Torn's own per-key error codes (data.error.code), mapped to plain-language
+    // explanations of what's actually wrong and what to do about it, instead of
+    // surfacing Torn's raw dev-facing error string. Falls back to that raw string
+    // for any code not covered here, so nothing is ever silently swallowed.
+    const TORN_KEY_ERROR_MAP = {
+        2: "That key doesn't look valid — double-check you copied it correctly.",
+        5: "Torn's API rate limit was hit. Wait a moment and try again.",
+        8: "Torn has temporarily blocked API requests from your network. Wait a bit and try again.",
+        10: "This key's owner is in federal jail, which disables their API key until release.",
+        13: "This key's owner has been inactive too long and Torn has temporarily disabled it.",
+        14: "Torn's daily API read limit has been reached for this key. Try again tomorrow.",
+        16: "This key doesn't have the access level BBGL needs. Make sure it's a Custom key with Basic, Battle Stats, Log, and Faction access — not Public or Minimal.",
+        18: "This key has been paused by its owner in Torn's API settings. Re-enable it there, or generate a new one."
+    };
+    function tornKeyErrorText(data) {
+        const err = data && data.error;
+        if (!err) return 'Torn rejected this key for an unknown reason.';
+        return TORN_KEY_ERROR_MAP[err.code] || `Torn says: "${err.error}".`;
+    }
+
     function saveViewState() {
         if (runtime.isSyncing) return;
         localStorage.setItem(KEYS.STATE, JSON.stringify(viewState));
@@ -1544,7 +1580,8 @@
                         filter: drop-shadow(0 0 4px rgba(255, 255, 255, .55));
                     }
 
-                    .bbgl-sb-notif [class*="desktopLink___"] {
+                    .bbgl-sb-notif [class*="desktopLink___"],
+                    .bbgl-sb-notif [class*="mobileLink___"] {
                         background: linear-gradient(to right, rgba(171, 71, 188, .28), rgba(171, 71, 188, .12)) !important;
                     }
 
@@ -1665,6 +1702,8 @@
                         --bbgl-viewer-title-top-shift: 3px;
                         container-type: inline-size;
                         container-name: bbgl-panel;
+                        -webkit-text-size-adjust: 100%;
+                        text-size-adjust: 100%;
                         position: fixed;
                         bottom: ${LAYOUT.LIFT_HEIGHT}px;
                         right: 10px;
@@ -1779,7 +1818,7 @@
                     }
 
                     #bbgl-panel.bbgl-mode-page .bbgl-month-header {
-                        padding-left: clamp(4px, calc(4px + 3px * var(--bbgl-page-t)), 7px);
+                        padding-left: clamp(14px, calc(14px + 3px * var(--bbgl-page-t)), 17px);
                         padding-right: clamp(16px, calc(16px + 16px * var(--bbgl-page-t)), 32px);
                         gap: clamp(8px, calc(8px + 8px * var(--bbgl-page-t)), 16px);
                         margin-bottom: clamp(4px, calc(4px + 4px * var(--bbgl-page-t)), 8px);
@@ -3765,7 +3804,7 @@
 
                     .bbgl-header-wrapper {
                         position: relative;
-                        padding: 4px 0 2px 10px;
+                        padding: 0 0 2px 0;
                         margin-bottom: 0;
                         border-bottom: none;
                         flex: 0 0 95px;
@@ -3804,7 +3843,7 @@
                         display: flex;
                         justify-content: space-between;
                         align-items: center;
-                        padding: 0 8px 0 2px;
+                        padding: 4px 8px 0 12px;
                         gap: 8px;
                         position: relative;
                         margin-bottom: 4px;
@@ -3888,7 +3927,6 @@
                     }
                     #bbgl-panel.bbgl-expanded .title-group {
                         gap: 6px;
-                        transform: translateX(-6px);
                     }
                     #bbgl-panel.bbgl-compact .title-group {
                         gap: 1px;
@@ -3974,29 +4012,16 @@
 
                     .header-row--year {
                         --btn-hover-adjust: 1px;
-                        --trigger-lift: 2px;
+                        --trigger-lift: -4px;
                     }
 
-                    /* Year label only: vertically centered against the row/icon,
-                       independent of month/all-time which stay bottom-aligned.
-                       --trigger-lift is left at its default 0px (NOT cancelled) so
-                       the label keeps the same shared -6px shift the icon has —
-                       align-self:center centers their pre-transform layout boxes
-                       against each other, then both move up together, preserving
-                       that centered relationship at the actual rendered position. */
-                    #year-trigger {
-                        align-self: center;
-                    }
-
-                    /* Page mode only: year reverts to the same bottom-alignment as
-                       month/all-time (both the align-self override above and the
-                       centered-tuning --trigger-lift are undone here). */
-                    #bbgl-panel.bbgl-mode-page .header-row--year {
-                        --trigger-lift: 0px;
-                    }
-                    #bbgl-panel.bbgl-mode-page #year-trigger {
-                        align-self: flex-end;
-                    }
+                    /* Year label is bottom-aligned like month/all-time (align-items:flex-end
+                       on .header-row, inherited — no per-element override needed), so its
+                       position stays pinned to the row's bottom edge regardless of the row's
+                       own height. Previously this was align-self:center, which made the
+                       label's position depend on the row's total height — fine at a fixed
+                       height, but it drifted as the row's fluid height clamp (expanded mode)
+                       changed with panel width. flex-end sidesteps that entirely. */
 
                     /* #all-time-trigger's font is by far the largest of the three
                        (20-34px vs 9-29px), so line-height:1's descent reservation
@@ -4037,6 +4062,9 @@
 
                     #bbgl-panel.bbgl-compact .header-row--month {
                         --btn-lift: -1.5px;
+                    }
+                    #bbgl-panel.bbgl-compact .header-row--year {
+                        --trigger-lift: -3px;
                     }
                     #bbgl-panel.bbgl-mode-page .header-row {
                         --btn-hover-jump: -4px;
@@ -6277,7 +6305,7 @@
                     }
 
                     #bbgl-panel.bbgl-expanded:not(.bbgl-mode-page) .bbgl-month-header {
-                        padding-left: 8px;
+                        padding-left: 12px;
                         padding-right: clamp(10px, calc(10px + 6px * var(--bbgl-dock-t)), 16px);
                     }
 
@@ -7934,7 +7962,7 @@
                         const err = e.target.error;
                         Log.error('IndexedDB write failed', err);
                         if (err && err.name === 'QuotaExceededError') {
-                            alert("⚠️ STORAGE ERROR: Browser quota exceeded.\n\nYour data could not be saved. Please export your history and then 'Clear Data' to free up space.");
+                            bbglError("⚠️ STORAGE ERROR: Browser quota exceeded.\n\nYour data could not be saved. Please export your history and then 'Clear Data' to free up space.");
                         }
                         reject(err);
                     };
@@ -8192,26 +8220,16 @@
         const lastSync = parseInt(localStorage.getItem(KEYS.WARS_SYNC) || '0');
         if (!manual && (Date.now() - lastSync) < TWENTY_FOUR_HOURS) return;
         try {
-            // Fetch ranked wars and current faction ID in parallel. The faction ID comes from
-            // user/?selections=faction (part of the required key permissions) rather than
-            // faction/?selections=basic, which would need a separate key permission.
-            incrementApiCount(2);
-            const [warsRes, userFactionRes] = await Promise.all([
-                fetch(`https://api.torn.com/faction/?selections=rankedwars&key=${userConfig.apiKey}`),
-                fetch(`https://api.torn.com/user/?selections=faction&key=${userConfig.apiKey}`)
-            ]);
-            if (!warsRes.ok) return;
-            const data = await warsRes.json();
+            // user/?selections=faction is API v2-only (v1 returns error code 23), so the faction
+            // ID has to come from the same v1 faction/rankedwars request via the "basic" selection.
+            incrementApiCount(1);
+            const res = await fetch(`https://api.torn.com/faction/?selections=rankedwars,basic&key=${userConfig.apiKey}`);
+            if (!res.ok) return;
+            const data = await res.json();
             if (data.error) return;
             const wars = data.rankedwars || {};
             // Resolve the player's current faction ID to tag each war with win/loss outcome.
-            let myFactionId = null;
-            if (userFactionRes.ok) {
-                const userFactionData = await userFactionRes.json();
-                if (!userFactionData.error && userFactionData.faction) {
-                    myFactionId = userFactionData.faction.faction_id;
-                }
-            }
+            const myFactionId = data.ID || null;
             if (myFactionId) {
                 Object.values(wars).forEach(w => {
                     if (!w || !w.war) return;
@@ -8365,7 +8383,11 @@
         try {
             // This safely performs the official Torn API request using your provided key.
             const res = await Promise.all(reqs.map(c => fetch(c.url).then(r => {
-                if (!r.ok) throw new Error(r.status);
+                if (!r.ok) {
+                    const se = new Error(`Torn returned an unexpected error (HTTP ${r.status}).`);
+                    se.isTornError = true;
+                    throw se;
+                }
                 return r.json();
             }).then(d => ({
                 cfg: c,
@@ -8373,7 +8395,9 @@
             }))));
             const errObj = res.find(r => r.data.error);
             if (errObj) {
-                throw new Error(errObj.data.error.error);
+                const te = new Error(tornKeyErrorText(errObj.data));
+                te.isTornError = true;
+                throw te;
             }
 
             let logs = {},
@@ -8425,9 +8449,13 @@
         } catch (e) {
             Log.error('Sync failed', e);
             const isQuota = e.name === 'QuotaExceededError' || (e.message && e.message.toLowerCase().includes('quota'));
-            const errorMsg = isQuota ?
-                'Sync failed because your browser ran out of local storage space. Close all open Torn tabs, clear your browser cache, and reload the page.\n\nError Code: 69' :
-                (e.message || 'Network Error');
+            // Torn-tagged errors (bad HTTP status or an explicit error body) already carry a
+            // tailored message via tornKeyErrorText — anything else here is a real fetch()-level
+            // failure (offline, DNS, blocked, etc.), so it never leaks a raw browser exception
+            // string like "Failed to fetch" to the user.
+            const errorMsg = isQuota ? MSG_SYNC_QUOTA :
+                e.isTornError ? e.message :
+                MSG_SYNC_NETWORK_ERROR;
             return {
                 ok: false,
                 error: errorMsg
@@ -8462,7 +8490,7 @@
             // A backfill is running and owns the daily row pool; quietly stand down, no error.
             resetRefreshBtn(btn);
         } else {
-            alert("Sync Error: " + result.error);
+            bbglError("Sync Error: " + result.error);
             resetRefreshBtn(btn);
         }
         Perf.end('syncWithFeedback');
@@ -12074,11 +12102,11 @@ async function exportData() {
     try {
         s = await DBManager.getStorage();
         if (!s) {
-            alert("Export Error: Local database is inaccessible or empty. Cannot export data.\n\nRecommendation: Please refresh the page and try again. If you are using Private Browsing or have strict storage limits enabled, you may need to disable them for Torn.com to allow the Gym Log to save and export data.");
+            bbglError("Export Error: Local database is inaccessible or empty. Cannot export data.\n\nRecommendation: Please refresh the page and try again. If you are using Private Browsing or have strict storage limits enabled, you may need to disable them for Torn.com to allow the Gym Log to save and export data.");
             return;
         }
     } catch (e) {
-        alert("Export Error: " + (e.message || "Failed to read local database.") + "\n\nRecommendation: Please refresh the page. Ensure your browser is not blocking local storage for Torn.com.");
+        bbglError("Export Error: " + (e.message || "Failed to read local database.") + "\n\nRecommendation: Please refresh the page. Ensure your browser is not blocking local storage for Torn.com.");
         return;
     }
     const active = getActiveHistory();
@@ -12316,7 +12344,7 @@ function importData(f, onDone, opts = {}) {
             const j = JSON.parse(e.target.result);
             const val = validateImportSchema(j);
             if (!val.ok) {
-                if (!silent) alert(`Import Failed: ${val.msg}`);
+                if (!silent) bbglError(`Import Failed: ${val.msg}`);
                 if (onDone) onDone(false);
                 return;
             }
@@ -12394,9 +12422,9 @@ function importData(f, onDone, opts = {}) {
                 ok = true;
                 if (!silent) renderPanelContent();
                 if (!silent) alert("Training Data Imported Successfully.");
-            } else if (!silent) alert("Error: No valid training data found.");
+            } else if (!silent) bbglError("Error: No valid training data found.");
         } catch (err) {
-            if (!silent) alert("Error importing file: " + (err.message === "Database not initialized" ? "Database not initialized.\n\nRecommendation: Refresh the page and ensure your browser is not blocking local storage for Torn.com." : "Invalid JSON format."));
+            if (!silent) bbglError("Error importing file: " + (err.message === "Database not initialized" ? "Database not initialized.\n\nRecommendation: Refresh the page and ensure your browser is not blocking local storage for Torn.com." : "Invalid JSON format."));
         }
         const inp = document.getElementById('import-file');
         if (inp) inp.value = '';
@@ -12421,7 +12449,7 @@ function importDataFromWelcome(f) {
             const res = await fetch(`https://api.torn.com/user/?selections=battlestats,log&log=5300&key=${userConfig.apiKey}`);
             const data = await res.json();
             if (data.error) {
-                alert(`Saved API key is no longer valid: ${data.error.error}\n\nPlease enter a new key to continue.`);
+                bbglError(`Saved API key is no longer valid: ${tornKeyErrorText(data)}\n\nPlease enter a new key to continue.`);
                 userConfig.apiKey = '';
                 saveConfig();
                 refreshInitLock();
@@ -12442,7 +12470,7 @@ function importDataFromWelcome(f) {
             switchView('ledger');
             syncWithFeedback('FULL_SYNC');
         } catch (e) {
-            alert("Network error during API key verification. Please try again.");
+            bbglError(MSG_KEY_NETWORK_ERROR);
             renderPanelContent();
             const wv = dom.welcomeView;
             if (wv && wv.classList.contains('active-view')) refreshInitMask(wv);
@@ -13695,7 +13723,7 @@ const BestGymController = {
             const sbDCached = dom.sbDesktop && dom.sbDesktop.isConnected ? dom.sbDesktop : null;
             const sbMCached = dom.sbMobile && dom.sbMobile.isConnected ? dom.sbMobile : null;
             const footerOk = !showFooter || !!gtCached;
-            const sidebarOk = !showSidebar || (!!sbDCached && !!sbMCached);
+            const sidebarOk = !showSidebar || !!sbDCached;
             if (footerOk && sidebarOk) {
                 if (!gtCached) dom.gymTab = null;
                 if (!sbDCached) dom.sbDesktop = null;
@@ -13705,6 +13733,13 @@ const BestGymController = {
                 }
                 if (showSidebar) {
                     syncSidebarState();
+                    if (!dom.sbMobile || !dom.sbMobile.isConnected) {
+                        const mt = document.querySelector(SB_MOBILE.target);
+                        if (mt) {
+                            injectSidebarButton(SB_MOBILE, true);
+                            dom.sbMobile = document.getElementById(SB_MOBILE.id);
+                        }
+                    }
                     if (!dom.sbFlyout || !dom.sbFlyout.isConnected) {
                         const ft = document.querySelector(SB_FLYOUT.target);
                         if (ft) {
@@ -13795,7 +13830,7 @@ const BestGymController = {
             showFooter = loc === 'notes' || loc === 'both',
             showSb = loc === 'sidebar' || loc === 'both';
         const footerOk = !showFooter || (dom.gymTab && dom.gymTab.isConnected);
-        const sidebarOk = !showSb || (dom.sbDesktop && dom.sbDesktop.isConnected && dom.sbMobile && dom.sbMobile.isConnected);
+        const sidebarOk = !showSb || (dom.sbDesktop && dom.sbDesktop.isConnected);
         if (!footerOk || !sidebarOk) return;
         if (!runtime.domObs || !runtime._domObsArmed) return;
         runtime.domObs.disconnect();
@@ -14283,7 +14318,7 @@ const BestGymController = {
             }
             const _liveRow = n.querySelector('[class*="area-row"], [class*="areaRow"]') || n.firstElementChild;
             if (_liveRow) r.className = _liveRow.className;
-            const _scopedSiblings = n.parentNode ? Array.from(n.parentNode.children).filter(el => el !== n && el.id !== cfg.id && el.querySelector('a')) : [];
+            const _scopedSiblings = n.parentNode ? Array.from(n.parentNode.children).filter(el => el !== n && el.id && el.id.startsWith('nav-') && el.id !== cfg.id && el.querySelector('a')) : [];
             const _siblingSelector = mob ? '[id^="nav-"][class*="area-mobile"]' : '[id^="nav-"][class*="area-desktop"]';
             const _allSiblings = _scopedSiblings.length ? _scopedSiblings : Array.from(document.querySelectorAll(_siblingSelector)).filter(el => el !== n && el.id !== cfg.id && el.querySelector('a'));
             const _inactiveSibling = _allSiblings.find(el => !Array.from(el.classList).some(cls => cls.startsWith('active___')));
@@ -17285,7 +17320,7 @@ const BestGymController = {
                             const t = await navigator.clipboard.readText();
                             if (t) iak.value = t.trim();
                         } catch (e) {
-                            alert("Clipboard access denied. Please paste manually.");
+                            bbglError(MSG_CLIPBOARD_DENIED);
                         }
                     };
                     const ilocSel = wv.querySelector('#init-loc-select');
@@ -17313,7 +17348,7 @@ const BestGymController = {
                         this.blur();
                         const v = iak.value.trim();
                         if (!/^[a-zA-Z0-9]{16}$/.test(v)) {
-                            alert("Invalid Format.\nA Torn API Key must be exactly 16 alphanumeric characters.");
+                            bbglError(MSG_KEY_FORMAT_INVALID);
                             return;
                         }
                         isb.style.color = '#69f0ae';
@@ -17323,7 +17358,7 @@ const BestGymController = {
                             const res = await fetch(`https://api.torn.com/user/?selections=battlestats,log&log=5300&key=${v}`),
                                 data = await res.json();
                             if (data.error) {
-                                alert(`Key Verification Failed: ${data.error.error}\n\nPlease generate a key properly configured with 'battlestats' and 'log' access.`);
+                                bbglError(`Key Verification Failed: ${tornKeyErrorText(data)}`);
                                 isb.style.color = '';
                                 isb.innerText = 'START TRACKING';
                                 isb.disabled = false;
@@ -17341,7 +17376,7 @@ const BestGymController = {
                             // The choice modal's buttons handle switchView('ledger') themselves.
                             openBackfillChoiceModal();
                         } catch (e) {
-                            alert("Network error during verification.");
+                            bbglError(MSG_KEY_NETWORK_ERROR);
                             isb.style.color = '';
                             isb.innerText = 'START TRACKING';
                             isb.disabled = false;
@@ -17350,7 +17385,7 @@ const BestGymController = {
                     const cb = wv.querySelector('#init-create-api-btn');
                     if (cb) cb.onclick = function() {
                         this.blur();
-                        window.open('https://www.torn.com/preferences.php#tab=api?step=addNewKey&user=faction,battlestats,log&faction=rankedwars&logIds=54,50,23,52,56,80,6&title=BigBlackGymLog', '_blank');
+                        window.open('https://www.torn.com/preferences.php#tab=api?step=addNewKey&user=basic,battlestats,log&faction=rankedwars&logIds=54,50,23,6,52,56,3&title=BigBlackGymLog', '_blank');
                     };
                     const rib = wv.querySelector('#init-returning-import-btn'),
                         rif = wv.querySelector('#init-import-file');
@@ -18189,7 +18224,7 @@ const BestGymController = {
                 const t = await navigator.clipboard.readText();
                 if (t) ai.value = t.trim();
             } catch (e) {
-                alert("Clipboard access denied. Please paste manually.");
+                bbglError(MSG_CLIPBOARD_DENIED);
             }
         };
         const ub = get('updt-settings-btn');
@@ -18197,7 +18232,7 @@ const BestGymController = {
             this.blur();
             const v = ai.value.trim();
             if (!/^[a-zA-Z0-9]{16}$/.test(v)) {
-                alert("Invalid Format.\nA Torn API Key must be exactly 16 alphanumeric characters.");
+                bbglError(MSG_KEY_FORMAT_INVALID);
                 return;
             }
             const ot = ub.innerText;
@@ -18206,7 +18241,7 @@ const BestGymController = {
                 const res = await fetch(`https://api.torn.com/user/?selections=battlestats,log&log=5300&key=${v}`),
                     data = await res.json();
                 if (data.error) {
-                    alert(`Key Verification Failed: ${data.error.error}\n\nPlease generate a key properly configured with 'battlestats' and 'log' access.`);
+                    bbglError(`Key Verification Failed: ${tornKeyErrorText(data)}`);
                     ub.innerText = ot;
                     return;
                 }
@@ -18223,7 +18258,7 @@ const BestGymController = {
                     ub.innerText = ot;
                 }, 2000);
             } catch (e) {
-                alert("Network error during verification.");
+                bbglError(MSG_KEY_NETWORK_ERROR);
                 ub.innerText = ot;
             }
         };
@@ -18245,7 +18280,7 @@ const BestGymController = {
         const crb = get('create-api-btn');
         if (crb) crb.onclick = function() {
             this.blur();
-            window.open('https://www.torn.com/preferences.php#tab=api?step=addNewKey&user=faction,battlestats,log&faction=rankedwars&logIds=54,50,23,52,56,80,6&title=BigBlackGymLog', '_blank');
+            window.open('https://www.torn.com/preferences.php#tab=api?step=addNewKey&user=basic,battlestats,log&faction=rankedwars&logIds=54,50,23,6,52,56,3&title=BigBlackGymLog', '_blank');
         };
         const rb = get('refresh-log-btn');
         if (rb) rb.onclick = function() {
@@ -18660,7 +18695,9 @@ const BestGymController = {
             _tY = 0,
             _tTimer = null,
             _scrubMode = false,
-            _scrubMoveBound = null;
+            _scrubMoveBound = null,
+            _toolbarTipTimer = null;
+        const _TOOLBAR_TOGGLE_IDS = new Set(['bbgl-ledger-toggle', 'bbgl-graph-toggle', 'bbgl-achievements-toggle', 'bbgl-sticker-toggle']);
         const _onScrubMove = (e) => {
             if (!_scrubMode) return;
             if (e.cancelable) e.preventDefault();
@@ -18780,7 +18817,29 @@ const BestGymController = {
                 return;
             }
             const t = TooltipController.resolve(e.target);
-            if (t) {
+            // The footer tab performs an immediate action on tap (opens the panel), so it
+            // shouldn't participate in the tap-to-show/tap-to-hide tooltip toggle below —
+            // its tooltip should only ever appear on real :hover.
+            if (t && _TOOLBAR_TOGGLE_IDS.has(t.id)) {
+                // These switch views on tap (like the footer tab), but unlike the footer tab
+                // they're tapped repeatedly in a row while browsing views, so a brief 1s
+                // auto-dismissing tooltip (rather than none at all) confirms what was just
+                // tapped without lingering indefinitely like the generic toggle below.
+                if (_toolbarTipTimer) {
+                    clearTimeout(_toolbarTipTimer);
+                    _toolbarTipTimer = null;
+                }
+                const txt = t.getAttribute('data-tooltip'),
+                    h = t.getAttribute('data-tooltip-html');
+                if (h || txt) {
+                    TooltipController.currentTarget = t;
+                    TooltipController.show(h || '<div style="text-align:center; color:#ddd;">' + txt + '</div>', t.getBoundingClientRect());
+                    _toolbarTipTimer = setTimeout(() => {
+                        _toolbarTipTimer = null;
+                        if (TooltipController.currentTarget === t) TooltipController.hide();
+                    }, 500);
+                }
+            } else if (t && t.id !== 'bbgl-gym-tab') {
                 const h = t.getAttribute('data-tooltip-html'),
                     txt = t.getAttribute('data-tooltip');
                 if (h) {
@@ -19073,6 +19132,19 @@ const BestGymController = {
         return buildDevSection('Onboarding', [togglePrivacyBtn]);
     }
 
+    // ─── Sidebar section ────────────────────────────────────────────────────
+    function buildSidebarSection() {
+        const notifBtn = buildDevButton('Toggle Sidebar Notif', () => {
+            const ids = [SB_DESKTOP.id, SB_MOBILE.id, SB_FLYOUT.id];
+            const anyActive = ids.some(id => {
+                const el = document.getElementById(id);
+                return el && el.classList.contains('bbgl-sb-notif');
+            });
+            syncChangelogNotif(!anyActive);
+        });
+        return buildDevSection('Sidebar', [notifBtn]);
+    }
+
     // ─── Reset section ──────────────────────────────────────────────────────
     function buildResetSection() {
         const factoryResetBtn = buildDevButton('DEV: FACTORY RESET', () => {
@@ -19220,6 +19292,7 @@ const BestGymController = {
         w.appendChild(buildApiCounterSection());
         w.appendChild(buildTriggersSection());
         w.appendChild(buildOnboardingSection());
+        w.appendChild(buildSidebarSection());
         w.appendChild(buildResetSection());
 
         consoleOverlay = buildConsoleOverlay();

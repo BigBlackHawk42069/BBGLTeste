@@ -148,6 +148,19 @@
         return buildDevSection('Onboarding', [togglePrivacyBtn]);
     }
 
+    // ─── Sidebar section ────────────────────────────────────────────────────
+    function buildSidebarSection() {
+        const notifBtn = buildDevButton('Toggle Sidebar Notif', () => {
+            const ids = [SB_DESKTOP.id, SB_MOBILE.id, SB_FLYOUT.id];
+            const anyActive = ids.some(id => {
+                const el = document.getElementById(id);
+                return el && el.classList.contains('bbgl-sb-notif');
+            });
+            syncChangelogNotif(!anyActive);
+        });
+        return buildDevSection('Sidebar', [notifBtn]);
+    }
+
     // ─── Reset section ──────────────────────────────────────────────────────
     function buildResetSection() {
         const factoryResetBtn = buildDevButton('DEV: FACTORY RESET', () => {
@@ -295,6 +308,7 @@
         w.appendChild(buildApiCounterSection());
         w.appendChild(buildTriggersSection());
         w.appendChild(buildOnboardingSection());
+        w.appendChild(buildSidebarSection());
         w.appendChild(buildResetSection());
 
         consoleOverlay = buildConsoleOverlay();
