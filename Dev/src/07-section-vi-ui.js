@@ -718,12 +718,12 @@
 
             while (runtime._lastLevelExp < runtime._targetLevelExp) {
                 const currentProg = forcedNextTier !== null
-                    ? { atrophy: forcedNextTier, level: 1, expInLevel: 0, expToNext: computeLevelExpCost(1, forcedNextTier) }
+                    ? { atrophy: forcedNextTier, level: LEVEL_ATRO_START[forcedNextTier], expInLevel: 0, expToNext: computeLevelExpCost(LEVEL_ATRO_START[forcedNextTier], forcedNextTier) }
                     : calculateLevelProgress(runtime._lastLevelExp);
                 forcedNextTier = null;
                 const targetProg = calculateLevelProgress(runtime._targetLevelExp);
-                const currentRank = currentProg.atrophy * 100 + currentProg.level;
-                const targetRank = targetProg.atrophy * 100 + targetProg.level;
+                const currentRank = currentProg.atrophy * 1000 + (currentProg.level - LEVEL_ATRO_START[currentProg.atrophy]);
+                const targetRank = targetProg.atrophy * 1000 + (targetProg.level - LEVEL_ATRO_START[targetProg.atrophy]);
 
                 if (currentRank < targetRank && currentProg.level >= 100 && currentProg.atrophy < 2) {
                     // Already resting at a tier-complete Lv 100 (e.g. a dev/testing snap) with
@@ -820,15 +820,15 @@
         if (!userConfig.animations) {
             bars.forEach(b => {
                 b.container.dataset.atrophy = toAtrophy;
-                b.container.dataset.level = 1;
-                b.num.textContent = 'Lv 1';
+                b.container.dataset.level = LEVEL_ATRO_START[toAtrophy];
+                b.num.textContent = 'Lv ' + LEVEL_ATRO_START[toAtrophy];
                 b.fill.style.transition = 'none';
                 b.fill.style.width = '0%';
                 b.fill.classList.remove('level-full');
                 void b.fill.offsetWidth;
                 b.fill.style.transition = '';
             });
-            if (dom.panel) { dom.panel.dataset.atrophy = toAtrophy; dom.panel.dataset.level = 1; }
+            if (dom.panel) { dom.panel.dataset.atrophy = toAtrophy; dom.panel.dataset.level = LEVEL_ATRO_START[toAtrophy]; }
             return;
         }
 
@@ -852,15 +852,15 @@
 
         bars.forEach(b => {
             b.container.classList.remove('bbgl-crown-rise', 'bbgl-atrophied-flash');
-            b.container.dataset.level = 1;
-            b.num.textContent = 'Lv 1';
+            b.container.dataset.level = LEVEL_ATRO_START[toAtrophy];
+            b.num.textContent = 'Lv ' + LEVEL_ATRO_START[toAtrophy];
             b.fill.style.transition = 'none';
             b.fill.style.width = '0%';
             b.fill.classList.remove('level-full');
             void b.fill.offsetWidth;
             b.fill.style.transition = '';
         });
-        if (dom.panel) dom.panel.dataset.level = 1;
+        if (dom.panel) dom.panel.dataset.level = LEVEL_ATRO_START[toAtrophy];
     }
 
     function renderStats(sl, rawLbl) {

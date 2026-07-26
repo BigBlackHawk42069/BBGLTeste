@@ -442,20 +442,26 @@
     }
 
     // ─── LEVELING MATH ENGINE ────────────────────────────────────────────────
-    // Two straight-line ramps (0-50% of levels to 182 EXP, 50-70% to 289 EXP), then a power-4.5
-    // curve from 70% to level 99 (400 EXP). Floor: 30 EXP | P0 Peak: 400 EXP.
-    // Atrophy multipliers: ×1.75 (P1) and ×3.00 (P2).
-    const LEVEL_FLOOR = 30;
+    // Two straight-line ramps (0-25% of levels to 126 EXP, 25-80% to 250 EXP), then a power-3.5
+    // curve from 80% to the level-99→100 step (400 EXP). Floor: 25 EXP | P0 Peak: 400 EXP.
+    // Atrophy multipliers: ×1.75 (P1) and ×2.50 (P2).
+    // Every atrophy tier caps at the same literal level 100, but starts somewhere different —
+    // later tiers are genuinely longer climbs (more paid level-ups), not just costlier per level.
+    const LEVEL_FLOOR = 25;
     const LEVEL_P0_MAX = 400;
-    const LEVEL_ATRO_MULT = [1, 1.75, 3.00];
-    const LEVEL_STEP1_END = 0.50;
-    const LEVEL_STEP1_VAL = 182;
-    const LEVEL_STEP2_END = 0.70;
-    const LEVEL_STEP2_VAL = 289;
-    const LEVEL_TAIL_POWER = 4.50;
+    const LEVEL_ATRO_MULT = [1, 1.75, 2.50];
+    const LEVEL_ATRO_START = [0, -1, -10];
+    const LEVEL_CAP = 100;
+    const LEVEL_STEP1_END = 0.25;
+    const LEVEL_STEP1_VAL = 126;
+    const LEVEL_STEP2_END = 0.80;
+    const LEVEL_STEP2_VAL = 250;
+    const LEVEL_TAIL_POWER = 3.50;
 
+    // level here is the level being left (cost to advance level -> level+1).
     function computeLevelExpCost(level, atrophy) {
-        const t = (level - 1) / 98;
+        const start = LEVEL_ATRO_START[atrophy];
+        const t = (level - start) / (LEVEL_CAP - 1 - start);
         const val1 = (LEVEL_STEP1_VAL - LEVEL_FLOOR) / (LEVEL_P0_MAX - LEVEL_FLOOR);
         const val2 = (LEVEL_STEP2_VAL - LEVEL_FLOOR) / (LEVEL_P0_MAX - LEVEL_FLOOR);
         let frac;
@@ -474,7 +480,7 @@
     // Pre-compute the total EXP required to finish each atrophy stage.
     const LEVEL_ATRO_BUDGETS = [0, 1, 2].map(a => {
         let s = 0;
-        for (let lv = 1; lv <= 99; lv++) s += computeLevelExpCost(lv, a);
+        for (let lv = LEVEL_ATRO_START[a]; lv < LEVEL_CAP; lv++) s += computeLevelExpCost(lv, a);
         return s;
     });
 
@@ -484,50 +490,69 @@
         for (let a = 0; a < 3; a++) {
             const budget = LEVEL_ATRO_BUDGETS[a];
             if (remaining < budget) { atrophy = a; break; }
-            if (remaining === budget && a < 2) return { atrophy: a, level: 100, expInLevel: 0, expToNext: 0 };
+            if (remaining === budget && a < 2) return { atrophy: a, level: LEVEL_CAP, expInLevel: 0, expToNext: 0 };
             remaining -= budget;
             atrophy = a + 1;
         }
-        if (atrophy >= 3) return { atrophy: 2, level: 100, expInLevel: 0, expToNext: 0 };
-        let level = 1;
-        for (let lv = 1; lv <= 99; lv++) {
+        if (atrophy >= 3) return { atrophy: 2, level: LEVEL_CAP, expInLevel: 0, expToNext: 0 };
+        let level = LEVEL_ATRO_START[atrophy];
+        for (let lv = LEVEL_ATRO_START[atrophy]; lv < LEVEL_CAP; lv++) {
             const cost = computeLevelExpCost(lv, atrophy);
             if (remaining < cost) { level = lv; break; }
             remaining -= cost;
             level = lv + 1;
         }
-        const expInLevel = level <= 99 ? remaining : 0;
-        const expToNext = level <= 99 ? computeLevelExpCost(level, atrophy) : 0;
+        const expInLevel = level < LEVEL_CAP ? remaining : 0;
+        const expToNext = level < LEVEL_CAP ? computeLevelExpCost(level, atrophy) : 0;
         return { atrophy, level, expInLevel, expToNext };
     }
 
-    // Atrophy-tier flavor title, working up to "Fully Bricked" at max level in the final tier.
-    const ATROPHY_TITLES = ['Wet Cement', 'Partly Bricked', 'Half Bricked'];
+    // Level-band flavor titles: six bands per atrophy tier, walking a raw-clay-to-fired-brick
+    // metaphor. Columns are [atrophy0, atrophy1, atrophy2] — same band, escalating intensity per
+    // tier. Bands key off the raw level number directly: negative pre-zero levels (atrophy 1/2's
+    // earlier start) just fall into band 1 via its <= comparison, and the level-69 easter egg
+    // lands on the literal displayed "69" for every atrophy tier regardless of where it started.
+    // Level 100 is the universal finish line, but only atrophy 2 gets "Fully Bricked" — atrophy
+    // 0/1 auto-roll into the next tier, so they keep band 6's capstone title instead.
+    const LEVEL_TITLE_BANDS = [
+        { max: 19, titles: ['Dry Clay', 'Parched Clay', 'Cracked Clay'] },
+        { max: 39, titles: ['Moistened Clay', 'Saturated Clay', 'Dripping Wet Clay'] },
+        { max: 68, titles: ['Hand-Jerked Clay', 'Foot-Pumped Clay', 'Vacuum-Milked Clay'] },
+        { max: 79, titles: ['Block-Molded Clay', 'Block-Pressed Clay', 'Block-Cut Clay'] },
+        { max: 89, titles: ['Pit-Fired Clay', 'Scove-Fired Clay', 'Kiln-Fired Clay'] },
+        { max: 99, titles: ['Half-Bricked', 'Mostly Bricked', 'Competently Bricked'] }
+    ];
+    const LEVEL_TITLE_EASTER_EGG_LEVEL = 69;
+    const LEVEL_TITLE_EASTER_EGG = ['Nice ;)', 'Really Nice ;)', 'Super Nice ;)'];
 
     function atrophyTitle(atrophy, level) {
         if (atrophy >= 2 && level >= 100) return 'Fully Bricked';
-        return ATROPHY_TITLES[atrophy] || ATROPHY_TITLES[0];
+        if (level === LEVEL_TITLE_EASTER_EGG_LEVEL) return LEVEL_TITLE_EASTER_EGG[atrophy] || LEVEL_TITLE_EASTER_EGG[0];
+        const band = LEVEL_TITLE_BANDS.find(b => level <= b.max) || LEVEL_TITLE_BANDS[LEVEL_TITLE_BANDS.length - 1];
+        return band.titles[atrophy] || band.titles[0];
     }
 
     // Real-time daily EXP for the leveling bar (NOT the weekly progress bar).
-    // Scaling tiers: 0.20/E (0-1000), 0.25/E (1001-1500), 0.30/E (1501+). +50 flat at 2000E (diamond).
-    // HJ days: burst energy (≤1000E) earns at 0.30/E; extra E above continues in normal scaling bands.
+    // Scaling tiers: 0.175/E (0-1000), 0.20/E (1001-1500), 0.225/E (1501+). No diamond flat bonus.
+    // HJ days: burst energy (≤1000E) earns at 0.25/E; extra E above continues in normal scaling bands.
+    const LEVEL_RATE_BASE = 0.175;
+    const LEVEL_RATE_GREEN = 0.20;
+    const LEVEL_RATE_GOLD = 0.225;
+    const LEVEL_RATE_HJ_BURST = 0.25;
     function computeDailyLevelExp(eSpent, hasTrainLog, isHJ = false) {
         if (!hasTrainLog) return 0;
         if (isHJ) {
             const hjE    = Math.min(eSpent, 1000);
             const extraE = Math.max(eSpent - 1000, 0);
-            const hjBase = hjE * 0.30;
-            const t2     = Math.min(extraE, 500) * 0.25;
-            const t3     = Math.max(extraE - 500, 0) * 0.30;
-            const diamond = eSpent >= 2000 ? 50 : 0;
-            return Math.round(hjBase + t2 + t3 + diamond);
+            const hjBase = hjE * LEVEL_RATE_HJ_BURST;
+            const t2     = Math.min(extraE, 500) * LEVEL_RATE_GREEN;
+            const t3     = Math.max(extraE - 500, 0) * LEVEL_RATE_GOLD;
+            return Math.round(hjBase + t2 + t3);
         }
-        const t1     = Math.min(eSpent, 1000) * 0.20;
-        const t2     = Math.min(Math.max(eSpent - 1000, 0), 500) * 0.25;
-        const t3     = Math.max(eSpent - 1500, 0) * 0.30;
-        const diamond = eSpent >= 2000 ? 50 : 0;
-        return Math.round(t1 + t2 + t3 + diamond);
+        const t1 = Math.min(eSpent, 1000) * LEVEL_RATE_BASE;
+        const t2 = Math.min(Math.max(eSpent - 1000, 0), 500) * LEVEL_RATE_GREEN;
+        const t3 = Math.max(eSpent - 1500, 0) * LEVEL_RATE_GOLD;
+        return Math.round(t1 + t2 + t3);
     }
     // ─────────────────────────────────────────────────────────────────────────
 

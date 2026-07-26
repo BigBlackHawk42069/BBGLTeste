@@ -1,5 +1,16 @@
 # Big Black Gym Log - Testing Phase Changelog
 
+Version 0.9.92 - Pending
+
+### New Features:
+- **Level-Band Title System**: Replaced the single flat flavor title per Atrophy tier with a six-band system that changes the title as you climb through each tier instead of staying static for the whole run. Titles follow a raw-clay-to-fired-brick metaphor (Dry Clay → Moistened Clay → Hand-Jerked Clay → Block-Molded Clay → Pit-Fired Clay → the tier's capstone title), escalating in wording intensity per Atrophy tier, with a fixed easter-egg title at Level 69 on every tier. Only reaching Level 100 on the final Atrophy tier (A2) shows "Fully Bricked" — A0/A1 auto-roll into the next tier and keep their own capstone title instead.
+
+### Improvements:
+- **Leveling Curve Retune**: Retuned the per-level EXP cost curve (floor, peak, breakpoint percentages/values, and tail-curve steepness) and the daily EXP earn-rate tiers based on live feedback, replacing the placeholder values shipped in 0.9.90. Removed the flat Diamond-day EXP bonus and adjusted the Happy Jump burst rate.
+- **Per-Atrophy Level Range**: Reworked the leveling engine so every Atrophy tier now caps at the same Level 100, but starts at a different point (A0 at Level 0, A1 at Level -1, A2 at Level -10) — later Atrophy tiers are genuinely longer climbs (more paid level-ups) on top of their existing per-level cost multiplier, not just costlier per level.
+
+--------------------------------------------------
+
 Version 0.9.91 - Pending
 
 ### Bug Fixes:
