@@ -127,6 +127,120 @@
         return buildDevSection('Triggers', [trainRow, dayTierRow, lvlUpBtn, atroBtn]);
     }
 
+    // ─── Rank Preview section (atrophy/level-band testing) ─────────────────
+    // Overrides just the atrophyTitle() text lookup in renderLevelBar() (07-section-vi-ui.js) so
+    // every atrophy/level-band combination can be previewed without real EXP. Gated behind
+    // runtime.devMode at the read site, and this whole file is stripped from release builds.
+    function buildRankPreviewSection() {
+        const rowStyle = 'display:flex;gap:6px;';
+        const selectStyle = 'flex:1;background:#333;color:#fff;border:1px solid #666;border-radius:4px;padding:5px 6px;font-family:sans-serif;font-size:12px;';
+
+        const atrophySelect = document.createElement('select');
+        atrophySelect.style.cssText = selectStyle;
+        [0, 1, 2].forEach(a => {
+            const opt = document.createElement('option');
+            opt.value = String(a);
+            opt.textContent = `Atrophy ${a}`;
+            atrophySelect.appendChild(opt);
+        });
+
+        const levelInput = document.createElement('input');
+        levelInput.type = 'number';
+        levelInput.min = '-10';
+        levelInput.max = '100';
+        levelInput.step = '1';
+        levelInput.value = '0';
+        levelInput.style.cssText = inputStyle;
+
+        function applyOverride() {
+            let lvl = parseInt(levelInput.value, 10);
+            if (!Number.isFinite(lvl)) lvl = 0;
+            lvl = Math.min(100, Math.max(-10, lvl));
+            levelInput.value = lvl;
+            runtime._devRankOverride = { atrophy: parseInt(atrophySelect.value, 10), level: lvl };
+            const total = typeof getLiveLevelExp === 'function' ? getLiveLevelExp() : 0;
+            if (typeof getLevelBars === 'function' && typeof renderLevelBar === 'function') {
+                getLevelBars().forEach(b => renderLevelBar(b, total));
+            }
+        }
+        atrophySelect.addEventListener('change', applyOverride);
+        levelInput.addEventListener('change', applyOverride);
+
+        const row = document.createElement('div');
+        row.style.cssText = rowStyle;
+        row.appendChild(atrophySelect);
+        row.appendChild(levelInput);
+
+        const clearBtn = buildDevButton('Clear Override', () => {
+            runtime._devRankOverride = null;
+            const total = typeof getLiveLevelExp === 'function' ? getLiveLevelExp() : 0;
+            if (typeof getLevelBars === 'function' && typeof renderLevelBar === 'function') {
+                getLevelBars().forEach(b => renderLevelBar(b, total));
+            }
+        });
+
+        return buildDevSection('Rank Preview', [row, clearBtn]);
+    }
+
+    // ─── Title Preview section (stat-title phase/combo testing) ────────────
+    // Overrides getLiveStatTitleState() (07-section-vi-ui.js) so every phase/primary/secondary
+    // combination can be previewed on demand without needing real training history to produce it.
+    // Gated behind runtime.devMode at the read site, and this whole file is stripped from release
+    // builds, so this can never affect a real user.
+    function buildTitlePreviewSection() {
+        const rowStyle = 'display:flex;gap:6px;';
+        const selectStyle = 'flex:1;background:#333;color:#fff;border:1px solid #666;border-radius:4px;padding:5px 6px;font-family:sans-serif;font-size:12px;';
+
+        function buildSelect(options) {
+            const sel = document.createElement('select');
+            sel.style.cssText = selectStyle;
+            options.forEach(([value, label]) => {
+                const opt = document.createElement('option');
+                opt.value = value;
+                opt.textContent = label;
+                sel.appendChild(opt);
+            });
+            return sel;
+        }
+
+        const phaseSelect = buildSelect(STAT_TITLE_PHASE_THRESHOLDS.map((_, i) => [String(i), `Phase ${i}`]));
+        const primarySelect = buildSelect(STAT_KEYS.map(k => [k, achStatFull(k)]));
+        const secondarySelect = buildSelect(STAT_KEYS.map(k => [k, achStatFull(k)]));
+        secondarySelect.selectedIndex = 1; // default to a stat different from primary
+
+        function applyOverride() {
+            runtime._devTitleOverride = {
+                phase: parseInt(phaseSelect.value, 10),
+                primary: primarySelect.value,
+                secondary: secondarySelect.value
+            };
+            const total = typeof getLiveLevelExp === 'function' ? getLiveLevelExp() : 0;
+            if (typeof getLevelBars === 'function' && typeof renderLevelBar === 'function') {
+                getLevelBars().forEach(b => renderLevelBar(b, total));
+            }
+        }
+        [phaseSelect, primarySelect, secondarySelect].forEach(sel => sel.addEventListener('change', applyOverride));
+
+        const phaseRow = document.createElement('div');
+        phaseRow.style.cssText = rowStyle;
+        phaseRow.appendChild(phaseSelect);
+
+        const statRow = document.createElement('div');
+        statRow.style.cssText = rowStyle;
+        statRow.appendChild(primarySelect);
+        statRow.appendChild(secondarySelect);
+
+        const clearBtn = buildDevButton('Clear Override', () => {
+            runtime._devTitleOverride = null;
+            const total = typeof getLiveLevelExp === 'function' ? getLiveLevelExp() : 0;
+            if (typeof getLevelBars === 'function' && typeof renderLevelBar === 'function') {
+                getLevelBars().forEach(b => renderLevelBar(b, total));
+            }
+        });
+
+        return buildDevSection('Title Preview', [phaseRow, statRow, clearBtn]);
+    }
+
     // ─── Onboarding section ─────────────────────────────────────────────────
     function buildOnboardingSection() {
         const togglePrivacyBtn = buildDevButton('Toggle Onboarding Mode', () => {
@@ -307,6 +421,8 @@
 
         w.appendChild(buildApiCounterSection());
         w.appendChild(buildTriggersSection());
+        w.appendChild(buildRankPreviewSection());
+        w.appendChild(buildTitlePreviewSection());
         w.appendChild(buildOnboardingSection());
         w.appendChild(buildSidebarSection());
         w.appendChild(buildResetSection());

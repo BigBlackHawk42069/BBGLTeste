@@ -532,27 +532,174 @@
         return band.titles[atrophy] || band.titles[0];
     }
 
+    // ─── Stat-Ratio Titles ──────────────────────────────────────────────────
+    // Second, independent title system appended after atrophyTitle() above (e.g. "Half-Bricked
+    // Beastly Tank"). Does not reset with atrophy — progresses on its own cumulative-E track.
+    // Which 2 of the 4 battle stats currently rank highest picks the words (the higher stat leads
+    // in its adjective form, the other follows in its noun form); a separate 10-tier phase ladder
+    // (keyed to cumulative E) escalates each stat's own word ladder in step. Full design: Dev/BBGL
+    // Working Plan - Titles & Level Curve.md, Part 2.
+
+    // Cumulative-E thresholds, index = phase. Phase 0 is the origin/basic title (0E).
+    const STAT_TITLE_PHASE_THRESHOLDS = [0, 10000, 25000, 45000, 70000, 105000, 155000, 230000, 330000, 455000, 605000];
+
+    // Combo re-check cadence and stability requirement — see advanceStatTitleState() below.
+    const STAT_TITLE_CHECKPOINT_E = 10000;
+    const STAT_TITLE_STABILITY_DAYS = 7;
+
+    // One evolving noun+adjective ladder per stat, indexed by phase (0-10). Phases 6-10 are
+    // `null` until those words are decided — composeStatTitle() clamps down to the highest
+    // defined phase rather than ever rendering a null/undefined word.
+    const STAT_TITLE_WORDS = {
+        str: [
+            { noun: 'Limp', adj: 'Noodle' },
+            { noun: 'Fist', adj: 'Fisting' },
+            { noun: 'Pounder', adj: 'Pounding' },
+            { noun: 'Grinder', adj: 'Grinding' },
+            { noun: 'Banger', adj: 'Banging' },
+            { noun: 'Ripper', adj: 'Ripping' },
+            { noun: 'Goon', adj: 'Goonish' },
+            null, null, null, null
+        ],
+        def: [
+            { noun: 'Soft', adj: 'Softie' },
+            { noun: 'Blister', adj: 'Blistered' },
+            { noun: 'Flesh', adj: 'Fleshy' },
+            { noun: 'Callous', adj: 'Calloused' },
+            { noun: 'Leather', adj: 'Leathery' },
+            { noun: 'Firmness', adj: 'Firm' },
+            { noun: 'Slab', adj: 'Rock-Hard' },
+            // Boulder/Impenetrable pending — parked, not yet assigned a phase.
+            null, null, null, null
+        ],
+        spd: [
+            { noun: 'Blindman', adj: 'Blind' },
+            { noun: 'Peeper', adj: 'Peeping' },
+            { noun: 'Lurker', adj: 'Lurking' },
+            { noun: 'Prowler', adj: 'Prowling' },
+            { noun: 'Predator', adj: 'Predatory' },
+            { noun: 'Longshot', adj: 'Longshot' },
+            null, null, null, null, null
+        ],
+        dex: [
+            { noun: 'Noise', adj: 'Noisy' },
+            { noun: 'Silence', adj: 'Silent' },
+            { noun: 'Creeper', adj: 'Creeping' },
+            { noun: 'Squirmer', adj: 'Squirming' },
+            { noun: 'Slippery', adj: 'Glaze' },
+            { noun: 'Rascally', adj: 'Rascal' },
+            { noun: 'Ambiguous', adj: 'Ambiguity' },
+            null, null, null, null
+        ]
+    };
+
+    // Highest phase index for which cumulativeE clears the threshold.
+    function statTitlePhaseForE(cumulativeE) {
+        for (let i = STAT_TITLE_PHASE_THRESHOLDS.length - 1; i >= 0; i--) {
+            if (cumulativeE >= STAT_TITLE_PHASE_THRESHOLDS[i]) return i;
+        }
+        return 0;
+    }
+
+    // Top 2 of the 4 battle stats by raw value, descending. Ties break on STAT_KEYS order
+    // (str > def > spd > dex) so the result is always deterministic. STAT_KEYS is defined later
+    // in 06-section-v-logic.js — safe to reference here since this only runs inside a function
+    // body, well after the whole IIFE has finished its one top-to-bottom definition pass.
+    function rankTopTwoStats(breakdown) {
+        return [...STAT_KEYS]
+            .sort((a, b) => (breakdown[b] || 0) - (breakdown[a] || 0))
+            .slice(0, 2);
+    }
+
+    function samePair(a, b) {
+        return !!a && !!b && a[0] === b[0] && a[1] === b[1];
+    }
+
+    // pair = [leadStat, followStat], already ordered by whichever raw value was higher at the
+    // time this pair was locked in (see advanceStatTitleState). Lead renders in its adjective
+    // form, follow in its noun form. Clamps phase down to the highest index where both stats in
+    // the pair have words defined, so Phases 6-10 being null just means the title stops
+    // escalating there until those words are filled in — never renders a null/undefined word.
+    function composeStatTitle(pair, phase) {
+        if (!pair) return '';
+        let p = Math.max(0, Math.min(phase, STAT_TITLE_PHASE_THRESHOLDS.length - 1));
+        while (p > 0 && (!STAT_TITLE_WORDS[pair[0]][p] || !STAT_TITLE_WORDS[pair[1]][p])) p--;
+        const lead = STAT_TITLE_WORDS[pair[0]][p];
+        const follow = STAT_TITLE_WORDS[pair[1]][p];
+        if (!lead || !follow) return '';
+        return `${lead.adj} ${follow.noun}`;
+    }
+
+    // The single "day-step" for the stat-title system, mirroring computeDailyLevelExp()'s role
+    // for EXP: pure, takes the state as of the previous day plus one day object, returns a NEW
+    // state (never mutates `state`). Called once per historical day from
+    // DataController.buildProgressionCache() and once more for "today" from
+    // getLiveStatTitleState() — the debounce/stability logic must not be duplicated between
+    // those two call sites, hence living here as one shared function.
+    //
+    // Mechanism: the actual top-2 ranking is tracked continuously as `candidatePair`, reset
+    // (with `candidateSinceDate`) whenever it changes. The displayed pair only updates when BOTH:
+    // (1) a new 10,000E cumulative checkpoint has been crossed since the last check, and (2) the
+    // candidate has held continuously (calendar days, not entry count — the timeline is sparse on
+    // rest days) for at least STAT_TITLE_STABILITY_DAYS. Missing a checkpoint's window just
+    // defers the swap to the next one — intentional lag, not a bug (see working-plan doc).
+    function advanceStatTitleState(state, day) {
+        const eSpent = (day.eSpent && day.eSpent.total) || 0;
+        const cumulativeE = (state ? state.cumulativeE : 0) + eSpent;
+        const actualPair = rankTopTwoStats(day.endBreakdown || {});
+
+        let candidatePair = state ? state.candidatePair : null;
+        let candidateSinceDate = state ? state.candidateSinceDate : null;
+        if (!samePair(candidatePair, actualPair)) {
+            candidatePair = actualPair;
+            candidateSinceDate = day.date;
+        }
+
+        let displayedPair = state ? state.displayedPair : null;
+        let lastCheckpointFloor = state ? state.lastCheckpointFloor : 0;
+        if (!state) {
+            // First-ever day: seed immediately, no stability gate (nothing to debounce against yet).
+            displayedPair = actualPair;
+            lastCheckpointFloor = Math.floor(cumulativeE / STAT_TITLE_CHECKPOINT_E);
+        } else {
+            const floor = Math.floor(cumulativeE / STAT_TITLE_CHECKPOINT_E);
+            if (floor > lastCheckpointFloor) {
+                lastCheckpointFloor = floor;
+                const daysSince = Math.floor((Formatter.parse(day.date) - Formatter.parse(candidateSinceDate)) / 86400000);
+                if (!samePair(candidatePair, displayedPair) && daysSince >= STAT_TITLE_STABILITY_DAYS) {
+                    displayedPair = candidatePair;
+                }
+            }
+        }
+
+        return { cumulativeE, candidatePair, candidateSinceDate, displayedPair, lastCheckpointFloor };
+    }
+
     // Real-time daily EXP for the leveling bar (NOT the weekly progress bar).
-    // Scaling tiers: 0.175/E (0-1000), 0.20/E (1001-1500), 0.225/E (1501+). No diamond flat bonus.
-    // HJ days: burst energy (≤1000E) earns at 0.25/E; extra E above continues in normal scaling bands.
+    // Scaling tiers: 0.175/E (0-1000), 0.20/E (1001-1500), 0.050/E (1501+) — diminishing returns
+    // past Gold. Flat +100 bonus at 2,000E+ (Diamond) is the payoff for pushing all the way
+    // through the Gold+ slump rather than stopping partway. HJ days: burst energy (≤1000E) earns
+    // at 0.25/E; extra E above continues in normal scaling bands (including the Diamond bonus).
     const LEVEL_RATE_BASE = 0.175;
     const LEVEL_RATE_GREEN = 0.20;
-    const LEVEL_RATE_GOLD = 0.225;
+    const LEVEL_RATE_GOLD = 0.050;
     const LEVEL_RATE_HJ_BURST = 0.25;
+    const LEVEL_RATE_DIAMOND_BONUS = 100;
     function computeDailyLevelExp(eSpent, hasTrainLog, isHJ = false) {
         if (!hasTrainLog) return 0;
+        const diamondBonus = eSpent >= 2000 ? LEVEL_RATE_DIAMOND_BONUS : 0;
         if (isHJ) {
             const hjE    = Math.min(eSpent, 1000);
             const extraE = Math.max(eSpent - 1000, 0);
             const hjBase = hjE * LEVEL_RATE_HJ_BURST;
             const t2     = Math.min(extraE, 500) * LEVEL_RATE_GREEN;
             const t3     = Math.max(extraE - 500, 0) * LEVEL_RATE_GOLD;
-            return Math.round(hjBase + t2 + t3);
+            return Math.round(hjBase + t2 + t3 + diamondBonus);
         }
         const t1 = Math.min(eSpent, 1000) * LEVEL_RATE_BASE;
         const t2 = Math.min(Math.max(eSpent - 1000, 0), 500) * LEVEL_RATE_GREEN;
         const t3 = Math.max(eSpent - 1500, 0) * LEVEL_RATE_GOLD;
-        return Math.round(t1 + t2 + t3);
+        return Math.round(t1 + t2 + t3 + diamondBonus);
     }
     // ─────────────────────────────────────────────────────────────────────────
 

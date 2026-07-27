@@ -329,7 +329,10 @@
         _achCache: null,
         _achPage: 0,
         wasVersionWiped: false,
-        careerLevelExp: 0
+        careerLevelExp: 0,
+        statTitleState: null,
+        _devTitleOverride: null,
+        _devRankOverride: null
     };
     const _TAB_ID = Math.random().toString(36).slice(2);
     let _historyCache = null;

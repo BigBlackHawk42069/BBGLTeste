@@ -396,7 +396,10 @@
         _achCache: null,
         _achPage: 0,
         wasVersionWiped: false,
-        careerLevelExp: 0
+        careerLevelExp: 0,
+        statTitleState: null,
+        _devTitleOverride: null,
+        _devRankOverride: null
     };
     const _TAB_ID = Math.random().toString(36).slice(2);
     let _historyCache = null;
@@ -1057,27 +1060,170 @@
         return band.titles[atrophy] || band.titles[0];
     }
 
+    // ─── Stat-Ratio Titles ──────────────────────────────────────────────────
+    // Second, independent title system appended after atrophyTitle() above (e.g. "Half-Bricked
+    // Beastly Tank"). Does not reset with atrophy — progresses on its own cumulative-E track.
+    // Which 2 of the 4 battle stats currently rank highest picks the words (the higher stat leads
+    // in its adjective form, the other follows in its noun form); a separate 10-tier phase ladder
+    // (keyed to cumulative E) escalates each stat's own word ladder in step. Full design: Dev/BBGL
+    // Working Plan - Titles & Level Curve.md, Part 2.
+
+    // Cumulative-E thresholds, index = phase. Phase 0 is the origin/basic title (0E).
+    const STAT_TITLE_PHASE_THRESHOLDS = [0, 10000, 25000, 45000, 70000, 105000, 155000, 230000, 330000, 455000, 605000];
+
+    // Combo re-check cadence and stability requirement — see advanceStatTitleState() below.
+    const STAT_TITLE_CHECKPOINT_E = 10000;
+    const STAT_TITLE_STABILITY_DAYS = 7;
+
+    // One evolving noun+adjective ladder per stat, indexed by phase (0-10). Phases 6-10 are
+    // `null` until those words are decided — composeStatTitle() clamps down to the highest
+    // defined phase rather than ever rendering a null/undefined word.
+    const STAT_TITLE_WORDS = {
+        str: [
+            { noun: 'Goon', adj: 'Goonish' },
+            { noun: 'Fist', adj: 'Fisting' },
+            { noun: 'Pounder', adj: 'Pounding' },
+            { noun: 'Grinder', adj: 'Grinding' },
+            { noun: 'Banger', adj: 'Banging' },
+            { noun: 'Ripper', adj: 'Ripping' },
+            null, null, null, null, null
+        ],
+        def: [
+            { noun: 'Softie', adj: 'Flaccid' },
+            { noun: 'Blister', adj: 'Hardening' },
+            { noun: 'Firmness', adj: 'Firm' },
+            { noun: 'Callous', adj: 'Hardened' },
+            { noun: 'Rock', adj: 'Rock-Hard' },
+            { noun: 'Boulder', adj: 'Impenetrable' },
+            null, null, null, null, null
+        ],
+        spd: [
+            { noun: 'Blindman', adj: 'Blind' },
+            { noun: 'Peeper', adj: 'Peeping' },
+            { noun: 'Lurker', adj: 'Lurking' },
+            { noun: 'Prowler', adj: 'Prowling' },
+            { noun: 'Predator', adj: 'Predatory' },
+            { noun: 'Longshot', adj: 'Longshot' },
+            null, null, null, null, null
+        ],
+        dex: [
+            { noun: 'Noise', adj: 'Noisy' },
+            { noun: 'Silence', adj: 'Silent' },
+            { noun: 'Creeper', adj: 'Creeping' },
+            { noun: 'Squirmer', adj: 'Squirming' },
+            { noun: 'Rascal', adj: 'Slippery' },
+            { noun: 'Rogue', adj: 'Roguish' },
+            null, null, null, null, null
+        ]
+    };
+
+    // Highest phase index for which cumulativeE clears the threshold.
+    function statTitlePhaseForE(cumulativeE) {
+        for (let i = STAT_TITLE_PHASE_THRESHOLDS.length - 1; i >= 0; i--) {
+            if (cumulativeE >= STAT_TITLE_PHASE_THRESHOLDS[i]) return i;
+        }
+        return 0;
+    }
+
+    // Top 2 of the 4 battle stats by raw value, descending. Ties break on STAT_KEYS order
+    // (str > def > spd > dex) so the result is always deterministic. STAT_KEYS is defined later
+    // in 06-section-v-logic.js — safe to reference here since this only runs inside a function
+    // body, well after the whole IIFE has finished its one top-to-bottom definition pass.
+    function rankTopTwoStats(breakdown) {
+        return [...STAT_KEYS]
+            .sort((a, b) => (breakdown[b] || 0) - (breakdown[a] || 0))
+            .slice(0, 2);
+    }
+
+    function samePair(a, b) {
+        return !!a && !!b && a[0] === b[0] && a[1] === b[1];
+    }
+
+    // pair = [leadStat, followStat], already ordered by whichever raw value was higher at the
+    // time this pair was locked in (see advanceStatTitleState). Lead renders in its adjective
+    // form, follow in its noun form. Clamps phase down to the highest index where both stats in
+    // the pair have words defined, so Phases 6-10 being null just means the title stops
+    // escalating there until those words are filled in — never renders a null/undefined word.
+    function composeStatTitle(pair, phase) {
+        if (!pair) return '';
+        let p = Math.max(0, Math.min(phase, STAT_TITLE_PHASE_THRESHOLDS.length - 1));
+        while (p > 0 && (!STAT_TITLE_WORDS[pair[0]][p] || !STAT_TITLE_WORDS[pair[1]][p])) p--;
+        const lead = STAT_TITLE_WORDS[pair[0]][p];
+        const follow = STAT_TITLE_WORDS[pair[1]][p];
+        if (!lead || !follow) return '';
+        return `${lead.adj} ${follow.noun}`;
+    }
+
+    // The single "day-step" for the stat-title system, mirroring computeDailyLevelExp()'s role
+    // for EXP: pure, takes the state as of the previous day plus one day object, returns a NEW
+    // state (never mutates `state`). Called once per historical day from
+    // DataController.buildProgressionCache() and once more for "today" from
+    // getLiveStatTitleState() — the debounce/stability logic must not be duplicated between
+    // those two call sites, hence living here as one shared function.
+    //
+    // Mechanism: the actual top-2 ranking is tracked continuously as `candidatePair`, reset
+    // (with `candidateSinceDate`) whenever it changes. The displayed pair only updates when BOTH:
+    // (1) a new 10,000E cumulative checkpoint has been crossed since the last check, and (2) the
+    // candidate has held continuously (calendar days, not entry count — the timeline is sparse on
+    // rest days) for at least STAT_TITLE_STABILITY_DAYS. Missing a checkpoint's window just
+    // defers the swap to the next one — intentional lag, not a bug (see working-plan doc).
+    function advanceStatTitleState(state, day) {
+        const eSpent = (day.eSpent && day.eSpent.total) || 0;
+        const cumulativeE = (state ? state.cumulativeE : 0) + eSpent;
+        const actualPair = rankTopTwoStats(day.endBreakdown || {});
+
+        let candidatePair = state ? state.candidatePair : null;
+        let candidateSinceDate = state ? state.candidateSinceDate : null;
+        if (!samePair(candidatePair, actualPair)) {
+            candidatePair = actualPair;
+            candidateSinceDate = day.date;
+        }
+
+        let displayedPair = state ? state.displayedPair : null;
+        let lastCheckpointFloor = state ? state.lastCheckpointFloor : 0;
+        if (!state) {
+            // First-ever day: seed immediately, no stability gate (nothing to debounce against yet).
+            displayedPair = actualPair;
+            lastCheckpointFloor = Math.floor(cumulativeE / STAT_TITLE_CHECKPOINT_E);
+        } else {
+            const floor = Math.floor(cumulativeE / STAT_TITLE_CHECKPOINT_E);
+            if (floor > lastCheckpointFloor) {
+                lastCheckpointFloor = floor;
+                const daysSince = Math.floor((Formatter.parse(day.date) - Formatter.parse(candidateSinceDate)) / 86400000);
+                if (!samePair(candidatePair, displayedPair) && daysSince >= STAT_TITLE_STABILITY_DAYS) {
+                    displayedPair = candidatePair;
+                }
+            }
+        }
+
+        return { cumulativeE, candidatePair, candidateSinceDate, displayedPair, lastCheckpointFloor };
+    }
+
     // Real-time daily EXP for the leveling bar (NOT the weekly progress bar).
-    // Scaling tiers: 0.175/E (0-1000), 0.20/E (1001-1500), 0.225/E (1501+). No diamond flat bonus.
-    // HJ days: burst energy (≤1000E) earns at 0.25/E; extra E above continues in normal scaling bands.
+    // Scaling tiers: 0.175/E (0-1000), 0.20/E (1001-1500), 0.050/E (1501+) — diminishing returns
+    // past Gold. Flat +100 bonus at 2,000E+ (Diamond) is the payoff for pushing all the way
+    // through the Gold+ slump rather than stopping partway. HJ days: burst energy (≤1000E) earns
+    // at 0.25/E; extra E above continues in normal scaling bands (including the Diamond bonus).
     const LEVEL_RATE_BASE = 0.175;
     const LEVEL_RATE_GREEN = 0.20;
-    const LEVEL_RATE_GOLD = 0.225;
+    const LEVEL_RATE_GOLD = 0.050;
     const LEVEL_RATE_HJ_BURST = 0.25;
+    const LEVEL_RATE_DIAMOND_BONUS = 100;
     function computeDailyLevelExp(eSpent, hasTrainLog, isHJ = false) {
         if (!hasTrainLog) return 0;
+        const diamondBonus = eSpent >= 2000 ? LEVEL_RATE_DIAMOND_BONUS : 0;
         if (isHJ) {
             const hjE    = Math.min(eSpent, 1000);
             const extraE = Math.max(eSpent - 1000, 0);
             const hjBase = hjE * LEVEL_RATE_HJ_BURST;
             const t2     = Math.min(extraE, 500) * LEVEL_RATE_GREEN;
             const t3     = Math.max(extraE - 500, 0) * LEVEL_RATE_GOLD;
-            return Math.round(hjBase + t2 + t3);
+            return Math.round(hjBase + t2 + t3 + diamondBonus);
         }
         const t1 = Math.min(eSpent, 1000) * LEVEL_RATE_BASE;
         const t2 = Math.min(Math.max(eSpent - 1000, 0), 500) * LEVEL_RATE_GREEN;
         const t3 = Math.max(eSpent - 1500, 0) * LEVEL_RATE_GOLD;
-        return Math.round(t1 + t2 + t3);
+        return Math.round(t1 + t2 + t3 + diamondBonus);
     }
     // ─────────────────────────────────────────────────────────────────────────
 
@@ -2272,8 +2418,86 @@
                         font-weight: 400;
                     }
 
-                    #bbgl-tooltip i.bbgl-lvl-tip-title {
+                    #bbgl-tooltip i.bbgl-lvl-rank {
                         font-size: 13px;
+                    }
+
+                    #bbgl-tooltip i.bbgl-lvl-title {
+                        margin-top: 1px;
+                        font-size: 14px;
+                        font-weight: 700;
+                        font-style: normal;
+                        color: #ffcc44;
+                        text-shadow: 0 0 4px rgba(255, 204, 68, 0.5);
+                    }
+
+                    /* Title finish progression, Phase 0-10 — dull silver to iridescent diamond.
+                       Each phase only ever overrides color/text-shadow (or, at Phase 10, swaps to
+                       a clipped animated gradient) on top of the shared rule above. */
+                    #bbgl-tooltip i.bbgl-lvl-title[data-title-phase="0"] {
+                        color: #888888;
+                        text-shadow: none;
+                    }
+
+                    #bbgl-tooltip i.bbgl-lvl-title[data-title-phase="1"] {
+                        color: #9a9a9e;
+                        text-shadow: 0 0 2px rgba(255, 255, 255, 0.15);
+                    }
+
+                    #bbgl-tooltip i.bbgl-lvl-title[data-title-phase="2"] {
+                        color: #d4d4d8;
+                        text-shadow: 0 0 3px rgba(255, 255, 255, 0.4);
+                    }
+
+                    #bbgl-tooltip i.bbgl-lvl-title[data-title-phase="3"] {
+                        color: #b9c9ae;
+                        text-shadow: 0 0 3px rgba(200, 255, 200, 0.3);
+                    }
+
+                    #bbgl-tooltip i.bbgl-lvl-title[data-title-phase="4"] {
+                        color: #3fae54;
+                        text-shadow: 0 0 3px rgba(63, 174, 84, 0.4);
+                    }
+
+                    #bbgl-tooltip i.bbgl-lvl-title[data-title-phase="5"] {
+                        color: #39d35a;
+                        text-shadow: 0 0 4px rgba(57, 211, 90, 0.5);
+                    }
+
+                    #bbgl-tooltip i.bbgl-lvl-title[data-title-phase="6"] {
+                        color: #4dff85;
+                        text-shadow: 0 0 3px rgba(77, 255, 133, 0.7), 0 0 8px rgba(77, 255, 133, 0.35);
+                    }
+
+                    #bbgl-tooltip i.bbgl-lvl-title[data-title-phase="7"] {
+                        color: #c9d94a;
+                        text-shadow: 0 0 3px rgba(201, 217, 74, 0.6), 0 0 8px rgba(255, 204, 68, 0.3);
+                    }
+
+                    #bbgl-tooltip i.bbgl-lvl-title[data-title-phase="8"] {
+                        color: #ffcc44;
+                        text-shadow: 0 0 4px rgba(255, 204, 68, 0.5);
+                    }
+
+                    #bbgl-tooltip i.bbgl-lvl-title[data-title-phase="9"] {
+                        color: #ffe066;
+                        text-shadow: 0 0 4px rgba(255, 224, 102, 0.7), 0 0 10px rgba(255, 204, 68, 0.4);
+                    }
+
+                    #bbgl-tooltip i.bbgl-lvl-title[data-title-phase="10"] {
+                        background: linear-gradient(90deg, #ffffff, #66eaff, #ff8fd6, #ffe066, #66eaff, #ffffff);
+                        background-size: 400% 100%;
+                        -webkit-background-clip: text;
+                        background-clip: text;
+                        color: transparent;
+                        text-shadow: none;
+                        filter: drop-shadow(0 0 4px rgba(255, 255, 255, 0.5));
+                        animation: bbgl-title-iridescent 3s linear infinite;
+                    }
+
+                    @keyframes bbgl-title-iridescent {
+                        0% { background-position: 0% 50%; }
+                        100% { background-position: 400% 50%; }
                     }
 
                     .tt-header {
@@ -9280,6 +9504,11 @@ const DataController = {
         let unlockedCount = 1;
         let rouletteCounter = 0;
         let careerLevelExp = 0;
+        // Stat-ratio title state — same reward-gating scope as careerLevelExp below (skipped
+        // entirely in demo mode, respects installDateKey/rewardStartTs), replayed fresh from the
+        // full timeline on every cache rebuild rather than persisted to DB. See
+        // advanceStatTitleState() in 03-section-ii-utils.js for the per-day step logic.
+        let statTitleState = null;
         // Reward gating: stickers (and their unlock progression) only count from the install
         // week onward. Pre-install weeks still render their bar/day counts elsewhere, but earn
         // no stickers here. EXP uses a stricter gate: full days before the install day contribute
@@ -9309,6 +9538,7 @@ const DataController = {
                     const hasTrainLog = daySeries.some(s => s.type === 'gym');
                     const isHJ = (daySeries === day.series) ? hjDaySet.has(day.date) : findHappyJumps(daySeries).length > 0;
                     careerLevelExp += computeDailyLevelExp(e, hasTrainLog, isHJ);
+                    statTitleState = advanceStatTitleState(statTitleState, { date: day.date, endBreakdown: day.endBreakdown, eSpent: { total: e } });
                 });
             }
             if (wk >= todayWeekKey) return;
@@ -9350,6 +9580,7 @@ const DataController = {
         this._cache.featuredDays = featuredSet;
         this._cache.unlockedCount = unlockedCount;
         runtime.careerLevelExp = careerLevelExp;
+        runtime.statTitleState = statTitleState;
         if (!runtime.demoMode) {
             const existingStates = (_historyCache && _historyCache.meta && _historyCache.meta.stickers) ? _historyCache.meta.stickers : {};
             const freshStates = {};
@@ -9371,6 +9602,10 @@ const DataController = {
     getCareerLevelExp() {
         this.buildProgressionCache();
         return runtime.careerLevelExp || 0;
+    },
+    getStatTitleState() {
+        this.buildProgressionCache();
+        return runtime.statTitleState || null;
     },
     getUnlockedCount() {
         this.buildProgressionCache();
@@ -12530,6 +12765,7 @@ async function clearData() {
         runtime.apiCallTotal = 0;
         runtime.stickerSlots = [];
         runtime.careerLevelExp = 0;
+        runtime.statTitleState = null;
         runtime._lastLevelExp = undefined;
         runtime._targetLevelExp = undefined;
         runtime._isAnimatingLevel = false;
@@ -13307,31 +13543,55 @@ const BestGymController = {
         if (viewState.activeViewLabel === sl.label && calendarState.selectedLabel !== sl.label) runtime._pendingHistoryRestore = { sl, label: sl.label };
     }
 
+    // Today's live (not-yet-committed) training context — install-day sub-day filtering applied
+    // so only entries at/after the precise install moment count on the exact install day (mirrors
+    // buildProgressionCache()'s handling of past days, 06-section-v-logic.js). Returns zeros in
+    // demo mode or if there's no today data yet. Shared by getLiveLevelExp() and
+    // getLiveStatTitleState() so this filtering logic exists in exactly one place.
+    function getTodayTrainingContext() {
+        const h = getActiveHistory();
+        if (runtime.demoMode || !h || !h.today) return { todayE: 0, hasTrainLog: false, isHJ: false };
+        const today = Formatter.dateLogical();
+        const installDateKey = getInstallDateKey();
+        const rewardStartTs = (h.meta && h.meta.rewardStartDate) || null;
+        let todaySeries = h.today.series || [];
+        // On the exact install day, only entries at/after the precise install moment count —
+        // mirrors buildProgressionCache()'s handling of past days (06-section-v-logic.js).
+        // Without this, today's full eSpent.total (which can include pre-install-moment
+        // entries from the same calendar day) was being counted in full.
+        if (installDateKey && today === installDateKey && rewardStartTs) {
+            todaySeries = todaySeries.filter(s => s.ts >= rewardStartTs);
+        }
+        const todayE = (todaySeries === h.today.series && h.today.eSpent) ? (h.today.eSpent.total || 0) : todaySeries.filter(s => s.type === 'gym').reduce((sum, s) => sum + (s.cost || 0), 0);
+        const hasTrainLog = todaySeries.some(s => s.type === 'gym');
+        const { hjDaySet } = DataController.getHappyJumpData();
+        const isHJ = (todaySeries === h.today.series) ? hjDaySet.has(today) : findHappyJumps(todaySeries).length > 0;
+        return { todayE, hasTrainLog, isHJ };
+    }
+
     // career EXP + today's in-progress EXP — the live total both level bars display.
     function getLiveLevelExp() {
-        let totalExp = DataController.getCareerLevelExp();
-        if (!runtime.demoMode) {
-            const h = getActiveHistory();
-            if (h && h.today) {
-                const today = Formatter.dateLogical();
-                const installDateKey = getInstallDateKey();
-                const rewardStartTs = (h.meta && h.meta.rewardStartDate) || null;
-                let todaySeries = h.today.series || [];
-                // On the exact install day, only entries at/after the precise install moment count —
-                // mirrors buildProgressionCache()'s handling of past days (06-section-v-logic.js).
-                // Without this, today's full eSpent.total (which can include pre-install-moment
-                // entries from the same calendar day) was being counted in full.
-                if (installDateKey && today === installDateKey && rewardStartTs) {
-                    todaySeries = todaySeries.filter(s => s.ts >= rewardStartTs);
-                }
-                const todayE = (todaySeries === h.today.series && h.today.eSpent) ? (h.today.eSpent.total || 0) : todaySeries.filter(s => s.type === 'gym').reduce((sum, s) => sum + (s.cost || 0), 0);
-                const hasTrainLog = todaySeries.some(s => s.type === 'gym');
-                const { hjDaySet } = DataController.getHappyJumpData();
-                const isHJ = (todaySeries === h.today.series) ? hjDaySet.has(today) : findHappyJumps(todaySeries).length > 0;
-                totalExp += computeDailyLevelExp(todayE, hasTrainLog, isHJ);
-            }
+        const { todayE, hasTrainLog, isHJ } = getTodayTrainingContext();
+        return DataController.getCareerLevelExp() + computeDailyLevelExp(todayE, hasTrainLog, isHJ);
+    }
+
+    // Live stat-title state — layers today's not-yet-committed contribution on top of the cached
+    // as-of-yesterday state (DataController.getStatTitleState()) via one more call to the same
+    // advanceStatTitleState() step used for the historical replay, without mutating the cache.
+    function getLiveStatTitleState() {
+        // Dev-only preview override (11-section-x-devtools.js, stripped from release builds) —
+        // when active, short-circuits the real computed state entirely so every phase/stat
+        // combination can be previewed without needing real training history to produce it.
+        if (runtime.devMode && runtime._devTitleOverride) {
+            const { phase, primary, secondary } = runtime._devTitleOverride;
+            return { displayedPair: [primary, secondary], phase };
         }
-        return totalExp;
+        const cached = DataController.getStatTitleState();
+        const h = getActiveHistory();
+        const { todayE } = getTodayTrainingContext();
+        const endBreakdown = (h && h.today && h.today.endBreakdown) || {};
+        const live = advanceStatTitleState(cached, { date: Formatter.dateLogical(), endBreakdown, eSpent: { total: todayE } });
+        return { displayedPair: live.displayedPair, phase: statTitlePhaseForE(live.cumulativeE) };
     }
 
     // Every level bar instance (panel + gym page), whichever are currently in the DOM.
@@ -13359,11 +13619,28 @@ const BestGymController = {
         bar.container.dataset.atrophy = atrophy;
         bar.container.dataset.level = level;
         const lvLine = level >= 100 ? 'Level 100  •  Max Level' : `Level ${level}  •  ${Math.round(pct)}%`;
+        const statState = getLiveStatTitleState();
+        const statTitle = statState.displayedPair ? composeStatTitle(statState.displayedPair, statState.phase) : '';
+        // data-title-phase drives the dull-silver-to-iridescent-diamond finish progression in
+        // 04-section-iii-styles.js — independent of composeStatTitle()'s own internal clamp for
+        // missing words, since the visual finish is defined for all 11 phases regardless of
+        // whether that phase's words exist yet.
+        const statTitleHtml = statTitle ? `<i class="bbgl-lvl-title" data-title-phase="${statState.phase}">${statTitle}</i>` : '';
+        // Dev-only rank preview override (11-section-x-devtools.js, stripped from release builds)
+        // — feeds an arbitrary atrophy/level into atrophyTitle() only, so every rank band can be
+        // previewed on demand. Deliberately scoped to just the text lookup: the numeric level,
+        // percent, bar fill, and data-atrophy/data-level (which drive the fill gradient/glow CSS)
+        // all keep showing your real progress, untouched.
+        const rankOverride = runtime.devMode && runtime._devRankOverride;
+        const rankAtrophy = rankOverride ? runtime._devRankOverride.atrophy : atrophy;
+        const rankLevel = rankOverride ? runtime._devRankOverride.level : level;
         // data-tooltip (not -html): the mobile touch handler only supports quick-tap-to-reveal
         // for this attribute — data-tooltip-html only reveals via the 400ms tap-and-hold gesture.
-        // <br>/<i> still render fine since both the hover and tap code paths wrap this value in a
-        // div and set it via innerHTML either way.
-        bar.container.setAttribute('data-tooltip', `${lvLine}<br><i class="bbgl-lvl-tip-title">${atrophyTitle(atrophy, level)}</i>`);
+        // <i> still renders fine since both the hover and tap code paths wrap this value in a div
+        // and set it via innerHTML either way. No <br> needed before the <i> tags below — they're
+        // already display:block (see #bbgl-tooltip i in 04-section-iii-styles.js), so an extra <br>
+        // would double up the line break and look like a big gap.
+        bar.container.setAttribute('data-tooltip', `${lvLine}<i class="bbgl-lvl-rank">"${atrophyTitle(rankAtrophy, rankLevel)}"</i>${statTitleHtml}`);
     }
 
     function updateLevelBar() {
@@ -19165,6 +19442,120 @@ const BestGymController = {
         return buildDevSection('Triggers', [trainRow, dayTierRow, lvlUpBtn, atroBtn]);
     }
 
+    // ─── Rank Preview section (atrophy/level-band testing) ─────────────────
+    // Overrides just the atrophyTitle() text lookup in renderLevelBar() (07-section-vi-ui.js) so
+    // every atrophy/level-band combination can be previewed without real EXP. Gated behind
+    // runtime.devMode at the read site, and this whole file is stripped from release builds.
+    function buildRankPreviewSection() {
+        const rowStyle = 'display:flex;gap:6px;';
+        const selectStyle = 'flex:1;background:#333;color:#fff;border:1px solid #666;border-radius:4px;padding:5px 6px;font-family:sans-serif;font-size:12px;';
+
+        const atrophySelect = document.createElement('select');
+        atrophySelect.style.cssText = selectStyle;
+        [0, 1, 2].forEach(a => {
+            const opt = document.createElement('option');
+            opt.value = String(a);
+            opt.textContent = `Atrophy ${a}`;
+            atrophySelect.appendChild(opt);
+        });
+
+        const levelInput = document.createElement('input');
+        levelInput.type = 'number';
+        levelInput.min = '-10';
+        levelInput.max = '100';
+        levelInput.step = '1';
+        levelInput.value = '0';
+        levelInput.style.cssText = inputStyle;
+
+        function applyOverride() {
+            let lvl = parseInt(levelInput.value, 10);
+            if (!Number.isFinite(lvl)) lvl = 0;
+            lvl = Math.min(100, Math.max(-10, lvl));
+            levelInput.value = lvl;
+            runtime._devRankOverride = { atrophy: parseInt(atrophySelect.value, 10), level: lvl };
+            const total = typeof getLiveLevelExp === 'function' ? getLiveLevelExp() : 0;
+            if (typeof getLevelBars === 'function' && typeof renderLevelBar === 'function') {
+                getLevelBars().forEach(b => renderLevelBar(b, total));
+            }
+        }
+        atrophySelect.addEventListener('change', applyOverride);
+        levelInput.addEventListener('change', applyOverride);
+
+        const row = document.createElement('div');
+        row.style.cssText = rowStyle;
+        row.appendChild(atrophySelect);
+        row.appendChild(levelInput);
+
+        const clearBtn = buildDevButton('Clear Override', () => {
+            runtime._devRankOverride = null;
+            const total = typeof getLiveLevelExp === 'function' ? getLiveLevelExp() : 0;
+            if (typeof getLevelBars === 'function' && typeof renderLevelBar === 'function') {
+                getLevelBars().forEach(b => renderLevelBar(b, total));
+            }
+        });
+
+        return buildDevSection('Rank Preview', [row, clearBtn]);
+    }
+
+    // ─── Title Preview section (stat-title phase/combo testing) ────────────
+    // Overrides getLiveStatTitleState() (07-section-vi-ui.js) so every phase/primary/secondary
+    // combination can be previewed on demand without needing real training history to produce it.
+    // Gated behind runtime.devMode at the read site, and this whole file is stripped from release
+    // builds, so this can never affect a real user.
+    function buildTitlePreviewSection() {
+        const rowStyle = 'display:flex;gap:6px;';
+        const selectStyle = 'flex:1;background:#333;color:#fff;border:1px solid #666;border-radius:4px;padding:5px 6px;font-family:sans-serif;font-size:12px;';
+
+        function buildSelect(options) {
+            const sel = document.createElement('select');
+            sel.style.cssText = selectStyle;
+            options.forEach(([value, label]) => {
+                const opt = document.createElement('option');
+                opt.value = value;
+                opt.textContent = label;
+                sel.appendChild(opt);
+            });
+            return sel;
+        }
+
+        const phaseSelect = buildSelect(STAT_TITLE_PHASE_THRESHOLDS.map((_, i) => [String(i), `Phase ${i}`]));
+        const primarySelect = buildSelect(STAT_KEYS.map(k => [k, achStatFull(k)]));
+        const secondarySelect = buildSelect(STAT_KEYS.map(k => [k, achStatFull(k)]));
+        secondarySelect.selectedIndex = 1; // default to a stat different from primary
+
+        function applyOverride() {
+            runtime._devTitleOverride = {
+                phase: parseInt(phaseSelect.value, 10),
+                primary: primarySelect.value,
+                secondary: secondarySelect.value
+            };
+            const total = typeof getLiveLevelExp === 'function' ? getLiveLevelExp() : 0;
+            if (typeof getLevelBars === 'function' && typeof renderLevelBar === 'function') {
+                getLevelBars().forEach(b => renderLevelBar(b, total));
+            }
+        }
+        [phaseSelect, primarySelect, secondarySelect].forEach(sel => sel.addEventListener('change', applyOverride));
+
+        const phaseRow = document.createElement('div');
+        phaseRow.style.cssText = rowStyle;
+        phaseRow.appendChild(phaseSelect);
+
+        const statRow = document.createElement('div');
+        statRow.style.cssText = rowStyle;
+        statRow.appendChild(primarySelect);
+        statRow.appendChild(secondarySelect);
+
+        const clearBtn = buildDevButton('Clear Override', () => {
+            runtime._devTitleOverride = null;
+            const total = typeof getLiveLevelExp === 'function' ? getLiveLevelExp() : 0;
+            if (typeof getLevelBars === 'function' && typeof renderLevelBar === 'function') {
+                getLevelBars().forEach(b => renderLevelBar(b, total));
+            }
+        });
+
+        return buildDevSection('Title Preview', [phaseRow, statRow, clearBtn]);
+    }
+
     // ─── Onboarding section ─────────────────────────────────────────────────
     function buildOnboardingSection() {
         const togglePrivacyBtn = buildDevButton('Toggle Onboarding Mode', () => {
@@ -19345,6 +19736,8 @@ const BestGymController = {
 
         w.appendChild(buildApiCounterSection());
         w.appendChild(buildTriggersSection());
+        w.appendChild(buildRankPreviewSection());
+        w.appendChild(buildTitlePreviewSection());
         w.appendChild(buildOnboardingSection());
         w.appendChild(buildSidebarSection());
         w.appendChild(buildResetSection());

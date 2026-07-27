@@ -625,31 +625,55 @@
         if (viewState.activeViewLabel === sl.label && calendarState.selectedLabel !== sl.label) runtime._pendingHistoryRestore = { sl, label: sl.label };
     }
 
+    // Today's live (not-yet-committed) training context — install-day sub-day filtering applied
+    // so only entries at/after the precise install moment count on the exact install day (mirrors
+    // buildProgressionCache()'s handling of past days, 06-section-v-logic.js). Returns zeros in
+    // demo mode or if there's no today data yet. Shared by getLiveLevelExp() and
+    // getLiveStatTitleState() so this filtering logic exists in exactly one place.
+    function getTodayTrainingContext() {
+        const h = getActiveHistory();
+        if (runtime.demoMode || !h || !h.today) return { todayE: 0, hasTrainLog: false, isHJ: false };
+        const today = Formatter.dateLogical();
+        const installDateKey = getInstallDateKey();
+        const rewardStartTs = (h.meta && h.meta.rewardStartDate) || null;
+        let todaySeries = h.today.series || [];
+        // On the exact install day, only entries at/after the precise install moment count —
+        // mirrors buildProgressionCache()'s handling of past days (06-section-v-logic.js).
+        // Without this, today's full eSpent.total (which can include pre-install-moment
+        // entries from the same calendar day) was being counted in full.
+        if (installDateKey && today === installDateKey && rewardStartTs) {
+            todaySeries = todaySeries.filter(s => s.ts >= rewardStartTs);
+        }
+        const todayE = (todaySeries === h.today.series && h.today.eSpent) ? (h.today.eSpent.total || 0) : todaySeries.filter(s => s.type === 'gym').reduce((sum, s) => sum + (s.cost || 0), 0);
+        const hasTrainLog = todaySeries.some(s => s.type === 'gym');
+        const { hjDaySet } = DataController.getHappyJumpData();
+        const isHJ = (todaySeries === h.today.series) ? hjDaySet.has(today) : findHappyJumps(todaySeries).length > 0;
+        return { todayE, hasTrainLog, isHJ };
+    }
+
     // career EXP + today's in-progress EXP — the live total both level bars display.
     function getLiveLevelExp() {
-        let totalExp = DataController.getCareerLevelExp();
-        if (!runtime.demoMode) {
-            const h = getActiveHistory();
-            if (h && h.today) {
-                const today = Formatter.dateLogical();
-                const installDateKey = getInstallDateKey();
-                const rewardStartTs = (h.meta && h.meta.rewardStartDate) || null;
-                let todaySeries = h.today.series || [];
-                // On the exact install day, only entries at/after the precise install moment count —
-                // mirrors buildProgressionCache()'s handling of past days (06-section-v-logic.js).
-                // Without this, today's full eSpent.total (which can include pre-install-moment
-                // entries from the same calendar day) was being counted in full.
-                if (installDateKey && today === installDateKey && rewardStartTs) {
-                    todaySeries = todaySeries.filter(s => s.ts >= rewardStartTs);
-                }
-                const todayE = (todaySeries === h.today.series && h.today.eSpent) ? (h.today.eSpent.total || 0) : todaySeries.filter(s => s.type === 'gym').reduce((sum, s) => sum + (s.cost || 0), 0);
-                const hasTrainLog = todaySeries.some(s => s.type === 'gym');
-                const { hjDaySet } = DataController.getHappyJumpData();
-                const isHJ = (todaySeries === h.today.series) ? hjDaySet.has(today) : findHappyJumps(todaySeries).length > 0;
-                totalExp += computeDailyLevelExp(todayE, hasTrainLog, isHJ);
-            }
+        const { todayE, hasTrainLog, isHJ } = getTodayTrainingContext();
+        return DataController.getCareerLevelExp() + computeDailyLevelExp(todayE, hasTrainLog, isHJ);
+    }
+
+    // Live stat-title state — layers today's not-yet-committed contribution on top of the cached
+    // as-of-yesterday state (DataController.getStatTitleState()) via one more call to the same
+    // advanceStatTitleState() step used for the historical replay, without mutating the cache.
+    function getLiveStatTitleState() {
+        // Dev-only preview override (11-section-x-devtools.js, stripped from release builds) —
+        // when active, short-circuits the real computed state entirely so every phase/stat
+        // combination can be previewed without needing real training history to produce it.
+        if (runtime.devMode && runtime._devTitleOverride) {
+            const { phase, primary, secondary } = runtime._devTitleOverride;
+            return { displayedPair: [primary, secondary], phase };
         }
-        return totalExp;
+        const cached = DataController.getStatTitleState();
+        const h = getActiveHistory();
+        const { todayE } = getTodayTrainingContext();
+        const endBreakdown = (h && h.today && h.today.endBreakdown) || {};
+        const live = advanceStatTitleState(cached, { date: Formatter.dateLogical(), endBreakdown, eSpent: { total: todayE } });
+        return { displayedPair: live.displayedPair, phase: statTitlePhaseForE(live.cumulativeE) };
     }
 
     // Every level bar instance (panel + gym page), whichever are currently in the DOM.
@@ -677,11 +701,28 @@
         bar.container.dataset.atrophy = atrophy;
         bar.container.dataset.level = level;
         const lvLine = level >= 100 ? 'Level 100  •  Max Level' : `Level ${level}  •  ${Math.round(pct)}%`;
+        const statState = getLiveStatTitleState();
+        const statTitle = statState.displayedPair ? composeStatTitle(statState.displayedPair, statState.phase) : '';
+        // data-title-phase drives the dull-silver-to-iridescent-diamond finish progression in
+        // 04-section-iii-styles.js — independent of composeStatTitle()'s own internal clamp for
+        // missing words, since the visual finish is defined for all 11 phases regardless of
+        // whether that phase's words exist yet.
+        const statTitleHtml = statTitle ? `<i class="bbgl-lvl-title" data-title-phase="${statState.phase}">${statTitle}</i>` : '';
+        // Dev-only rank preview override (11-section-x-devtools.js, stripped from release builds)
+        // — feeds an arbitrary atrophy/level into atrophyTitle() only, so every rank band can be
+        // previewed on demand. Deliberately scoped to just the text lookup: the numeric level,
+        // percent, bar fill, and data-atrophy/data-level (which drive the fill gradient/glow CSS)
+        // all keep showing your real progress, untouched.
+        const rankOverride = runtime.devMode && runtime._devRankOverride;
+        const rankAtrophy = rankOverride ? runtime._devRankOverride.atrophy : atrophy;
+        const rankLevel = rankOverride ? runtime._devRankOverride.level : level;
         // data-tooltip (not -html): the mobile touch handler only supports quick-tap-to-reveal
         // for this attribute — data-tooltip-html only reveals via the 400ms tap-and-hold gesture.
-        // <br>/<i> still render fine since both the hover and tap code paths wrap this value in a
-        // div and set it via innerHTML either way.
-        bar.container.setAttribute('data-tooltip', `${lvLine}<br><i class="bbgl-lvl-tip-title">${atrophyTitle(atrophy, level)}</i>`);
+        // <i> still renders fine since both the hover and tap code paths wrap this value in a div
+        // and set it via innerHTML either way. No <br> needed before the <i> tags below — they're
+        // already display:block (see #bbgl-tooltip i in 04-section-iii-styles.js), so an extra <br>
+        // would double up the line break and look like a big gap.
+        bar.container.setAttribute('data-tooltip', `${lvLine}<i class="bbgl-lvl-rank">"${atrophyTitle(rankAtrophy, rankLevel)}"</i>${statTitleHtml}`);
     }
 
     function updateLevelBar() {

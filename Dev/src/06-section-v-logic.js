@@ -129,6 +129,11 @@ const DataController = {
         let unlockedCount = 1;
         let rouletteCounter = 0;
         let careerLevelExp = 0;
+        // Stat-ratio title state — same reward-gating scope as careerLevelExp below (skipped
+        // entirely in demo mode, respects installDateKey/rewardStartTs), replayed fresh from the
+        // full timeline on every cache rebuild rather than persisted to DB. See
+        // advanceStatTitleState() in 03-section-ii-utils.js for the per-day step logic.
+        let statTitleState = null;
         // Reward gating: stickers (and their unlock progression) only count from the install
         // week onward. Pre-install weeks still render their bar/day counts elsewhere, but earn
         // no stickers here. EXP uses a stricter gate: full days before the install day contribute
@@ -158,6 +163,7 @@ const DataController = {
                     const hasTrainLog = daySeries.some(s => s.type === 'gym');
                     const isHJ = (daySeries === day.series) ? hjDaySet.has(day.date) : findHappyJumps(daySeries).length > 0;
                     careerLevelExp += computeDailyLevelExp(e, hasTrainLog, isHJ);
+                    statTitleState = advanceStatTitleState(statTitleState, { date: day.date, endBreakdown: day.endBreakdown, eSpent: { total: e } });
                 });
             }
             if (wk >= todayWeekKey) return;
@@ -199,6 +205,7 @@ const DataController = {
         this._cache.featuredDays = featuredSet;
         this._cache.unlockedCount = unlockedCount;
         runtime.careerLevelExp = careerLevelExp;
+        runtime.statTitleState = statTitleState;
         if (!runtime.demoMode) {
             const existingStates = (_historyCache && _historyCache.meta && _historyCache.meta.stickers) ? _historyCache.meta.stickers : {};
             const freshStates = {};
@@ -220,6 +227,10 @@ const DataController = {
     getCareerLevelExp() {
         this.buildProgressionCache();
         return runtime.careerLevelExp || 0;
+    },
+    getStatTitleState() {
+        this.buildProgressionCache();
+        return runtime.statTitleState || null;
     },
     getUnlockedCount() {
         this.buildProgressionCache();
@@ -3379,6 +3390,7 @@ async function clearData() {
         runtime.apiCallTotal = 0;
         runtime.stickerSlots = [];
         runtime.careerLevelExp = 0;
+        runtime.statTitleState = null;
         runtime._lastLevelExp = undefined;
         runtime._targetLevelExp = undefined;
         runtime._isAnimatingLevel = false;

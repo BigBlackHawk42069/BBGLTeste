@@ -1160,8 +1160,86 @@
                         font-weight: 400;
                     }
 
-                    #bbgl-tooltip i.bbgl-lvl-tip-title {
+                    #bbgl-tooltip i.bbgl-lvl-rank {
                         font-size: 13px;
+                    }
+
+                    #bbgl-tooltip i.bbgl-lvl-title {
+                        margin-top: 1px;
+                        font-size: 14px;
+                        font-weight: 700;
+                        font-style: normal;
+                        color: #ffcc44;
+                        text-shadow: 0 0 4px rgba(255, 204, 68, 0.5);
+                    }
+
+                    /* Title finish progression, Phase 0-10 — dull silver to iridescent diamond.
+                       Each phase only ever overrides color/text-shadow (or, at Phase 10, swaps to
+                       a clipped animated gradient) on top of the shared rule above. */
+                    #bbgl-tooltip i.bbgl-lvl-title[data-title-phase="0"] {
+                        color: #888888;
+                        text-shadow: none;
+                    }
+
+                    #bbgl-tooltip i.bbgl-lvl-title[data-title-phase="1"] {
+                        color: #9a9a9e;
+                        text-shadow: 0 0 2px rgba(255, 255, 255, 0.15);
+                    }
+
+                    #bbgl-tooltip i.bbgl-lvl-title[data-title-phase="2"] {
+                        color: #d4d4d8;
+                        text-shadow: 0 0 3px rgba(255, 255, 255, 0.4);
+                    }
+
+                    #bbgl-tooltip i.bbgl-lvl-title[data-title-phase="3"] {
+                        color: #b9c9ae;
+                        text-shadow: 0 0 3px rgba(200, 255, 200, 0.3);
+                    }
+
+                    #bbgl-tooltip i.bbgl-lvl-title[data-title-phase="4"] {
+                        color: #3fae54;
+                        text-shadow: 0 0 3px rgba(63, 174, 84, 0.4);
+                    }
+
+                    #bbgl-tooltip i.bbgl-lvl-title[data-title-phase="5"] {
+                        color: #39d35a;
+                        text-shadow: 0 0 4px rgba(57, 211, 90, 0.5);
+                    }
+
+                    #bbgl-tooltip i.bbgl-lvl-title[data-title-phase="6"] {
+                        color: #4dff85;
+                        text-shadow: 0 0 3px rgba(77, 255, 133, 0.7), 0 0 8px rgba(77, 255, 133, 0.35);
+                    }
+
+                    #bbgl-tooltip i.bbgl-lvl-title[data-title-phase="7"] {
+                        color: #c9d94a;
+                        text-shadow: 0 0 3px rgba(201, 217, 74, 0.6), 0 0 8px rgba(255, 204, 68, 0.3);
+                    }
+
+                    #bbgl-tooltip i.bbgl-lvl-title[data-title-phase="8"] {
+                        color: #ffcc44;
+                        text-shadow: 0 0 4px rgba(255, 204, 68, 0.5);
+                    }
+
+                    #bbgl-tooltip i.bbgl-lvl-title[data-title-phase="9"] {
+                        color: #ffe066;
+                        text-shadow: 0 0 4px rgba(255, 224, 102, 0.7), 0 0 10px rgba(255, 204, 68, 0.4);
+                    }
+
+                    #bbgl-tooltip i.bbgl-lvl-title[data-title-phase="10"] {
+                        background: linear-gradient(90deg, #ffffff, #66eaff, #ff8fd6, #ffe066, #66eaff, #ffffff);
+                        background-size: 400% 100%;
+                        -webkit-background-clip: text;
+                        background-clip: text;
+                        color: transparent;
+                        text-shadow: none;
+                        filter: drop-shadow(0 0 4px rgba(255, 255, 255, 0.5));
+                        animation: bbgl-title-iridescent 3s linear infinite;
+                    }
+
+                    @keyframes bbgl-title-iridescent {
+                        0% { background-position: 0% 50%; }
+                        100% { background-position: 400% 50%; }
                     }
 
                     .tt-header {
