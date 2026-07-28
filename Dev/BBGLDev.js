@@ -9100,7 +9100,8 @@
         };
         const {
             specId = null,
-            manualWars = false
+            manualWars = false,
+            silent = false
         } = options;
 
         if (!userConfig.apiKey || userConfig.apiKey.length < 16) {
@@ -9177,8 +9178,11 @@
                 if (r.data.log) logs = { ...logs, ...r.data.log };
                 if (r.cfg.type === 'battlestats') bs = r.data;
             });
-            // Name comes from the `basic` selection bundled into the battlestats call above.
+            // Name and player_id come from the `basic` selection bundled into the battlestats call
+            // above. player_id seeds the deterministic per-user sticker roulette (buildProgressionCache,
+            // 06-section-v-logic.js) so placement is unique per account but identical across devices.
             if (bs && bs.name) meta.playerName = bs.name;
+            if (bs && bs.player_id) meta.playerId = bs.player_id;
 
             const tsSec = Math.floor(ts / 1000);
             if (!meta.syncFloor) meta.syncFloor = {};
@@ -9197,7 +9201,7 @@
             const needsEnhancers = mission === 'FULL_SYNC' && bs &&
                 BS_STAT_ROWS.some(row => (bs[row.api] || 0) > (_s.today.endBreakdown[row.abbr] || 0));
 
-            await DataController.processDataPayload(logs, bs);
+            await DataController.processDataPayload(logs, bs, { silent });
 
             if (needsEnhancers) {
                 try {
@@ -9209,7 +9213,7 @@
                         const eData = await eRes.json();
                         if (!eData.error) {
                             meta.syncFloor.statEnhancers = tsSec;
-                            await DataController.processDataPayload(eData.log || {}, null);
+                            await DataController.processDataPayload(eData.log || {}, null, { silent });
                         }
                     }
                 } catch (e) { Log.warn('Stat enhancer fetch failed', e); }
@@ -9249,7 +9253,6 @@
         const result = await universalFetch(mission, { ...options, manualWars: mission !== 'TRAIN_SINGLE' });
 
         if (result.ok) {
-            scheduleHeartbeat();
             if (btn) {
                 btn.innerText = "Refreshed!";
                 btn.style.color = "#43a047";
@@ -9269,21 +9272,24 @@
         Perf.end('syncWithFeedback');
     }
 
-    // Automatically checks for new training data every 30 minutes in the background.
-    function scheduleHeartbeat() {
-        if (runtime.bgSyncId) clearTimeout(runtime.bgSyncId);
+    // Conditional heartbeat: fires at most once per 20 minutes, and only while there's actually
+    // a reason to — the panel is open (any mode) or the gym page's exp bar is on screen — and
+    // this tab is the one being looked at. No visible surface, no fetch; tabbing away or closing
+    // the panel just lets it go quiet again on its own, no separate start/stop bookkeeping needed.
+    function heartbeatTick() {
+        if (document.visibilityState !== 'visible') return;
+        const panelOpen = dom.panel && dom.panel.style.display !== 'none';
+        const onGymPage = !!document.getElementById('bbgl-gym-level-container');
+        if (!panelOpen && !onGymPage) return;
         const lastFull = localStorage.getItem(KEYS.LAST_SYNC);
         const elapsed = lastFull ? (Date.now() - parseInt(lastFull)) : Infinity;
-        const delay = elapsed >= 1800000 ? 0 : (1800000 - elapsed);
-        runtime.bgSyncId = setTimeout(async function bgSyncTick() {
-            runtime.bgSyncId = null;
-            await universalFetch('FULL_SYNC');
-            scheduleHeartbeat();
-        }, delay);
+        if (elapsed < 1200000) return; // 20 minutes
+        universalFetch('FULL_SYNC', { silent: true });
     }
 
     function startBackgroundSync() {
-        scheduleHeartbeat();
+        if (runtime.bgSyncId) clearInterval(runtime.bgSyncId);
+        runtime.bgSyncId = setInterval(heartbeatTick, 60000);
     }
 
     // This makes sure your final gym training logs are saved even if you navigate away from the gym page.
@@ -9292,7 +9298,6 @@
         if (f === 'true' && !window.location.href.includes('gym.php')) {
             sessionStorage.removeItem(KEYS.SESSION);
             await universalFetch('FULL_SYNC');
-            scheduleHeartbeat();
         }
     }
 
@@ -10021,8 +10026,23 @@ const DataController = {
         const stickerMap = new Map();
         const featuredSet = new Set();
         let unlockedCount = 1;
-        let rouletteCounter = 0;
         let careerLevelExp = 0;
+        // Per-user deterministic sticker roulette: same player_id -> same picks on every device,
+        // with no cross-device sync needed. Also caps repeats at 2-in-a-row where the pool allows it.
+        const rouletteSeed = (getActiveHistory().meta && getActiveHistory().meta.playerId) || 0;
+        let pickCounter = 0;
+        const lastTwoPicks = [];
+        const pickStickerIdx = mod => {
+            let idx, attempt = 0;
+            do {
+                idx = hashMix(rouletteSeed ^ Math.imul(pickCounter, 0x9e3779b9) ^ Math.imul(attempt, 0x85ebca6b)) % mod;
+                attempt++;
+            } while (attempt <= 8 && lastTwoPicks.length === 2 && lastTwoPicks[0] === idx && lastTwoPicks[1] === idx);
+            pickCounter++;
+            lastTwoPicks.push(idx);
+            if (lastTwoPicks.length > 2) lastTwoPicks.shift();
+            return idx;
+        };
         // Stat-title progress — cumulative E per stat, each unlocking that stat's own word ladder
         // (STAT_TITLE_THRESHOLDS, 03-section-ii-utils.js). Same reward-gating scope as
         // careerLevelExp below (skipped entirely in demo mode, respects installDateKey/
@@ -10077,12 +10097,9 @@ const DataController = {
             const splitIdx = Math.max(0, stickerworthyDays.length - numFeatured);
             const rouletteDays = stickerworthyDays.slice(0, splitIdx);
             const featuredDays = stickerworthyDays.slice(splitIdx);
-            const rouletteStep = (unlockedCount <= 20 && unlockedCount !== 11) ? 11 : 9;
             rouletteDays.forEach(day => {
-                const rawIdx = (rouletteCounter * rouletteStep) % unlockedCount;
-                const idx = runtime.demoMode ? 0 : rawIdx;
+                const idx = runtime.demoMode ? 0 : pickStickerIdx(unlockedCount);
                 stickerMap.set(day.date, CUSTOM_STICKERS[idx]);
-                rouletteCounter++;
             });
             featuredDays.forEach((day, i) => {
                 const newIdx = unlockedCount + i;
@@ -10091,10 +10108,8 @@ const DataController = {
                     stickerMap.set(day.date, CUSTOM_STICKERS[idx]);
                     featuredSet.add(day.date);
                 } else {
-                    const rawIdx = (rouletteCounter * rouletteStep) % unlockedCount;
-                    const idx = runtime.demoMode ? 0 : rawIdx;
+                    const idx = runtime.demoMode ? 0 : pickStickerIdx(unlockedCount);
                     stickerMap.set(day.date, CUSTOM_STICKERS[idx]);
-                    rouletteCounter++;
                 }
             });
             unlockedCount = Math.min(unlockedCount + numFeatured, CUSTOM_STICKERS.length);
@@ -10447,8 +10462,9 @@ const DataController = {
         r.dayCount = sDay ? 1 : (dList ? dList.length : 0);
         return r;
     },
-    async processDataPayload(apiLogs, apiBattlestats) {
+    async processDataPayload(apiLogs, apiBattlestats, opts = {}) {
         Perf.start('processDataPayload');
+        const silent = !!opts.silent;
         let s = getActiveHistory();
         const fullApiLogs = normalizeApiLogs(apiLogs);
         let cleanLogs = fullApiLogs;
@@ -10482,7 +10498,7 @@ const DataController = {
                     this.invalidateToday();
                     await DBManager.saveDays(s.meta, [s.today]);
                 }
-                window.dispatchEvent(new CustomEvent('bbgl:dataUpdated'));
+                window.dispatchEvent(new CustomEvent('bbgl:dataUpdated', { detail: { silent } }));
                 Perf.end('processDataPayload');
                 return 'SUCCESS';
             }
@@ -10524,7 +10540,7 @@ const DataController = {
                     if (!changedDays.includes(s.today)) changedDays.push(s.today);
                     await DBManager.saveDays(s.meta, changedDays);
                 }
-                window.dispatchEvent(new CustomEvent('bbgl:dataUpdated'));
+                window.dispatchEvent(new CustomEvent('bbgl:dataUpdated', { detail: { silent } }));
                 Perf.end('processDataPayload');
                 return 'SUCCESS';
             }
@@ -10568,7 +10584,7 @@ const DataController = {
             s.today = initializeDayObject(logicalToday, s.today.endBreakdown);
         }
         this.saveSmartHistory(s);
-        window.dispatchEvent(new CustomEvent('bbgl:dataUpdated'));
+        window.dispatchEvent(new CustomEvent('bbgl:dataUpdated', { detail: { silent } }));
         Perf.end('processDataPayload');
         return 'SUCCESS';
     },
@@ -10851,15 +10867,21 @@ const DataController = {
 };
 
 
+// Shared mulberry32-style integer mixer — pure function of its input, no stream/closure state.
+// Used both as a seeded RNG step (generateDemoData) and as a per-pick hash (sticker roulette).
+function hashMix(n) {
+    let t = n;
+    t = Math.imul(t ^ (t >>> 15), t | 1);
+    t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+    return (t ^ (t >>> 14)) >>> 0;
+}
+
 function generateDemoData() {
     let _seed = 0x9e3779b9;
 
     function rand() {
         _seed += 0x6d2b79f5;
-        let t = _seed;
-        t = Math.imul(t ^ (t >>> 15), t | 1);
-        t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
-        return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+        return hashMix(_seed) / 4294967296;
     }
 
     function randInt(lo, hi) {
@@ -14303,7 +14325,7 @@ const BestGymController = {
         bar.container.setAttribute('data-tooltip', `${lvLine}<i class="bbgl-lvl-rank">"${atrophyTitle(rankAtrophy, rankLevel)}"</i>${statTitleHtml}`);
     }
 
-    function updateLevelBar() {
+    function updateLevelBar(silent) {
         const totalExp = getLiveLevelExp();
 
         if (runtime._lastLevelExp === undefined) {
@@ -14317,9 +14339,21 @@ const BestGymController = {
         if (!bars.length) return;
 
         if (totalExp !== runtime._lastLevelExp) {
-            runtime._targetLevelExp = totalExp;
-            if (!runtime._isAnimatingLevel) {
-                runLevelAnimationQueue();
+            // Silent (background heartbeat) updates skip the animation queue entirely and just
+            // snap to the correct value — a level-up sequence playing on its own, with no click
+            // behind it, reads as a bug to anyone watching. If a real click's animation is
+            // already in flight, leave it running rather than stomping its state; it'll catch up
+            // on a later call.
+            if (silent) {
+                if (!runtime._isAnimatingLevel) {
+                    runtime._lastLevelExp = totalExp;
+                    bars.forEach(b => renderLevelBar(b, totalExp));
+                }
+            } else {
+                runtime._targetLevelExp = totalExp;
+                if (!runtime._isAnimatingLevel) {
+                    runLevelAnimationQueue();
+                }
             }
         } else if (!runtime._isAnimatingLevel) {
             // Exp is unchanged but bars may be newly created (e.g. panel just opened for the
@@ -14684,7 +14718,6 @@ const BestGymController = {
         const loc = userConfig.buttonLocation,
             showFooter = loc === 'notes' || loc === 'both',
             showSidebar = loc === 'sidebar' || loc === 'both';
-        if (loc !== _lastButtonLocation && !runtime._domObsArmed) rearmDomObs();
         if (loc === _lastButtonLocation) {
             const gtCached = dom.gymTab && dom.gymTab.isConnected ? dom.gymTab : null;
             const sbDCached = dom.sbDesktop && dom.sbDesktop.isConnected ? dom.sbDesktop : null;
@@ -14715,7 +14748,6 @@ const BestGymController = {
                         }
                     }
                 }
-                settleDomObs();
                 return;
             }
         }
@@ -14788,53 +14820,7 @@ const BestGymController = {
         }
         _lastButtonLocation = loc;
         if (showSidebar) syncSidebarState();
-        settleDomObs();
         Perf.end('handleDomMutation');
-    }
-
-    function settleDomObs() {
-        const loc = userConfig.buttonLocation,
-            showFooter = loc === 'notes' || loc === 'both',
-            showSb = loc === 'sidebar' || loc === 'both';
-        const footerOk = !showFooter || (dom.gymTab && dom.gymTab.isConnected);
-        const sidebarOk = !showSb || (dom.sbDesktop && dom.sbDesktop.isConnected);
-        if (!footerOk || !sidebarOk) return;
-        if (!runtime.domObs || !runtime._domObsArmed) return;
-        runtime.domObs.disconnect();
-        runtime._domObsArmed = false;
-        const guard = (parent) => {
-            if (!parent) return;
-            const o = new MutationObserver(() => {
-                if (!runtime._domObsArmed) rearmDomObs();
-            });
-            o.observe(parent, {
-                childList: true
-            });
-            runtime._domGuards.push(o);
-        };
-        const seen = new Set();
-        [dom.gymTab && dom.gymTab.parentNode, dom.sbDesktop && dom.sbDesktop.parentNode, dom.sbMobile && dom.sbMobile.parentNode, dom.sbFlyout && dom.sbFlyout.parentNode].forEach(p => {
-            if (p && !seen.has(p)) {
-                seen.add(p);
-                guard(p);
-            }
-        });
-    }
-
-    function rearmDomObs() {
-        if (!runtime.domObs || runtime._domObsArmed) return;
-        runtime._domGuards.forEach(o => o.disconnect());
-        runtime._domGuards = [];
-        runtime.domObs.observe(document.body, {
-            childList: true,
-            subtree: true
-        });
-        runtime._domObsArmed = true;
-        if (runtime._domRearmRaf) return;
-        runtime._domRearmRaf = requestAnimationFrame(() => {
-            runtime._domRearmRaf = null;
-            handleDomMutation();
-        });
     }
     const SB_DESKTOP = {
             target: '#nav-gym[class*="area-desktop"]',
@@ -19651,13 +19637,13 @@ const BestGymController = {
         window.addEventListener('resize', () => {
             _topCeilingCache = null;
         });
-        window.addEventListener('bbgl:dataUpdated', () => {
+        window.addEventListener('bbgl:dataUpdated', (e) => {
             // renderPanelContent() rebuilds the whole visible month's DOM (day cells, weekly
             // capsule bars, stickers) — real work with zero benefit if the panel isn't even on
-            // screen (e.g. the 30-minute background sync heartbeat firing while collapsed/closed).
+            // screen (e.g. the conditional background heartbeat firing while collapsed/closed).
             // Mirrors the same guard the cross-tab sync handler already uses.
             if (dom.panel && dom.panel.style.display !== 'none') renderPanelContent();
-            updateLevelBar();
+            updateLevelBar(e.detail && e.detail.silent);
             renderBackfillButton();
             renderScanOverlay();
         });
@@ -19671,7 +19657,6 @@ const BestGymController = {
             });
         });
         runtime.domObs = domObs;
-        runtime._domGuards = [];
         runtime._domObsArmed = true;
         domObs.observe(document.body, {
             childList: true,
@@ -19680,14 +19665,13 @@ const BestGymController = {
         attachLayoutObservers();
         // SPA-navigation safety net for the footer tab. Torn travels (and some other in-app nav)
         // via history.pushState — no hashchange, no popstate, no full reload — and during the
-        // transition it rebuilds whole regions of the chat/footer, removing our injected tab. The
-        // narrow guard observers settleDomObs() leaves behind don't catch a wholesale parent
-        // replacement, so the tab is never re-inserted (the "suppressed while flying" symptom).
-        // Re-run the existing placement pass a few times across the transition window so the tab
-        // re-anchors against the rebuilt notes button. This deliberately touches no observer or
-        // injection internals — it just calls handleDomMutation (which the observer already invokes
-        // constantly) on a short, bounded schedule, and only on an actual navigation. Each call
-        // fast-paths out when nothing has changed, so steady state stays lightweight.
+        // transition it rebuilds whole regions of the chat/footer, removing our injected tab faster
+        // than the body-subtree observer's rAF-debounced callback re-adds it. Re-run the existing
+        // placement pass a few times across the transition window so the tab re-anchors against the
+        // rebuilt notes button. This deliberately touches no observer or injection internals — it
+        // just calls handleDomMutation (which the observer already invokes constantly) on a short,
+        // bounded schedule, and only on an actual navigation. Each call fast-paths out when nothing
+        // has changed, so steady state stays lightweight.
         const _bbglRecheckNav = () => {
             [150, 600, 1500].forEach(ms => setTimeout(() => {
                 try { handleDomMutation(); } catch (e) {}

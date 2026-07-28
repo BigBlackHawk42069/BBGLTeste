@@ -1934,13 +1934,13 @@
         window.addEventListener('resize', () => {
             _topCeilingCache = null;
         });
-        window.addEventListener('bbgl:dataUpdated', () => {
+        window.addEventListener('bbgl:dataUpdated', (e) => {
             // renderPanelContent() rebuilds the whole visible month's DOM (day cells, weekly
             // capsule bars, stickers) — real work with zero benefit if the panel isn't even on
-            // screen (e.g. the 30-minute background sync heartbeat firing while collapsed/closed).
+            // screen (e.g. the conditional background heartbeat firing while collapsed/closed).
             // Mirrors the same guard the cross-tab sync handler already uses.
             if (dom.panel && dom.panel.style.display !== 'none') renderPanelContent();
-            updateLevelBar();
+            updateLevelBar(e.detail && e.detail.silent);
             renderBackfillButton();
             renderScanOverlay();
         });
@@ -1954,7 +1954,6 @@
             });
         });
         runtime.domObs = domObs;
-        runtime._domGuards = [];
         runtime._domObsArmed = true;
         domObs.observe(document.body, {
             childList: true,
@@ -1963,14 +1962,13 @@
         attachLayoutObservers();
         // SPA-navigation safety net for the footer tab. Torn travels (and some other in-app nav)
         // via history.pushState — no hashchange, no popstate, no full reload — and during the
-        // transition it rebuilds whole regions of the chat/footer, removing our injected tab. The
-        // narrow guard observers settleDomObs() leaves behind don't catch a wholesale parent
-        // replacement, so the tab is never re-inserted (the "suppressed while flying" symptom).
-        // Re-run the existing placement pass a few times across the transition window so the tab
-        // re-anchors against the rebuilt notes button. This deliberately touches no observer or
-        // injection internals — it just calls handleDomMutation (which the observer already invokes
-        // constantly) on a short, bounded schedule, and only on an actual navigation. Each call
-        // fast-paths out when nothing has changed, so steady state stays lightweight.
+        // transition it rebuilds whole regions of the chat/footer, removing our injected tab faster
+        // than the body-subtree observer's rAF-debounced callback re-adds it. Re-run the existing
+        // placement pass a few times across the transition window so the tab re-anchors against the
+        // rebuilt notes button. This deliberately touches no observer or injection internals — it
+        // just calls handleDomMutation (which the observer already invokes constantly) on a short,
+        // bounded schedule, and only on an actual navigation. Each call fast-paths out when nothing
+        // has changed, so steady state stays lightweight.
         const _bbglRecheckNav = () => {
             [150, 600, 1500].forEach(ms => setTimeout(() => {
                 try { handleDomMutation(); } catch (e) {}

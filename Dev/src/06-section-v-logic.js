@@ -127,8 +127,23 @@ const DataController = {
         const stickerMap = new Map();
         const featuredSet = new Set();
         let unlockedCount = 1;
-        let rouletteCounter = 0;
         let careerLevelExp = 0;
+        // Per-user deterministic sticker roulette: same player_id -> same picks on every device,
+        // with no cross-device sync needed. Also caps repeats at 2-in-a-row where the pool allows it.
+        const rouletteSeed = (getActiveHistory().meta && getActiveHistory().meta.playerId) || 0;
+        let pickCounter = 0;
+        const lastTwoPicks = [];
+        const pickStickerIdx = mod => {
+            let idx, attempt = 0;
+            do {
+                idx = hashMix(rouletteSeed ^ Math.imul(pickCounter, 0x9e3779b9) ^ Math.imul(attempt, 0x85ebca6b)) % mod;
+                attempt++;
+            } while (attempt <= 8 && lastTwoPicks.length === 2 && lastTwoPicks[0] === idx && lastTwoPicks[1] === idx);
+            pickCounter++;
+            lastTwoPicks.push(idx);
+            if (lastTwoPicks.length > 2) lastTwoPicks.shift();
+            return idx;
+        };
         // Stat-title progress — cumulative E per stat, each unlocking that stat's own word ladder
         // (STAT_TITLE_THRESHOLDS, 03-section-ii-utils.js). Same reward-gating scope as
         // careerLevelExp below (skipped entirely in demo mode, respects installDateKey/
@@ -183,12 +198,9 @@ const DataController = {
             const splitIdx = Math.max(0, stickerworthyDays.length - numFeatured);
             const rouletteDays = stickerworthyDays.slice(0, splitIdx);
             const featuredDays = stickerworthyDays.slice(splitIdx);
-            const rouletteStep = (unlockedCount <= 20 && unlockedCount !== 11) ? 11 : 9;
             rouletteDays.forEach(day => {
-                const rawIdx = (rouletteCounter * rouletteStep) % unlockedCount;
-                const idx = runtime.demoMode ? 0 : rawIdx;
+                const idx = runtime.demoMode ? 0 : pickStickerIdx(unlockedCount);
                 stickerMap.set(day.date, CUSTOM_STICKERS[idx]);
-                rouletteCounter++;
             });
             featuredDays.forEach((day, i) => {
                 const newIdx = unlockedCount + i;
@@ -197,10 +209,8 @@ const DataController = {
                     stickerMap.set(day.date, CUSTOM_STICKERS[idx]);
                     featuredSet.add(day.date);
                 } else {
-                    const rawIdx = (rouletteCounter * rouletteStep) % unlockedCount;
-                    const idx = runtime.demoMode ? 0 : rawIdx;
+                    const idx = runtime.demoMode ? 0 : pickStickerIdx(unlockedCount);
                     stickerMap.set(day.date, CUSTOM_STICKERS[idx]);
-                    rouletteCounter++;
                 }
             });
             unlockedCount = Math.min(unlockedCount + numFeatured, CUSTOM_STICKERS.length);
@@ -553,8 +563,9 @@ const DataController = {
         r.dayCount = sDay ? 1 : (dList ? dList.length : 0);
         return r;
     },
-    async processDataPayload(apiLogs, apiBattlestats) {
+    async processDataPayload(apiLogs, apiBattlestats, opts = {}) {
         Perf.start('processDataPayload');
+        const silent = !!opts.silent;
         let s = getActiveHistory();
         const fullApiLogs = normalizeApiLogs(apiLogs);
         let cleanLogs = fullApiLogs;
@@ -588,7 +599,7 @@ const DataController = {
                     this.invalidateToday();
                     await DBManager.saveDays(s.meta, [s.today]);
                 }
-                window.dispatchEvent(new CustomEvent('bbgl:dataUpdated'));
+                window.dispatchEvent(new CustomEvent('bbgl:dataUpdated', { detail: { silent } }));
                 Perf.end('processDataPayload');
                 return 'SUCCESS';
             }
@@ -630,7 +641,7 @@ const DataController = {
                     if (!changedDays.includes(s.today)) changedDays.push(s.today);
                     await DBManager.saveDays(s.meta, changedDays);
                 }
-                window.dispatchEvent(new CustomEvent('bbgl:dataUpdated'));
+                window.dispatchEvent(new CustomEvent('bbgl:dataUpdated', { detail: { silent } }));
                 Perf.end('processDataPayload');
                 return 'SUCCESS';
             }
@@ -674,7 +685,7 @@ const DataController = {
             s.today = initializeDayObject(logicalToday, s.today.endBreakdown);
         }
         this.saveSmartHistory(s);
-        window.dispatchEvent(new CustomEvent('bbgl:dataUpdated'));
+        window.dispatchEvent(new CustomEvent('bbgl:dataUpdated', { detail: { silent } }));
         Perf.end('processDataPayload');
         return 'SUCCESS';
     },
@@ -957,15 +968,21 @@ const DataController = {
 };
 
 
+// Shared mulberry32-style integer mixer — pure function of its input, no stream/closure state.
+// Used both as a seeded RNG step (generateDemoData) and as a per-pick hash (sticker roulette).
+function hashMix(n) {
+    let t = n;
+    t = Math.imul(t ^ (t >>> 15), t | 1);
+    t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+    return (t ^ (t >>> 14)) >>> 0;
+}
+
 function generateDemoData() {
     let _seed = 0x9e3779b9;
 
     function rand() {
         _seed += 0x6d2b79f5;
-        let t = _seed;
-        t = Math.imul(t ^ (t >>> 15), t | 1);
-        t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
-        return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+        return hashMix(_seed) / 4294967296;
     }
 
     function randInt(lo, hi) {

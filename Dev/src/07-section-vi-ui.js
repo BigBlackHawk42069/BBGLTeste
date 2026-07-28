@@ -791,7 +791,7 @@
         bar.container.setAttribute('data-tooltip', `${lvLine}<i class="bbgl-lvl-rank">"${atrophyTitle(rankAtrophy, rankLevel)}"</i>${statTitleHtml}`);
     }
 
-    function updateLevelBar() {
+    function updateLevelBar(silent) {
         const totalExp = getLiveLevelExp();
 
         if (runtime._lastLevelExp === undefined) {
@@ -805,9 +805,21 @@
         if (!bars.length) return;
 
         if (totalExp !== runtime._lastLevelExp) {
-            runtime._targetLevelExp = totalExp;
-            if (!runtime._isAnimatingLevel) {
-                runLevelAnimationQueue();
+            // Silent (background heartbeat) updates skip the animation queue entirely and just
+            // snap to the correct value — a level-up sequence playing on its own, with no click
+            // behind it, reads as a bug to anyone watching. If a real click's animation is
+            // already in flight, leave it running rather than stomping its state; it'll catch up
+            // on a later call.
+            if (silent) {
+                if (!runtime._isAnimatingLevel) {
+                    runtime._lastLevelExp = totalExp;
+                    bars.forEach(b => renderLevelBar(b, totalExp));
+                }
+            } else {
+                runtime._targetLevelExp = totalExp;
+                if (!runtime._isAnimatingLevel) {
+                    runLevelAnimationQueue();
+                }
             }
         } else if (!runtime._isAnimatingLevel) {
             // Exp is unchanged but bars may be newly created (e.g. panel just opened for the
@@ -1172,7 +1184,6 @@
         const loc = userConfig.buttonLocation,
             showFooter = loc === 'notes' || loc === 'both',
             showSidebar = loc === 'sidebar' || loc === 'both';
-        if (loc !== _lastButtonLocation && !runtime._domObsArmed) rearmDomObs();
         if (loc === _lastButtonLocation) {
             const gtCached = dom.gymTab && dom.gymTab.isConnected ? dom.gymTab : null;
             const sbDCached = dom.sbDesktop && dom.sbDesktop.isConnected ? dom.sbDesktop : null;
@@ -1203,7 +1214,6 @@
                         }
                     }
                 }
-                settleDomObs();
                 return;
             }
         }
@@ -1276,53 +1286,7 @@
         }
         _lastButtonLocation = loc;
         if (showSidebar) syncSidebarState();
-        settleDomObs();
         Perf.end('handleDomMutation');
-    }
-
-    function settleDomObs() {
-        const loc = userConfig.buttonLocation,
-            showFooter = loc === 'notes' || loc === 'both',
-            showSb = loc === 'sidebar' || loc === 'both';
-        const footerOk = !showFooter || (dom.gymTab && dom.gymTab.isConnected);
-        const sidebarOk = !showSb || (dom.sbDesktop && dom.sbDesktop.isConnected);
-        if (!footerOk || !sidebarOk) return;
-        if (!runtime.domObs || !runtime._domObsArmed) return;
-        runtime.domObs.disconnect();
-        runtime._domObsArmed = false;
-        const guard = (parent) => {
-            if (!parent) return;
-            const o = new MutationObserver(() => {
-                if (!runtime._domObsArmed) rearmDomObs();
-            });
-            o.observe(parent, {
-                childList: true
-            });
-            runtime._domGuards.push(o);
-        };
-        const seen = new Set();
-        [dom.gymTab && dom.gymTab.parentNode, dom.sbDesktop && dom.sbDesktop.parentNode, dom.sbMobile && dom.sbMobile.parentNode, dom.sbFlyout && dom.sbFlyout.parentNode].forEach(p => {
-            if (p && !seen.has(p)) {
-                seen.add(p);
-                guard(p);
-            }
-        });
-    }
-
-    function rearmDomObs() {
-        if (!runtime.domObs || runtime._domObsArmed) return;
-        runtime._domGuards.forEach(o => o.disconnect());
-        runtime._domGuards = [];
-        runtime.domObs.observe(document.body, {
-            childList: true,
-            subtree: true
-        });
-        runtime._domObsArmed = true;
-        if (runtime._domRearmRaf) return;
-        runtime._domRearmRaf = requestAnimationFrame(() => {
-            runtime._domRearmRaf = null;
-            handleDomMutation();
-        });
     }
     const SB_DESKTOP = {
             target: '#nav-gym[class*="area-desktop"]',

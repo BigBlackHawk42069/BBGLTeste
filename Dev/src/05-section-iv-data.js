@@ -483,7 +483,8 @@
         };
         const {
             specId = null,
-            manualWars = false
+            manualWars = false,
+            silent = false
         } = options;
 
         if (!userConfig.apiKey || userConfig.apiKey.length < 16) {
@@ -560,8 +561,11 @@
                 if (r.data.log) logs = { ...logs, ...r.data.log };
                 if (r.cfg.type === 'battlestats') bs = r.data;
             });
-            // Name comes from the `basic` selection bundled into the battlestats call above.
+            // Name and player_id come from the `basic` selection bundled into the battlestats call
+            // above. player_id seeds the deterministic per-user sticker roulette (buildProgressionCache,
+            // 06-section-v-logic.js) so placement is unique per account but identical across devices.
             if (bs && bs.name) meta.playerName = bs.name;
+            if (bs && bs.player_id) meta.playerId = bs.player_id;
 
             const tsSec = Math.floor(ts / 1000);
             if (!meta.syncFloor) meta.syncFloor = {};
@@ -580,7 +584,7 @@
             const needsEnhancers = mission === 'FULL_SYNC' && bs &&
                 BS_STAT_ROWS.some(row => (bs[row.api] || 0) > (_s.today.endBreakdown[row.abbr] || 0));
 
-            await DataController.processDataPayload(logs, bs);
+            await DataController.processDataPayload(logs, bs, { silent });
 
             if (needsEnhancers) {
                 try {
@@ -592,7 +596,7 @@
                         const eData = await eRes.json();
                         if (!eData.error) {
                             meta.syncFloor.statEnhancers = tsSec;
-                            await DataController.processDataPayload(eData.log || {}, null);
+                            await DataController.processDataPayload(eData.log || {}, null, { silent });
                         }
                     }
                 } catch (e) { Log.warn('Stat enhancer fetch failed', e); }
@@ -632,7 +636,6 @@
         const result = await universalFetch(mission, { ...options, manualWars: mission !== 'TRAIN_SINGLE' });
 
         if (result.ok) {
-            scheduleHeartbeat();
             if (btn) {
                 btn.innerText = "Refreshed!";
                 btn.style.color = "#43a047";
@@ -652,21 +655,24 @@
         Perf.end('syncWithFeedback');
     }
 
-    // Automatically checks for new training data every 30 minutes in the background.
-    function scheduleHeartbeat() {
-        if (runtime.bgSyncId) clearTimeout(runtime.bgSyncId);
+    // Conditional heartbeat: fires at most once per 20 minutes, and only while there's actually
+    // a reason to — the panel is open (any mode) or the gym page's exp bar is on screen — and
+    // this tab is the one being looked at. No visible surface, no fetch; tabbing away or closing
+    // the panel just lets it go quiet again on its own, no separate start/stop bookkeeping needed.
+    function heartbeatTick() {
+        if (document.visibilityState !== 'visible') return;
+        const panelOpen = dom.panel && dom.panel.style.display !== 'none';
+        const onGymPage = !!document.getElementById('bbgl-gym-level-container');
+        if (!panelOpen && !onGymPage) return;
         const lastFull = localStorage.getItem(KEYS.LAST_SYNC);
         const elapsed = lastFull ? (Date.now() - parseInt(lastFull)) : Infinity;
-        const delay = elapsed >= 1800000 ? 0 : (1800000 - elapsed);
-        runtime.bgSyncId = setTimeout(async function bgSyncTick() {
-            runtime.bgSyncId = null;
-            await universalFetch('FULL_SYNC');
-            scheduleHeartbeat();
-        }, delay);
+        if (elapsed < 1200000) return; // 20 minutes
+        universalFetch('FULL_SYNC', { silent: true });
     }
 
     function startBackgroundSync() {
-        scheduleHeartbeat();
+        if (runtime.bgSyncId) clearInterval(runtime.bgSyncId);
+        runtime.bgSyncId = setInterval(heartbeatTick, 60000);
     }
 
     // This makes sure your final gym training logs are saved even if you navigate away from the gym page.
@@ -675,7 +681,6 @@
         if (f === 'true' && !window.location.href.includes('gym.php')) {
             sessionStorage.removeItem(KEYS.SESSION);
             await universalFetch('FULL_SYNC');
-            scheduleHeartbeat();
         }
     }
 
