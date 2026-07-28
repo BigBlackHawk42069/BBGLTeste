@@ -129,11 +129,12 @@ const DataController = {
         let unlockedCount = 1;
         let rouletteCounter = 0;
         let careerLevelExp = 0;
-        // Stat-ratio title state — same reward-gating scope as careerLevelExp below (skipped
-        // entirely in demo mode, respects installDateKey/rewardStartTs), replayed fresh from the
-        // full timeline on every cache rebuild rather than persisted to DB. See
-        // advanceStatTitleState() in 03-section-ii-utils.js for the per-day step logic.
-        let statTitleState = null;
+        // Stat-title progress — cumulative E per stat, each unlocking that stat's own word ladder
+        // (STAT_TITLE_THRESHOLDS, 03-section-ii-utils.js). Same reward-gating scope as
+        // careerLevelExp below (skipped entirely in demo mode, respects installDateKey/
+        // rewardStartTs), recomputed from the full timeline on every cache rebuild rather than
+        // persisted to DB. Only the player's chosen slots live in userConfig.
+        const statTitleE = { str: 0, def: 0, spd: 0, dex: 0 };
         // Reward gating: stickers (and their unlock progression) only count from the install
         // week onward. Pre-install weeks still render their bar/day counts elsewhere, but earn
         // no stickers here. EXP uses a stricter gate: full days before the install day contribute
@@ -163,7 +164,11 @@ const DataController = {
                     const hasTrainLog = daySeries.some(s => s.type === 'gym');
                     const isHJ = (daySeries === day.series) ? hjDaySet.has(day.date) : findHappyJumps(daySeries).length > 0;
                     careerLevelExp += computeDailyLevelExp(e, hasTrainLog, isHJ);
-                    statTitleState = advanceStatTitleState(statTitleState, { date: day.date, endBreakdown: day.endBreakdown, eSpent: { total: e } });
+                    // Per-stat, off the same gated slice `e` was summed from — day.eSpent[stat]
+                    // would skip the install-day sub-day filter applied to daySeries above.
+                    daySeries.forEach(s => {
+                        if (s.type === 'gym' && statTitleE[s.stat] !== undefined) statTitleE[s.stat] += (s.cost || 0);
+                    });
                 });
             }
             if (wk >= todayWeekKey) return;
@@ -205,7 +210,7 @@ const DataController = {
         this._cache.featuredDays = featuredSet;
         this._cache.unlockedCount = unlockedCount;
         runtime.careerLevelExp = careerLevelExp;
-        runtime.statTitleState = statTitleState;
+        runtime.statTitleE = statTitleE;
         if (!runtime.demoMode) {
             const existingStates = (_historyCache && _historyCache.meta && _historyCache.meta.stickers) ? _historyCache.meta.stickers : {};
             const freshStates = {};
@@ -228,9 +233,9 @@ const DataController = {
         this.buildProgressionCache();
         return runtime.careerLevelExp || 0;
     },
-    getStatTitleState() {
+    getStatTitleE() {
         this.buildProgressionCache();
-        return runtime.statTitleState || null;
+        return runtime.statTitleE || { str: 0, def: 0, spd: 0, dex: 0 };
     },
     getUnlockedCount() {
         this.buildProgressionCache();
@@ -1746,62 +1751,13 @@ function computeAchievements(s) {
     };
 }
 
-// #bbgl-ach-pages' own top edge already clears the SVG toggle row (via the container's
-// padding-top), and #bbgl-ach-footer's top edge is the top of the page-dot/nav bar. Rather
-// than trying to replicate that gap with CSS box-model math (which the grid layout under
-// #bbgl-achievements-container doesn't resolve the way plain flex would), measure the two
-// real rects directly and pin the locked page's height to exactly the space between them.
-// Also stamps that measured gap as --ach-gap so the page-mode transform (04-section-iii-styles.js)
-// can scale its correction off the container's actual live height, not just a width breakpoint.
-//
-// A ResizeObserver on both elements re-runs this automatically whenever their real layout
-// changes, instead of relying on every call site that might move them (page-flip CRT animation,
-// panel mode toggle, tall-mode toggle, page-mode's own fresh mount, window resize, font load,
-// ...) to remember to call it. A single measurement isn't trustworthy, though — whichever of
-// those transitions is in flight when this fires, the first reading can land mid-animation and
-// look plausible (not just implausibly tiny) while still being wrong. So instead of accepting
-// one reading, poll every frame until two consecutive readings agree (layout has stopped
-// moving) before committing. Each call supersedes any still-running poll from an earlier call.
-let _achLockedResizeObserver = null;
-let _achLockedStabilizeToken = 0;
-
-function resizeAchLockedPage() {
-    const container = document.getElementById('bbgl-ach-pages');
-    const footer = document.getElementById('bbgl-ach-footer');
-    if (!container || !footer) return;
-    if (!_achLockedResizeObserver && typeof ResizeObserver === 'function') {
-        _achLockedResizeObserver = new ResizeObserver(() => resizeAchLockedPage());
-    }
-    if (_achLockedResizeObserver) {
-        _achLockedResizeObserver.observe(container);
-        _achLockedResizeObserver.observe(footer);
-    }
-    const token = ++_achLockedStabilizeToken;
-    let lastGap = null;
-    const tick = () => {
-        if (token !== _achLockedStabilizeToken) return;
-        const c = document.getElementById('bbgl-ach-pages');
-        const f = document.getElementById('bbgl-ach-footer');
-        const lockedEl = c && c.querySelector('.bbgl-ach-locked');
-        if (!c || !f || !lockedEl) return;
-        const gap = f.getBoundingClientRect().top - c.getBoundingClientRect().top;
-        if (gap >= 40 && lastGap !== null && Math.abs(gap - lastGap) < 0.5) {
-            lockedEl.style.height = gap + 'px';
-            lockedEl.style.setProperty('--ach-gap', gap + 'px');
-            return;
-        }
-        lastGap = gap;
-        requestAnimationFrame(tick);
-    };
-    requestAnimationFrame(tick);
-}
-
 function achRefreshPageDom() {
     const container = document.getElementById('bbgl-ach-pages');
     if (!container || !runtime._achCache) return;
+    // The titles page's role picker lives inside the markup about to be replaced.
+    closeTitleRolePicker();
     container.innerHTML = buildAchievementsPage(runtime._achPage, runtime._achCache);
     updateAchPageIndicator();
-    resizeAchLockedPage();
 }
 
 function renderAchievements() {
@@ -1986,8 +1942,127 @@ function achFmtTimeHMS(ts) {
     return String(h).padStart(2, '0') + ':' + String(m).padStart(2, '0') + ':' + String(s).padStart(2, '0') + ' ' + achTimeZoneSuffix();
 }
 
-function achBuildPageLocked() {
-    return `<div class="bbgl-ach-locked"><div class="bbgl-ach-locked-icon">\u{1F512}</div><div class="bbgl-ach-locked-text">Reach Level 100 to unlock this page!</div></div>`;
+// ─── Titles page (achievements page 5) ──────────────────────────────────────
+// Dedicated to the leveling side of the script, stacked top to bottom: the Clay -> Fully Bricked
+// rank track, the player dashboard, then the stat-title unlock grid. Every star is one phase of
+// one stat's word ladder, unlocked by E spent on that stat alone (STAT_TITLE_THRESHOLDS,
+// 03-section-ii-utils.js). Words are deliberately NOT shown on the stars — the only place a word
+// appears is the composed title in the dashboard, so equipping one is how you find out what it
+// says. Deliberately headerless: no section titles, so the space goes to content.
+
+// Stamped into DB meta from the `basic` selection that rides along with the battlestats call
+// (05-section-iv-data.js). Torn's own sidebar can't be scraped for this — its class names are
+// hashed per build — so an em dash stands in until the first sync lands.
+function achTitlePlayerName() {
+    const h = getActiveHistory();
+    return (h && h.meta && h.meta.playerName) || '—';
+}
+
+// The level bar's rank axis: a bracket per band hanging off the line, like a graph's x-axis.
+// Widths come straight from levelRankBrackets() (03-section-ii-utils.js), which derives them from
+// LEVEL_TITLE_BANDS — nothing here needs touching if the bands change.
+function achTitleBracketsHTML(atrophy, level) {
+    return levelRankBrackets(atrophy, level).map(b => {
+        const cls = 'bbgl-rank-bracket' + (b.unlocked ? ' is-revealed' : '');
+        const tip = b.unlocked
+            ? `${b.label} · Levels ${b.start}-${b.end}`
+            : `Levels ${b.start}-${b.end} — reach level ${b.start} to reveal`;
+        return `<div class="${cls}" style="width:${b.widthPct.toFixed(4)}%" data-tooltip="${achEsc(tip)}"><span class="bbgl-rank-bracket-arm"></span><span class="bbgl-rank-bracket-label">${achEsc(b.label)}</span></div>`;
+    }).join('');
+}
+
+// One star. Locked stars carry a partial fill and an "E so far / E needed" tooltip; only the very
+// next locked phase can show any fill, everything past it reads 0.
+//
+// The tooltip names both words this tier would supply — primary is the noun, secondary the
+// adjective — with "Locked" standing in that same slot until the tier is earned. Read straight off
+// STAT_TITLE_WORDS rather than through statTitleWord(), which clamps down to the nearest defined
+// phase: that's right for composing a title but would misreport an undecided tier as owning some
+// earlier tier's words.
+function achTitleStarHTML(stat, phase, unlockedPhase, statE, role) {
+    const unlocked = phase <= unlockedPhase;
+    const need = STAT_TITLE_THRESHOLDS[phase] || 0;
+    const prev = phase > 0 ? (STAT_TITLE_THRESHOLDS[phase - 1] || 0) : 0;
+    const span = Math.max(1, need - prev);
+    const pct = unlocked ? 100 : Math.max(0, Math.min(100, ((statE - prev) / span) * 100));
+    const cls = ['bbgl-title-star'];
+    if (unlocked) cls.push('is-unlocked');
+    else cls.push('is-locked');
+    if (role) cls.push('is-' + role);
+    const words = (STAT_TITLE_WORDS[stat] || [])[phase] || null;
+    let body;
+    if (!unlocked) {
+        body = `<i>Locked</i><i>${Formatter.number(Math.min(statE, need))} / ${Formatter.number(need)} E</i>`;
+    } else if (words) {
+        body = `<i>Primary: ${words.noun}</i><i>Secondary: ${words.adj}</i>`;
+    } else {
+        body = `<i>Not yet named</i>`;
+    }
+    const tip = `${achStatFull(stat)} · Tier ${phase}${body}`;
+    return `<div class="${cls.join(' ')}" data-title-stat="${stat}" data-title-phase-idx="${phase}"${unlocked ? '' : ' data-locked="1"'} data-tooltip="${achEsc(tip)}" style="--star-fill:${pct.toFixed(1)}%">${ICONS.TITLE_STAR}<span class="bbgl-title-star-tier">${phase}</span></div>`;
+}
+
+function achBuildPageTitles() {
+    const totalExp = getLiveLevelExp();
+    const { atrophy, level } = calculateLevelProgress(totalExp);
+    const rankAtrophy = (runtime.devMode && runtime._devRankOverride) ? runtime._devRankOverride.atrophy : atrophy;
+    const rankLevel = (runtime.devMode && runtime._devRankOverride) ? runtime._devRankOverride.level : level;
+    const rankName = atrophyTitle(rankAtrophy, rankLevel);
+    // The bar is a plain 0-100 gym-level track, so the point sits at the level itself. Atrophy 1/2
+    // technically start below zero (LEVEL_ATRO_START), which just pins the point to the left edge.
+    const rankPct = Math.max(0, Math.min(100, rankLevel || 0));
+
+    const eByStat = getLiveStatTitleE();
+    const sel = getLiveStatTitleSelection();
+    const phases = sel.phases;
+
+    const roleFor = (stat, phase) => {
+        const isP = sel.primary && sel.primary.stat === stat && sel.primary.phase === phase;
+        const isS = sel.secondary && sel.secondary.stat === stat && sel.secondary.phase === phase;
+        return isP && isS ? 'both' : (isP ? 'primary' : (isS ? 'secondary' : ''));
+    };
+
+    // 2x2: STR/SPD down the left, DEF/DEX down the right. Source order is str, def, spd, dex so a
+    // 2-column grid fills the rows correctly, and halving the row width keeps the stars small
+    // enough that the whole page still fits without scrolling.
+    const gridCells = ['str', 'def', 'spd', 'dex'].map(k => {
+        const stars = STAT_TITLE_THRESHOLDS.map((_, i) => achTitleStarHTML(k, i, phases[k], eByStat[k] || 0, roleFor(k, i))).join('');
+        return `<div class="bbgl-title-row"><div class="bbgl-title-row-label ach-stat-${k}" data-tooltip="${achEsc(`${Formatter.number(Math.round(eByStat[k] || 0))} E spent on ${achStatFull(k)}`)}">${k.toUpperCase()}</div><div class="bbgl-title-stars">${stars}</div></div>`;
+    }).join('');
+
+    const titleHtml = composeStatTitleHTML(sel);
+
+    // Free-floating identity block — no row labels, the values speak for themselves.
+    const head = `<div class="bbgl-titles-head">` +
+        `<div class="bbgl-titles-name">${achEsc(achTitlePlayerName())}</div>` +
+        `<div class="bbgl-titles-sub"><span class="bbgl-titles-rankname">${achEsc(rankName)}</span>` +
+        (titleHtml ? `<i class="bbgl-lvl-title bbgl-titles-title">${titleHtml}</i>` : '') +
+        `</div></div>`;
+
+    // Level bar: Clay / Fully Bricked ride above the ends, 0 and 100 sit beside the line itself,
+    // the live gym level floats over the moving point, and the rank brackets hang underneath.
+    const bar = `<div class="bbgl-rank-track">` +
+        `<div class="bbgl-rank-caps"><span class="bbgl-rank-cap">Clay</span><span class="bbgl-rank-cap">Fully Bricked</span></div>` +
+        `<div class="bbgl-rank-row"><span class="bbgl-rank-end">0</span>` +
+        `<div class="bbgl-rank-line"><div class="bbgl-rank-fill" style="width:${rankPct.toFixed(2)}%"></div>` +
+        `<div class="bbgl-rank-knob" style="left:${rankPct.toFixed(2)}%" data-tooltip="${achEsc(`"${rankName}"`)}"><span class="bbgl-rank-knob-lv">${level}</span></div>` +
+        `<div class="bbgl-rank-brackets">${achTitleBracketsHTML(rankAtrophy, rankLevel)}</div>` +
+        `</div><span class="bbgl-rank-end">100</span></div>` +
+        `</div>`;
+
+    // Earned/Custom switch, reusing the enhancers page's segmented-switch styling. Custom is
+    // unavailable until there's a saved pick to switch back to — picking any star creates one and
+    // flips the mode on its own.
+    const isCustom = sel.mode === 'custom';
+    const switchTip = 'Earned follows your two highest stats automatically. Custom keeps the title you picked, and clicking any unlocked star switches you to it.';
+    const modeSwitch = `<div class="bbgl-title-mode-switch" data-tooltip="${achEsc(switchTip)}">` +
+        `<span class="bbgl-enh-sw-opt${isCustom ? '' : ' active'}" data-title-mode="earned">Earned</span>` +
+        `<span class="bbgl-enh-sw-opt${isCustom ? ' active' : ''}${sel.hasCustom ? '' : ' is-unavailable'}" data-title-mode="custom">Custom</span>` +
+        `</div>`;
+
+    const grid = `<div class="bbgl-titles-grid">${modeSwitch}<div class="bbgl-title-rows">${gridCells}</div></div>`;
+
+    return `<div class="bbgl-titles-page">${head}${bar}${grid}</div>`;
 }
 
 function achBuildPage0(d) {
@@ -2418,7 +2493,7 @@ function buildAchievementsPage(pageIdx, d) {
     } else if (pageIdx === 3) {
         return achBuildPage2(d);
     } else if (pageIdx === 5) {
-        return achBuildPageLocked();
+        return achBuildPageTitles();
     } else {
         const consistRows = [mk('Best Training Streak', d.longestStreak, {
             key: 'training-streak',
@@ -3390,7 +3465,7 @@ async function clearData() {
         runtime.apiCallTotal = 0;
         runtime.stickerSlots = [];
         runtime.careerLevelExp = 0;
-        runtime.statTitleState = null;
+        runtime.statTitleE = null;
         runtime._lastLevelExp = undefined;
         runtime._targetLevelExp = undefined;
         runtime._isAnimatingLevel = false;

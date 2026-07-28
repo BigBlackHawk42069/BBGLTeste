@@ -1026,8 +1026,18 @@
                 fMax = sc.max,
                 step = sc.step,
                 steps = Math.round((fMax - fMin) / step);
-            const pL = [];
+            let pL = [];
             for (let i = 0; i <= steps; i++) pL.push(Formatter.axis(fMin + (i * step)));
+            // Step-aware: if this scale's own labels never land on a non-zero decimal digit
+            // (e.g. a step of 5k means every tick is a whole k already), the decimal is pure
+            // noise across the whole axis - drop it from all of them, not just the ones with
+            // a hardcoded whole-number rule above. Reused below for the actual rendered labels
+            // too, not just this width-measurement pass.
+            let _yForceWhole = pL.length > 0 && pL.every(s => !/\.\d*[1-9]/.test(s));
+            if (_yForceWhole) {
+                pL = [];
+                for (let i = 0; i <= steps; i++) pL.push(Formatter.axis(fMin + (i * step), true));
+            }
             const _yMaxStr = pL.reduce((a, b) => b.length > a.length ? b : a, pL[0] || '10');
             const _yMT = document.createElementNS('http://www.w3.org/2000/svg', 'text');
             _yMT.setAttribute('class', 'g-text y-label');
@@ -1098,7 +1108,7 @@
                 t.setAttribute("x", -6);
                 t.setAttribute("y", expandedPanel ? y - 1 : y + 3);
                 t.setAttribute("class", "g-text y-label");
-                t.textContent = Formatter.axis(v);
+                t.textContent = Formatter.axis(v, _yForceWhole);
                 g.appendChild(t);
             }
             const gx = (v) => {
@@ -1261,8 +1271,10 @@
                         const cr = p.y,
                             dl = cr - str,
                             sg = dl >= 0 ? '+' : '',
-                            pc = str > 0 ? (dl / str) * 100 : 0;
-                        body = `<div class="tt-row"><span class="tt-label">Rate</span> <span class="tt-total">${cr.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span></div><div class="tt-row"><span class="tt-label">Growth</span> <span style="color:${dl >= 0 ? CONSTANTS.COLORS.GAINS : '#ff5252'}; font-weight:bold;">${sg}${dl.toFixed(2)} <span style="font-size:10px; opacity:0.8;">(${sg}${pc.toFixed(1)}%)</span></span></div>`;
+                            pc = str > 0 ? (dl / str) * 100 : 0,
+                            crStr = Math.abs(cr) > 99 ? cr.toLocaleString(undefined, { maximumFractionDigits: 0 }) : cr.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }),
+                            dlStr = Math.abs(dl) > 99 ? Math.round(dl).toLocaleString() : dl.toFixed(2);
+                        body = `<div class="tt-row"><span class="tt-label">Rate</span> <span class="tt-total">${crStr}</span></div><div class="tt-row"><span class="tt-label">Growth</span> <span style="color:${dl >= 0 ? CONSTANTS.COLORS.GAINS : '#ff5252'}; font-weight:bold;">${sg}${dlStr} <span style="font-size:10px; opacity:0.8;">(${sg}${pc.toFixed(1)}%)</span></span></div>`;
                     } else if (graphState.mode === 'gains') body = `<div class="tt-row"><span class="tt-label">Gained</span> <span class="tt-val">+${Formatter.dual(p.y)}</span></div>`;
                     else {
                         const cv = p.y,
@@ -1296,7 +1308,8 @@
             let nf = frac <= 1 ? 1 : frac <= 2 ? 2 : frac <= 5 ? 5 : 10,
                 step = nf * base;
             const _aM = Math.max(Math.abs(min), Math.abs(max)),
-                _mD = _aM >= 1e12 ? 1e12 : _aM >= 1e9 ? 1e9 : _aM >= 1e6 ? 1e6 : _aM >= 1e3 ? 1e3 : 1;
+                _mDTier = ABBR_TIERS.find(t => _aM >= t[0]),
+                _mD = _mDTier ? _mDTier[0] : 1;
             if (step < 0.1 * _mD) step = 0.1 * _mD;
             let gMin = Math.floor(min / step) * step,
                 gMax = Math.ceil(max / step) * step;
@@ -1307,7 +1320,22 @@
                 gMin = Math.floor(min / step) * step;
                 gMax = Math.ceil(max / step) * step;
             }
-            if (gMax - max < (gMax - gMin) * 0.05) gMax += step;
+            // Once Formatter.axis is rendering this range at 100+ units of a tier, gridline
+            // spacing needs to be at least a half-unit (1k/2, 1m/2, ...) or rounding collapses
+            // multiple ticks onto the same label. Prefer a full unit (100m/101m/102m) - only
+            // drop to a half-unit if a full unit would leave just 2 ticks on the axis (e.g.
+            // 389k-390k), since Formatter.axis can render an exact .5 losslessly.
+            if (_aM / _mD >= 100 && step < _mD) {
+                step = _mD;
+                gMin = Math.floor(min / step) * step;
+                gMax = Math.ceil(max / step) * step;
+                if (Math.round((gMax - gMin) / step) + 1 <= 2) {
+                    step = _mD / 2;
+                    gMin = Math.floor(min / step) * step;
+                    gMax = Math.ceil(max / step) * step;
+                }
+            }
+            if (gMax - max < (gMax - gMin) * 0.01) gMax += step;
             return {
                 min: Math.max(0, gMin),
                 max: gMax,

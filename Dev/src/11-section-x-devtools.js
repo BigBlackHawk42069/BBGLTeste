@@ -182,11 +182,12 @@
         return buildDevSection('Rank Preview', [row, clearBtn]);
     }
 
-    // ─── Title Preview section (stat-title phase/combo testing) ────────────
-    // Overrides getLiveStatTitleState() (07-section-vi-ui.js) so every phase/primary/secondary
-    // combination can be previewed on demand without needing real training history to produce it.
-    // Gated behind runtime.devMode at the read site, and this whole file is stripped from release
-    // builds, so this can never affect a real user.
+    // ─── Title Preview section (stat-title slot testing) ───────────────────
+    // Overrides getLiveStatTitleSelection() (07-section-vi-ui.js) so any stat/phase can be dropped
+    // into either slot without the E spend that would really unlock it. Each slot picks its own
+    // phase now, matching the real system — that's the only way to preview a mismatched pair like
+    // a Phase 1 adjective on a Phase 10 noun. Gated behind runtime.devMode at the read site, and
+    // this whole file is stripped from release builds, so this can never affect a real user.
     function buildTitlePreviewSection() {
         const rowStyle = 'display:flex;gap:6px;';
         const selectStyle = 'flex:1;background:#333;color:#fff;border:1px solid #666;border-radius:4px;padding:5px 6px;font-family:sans-serif;font-size:12px;';
@@ -203,42 +204,43 @@
             return sel;
         }
 
-        const phaseSelect = buildSelect(STAT_TITLE_PHASE_THRESHOLDS.map((_, i) => [String(i), `Phase ${i}`]));
+        const phaseOptions = STAT_TITLE_THRESHOLDS.map((_, i) => [String(i), `Phase ${i}`]);
         const primarySelect = buildSelect(STAT_KEYS.map(k => [k, achStatFull(k)]));
+        const primaryPhase = buildSelect(phaseOptions);
         const secondarySelect = buildSelect(STAT_KEYS.map(k => [k, achStatFull(k)]));
+        const secondaryPhase = buildSelect(phaseOptions);
         secondarySelect.selectedIndex = 1; // default to a stat different from primary
+
+        function refreshTitleUI() {
+            if (typeof refreshStatTitleUI === 'function') refreshStatTitleUI();
+        }
 
         function applyOverride() {
             runtime._devTitleOverride = {
-                phase: parseInt(phaseSelect.value, 10),
-                primary: primarySelect.value,
-                secondary: secondarySelect.value
+                primary: { stat: primarySelect.value, phase: parseInt(primaryPhase.value, 10) },
+                secondary: { stat: secondarySelect.value, phase: parseInt(secondaryPhase.value, 10) }
             };
-            const total = typeof getLiveLevelExp === 'function' ? getLiveLevelExp() : 0;
-            if (typeof getLevelBars === 'function' && typeof renderLevelBar === 'function') {
-                getLevelBars().forEach(b => renderLevelBar(b, total));
-            }
+            refreshTitleUI();
         }
-        [phaseSelect, primarySelect, secondarySelect].forEach(sel => sel.addEventListener('change', applyOverride));
+        [primarySelect, primaryPhase, secondarySelect, secondaryPhase].forEach(sel => sel.addEventListener('change', applyOverride));
 
-        const phaseRow = document.createElement('div');
-        phaseRow.style.cssText = rowStyle;
-        phaseRow.appendChild(phaseSelect);
+        // One row per slot: which stat, and which phase of that stat's ladder.
+        const primaryRow = document.createElement('div');
+        primaryRow.style.cssText = rowStyle;
+        primaryRow.appendChild(primarySelect);
+        primaryRow.appendChild(primaryPhase);
 
-        const statRow = document.createElement('div');
-        statRow.style.cssText = rowStyle;
-        statRow.appendChild(primarySelect);
-        statRow.appendChild(secondarySelect);
+        const secondaryRow = document.createElement('div');
+        secondaryRow.style.cssText = rowStyle;
+        secondaryRow.appendChild(secondarySelect);
+        secondaryRow.appendChild(secondaryPhase);
 
         const clearBtn = buildDevButton('Clear Override', () => {
             runtime._devTitleOverride = null;
-            const total = typeof getLiveLevelExp === 'function' ? getLiveLevelExp() : 0;
-            if (typeof getLevelBars === 'function' && typeof renderLevelBar === 'function') {
-                getLevelBars().forEach(b => renderLevelBar(b, total));
-            }
+            refreshTitleUI();
         });
 
-        return buildDevSection('Title Preview', [phaseRow, statRow, clearBtn]);
+        return buildDevSection('Title Preview', [primaryRow, secondaryRow, clearBtn]);
     }
 
     // ─── Onboarding section ─────────────────────────────────────────────────

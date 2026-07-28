@@ -1336,9 +1336,6 @@
                 GraphController.draw();
                 setTimeout(GraphController.draw, 320);
             }
-            if (dom.topPanel.classList.contains('viewing-achievements')) {
-                setTimeout(resizeAchLockedPage, 320);
-            }
         };
         const tt = get('bbgl-tall-toggle');
         if (tt) tt.onclick = toggleTall;
@@ -1718,6 +1715,24 @@
                 passive: true
             });
             achContainer.addEventListener('click', (e) => {
+                // Titles page (page 5). The picker is dismissed by any click that isn't on it or
+                // on another star, so it never survives a page flip or a stray click.
+                if (!e.target.closest('.bbgl-title-pick')) closeTitleRolePicker();
+                const star = e.target.closest('.bbgl-title-star.is-unlocked');
+                if (star) {
+                    e.stopPropagation();
+                    openTitleRolePicker(star);
+                    return;
+                }
+                const modeOpt = e.target.closest('[data-title-mode]');
+                if (modeOpt) {
+                    e.stopPropagation();
+                    if (!modeOpt.classList.contains('is-unavailable')) {
+                        setStatTitleMode(modeOpt.dataset.titleMode);
+                        refreshStatTitleUI();
+                    }
+                    return;
+                }
                 const swOpt = e.target.closest('.bbgl-enh-sw-opt');
                 if (swOpt) {
                     const toSelected = swOpt.dataset.mode === 'selected';

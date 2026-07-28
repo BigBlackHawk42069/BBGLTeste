@@ -27,6 +27,9 @@
         ACHIEVEMENTS: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6" fill="none"></path><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18" fill="none"></path><path d="M4 22h16" fill="none"></path><path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22" fill="none"></path><path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22" fill="none"></path><path d="M18 2H6v7a6 6 0 0 0 12 0V2Z" fill="none"></path></svg>`,
         PASTE: `<svg viewBox="0 0 24 24"><path d="M19,20H5V4H7V7H17V4H19M12,2A1,1 0 0,1 13,3A1,1 0 0,1 12,4A1,1 0 0,1 11,3A1,1 0 0,1 12,2M19,2H14.82C14.4,0.84 13.3,0 12,0C10.7,0 9.6,0.84 9.18,2H5A2,2 0 0,0 3,4V20A2,2 0 0,0 5,22H19A2,2 0 0,0 21,20V4A2,2 0 0,0 19,2Z"/></svg>`,
         CHECK: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17 4 12" fill="none"/></svg>`,
+        // Placeholder for every stat-title tier on the titles page — one shared star for all 44
+        // slots until per-tier artwork replaces it.
+        TITLE_STAR: `<svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2.5l2.9 6.1 6.6.9-4.8 4.6 1.2 6.6L12 17.6l-5.9 3.1 1.2-6.6-4.8-4.6 6.6-.9z"/></svg>`,
         CLOSE: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>`
     };
     // A0 level badge: the script's own gray crown logo, reused as a CSS background-image
@@ -494,18 +497,46 @@
                     }
 
                     .bbgl-sb-notif [class*="desktopLink___"],
-                    .bbgl-sb-notif [class*="mobileLink___"] {
+                    .bbgl-sb-notif [class*="mobileLink___"]:not(.sidebarMobileLink) {
                         background: linear-gradient(to right, rgba(171, 71, 188, .28), rgba(171, 71, 188, .12)) !important;
                     }
 
                     .bbgl-sb-notif [class*="defaultIcon___"] svg {
-                        fill: #d896e0 !important;
-                        stroke: #d896e0 !important;
-                        filter: drop-shadow(0 0 3px rgba(216, 150, 224, .6)) brightness(1.15) !important;
+                        fill: url(#bbgl_notif_purple_grad) !important;
+                        stroke: url(#bbgl_notif_purple_grad) !important;
                     }
 
                     .bbgl-sb-notif [class*="mobileLink___"] > span:not([class]) {
                         color: #d896e0 !important;
+                    }
+
+                    .bbgl-sb-notif {
+                        position: relative;
+                    }
+
+                    .bbgl-sb-notif:not(:has(.sidebarMobileLink))::after {
+                        content: '';
+                        position: absolute;
+                        top: 50%;
+                        right: 10px;
+                        transform: translateY(-50%);
+                        width: 6px;
+                        height: 6px;
+                        border-radius: 100%;
+                        background: linear-gradient(180deg, #d896e0, #ab47bc);
+                        box-shadow: 0 1px 0 0 rgba(0, 0, 0, .25);
+                    }
+
+                    .bbgl-sb-notif:has(.sidebarMobileLink)::after {
+                        content: '';
+                        position: absolute;
+                        top: 2px;
+                        right: 2px;
+                        width: 6px;
+                        height: 6px;
+                        border-radius: 100%;
+                        background: linear-gradient(180deg, #d896e0, #ab47bc);
+                        box-shadow: 0 1px 0 0 rgba(0, 0, 0, .25);
                     }
 
                     .bbgl-swiper-wr {
@@ -1174,59 +1205,69 @@
                     }
 
                     /* Title finish progression, Phase 0-10 — dull silver to iridescent diamond.
+                       Scoped to the individual WORD, not the whole title: the two slots are chosen
+                       independently on the titles page, so a Phase 1 adjective can sit next to a
+                       Phase 9 noun and each shows its own tier. Unscoped by design — the same title
+                       renders both in the level tooltip and on the titles page dashboard.
                        Each phase only ever overrides color/text-shadow (or, at Phase 10, swaps to
                        a clipped animated gradient) on top of the shared rule above. */
-                    #bbgl-tooltip i.bbgl-lvl-title[data-title-phase="0"] {
+                    /* inline-block so the Phase 10 gradient below gets its own painting box to
+                       clip against rather than inheriting the whole line's. */
+                    .bbgl-title-word {
+                        display: inline-block;
+                    }
+
+                    .bbgl-title-word[data-title-phase="0"] {
                         color: #888888;
                         text-shadow: none;
                     }
 
-                    #bbgl-tooltip i.bbgl-lvl-title[data-title-phase="1"] {
+                    .bbgl-title-word[data-title-phase="1"] {
                         color: #9a9a9e;
                         text-shadow: 0 0 2px rgba(255, 255, 255, 0.15);
                     }
 
-                    #bbgl-tooltip i.bbgl-lvl-title[data-title-phase="2"] {
+                    .bbgl-title-word[data-title-phase="2"] {
                         color: #d4d4d8;
                         text-shadow: 0 0 3px rgba(255, 255, 255, 0.4);
                     }
 
-                    #bbgl-tooltip i.bbgl-lvl-title[data-title-phase="3"] {
+                    .bbgl-title-word[data-title-phase="3"] {
                         color: #b9c9ae;
                         text-shadow: 0 0 3px rgba(200, 255, 200, 0.3);
                     }
 
-                    #bbgl-tooltip i.bbgl-lvl-title[data-title-phase="4"] {
+                    .bbgl-title-word[data-title-phase="4"] {
                         color: #3fae54;
                         text-shadow: 0 0 3px rgba(63, 174, 84, 0.4);
                     }
 
-                    #bbgl-tooltip i.bbgl-lvl-title[data-title-phase="5"] {
+                    .bbgl-title-word[data-title-phase="5"] {
                         color: #39d35a;
                         text-shadow: 0 0 4px rgba(57, 211, 90, 0.5);
                     }
 
-                    #bbgl-tooltip i.bbgl-lvl-title[data-title-phase="6"] {
+                    .bbgl-title-word[data-title-phase="6"] {
                         color: #4dff85;
                         text-shadow: 0 0 3px rgba(77, 255, 133, 0.7), 0 0 8px rgba(77, 255, 133, 0.35);
                     }
 
-                    #bbgl-tooltip i.bbgl-lvl-title[data-title-phase="7"] {
+                    .bbgl-title-word[data-title-phase="7"] {
                         color: #c9d94a;
                         text-shadow: 0 0 3px rgba(201, 217, 74, 0.6), 0 0 8px rgba(255, 204, 68, 0.3);
                     }
 
-                    #bbgl-tooltip i.bbgl-lvl-title[data-title-phase="8"] {
+                    .bbgl-title-word[data-title-phase="8"] {
                         color: #ffcc44;
                         text-shadow: 0 0 4px rgba(255, 204, 68, 0.5);
                     }
 
-                    #bbgl-tooltip i.bbgl-lvl-title[data-title-phase="9"] {
+                    .bbgl-title-word[data-title-phase="9"] {
                         color: #ffe066;
                         text-shadow: 0 0 4px rgba(255, 224, 102, 0.7), 0 0 10px rgba(255, 204, 68, 0.4);
                     }
 
-                    #bbgl-tooltip i.bbgl-lvl-title[data-title-phase="10"] {
+                    .bbgl-title-word[data-title-phase="10"] {
                         background: linear-gradient(90deg, #ffffff, #66eaff, #ff8fd6, #ffe066, #66eaff, #ffffff);
                         background-size: 400% 100%;
                         -webkit-background-clip: text;
@@ -5747,51 +5788,382 @@
                         overflow: visible;
                     }
 
-                    /* height is set inline by achRefreshPageDom() to the real, measured distance
-                       between #bbgl-ach-pages' top (already clear of the SVG toggle row) and
-                       #bbgl-ach-footer's top (the page-dot/nav bar), so this centers within the
-                       actual visible gap in every panel mode instead of guessing box-model math
-                       against the grid layout under #bbgl-achievements-container. */
-                    .bbgl-ach-locked {
-                        position: absolute;
-                        top: 0;
-                        left: 0;
-                        right: 0;
-                        min-height: 60px;
+                    /* Ordinary flow child of #bbgl-ach-pages, exactly like every other ach page —
+                       the old locked page was absolutely positioned with an inline height stamped
+                       by a rAF measuring loop, which is what left it clipped to half height until
+                       a refresh. Every size here scales off cqi against the #bbgl-ach-pages
+                       container, so compact/expanded/page all work off one set of rules (the
+                       --bbgl-ach-fs-* vars only exist in expanded/page and would collapse to
+                       inherited sizes in compact). */
+                    .bbgl-titles-page {
+                        --bbgl-t-fs-name: clamp(13px, 4.2cqi, 34px);
+                        --bbgl-t-fs-sub: clamp(8px, 2.1cqi, 16px);
+                        --bbgl-t-fs-cap: clamp(6px, 1.4cqi, 11px);
+                        --bbgl-t-fs-label: clamp(6px, 1.35cqi, 10px);
+                        --bbgl-t-fs-tier: clamp(4px, .95cqi, 8px);
+                        --bbgl-t-fs-bracket: clamp(4.5px, 1.1cqi, 9px);
+                        --bbgl-t-star: clamp(10px, 3.1cqi, 30px);
+                        --bbgl-t-gap: clamp(2px, .6cqi, 6px);
+                        /* containing block for the absolutely-positioned role picker */
+                        position: relative;
+                        display: flex;
+                        flex-direction: column;
+                        gap: calc(var(--bbgl-t-gap) * 1.5);
+                        width: 100%;
+                        height: 100%;
+                        min-height: 0;
+                        box-sizing: border-box;
+                        padding: 2px 4px 0;
+                        /* ach pages never scroll — everything is sized to fit instead */
+                        overflow: hidden;
+                    }
+
+                    /* ─── Identity block ───────────────────────────────────────────── */
+                    .bbgl-titles-head {
                         display: flex;
                         flex-direction: column;
                         align-items: center;
-                        justify-content: center;
-                        gap: 8px;
+                        gap: calc(var(--bbgl-t-gap) * .5);
+                        flex: 0 0 auto;
                         text-align: center;
+                        min-width: 0;
+                    }
+
+                    /* line-height and the padding leave room for descenders — at 1.05 with the
+                       page's overflow:hidden the bottom of the name was being shaved off. */
+                    .bbgl-titles-name {
+                        font-family: var(--bbgl-ach-font);
+                        font-size: var(--bbgl-t-fs-name);
+                        font-weight: 700;
+                        line-height: 1.2;
+                        padding-bottom: .1em;
+                        letter-spacing: .01em;
+                        color: #fff;
+                        max-width: 100%;
+                        overflow: hidden;
+                        text-overflow: ellipsis;
+                        white-space: nowrap;
+                    }
+
+                    /* Rank over title, stacked. */
+                    .bbgl-titles-sub {
+                        display: flex;
+                        flex-direction: column;
+                        align-items: center;
+                        gap: calc(var(--bbgl-t-gap) * .5);
+                        margin-top: calc(var(--bbgl-t-gap) * .75);
+                        font-size: var(--bbgl-t-fs-sub);
+                        line-height: 1.25;
+                        min-width: 0;
+                        max-width: 100%;
+                    }
+
+                    .bbgl-titles-rankname {
+                        color: #d9a05b;
+                        font-weight: 700;
+                    }
+
+                    /* ─── Level bar + rank bracket axis ─────────────────────────────── */
+                    .bbgl-rank-track {
+                        display: flex;
+                        flex-direction: column;
+                        width: 100%;
+                        flex: 0 0 auto;
+                        /* room for the floating level number above the point */
+                        margin-top: calc(var(--bbgl-t-fs-label) * 1.1);
+                    }
+
+                    .bbgl-rank-caps {
+                        display: flex;
+                        justify-content: space-between;
+                        width: 100%;
+                    }
+
+                    .bbgl-rank-cap {
+                        font-size: var(--bbgl-t-fs-cap);
+                        font-weight: 700;
+                        letter-spacing: .04em;
+                        text-transform: uppercase;
+                        color: rgba(255, 255, 255, .6);
+                        white-space: nowrap;
+                    }
+
+                    .bbgl-rank-row {
+                        display: flex;
+                        align-items: center;
+                        gap: calc(var(--bbgl-t-gap) * 1.5);
+                        width: 100%;
+                    }
+
+                    .bbgl-rank-end {
+                        flex: 0 0 auto;
+                        font-size: var(--bbgl-t-fs-cap);
+                        font-weight: 700;
+                        color: rgba(255, 255, 255, .45);
+                        font-variant-numeric: tabular-nums;
+                    }
+
+                    .bbgl-rank-line {
+                        position: relative;
+                        flex: 1 1 auto;
+                        height: 3px;
+                        border-radius: 2px;
+                        background: rgba(255, 255, 255, .12);
+                        box-shadow: inset 0 1px 2px rgba(0, 0, 0, .5);
+                    }
+
+                    .bbgl-rank-fill {
+                        position: absolute;
+                        top: 0;
+                        left: 0;
+                        height: 100%;
+                        border-radius: 2px;
+                        background: linear-gradient(90deg, #7a5c3e, #b8763a, #d9a05b);
+                    }
+
+                    .bbgl-rank-knob {
+                        position: absolute;
+                        top: 50%;
+                        width: clamp(5px, 1.3cqi, 9px);
+                        height: clamp(5px, 1.3cqi, 9px);
+                        border-radius: 50%;
+                        transform: translate(-50%, -50%);
+                        background: #f0c987;
+                        box-shadow: 0 0 5px rgba(240, 201, 135, .8);
+                        cursor: help;
+                    }
+
+                    /* Current gym level, floating above the moving point. */
+                    .bbgl-rank-knob-lv {
+                        position: absolute;
+                        bottom: 100%;
+                        left: 50%;
+                        transform: translate(-50%, -2px);
+                        font-size: var(--bbgl-t-fs-label);
+                        font-weight: 700;
+                        line-height: 1;
+                        color: #f0c987;
+                        font-variant-numeric: tabular-nums;
+                        pointer-events: none;
+                    }
+
+                    /* Bracket axis hanging off the line, widths straight from LEVEL_TITLE_BANDS. */
+                    .bbgl-rank-brackets {
+                        position: absolute;
+                        top: 100%;
+                        left: 0;
+                        right: 0;
+                        display: flex;
+                        align-items: flex-start;
+                    }
+
+                    .bbgl-rank-bracket {
+                        position: relative;
                         box-sizing: border-box;
-                        /* Nudge on top of the measured centering above; magnitude differs per mode. */
-                        transform: translateY(-4px);
+                        min-width: 0;
+                        padding-top: calc(var(--bbgl-t-fs-bracket) * .55);
+                        text-align: center;
+                        cursor: help;
                     }
 
-                    #bbgl-panel.bbgl-compact .bbgl-ach-locked {
-                        transform: translateY(2px);
+                    /* The [___] arm: side walls plus a floor, drawn with borders. */
+                    .bbgl-rank-bracket-arm {
+                        display: block;
+                        height: calc(var(--bbgl-t-fs-bracket) * .5);
+                        margin: 0 1px;
+                        border: 1px solid rgba(255, 255, 255, .22);
+                        border-top: none;
                     }
 
-                    /* --ach-gap is stamped by resizeAchLockedPage() (06-section-v-logic.js) to the
-                       real measured height of the visible area, so this scales off the container's
-                       actual live height rather than the width-only --bbgl-page-t breakpoint. */
-                    #bbgl-panel.bbgl-mode-page .bbgl-ach-locked {
-                        transform: translateY(clamp(-2.5px, calc(0px - var(--ach-gap, 300px) * 0.012), 0px));
+                    .bbgl-rank-bracket-label {
+                        display: block;
+                        font-size: var(--bbgl-t-fs-bracket);
+                        line-height: 1.1;
+                        color: rgba(255, 255, 255, .32);
+                        overflow: hidden;
+                        text-overflow: ellipsis;
+                        white-space: nowrap;
+                        padding: 0 1px;
                     }
 
-                    .bbgl-ach-locked-icon {
-                        font-size: var(--bbgl-ach-fs-icon);
-                        opacity: .55;
-                        filter: grayscale(1);
+                    .bbgl-rank-bracket.is-revealed .bbgl-rank-bracket-label {
+                        color: rgba(255, 255, 255, .7);
                     }
 
-                    .bbgl-ach-locked-text {
-                        font-size: var(--bbgl-ach-fs-message);
-                        font-weight: 600;
-                        color: rgba(255, 255, 255, .75);
-                        letter-spacing: .02em;
-                        max-width: 26ch;
+                    .bbgl-rank-bracket.is-revealed .bbgl-rank-bracket-arm {
+                        border-color: rgba(217, 160, 91, .5);
+                    }
+
+                    /* ─── Unlock grid, 2x2 ─────────────────────────────────────────── */
+                    .bbgl-titles-grid {
+                        display: flex;
+                        flex-direction: column;
+                        gap: var(--bbgl-t-gap);
+                        flex: 0 0 auto;
+                        min-width: 0;
+                        /* clears the bracket axis, which is absolutely positioned under the line */
+                        margin-top: calc(var(--bbgl-t-fs-bracket) * 2.6);
+                    }
+
+                    /* The composed title reuses the tooltip's title element so both places pick up
+                       the same per-word finish rules (see .bbgl-title-word below). */
+                    .bbgl-lvl-title.bbgl-titles-title {
+                        font-style: normal;
+                        font-weight: 700;
+                    }
+
+                    /* Two columns, filled in source order str, def, spd, dex — which puts STR/SPD
+                       down the left and DEF/DEX down the right. */
+                    .bbgl-title-rows {
+                        display: grid;
+                        grid-template-columns: repeat(2, minmax(0, 1fr));
+                        gap: var(--bbgl-t-gap) calc(var(--bbgl-t-gap) * 2);
+                        justify-items: center;
+                    }
+
+                    .bbgl-title-row {
+                        display: flex;
+                        align-items: center;
+                        gap: calc(var(--bbgl-t-gap) * 1.5);
+                        min-width: 0;
+                    }
+
+                    .bbgl-title-row-label {
+                        flex: 0 0 auto;
+                        width: 3.2ch;
+                        font-size: var(--bbgl-t-fs-label);
+                        font-weight: 700;
+                        letter-spacing: .04em;
+                        cursor: help;
+                    }
+
+                    /* Fixed-size star cells rather than 11 stretch columns — stretching would size
+                       each star to 1/11th of its column. --bbgl-t-star clamps them in every mode. */
+                    .bbgl-title-stars {
+                        display: grid;
+                        grid-template-columns: repeat(11, var(--bbgl-t-star));
+                        gap: var(--bbgl-t-gap);
+                        justify-content: start;
+                        min-width: 0;
+                    }
+
+                    .bbgl-title-star {
+                        position: relative;
+                        width: var(--bbgl-t-star);
+                        height: var(--bbgl-t-star);
+                        display: flex;
+                        align-items: center;
+                        justify-content: center;
+                        border-radius: 3px;
+                        box-sizing: border-box;
+                        border: 1px solid transparent;
+                    }
+
+                    .bbgl-title-star svg {
+                        width: 78%;
+                        height: 78%;
+                        display: block;
+                    }
+
+                    .bbgl-title-star.is-unlocked {
+                        cursor: pointer;
+                        color: #ffcc44;
+                        filter: drop-shadow(0 0 2px rgba(255, 204, 68, .45));
+                    }
+
+                    .bbgl-title-star.is-unlocked:hover {
+                        border-color: rgba(255, 255, 255, .35);
+                    }
+
+                    /* Locked stars are a dim outline with --star-fill (stamped inline per star)
+                       filling them bottom-up, so the next tier visibly creeps toward unlocking. */
+                    .bbgl-title-star.is-locked {
+                        cursor: help;
+                        color: rgba(255, 255, 255, .16);
+                    }
+
+                    .bbgl-title-star.is-locked::after {
+                        content: '';
+                        position: absolute;
+                        left: 0;
+                        right: 0;
+                        bottom: 0;
+                        height: var(--star-fill, 0%);
+                        background: rgba(255, 204, 68, .22);
+                        border-radius: 0 0 3px 3px;
+                        pointer-events: none;
+                    }
+
+                    .bbgl-title-star.is-primary,
+                    .bbgl-title-star.is-both {
+                        border-color: #a855f7;
+                        background: rgba(168, 85, 247, .22);
+                    }
+
+                    .bbgl-title-star.is-secondary {
+                        border-color: #d8b4fe;
+                        background: rgba(216, 180, 254, .16);
+                    }
+
+                    /* Equipped in both slots at once — split the two highlight colors. */
+                    .bbgl-title-star.is-both {
+                        background: linear-gradient(135deg, rgba(168, 85, 247, .3) 50%, rgba(216, 180, 254, .22) 50%);
+                    }
+
+                    .bbgl-title-star-tier {
+                        position: absolute;
+                        bottom: -1px;
+                        right: 1px;
+                        font-size: var(--bbgl-t-fs-tier);
+                        line-height: 1;
+                        font-weight: 700;
+                        color: rgba(255, 255, 255, .55);
+                        pointer-events: none;
+                    }
+
+                    /* Reuses .bbgl-enh-sw-opt for the segments; only the wrapper differs, since the
+                       enhancers switch is absolutely pinned into a section title row. */
+                    .bbgl-title-mode-switch {
+                        align-self: flex-end;
+                        display: flex;
+                        align-items: center;
+                        cursor: help;
+                    }
+
+                    .bbgl-title-mode-switch .bbgl-enh-sw-opt.is-unavailable {
+                        opacity: .35;
+                        cursor: default;
+                    }
+
+                    /* ─── Role picker popover ──────────────────────────────────────── */
+                    .bbgl-title-pick {
+                        position: absolute;
+                        z-index: 40;
+                        display: flex;
+                        gap: 2px;
+                        padding: 3px;
+                        border-radius: 4px;
+                        background: rgba(20, 20, 24, .97);
+                        border: 1px solid rgba(255, 255, 255, .22);
+                        box-shadow: 0 4px 12px rgba(0, 0, 0, .6);
+                    }
+
+                    .bbgl-title-pick button {
+                        padding: 2px 6px;
+                        font-size: clamp(6px, 1.4cqi, 10px);
+                        font-weight: 700;
+                        letter-spacing: .03em;
+                        text-transform: uppercase;
+                        color: #eee;
+                        background: rgba(255, 255, 255, .08);
+                        border: 1px solid rgba(255, 255, 255, .18);
+                        border-radius: 3px;
+                        cursor: pointer;
+                        white-space: nowrap;
+                    }
+
+                    .bbgl-title-pick button:hover {
+                        background: rgba(168, 85, 247, .35);
                     }
 
                     .bbgl-ach-title-row {
@@ -6385,17 +6757,6 @@
 
                     #bbgl-panel.bbgl-compact .bbgl-ach-subsection-title {
                         font-size: clamp(9px, 1.6cqi, 10px);
-                    }
-
-                    /* The -2px expanded-only font reduction below touched several base/unscoped
-                       rules that compact also reads (no dedicated compact override existed for
-                       them). These restore compact's original sizes so the reduction is expanded-only. */
-                    #bbgl-panel.bbgl-compact .bbgl-ach-locked-icon {
-                        font-size: 28px;
-                    }
-
-                    #bbgl-panel.bbgl-compact .bbgl-ach-locked-text {
-                        font-size: 13px;
                     }
 
                     #bbgl-panel.bbgl-compact .ach-sub {

@@ -629,10 +629,10 @@
     // so only entries at/after the precise install moment count on the exact install day (mirrors
     // buildProgressionCache()'s handling of past days, 06-section-v-logic.js). Returns zeros in
     // demo mode or if there's no today data yet. Shared by getLiveLevelExp() and
-    // getLiveStatTitleState() so this filtering logic exists in exactly one place.
+    // getLiveStatTitleE() so this filtering logic exists in exactly one place.
     function getTodayTrainingContext() {
         const h = getActiveHistory();
-        if (runtime.demoMode || !h || !h.today) return { todayE: 0, hasTrainLog: false, isHJ: false };
+        if (runtime.demoMode || !h || !h.today) return { todayE: 0, todayEByStat: { str: 0, def: 0, spd: 0, dex: 0 }, hasTrainLog: false, isHJ: false };
         const today = Formatter.dateLogical();
         const installDateKey = getInstallDateKey();
         const rewardStartTs = (h.meta && h.meta.rewardStartDate) || null;
@@ -645,10 +645,17 @@
             todaySeries = todaySeries.filter(s => s.ts >= rewardStartTs);
         }
         const todayE = (todaySeries === h.today.series && h.today.eSpent) ? (h.today.eSpent.total || 0) : todaySeries.filter(s => s.type === 'gym').reduce((sum, s) => sum + (s.cost || 0), 0);
+        // Per-stat split of the same filtered slice, for the stat-title ladders. Always summed
+        // from the series rather than read off h.today.eSpent so it can't disagree with todayE
+        // above on install day, where the sub-day filter applies to one and not the other.
+        const todayEByStat = { str: 0, def: 0, spd: 0, dex: 0 };
+        todaySeries.forEach(s => {
+            if (s.type === 'gym' && todayEByStat[s.stat] !== undefined) todayEByStat[s.stat] += (s.cost || 0);
+        });
         const hasTrainLog = todaySeries.some(s => s.type === 'gym');
         const { hjDaySet } = DataController.getHappyJumpData();
         const isHJ = (todaySeries === h.today.series) ? hjDaySet.has(today) : findHappyJumps(todaySeries).length > 0;
-        return { todayE, hasTrainLog, isHJ };
+        return { todayE, todayEByStat, hasTrainLog, isHJ };
     }
 
     // career EXP + today's in-progress EXP — the live total both level bars display.
@@ -657,23 +664,84 @@
         return DataController.getCareerLevelExp() + computeDailyLevelExp(todayE, hasTrainLog, isHJ);
     }
 
-    // Live stat-title state — layers today's not-yet-committed contribution on top of the cached
-    // as-of-yesterday state (DataController.getStatTitleState()) via one more call to the same
-    // advanceStatTitleState() step used for the historical replay, without mutating the cache.
-    function getLiveStatTitleState() {
+    // Per-stat cumulative E for the title ladders: the cached as-of-yesterday totals plus today's
+    // not-yet-committed spend, without mutating the cache.
+    function getLiveStatTitleE() {
+        const cached = DataController.getStatTitleE();
+        const { todayEByStat } = getTodayTrainingContext();
+        const out = {};
+        STAT_KEYS.forEach(k => {
+            out[k] = (cached[k] || 0) + (todayEByStat[k] || 0);
+        });
+        return out;
+    }
+
+    // The slot selection the title renders from — manual pick if there is one, otherwise the
+    // auto-follow of the top two stats (resolveStatTitleSelection(), 03-section-ii-utils.js).
+    function getLiveStatTitleSelection() {
+        const eByStat = getLiveStatTitleE();
         // Dev-only preview override (11-section-x-devtools.js, stripped from release builds) —
-        // when active, short-circuits the real computed state entirely so every phase/stat
-        // combination can be previewed without needing real training history to produce it.
+        // bypasses both the stored pick and the unlocked-phase clamp, so any stat/phase pair can
+        // be previewed without the training history that would really unlock it.
         if (runtime.devMode && runtime._devTitleOverride) {
-            const { phase, primary, secondary } = runtime._devTitleOverride;
-            return { displayedPair: [primary, secondary], phase };
+            const o = runtime._devTitleOverride;
+            return { primary: o.primary, secondary: o.secondary, phases: statTitlePhases(eByStat), mode: 'custom', hasCustom: true };
         }
-        const cached = DataController.getStatTitleState();
         const h = getActiveHistory();
-        const { todayE } = getTodayTrainingContext();
         const endBreakdown = (h && h.today && h.today.endBreakdown) || {};
-        const live = advanceStatTitleState(cached, { date: Formatter.dateLogical(), endBreakdown, eSpent: { total: todayE } });
-        return { displayedPair: live.displayedPair, phase: statTitlePhaseForE(live.cumulativeE) };
+        return resolveStatTitleSelection(eByStat, endBreakdown);
+    }
+
+    // Re-render everywhere the composed title appears after a slot change: the level-bar tooltips
+    // and, if it's the page currently on screen, the titles page's own dashboard + star highlights.
+    // Reuses the last known EXP total so this can't fight the level bar's running animation.
+    function refreshStatTitleUI() {
+        const total = (runtime._lastLevelExp !== undefined) ? runtime._lastLevelExp : getLiveLevelExp();
+        getLevelBars().forEach(b => renderLevelBar(b, total));
+        if (runtime._achPage === 5) achRefreshPageDom();
+    }
+
+    function closeTitleRolePicker() {
+        if (runtime._titlePicker && runtime._titlePicker.parentNode) runtime._titlePicker.parentNode.removeChild(runtime._titlePicker);
+        runtime._titlePicker = null;
+    }
+
+    // Primary/Secondary/Both popover for one unlocked star. Anchored inside .bbgl-titles-page
+    // (position:absolute, so it's the containing block) and flipped below the star when there
+    // isn't room above.
+    function openTitleRolePicker(star) {
+        closeTitleRolePicker();
+        const page = star.closest('.bbgl-titles-page');
+        if (!page) return;
+        const stat = star.dataset.titleStat;
+        const phase = parseInt(star.dataset.titlePhaseIdx, 10);
+        if (!stat || !Number.isFinite(phase)) return;
+        const pick = document.createElement('div');
+        pick.className = 'bbgl-title-pick';
+        [
+            ['primary', 'Primary'],
+            ['secondary', 'Secondary'],
+            ['both', 'Both']
+        ].forEach(([role, label]) => {
+            const b = document.createElement('button');
+            b.type = 'button';
+            b.textContent = label;
+            b.onclick = (ev) => {
+                ev.stopPropagation();
+                applyStatTitlePick(getLiveStatTitleSelection(), stat, phase, role);
+                closeTitleRolePicker();
+                refreshStatTitleUI();
+            };
+            pick.appendChild(b);
+        });
+        page.appendChild(pick);
+        const pr = page.getBoundingClientRect(),
+            sr = star.getBoundingClientRect();
+        const left = Math.max(2, Math.min(sr.left - pr.left + (sr.width - pick.offsetWidth) / 2, pr.width - pick.offsetWidth - 2));
+        const above = sr.top - pr.top - pick.offsetHeight - 4;
+        pick.style.left = left + 'px';
+        pick.style.top = (above < 0 ? sr.bottom - pr.top + 4 : above) + 'px';
+        runtime._titlePicker = pick;
     }
 
     // Every level bar instance (panel + gym page), whichever are currently in the DOM.
@@ -701,13 +769,11 @@
         bar.container.dataset.atrophy = atrophy;
         bar.container.dataset.level = level;
         const lvLine = level >= 100 ? 'Level 100  •  Max Level' : `Level ${level}  •  ${Math.round(pct)}%`;
-        const statState = getLiveStatTitleState();
-        const statTitle = statState.displayedPair ? composeStatTitle(statState.displayedPair, statState.phase) : '';
-        // data-title-phase drives the dull-silver-to-iridescent-diamond finish progression in
-        // 04-section-iii-styles.js — independent of composeStatTitle()'s own internal clamp for
-        // missing words, since the visual finish is defined for all 11 phases regardless of
-        // whether that phase's words exist yet.
-        const statTitleHtml = statTitle ? `<i class="bbgl-lvl-title" data-title-phase="${statState.phase}">${statTitle}</i>` : '';
+        // Each word carries its own data-title-phase, driving the dull-silver-to-iridescent-diamond
+        // finish per word in 04-section-iii-styles.js — the two slots are chosen independently, so
+        // a Phase 1 adjective can sit next to a Phase 9 noun and each shows its own tier.
+        const statTitleWords = composeStatTitleHTML(getLiveStatTitleSelection());
+        const statTitleHtml = statTitleWords ? `<i class="bbgl-lvl-title">${statTitleWords}</i>` : '';
         // Dev-only rank preview override (11-section-x-devtools.js, stripped from release builds)
         // — feeds an arbitrary atrophy/level into atrophyTitle() only, so every rank band can be
         // previewed on demand. Deliberately scoped to just the text lookup: the numeric level,
@@ -1280,7 +1346,7 @@
             row: 'areaRow___Eheay',
             id: 'nav-gym-log-flyout'
         },
-        GYM_LOG_ICON = `<svg xmlns="http://www.w3.org/2000/svg" stroke="transparent" stroke-width="0" width="18" height="18" viewBox="60 20 280 215"><g transform="scale(1, 1.15)"><path d="${ICONS.LOGO_PATH}"></path></g></svg>`;
+        GYM_LOG_ICON = `<svg xmlns="http://www.w3.org/2000/svg" stroke="transparent" stroke-width="0" width="18" height="18" viewBox="60 20 280 215"><defs><linearGradient id="bbgl_notif_purple_grad" x1="0%" y1="0%" x2="0%" y2="100%"><stop offset="0%" stop-color="#d896e0"></stop><stop offset="100%" stop-color="#ab47bc"></stop></linearGradient></defs><g transform="scale(1, 1.15)"><path d="${ICONS.LOGO_PATH}"></path></g></svg>`;
 
     function syncSidebarState() {
         const a = window.location.hash.includes('gymlog'),
@@ -1699,7 +1765,7 @@
         r.appendChild(l);
         c.appendChild(r);
         document.querySelectorAll(cfg.target).forEach(n => {
-            const _liveContainer = Array.from(n.classList).filter(cl => !cl.startsWith('active___')).join(' ');
+            const _liveContainer = Array.from(n.classList).filter(cl => !cl.startsWith('active___') && !cl.startsWith('attention___')).join(' ');
             if (_liveContainer) {
                 const hasNotif = c.classList.contains('bbgl-sb-notif');
                 c.className = _liveContainer;

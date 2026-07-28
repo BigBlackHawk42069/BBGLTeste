@@ -397,7 +397,8 @@
         _achPage: 0,
         wasVersionWiped: false,
         careerLevelExp: 0,
-        statTitleState: null,
+        statTitleE: null,
+        _titlePicker: null,
         _devTitleOverride: null,
         _devRankOverride: null
     };
@@ -451,7 +452,20 @@
         bestGymSpecialist: true,
         bestGymUnpurchased: true,
         drugTracker: 'xanax', // ledger primary-drug counter: 'xanax' (2290) or 'lsd' (2230)
-        privacyAgreed: ''
+        privacyAgreed: '',
+        // Stat title. Two independent things, so the Earned/Custom switch can flip between them
+        // without either destroying the other:
+        //   titleMode    - 'earned' (auto-follows your top two stats) or 'custom' (your saved pick)
+        //   titleCustom  - the manual pick itself, {primary:{stat,phase}, secondary:{stat,phase}},
+        //                  where primary supplies the noun and secondary the adjective. Null until
+        //                  the first pick, which is also what flips titleMode to 'custom'.
+        //   titleAutoPair / titleAutoPairChangedAt - earned-mode bookkeeping: the pair currently
+        //                  held and when it last swapped, enforcing the 72h swap cooldown.
+        // See resolveStatTitleSelection() in 03-section-ii-utils.js.
+        titleMode: 'earned',
+        titleCustom: null,
+        titleAutoPair: null,
+        titleAutoPairChangedAt: 0
     };
     const ALLOWED_CONFIG_KEYS = Object.keys(userConfig);
     const r2 = (v) => Math.round(v * 100) / 100;
@@ -554,6 +568,18 @@
         // sexiest streaks + happy hopping reference ACH_FMT.compact directly
     };
 
+    // Single source of truth for the k/m/b/t/q abbreviation ladder - shared by
+    // Formatter.abbr/axis here and by GraphController._calculateNiceScale
+    // (08-section-vii-graph.js), which needs the same tier magnitudes to decide
+    // gridline spacing.
+    const ABBR_TIERS = [
+        [1e15, 'q'],
+        [1e12, 't'],
+        [1e9, 'b'],
+        [1e6, 'm'],
+        [1e3, 'k']
+    ];
+
     const Formatter = {
         number(n, d = 0) {
             return (n === undefined || n === null) ? '0' : n.toLocaleString('en-US', {
@@ -565,14 +591,7 @@
             if (!n && n !== 0) return '0';
             const abs = Math.abs(n);
             if (abs < 1000) return Math.trunc(n).toString();
-            const tiers = [
-                [1e15, 'q'],
-                [1e12, 't'],
-                [1e9,  'b'],
-                [1e6,  'm'],
-                [1e3,  'k']
-            ];
-            for (const [mag, suffix] of tiers) {
+            for (const [mag, suffix] of ABBR_TIERS) {
                 if (abs >= mag) {
                     let dec = typeof d === 'function' ? d(mag, abs) : d;
                     let s = (n / mag).toFixed(dec);
@@ -616,9 +635,22 @@
             }
             return `<span class="view-std">${std}</span><span class="view-exp">${exp}</span>`;
         },
-        axis(n) {
+        axis(n, forceWhole = false) {
             if (n === 0) return '0';
             if (Math.abs(n) < 1000) return (Math.round(n * 10) / 10).toString();
+            if (forceWhole) return this.abbr(n, 0, false, true);
+            const abs = Math.abs(n);
+            const tier = ABBR_TIERS.find(t => abs >= t[0]);
+            if (tier && abs / tier[0] >= 100) {
+                // 100+ units of the tier: a tenths decimal is more precision than a gridline
+                // needs, but dropping it entirely can hide a real difference between ticks.
+                // Round to the nearest half-unit instead - shows ".5" only when the value
+                // actually falls there, whole otherwise (102m, 102.5m, 103m).
+                const half = Math.round((n / tier[0]) * 2) / 2;
+                return (Number.isInteger(half) ? half.toString() : half.toFixed(1)) + tier[1];
+            }
+            // Under 100 units of the tier (1.0k-99.9k, 1.0m-99.9m, ...), the tenths decimal
+            // is the only precision available at that scale, so keep it.
             return this.abbr(n, 1, false, true);
         },
         parse(s) {
@@ -1042,10 +1074,16 @@
     // lands on the literal displayed "69" for every atrophy tier regardless of where it started.
     // Level 100 is the universal finish line, but only atrophy 2 gets "Fully Bricked" — atrophy
     // 0/1 auto-roll into the next tier, so they keep band 6's capstone title instead.
+    //
+    // `max` is inclusive and doubles as the bracket axis on the titles page (levelRankBrackets()
+    // below reads widths straight off these numbers), so edit a max here and the axis re-draws
+    // itself — no second list to keep in sync. Band 3 ends at 69 rather than 68 purely so the
+    // axis reads 40-69 / 70-79; atrophyTitle() intercepts level 69 with the easter egg before any
+    // band lookup happens, so the boundary itself has no effect on which title you actually get.
     const LEVEL_TITLE_BANDS = [
         { max: 19, titles: ['Dry Clay', 'Parched Clay', 'Cracked Clay'] },
         { max: 39, titles: ['Moistened Clay', 'Saturated Clay', 'Dripping Wet Clay'] },
-        { max: 68, titles: ['Hand-Jerked Clay', 'Foot-Pumped Clay', 'Vacuum-Milked Clay'] },
+        { max: 69, titles: ['Hand-Jerked Clay', 'Foot-Pumped Clay', 'Vacuum-Milked Clay'] },
         { max: 79, titles: ['Block-Molded Clay', 'Block-Pressed Clay', 'Block-Cut Clay'] },
         { max: 89, titles: ['Pit-Fired Clay', 'Scove-Fired Clay', 'Kiln-Fired Clay'] },
         { max: 99, titles: ['Half-Bricked', 'Mostly Bricked', 'Competently Bricked'] }
@@ -1060,42 +1098,76 @@
         return band.titles[atrophy] || band.titles[0];
     }
 
-    // ─── Stat-Ratio Titles ──────────────────────────────────────────────────
+    // The rank axis under the titles page's level bar: one bracket per band, sized by its true
+    // share of the 0-LEVEL_CAP run so a 20-level band takes 20% and a 10-level band takes 10%.
+    // Everything derives from LEVEL_TITLE_BANDS, so adding, removing or resizing a band re-draws
+    // the axis with no other edits.
+    //
+    // A bracket reveals its name once you've reached it in the CURRENT atrophy tier and reads "?"
+    // until then — the first is therefore always revealed, and every bracket re-hides on atrophy
+    // since the whole tier's names change with it.
+    function levelRankBrackets(atrophy, level) {
+        const a = Math.max(0, Math.min(2, atrophy || 0));
+        const out = [];
+        let start = 0;
+        LEVEL_TITLE_BANDS.forEach(band => {
+            const span = band.max - start + 1;
+            const unlocked = level >= start;
+            out.push({
+                start,
+                end: band.max,
+                span,
+                widthPct: (span / LEVEL_CAP) * 100,
+                unlocked,
+                label: unlocked ? (band.titles[a] || band.titles[0]) : '?'
+            });
+            start = band.max + 1;
+        });
+        return out;
+    }
+
+    // ─── Stat Titles ────────────────────────────────────────────────────────
     // Second, independent title system appended after atrophyTitle() above (e.g. "Half-Bricked
-    // Beastly Tank"). Does not reset with atrophy — progresses on its own cumulative-E track.
-    // Which 2 of the 4 battle stats currently rank highest picks the words (the higher stat leads
-    // in its adjective form, the other follows in its noun form); a separate 10-tier phase ladder
-    // (keyed to cumulative E) escalates each stat's own word ladder in step. Full design: Dev/BBGL
-    // Working Plan - Titles & Level Curve.md, Part 2.
+    // Calloused Goon"). Does not reset with atrophy — each of the four battle stats runs its own
+    // 11-phase word ladder, unlocked by E spent on THAT stat alone (day.eSpent[stat], never the
+    // pooled total). Unlocked phases stay unlocked and the player picks which two fill the title:
+    // one supplies the noun (Primary), one the adjective (Secondary). Any stat can fill either
+    // slot, including the same stat/phase in both.
 
-    // Cumulative-E thresholds, index = phase. Phase 0 is the origin/basic title (0E).
-    const STAT_TITLE_PHASE_THRESHOLDS = [0, 10000, 25000, 45000, 70000, 105000, 155000, 230000, 330000, 455000, 605000];
+    // Per-stat cumulative-E thresholds, index = phase. Phase 0 is free (0E) so every stat always
+    // has one selectable word — the grid is never empty and a title always composes. Increments
+    // are backloaded: +10k, +12.5k, +15k, +17.5k, +20k, then +30k/35k/45k/55k/60k.
+    const STAT_TITLE_THRESHOLDS = [0, 10000, 22500, 37500, 55000, 75000, 105000, 140000, 185000, 240000, 300000];
 
-    // Combo re-check cadence and stability requirement — see advanceStatTitleState() below.
-    const STAT_TITLE_CHECKPOINT_E = 10000;
-    const STAT_TITLE_STABILITY_DAYS = 7;
+    // While the player has never made a manual pick, the displayed pair auto-follows their top two
+    // stats. Phase bumps apply the moment they unlock, but WHICH stats hold the two slots may only
+    // change this often — the simple replacement for the old checkpoint/stability-day debounce.
+    const STAT_TITLE_AUTO_PAIR_COOLDOWN_MS = 72 * 3600 * 1000;
 
-    // One evolving noun+adjective ladder per stat, indexed by phase (0-10). Phases 6-10 are
-    // `null` until those words are decided — composeStatTitle() clamps down to the highest
-    // defined phase rather than ever rendering a null/undefined word.
+    // One evolving noun+adjective ladder per stat, indexed by phase (0-10). Undecided phases are
+    // `null` — statTitleWord() clamps down to the highest defined phase at or below the one asked
+    // for rather than ever rendering a null/undefined word, so the ladder can ship half-written.
     const STAT_TITLE_WORDS = {
         str: [
-            { noun: 'Goon', adj: 'Goonish' },
+            { noun: 'Limp', adj: 'Noodle' },
             { noun: 'Fist', adj: 'Fisting' },
             { noun: 'Pounder', adj: 'Pounding' },
             { noun: 'Grinder', adj: 'Grinding' },
             { noun: 'Banger', adj: 'Banging' },
             { noun: 'Ripper', adj: 'Ripping' },
-            null, null, null, null, null
+            { noun: 'Goon', adj: 'Goonish' },
+            null, null, null, null
         ],
         def: [
-            { noun: 'Softie', adj: 'Flaccid' },
-            { noun: 'Blister', adj: 'Hardening' },
+            { noun: 'Soft', adj: 'Softie' },
+            { noun: 'Blister', adj: 'Blistered' },
+            { noun: 'Flesh', adj: 'Fleshy' },
+            { noun: 'Callous', adj: 'Calloused' },
+            { noun: 'Leather', adj: 'Leathery' },
             { noun: 'Firmness', adj: 'Firm' },
-            { noun: 'Callous', adj: 'Hardened' },
-            { noun: 'Rock', adj: 'Rock-Hard' },
-            { noun: 'Boulder', adj: 'Impenetrable' },
-            null, null, null, null, null
+            { noun: 'Slab', adj: 'Rock-Hard' },
+            // Boulder/Impenetrable pending — parked, not yet assigned a phase.
+            null, null, null, null
         ],
         spd: [
             { noun: 'Blindman', adj: 'Blind' },
@@ -1111,18 +1183,39 @@
             { noun: 'Silence', adj: 'Silent' },
             { noun: 'Creeper', adj: 'Creeping' },
             { noun: 'Squirmer', adj: 'Squirming' },
-            { noun: 'Rascal', adj: 'Slippery' },
-            { noun: 'Rogue', adj: 'Roguish' },
-            null, null, null, null, null
+            { noun: 'Slippery', adj: 'Glaze' },
+            { noun: 'Rascally', adj: 'Rascal' },
+            { noun: 'Ambiguous', adj: 'Ambiguity' },
+            null, null, null, null
         ]
     };
 
-    // Highest phase index for which cumulativeE clears the threshold.
-    function statTitlePhaseForE(cumulativeE) {
-        for (let i = STAT_TITLE_PHASE_THRESHOLDS.length - 1; i >= 0; i--) {
-            if (cumulativeE >= STAT_TITLE_PHASE_THRESHOLDS[i]) return i;
+    // Highest phase index one stat's own cumulative E clears.
+    function statTitlePhaseForE(statE) {
+        for (let i = STAT_TITLE_THRESHOLDS.length - 1; i >= 0; i--) {
+            if (statE >= STAT_TITLE_THRESHOLDS[i]) return i;
         }
         return 0;
+    }
+
+    // {str,def,spd,dex} of E spent -> {str,def,spd,dex} of highest unlocked phase.
+    function statTitlePhases(eByStat) {
+        const out = {};
+        STAT_KEYS.forEach(k => {
+            out[k] = statTitlePhaseForE((eByStat && eByStat[k]) || 0);
+        });
+        return out;
+    }
+
+    // Word lookup that never returns a null entry: clamps down to the highest DEFINED phase at or
+    // below the requested one, and reports which phase actually supplied the word so the caller
+    // can colour it by what it really is rather than what was asked for.
+    function statTitleWord(stat, phase) {
+        const ladder = STAT_TITLE_WORDS[stat];
+        if (!ladder) return null;
+        let p = Math.max(0, Math.min(phase | 0, ladder.length - 1));
+        while (p > 0 && !ladder[p]) p--;
+        return ladder[p] ? { noun: ladder[p].noun, adj: ladder[p].adj, phase: p } : null;
     }
 
     // Top 2 of the 4 battle stats by raw value, descending. Ties break on STAT_KEYS order
@@ -1135,68 +1228,128 @@
             .slice(0, 2);
     }
 
-    function samePair(a, b) {
-        return !!a && !!b && a[0] === b[0] && a[1] === b[1];
+    // selection = { primary: {stat, phase}, secondary: {stat, phase} }. Primary supplies the noun
+    // (the identity — "Goon"), secondary the adjective modifying it ("Calloused"), so the phrase
+    // reads "<secondary.adj> <primary.noun>". Both slots are free-choice from anything unlocked,
+    // including the same stat and phase in both.
+    function composeStatTitleParts(selection) {
+        if (!selection || !selection.primary || !selection.secondary) return null;
+        const noun = statTitleWord(selection.primary.stat, selection.primary.phase);
+        const adj = statTitleWord(selection.secondary.stat, selection.secondary.phase);
+        if (!noun || !adj) return null;
+        return [{
+            text: adj.adj,
+            phase: adj.phase,
+            stat: selection.secondary.stat
+        }, {
+            text: noun.noun,
+            phase: noun.phase,
+            stat: selection.primary.stat
+        }];
     }
 
-    // pair = [leadStat, followStat], already ordered by whichever raw value was higher at the
-    // time this pair was locked in (see advanceStatTitleState). Lead renders in its adjective
-    // form, follow in its noun form. Clamps phase down to the highest index where both stats in
-    // the pair have words defined, so Phases 6-10 being null just means the title stops
-    // escalating there until those words are filled in — never renders a null/undefined word.
-    function composeStatTitle(pair, phase) {
-        if (!pair) return '';
-        let p = Math.max(0, Math.min(phase, STAT_TITLE_PHASE_THRESHOLDS.length - 1));
-        while (p > 0 && (!STAT_TITLE_WORDS[pair[0]][p] || !STAT_TITLE_WORDS[pair[1]][p])) p--;
-        const lead = STAT_TITLE_WORDS[pair[0]][p];
-        const follow = STAT_TITLE_WORDS[pair[1]][p];
-        if (!lead || !follow) return '';
-        return `${lead.adj} ${follow.noun}`;
+    // Plain text — clipboard, aria labels, anywhere markup would be wrong.
+    function composeStatTitle(selection) {
+        const parts = composeStatTitleParts(selection);
+        return parts ? parts.map(p => p.text).join(' ') : '';
     }
 
-    // The single "day-step" for the stat-title system, mirroring computeDailyLevelExp()'s role
-    // for EXP: pure, takes the state as of the previous day plus one day object, returns a NEW
-    // state (never mutates `state`). Called once per historical day from
-    // DataController.buildProgressionCache() and once more for "today" from
-    // getLiveStatTitleState() — the debounce/stability logic must not be duplicated between
-    // those two call sites, hence living here as one shared function.
+    // Each word carries its OWN data-title-phase, so a dull Phase 1 adjective can sit next to an
+    // iridescent Phase 10 noun — the finish progression in 04-section-iii-styles.js is per word,
+    // not per title.
+    function composeStatTitleHTML(selection) {
+        const parts = composeStatTitleParts(selection);
+        if (!parts) return '';
+        return parts.map(p => `<span class="bbgl-title-word" data-title-phase="${p.phase}">${p.text}</span>`).join(' ');
+    }
+
+    // Clamp a stored slot to something real — known stat, phase inside the ladder and never past
+    // what that stat has actually unlocked (guards hand-edited config and words being re-ordered
+    // out from under a saved pick).
+    function clampTitleSlot(slot, phases) {
+        if (!slot || !STAT_TITLE_WORDS[slot.stat]) return null;
+        const cap = phases ? (phases[slot.stat] || 0) : STAT_TITLE_THRESHOLDS.length - 1;
+        return {
+            stat: slot.stat,
+            phase: Math.max(0, Math.min(slot.phase | 0, cap))
+        };
+    }
+
+    function persistAutoTitlePair(pair, now) {
+        if (runtime.demoMode) return;
+        userConfig.titleAutoPair = { primary: pair[0], secondary: pair[1] };
+        userConfig.titleAutoPairChangedAt = now;
+        saveConfig();
+    }
+
+    // The selection actually displayed, given per-stat E and the current stat breakdown.
     //
-    // Mechanism: the actual top-2 ranking is tracked continuously as `candidatePair`, reset
-    // (with `candidateSinceDate`) whenever it changes. The displayed pair only updates when BOTH:
-    // (1) a new 10,000E cumulative checkpoint has been crossed since the last check, and (2) the
-    // candidate has held continuously (calendar days, not entry count — the timeline is sparse on
-    // rest days) for at least STAT_TITLE_STABILITY_DAYS. Missing a checkpoint's window just
-    // defers the swap to the next one — intentional lag, not a bug (see working-plan doc).
-    function advanceStatTitleState(state, day) {
-        const eSpent = (day.eSpent && day.eSpent.total) || 0;
-        const cumulativeE = (state ? state.cumulativeE : 0) + eSpent;
-        const actualPair = rankTopTwoStats(day.endBreakdown || {});
-
-        let candidatePair = state ? state.candidatePair : null;
-        let candidateSinceDate = state ? state.candidateSinceDate : null;
-        if (!samePair(candidatePair, actualPair)) {
-            candidatePair = actualPair;
-            candidateSinceDate = day.date;
+    // Custom mode: the saved manual pick, clamped to what's unlocked. Earned mode: the top two
+    // stats, each at its own highest unlocked phase — so a phase bump shows up the instant it
+    // unlocks — except that WHICH stats hold the two slots may only change once per
+    // STAT_TITLE_AUTO_PAIR_COOLDOWN_MS. That cooldown is the whole of the debounce now; the old
+    // checkpoint + stability-day machinery is gone.
+    //
+    // The two are stored separately (titleCustom vs titleAutoPair) precisely so the switch is
+    // non-destructive: flipping to Earned never overwrites the custom pick waiting behind it.
+    function resolveStatTitleSelection(eByStat, breakdown) {
+        const phases = statTitlePhases(eByStat);
+        const custom = userConfig.titleCustom;
+        const hasCustom = !!(custom && custom.primary && custom.secondary);
+        if (userConfig.titleMode === 'custom' && hasCustom) {
+            const primary = clampTitleSlot(custom.primary, phases);
+            const secondary = clampTitleSlot(custom.secondary, phases);
+            if (primary && secondary) return { primary, secondary, phases, mode: 'custom', hasCustom };
         }
-
-        let displayedPair = state ? state.displayedPair : null;
-        let lastCheckpointFloor = state ? state.lastCheckpointFloor : 0;
-        if (!state) {
-            // First-ever day: seed immediately, no stability gate (nothing to debounce against yet).
-            displayedPair = actualPair;
-            lastCheckpointFloor = Math.floor(cumulativeE / STAT_TITLE_CHECKPOINT_E);
+        let pair = rankTopTwoStats(breakdown || {});
+        const auto = userConfig.titleAutoPair;
+        const prev = (auto && STAT_TITLE_WORDS[auto.primary] && STAT_TITLE_WORDS[auto.secondary])
+            ? [auto.primary, auto.secondary]
+            : null;
+        // Before any battle stats have loaded, rankTopTwoStats() falls back to STAT_KEYS order.
+        // Seeding (and stamping the 72h cooldown) off that would lock str/def in for three days on
+        // every fresh install, so hold whatever is stored and don't persist until stats are real.
+        const hasStats = STAT_KEYS.some(k => (breakdown && breakdown[k]) > 0);
+        if (!hasStats) {
+            if (prev) pair = prev;
         } else {
-            const floor = Math.floor(cumulativeE / STAT_TITLE_CHECKPOINT_E);
-            if (floor > lastCheckpointFloor) {
-                lastCheckpointFloor = floor;
-                const daysSince = Math.floor((Formatter.parse(day.date) - Formatter.parse(candidateSinceDate)) / 86400000);
-                if (!samePair(candidatePair, displayedPair) && daysSince >= STAT_TITLE_STABILITY_DAYS) {
-                    displayedPair = candidatePair;
-                }
+            const now = Date.now();
+            if (!prev) {
+                persistAutoTitlePair(pair, now);
+            } else if (prev[0] !== pair[0] || prev[1] !== pair[1]) {
+                if (now - (userConfig.titleAutoPairChangedAt || 0) < STAT_TITLE_AUTO_PAIR_COOLDOWN_MS) pair = prev;
+                else persistAutoTitlePair(pair, now);
             }
         }
+        return {
+            primary: { stat: pair[0], phase: phases[pair[0]] },
+            secondary: { stat: pair[1], phase: phases[pair[1]] },
+            phases,
+            mode: 'earned',
+            hasCustom
+        };
+    }
 
-        return { cumulativeE, candidatePair, candidateSinceDate, displayedPair, lastCheckpointFloor };
+    // role: 'primary' (noun slot), 'secondary' (adjective slot), or 'both'. Picking anything is
+    // what flips the switch to Custom — you never have to set the mode first.
+    function applyStatTitlePick(current, stat, phase, role) {
+        const slot = { stat, phase };
+        const next = {
+            primary: role === 'secondary' ? current.primary : slot,
+            secondary: role === 'primary' ? current.secondary : slot
+        };
+        userConfig.titleCustom = next;
+        userConfig.titleMode = 'custom';
+        saveConfig();
+        return next;
+    }
+
+    // Earned/Custom switch. Zeroing the cooldown stamp on the way back to Earned lets it snap
+    // straight to the real top two instead of sitting on a stale pair for up to 72h.
+    function setStatTitleMode(mode) {
+        userConfig.titleMode = mode === 'custom' ? 'custom' : 'earned';
+        if (userConfig.titleMode === 'earned') userConfig.titleAutoPairChangedAt = 0;
+        saveConfig();
     }
 
     // Real-time daily EXP for the leveling bar (NOT the weekly progress bar).
@@ -1285,6 +1438,9 @@
         ACHIEVEMENTS: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6" fill="none"></path><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18" fill="none"></path><path d="M4 22h16" fill="none"></path><path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22" fill="none"></path><path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22" fill="none"></path><path d="M18 2H6v7a6 6 0 0 0 12 0V2Z" fill="none"></path></svg>`,
         PASTE: `<svg viewBox="0 0 24 24"><path d="M19,20H5V4H7V7H17V4H19M12,2A1,1 0 0,1 13,3A1,1 0 0,1 12,4A1,1 0 0,1 11,3A1,1 0 0,1 12,2M19,2H14.82C14.4,0.84 13.3,0 12,0C10.7,0 9.6,0.84 9.18,2H5A2,2 0 0,0 3,4V20A2,2 0 0,0 5,22H19A2,2 0 0,0 21,20V4A2,2 0 0,0 19,2Z"/></svg>`,
         CHECK: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17 4 12" fill="none"/></svg>`,
+        // Placeholder for every stat-title tier on the titles page — one shared star for all 44
+        // slots until per-tier artwork replaces it.
+        TITLE_STAR: `<svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2.5l2.9 6.1 6.6.9-4.8 4.6 1.2 6.6L12 17.6l-5.9 3.1 1.2-6.6-4.8-4.6 6.6-.9z"/></svg>`,
         CLOSE: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>`
     };
     // A0 level badge: the script's own gray crown logo, reused as a CSS background-image
@@ -1752,18 +1908,46 @@
                     }
 
                     .bbgl-sb-notif [class*="desktopLink___"],
-                    .bbgl-sb-notif [class*="mobileLink___"] {
+                    .bbgl-sb-notif [class*="mobileLink___"]:not(.sidebarMobileLink) {
                         background: linear-gradient(to right, rgba(171, 71, 188, .28), rgba(171, 71, 188, .12)) !important;
                     }
 
                     .bbgl-sb-notif [class*="defaultIcon___"] svg {
-                        fill: #d896e0 !important;
-                        stroke: #d896e0 !important;
-                        filter: drop-shadow(0 0 3px rgba(216, 150, 224, .6)) brightness(1.15) !important;
+                        fill: url(#bbgl_notif_purple_grad) !important;
+                        stroke: url(#bbgl_notif_purple_grad) !important;
                     }
 
                     .bbgl-sb-notif [class*="mobileLink___"] > span:not([class]) {
                         color: #d896e0 !important;
+                    }
+
+                    .bbgl-sb-notif {
+                        position: relative;
+                    }
+
+                    .bbgl-sb-notif:not(:has(.sidebarMobileLink))::after {
+                        content: '';
+                        position: absolute;
+                        top: 50%;
+                        right: 10px;
+                        transform: translateY(-50%);
+                        width: 6px;
+                        height: 6px;
+                        border-radius: 100%;
+                        background: linear-gradient(180deg, #d896e0, #ab47bc);
+                        box-shadow: 0 1px 0 0 rgba(0, 0, 0, .25);
+                    }
+
+                    .bbgl-sb-notif:has(.sidebarMobileLink)::after {
+                        content: '';
+                        position: absolute;
+                        top: 2px;
+                        right: 2px;
+                        width: 6px;
+                        height: 6px;
+                        border-radius: 100%;
+                        background: linear-gradient(180deg, #d896e0, #ab47bc);
+                        box-shadow: 0 1px 0 0 rgba(0, 0, 0, .25);
                     }
 
                     .bbgl-swiper-wr {
@@ -2432,59 +2616,69 @@
                     }
 
                     /* Title finish progression, Phase 0-10 — dull silver to iridescent diamond.
+                       Scoped to the individual WORD, not the whole title: the two slots are chosen
+                       independently on the titles page, so a Phase 1 adjective can sit next to a
+                       Phase 9 noun and each shows its own tier. Unscoped by design — the same title
+                       renders both in the level tooltip and on the titles page dashboard.
                        Each phase only ever overrides color/text-shadow (or, at Phase 10, swaps to
                        a clipped animated gradient) on top of the shared rule above. */
-                    #bbgl-tooltip i.bbgl-lvl-title[data-title-phase="0"] {
+                    /* inline-block so the Phase 10 gradient below gets its own painting box to
+                       clip against rather than inheriting the whole line's. */
+                    .bbgl-title-word {
+                        display: inline-block;
+                    }
+
+                    .bbgl-title-word[data-title-phase="0"] {
                         color: #888888;
                         text-shadow: none;
                     }
 
-                    #bbgl-tooltip i.bbgl-lvl-title[data-title-phase="1"] {
+                    .bbgl-title-word[data-title-phase="1"] {
                         color: #9a9a9e;
                         text-shadow: 0 0 2px rgba(255, 255, 255, 0.15);
                     }
 
-                    #bbgl-tooltip i.bbgl-lvl-title[data-title-phase="2"] {
+                    .bbgl-title-word[data-title-phase="2"] {
                         color: #d4d4d8;
                         text-shadow: 0 0 3px rgba(255, 255, 255, 0.4);
                     }
 
-                    #bbgl-tooltip i.bbgl-lvl-title[data-title-phase="3"] {
+                    .bbgl-title-word[data-title-phase="3"] {
                         color: #b9c9ae;
                         text-shadow: 0 0 3px rgba(200, 255, 200, 0.3);
                     }
 
-                    #bbgl-tooltip i.bbgl-lvl-title[data-title-phase="4"] {
+                    .bbgl-title-word[data-title-phase="4"] {
                         color: #3fae54;
                         text-shadow: 0 0 3px rgba(63, 174, 84, 0.4);
                     }
 
-                    #bbgl-tooltip i.bbgl-lvl-title[data-title-phase="5"] {
+                    .bbgl-title-word[data-title-phase="5"] {
                         color: #39d35a;
                         text-shadow: 0 0 4px rgba(57, 211, 90, 0.5);
                     }
 
-                    #bbgl-tooltip i.bbgl-lvl-title[data-title-phase="6"] {
+                    .bbgl-title-word[data-title-phase="6"] {
                         color: #4dff85;
                         text-shadow: 0 0 3px rgba(77, 255, 133, 0.7), 0 0 8px rgba(77, 255, 133, 0.35);
                     }
 
-                    #bbgl-tooltip i.bbgl-lvl-title[data-title-phase="7"] {
+                    .bbgl-title-word[data-title-phase="7"] {
                         color: #c9d94a;
                         text-shadow: 0 0 3px rgba(201, 217, 74, 0.6), 0 0 8px rgba(255, 204, 68, 0.3);
                     }
 
-                    #bbgl-tooltip i.bbgl-lvl-title[data-title-phase="8"] {
+                    .bbgl-title-word[data-title-phase="8"] {
                         color: #ffcc44;
                         text-shadow: 0 0 4px rgba(255, 204, 68, 0.5);
                     }
 
-                    #bbgl-tooltip i.bbgl-lvl-title[data-title-phase="9"] {
+                    .bbgl-title-word[data-title-phase="9"] {
                         color: #ffe066;
                         text-shadow: 0 0 4px rgba(255, 224, 102, 0.7), 0 0 10px rgba(255, 204, 68, 0.4);
                     }
 
-                    #bbgl-tooltip i.bbgl-lvl-title[data-title-phase="10"] {
+                    .bbgl-title-word[data-title-phase="10"] {
                         background: linear-gradient(90deg, #ffffff, #66eaff, #ff8fd6, #ffe066, #66eaff, #ffffff);
                         background-size: 400% 100%;
                         -webkit-background-clip: text;
@@ -7005,51 +7199,382 @@
                         overflow: visible;
                     }
 
-                    /* height is set inline by achRefreshPageDom() to the real, measured distance
-                       between #bbgl-ach-pages' top (already clear of the SVG toggle row) and
-                       #bbgl-ach-footer's top (the page-dot/nav bar), so this centers within the
-                       actual visible gap in every panel mode instead of guessing box-model math
-                       against the grid layout under #bbgl-achievements-container. */
-                    .bbgl-ach-locked {
-                        position: absolute;
-                        top: 0;
-                        left: 0;
-                        right: 0;
-                        min-height: 60px;
+                    /* Ordinary flow child of #bbgl-ach-pages, exactly like every other ach page —
+                       the old locked page was absolutely positioned with an inline height stamped
+                       by a rAF measuring loop, which is what left it clipped to half height until
+                       a refresh. Every size here scales off cqi against the #bbgl-ach-pages
+                       container, so compact/expanded/page all work off one set of rules (the
+                       --bbgl-ach-fs-* vars only exist in expanded/page and would collapse to
+                       inherited sizes in compact). */
+                    .bbgl-titles-page {
+                        --bbgl-t-fs-name: clamp(13px, 4.2cqi, 34px);
+                        --bbgl-t-fs-sub: clamp(8px, 2.1cqi, 16px);
+                        --bbgl-t-fs-cap: clamp(6px, 1.4cqi, 11px);
+                        --bbgl-t-fs-label: clamp(6px, 1.35cqi, 10px);
+                        --bbgl-t-fs-tier: clamp(4px, .95cqi, 8px);
+                        --bbgl-t-fs-bracket: clamp(4.5px, 1.1cqi, 9px);
+                        --bbgl-t-star: clamp(10px, 3.1cqi, 30px);
+                        --bbgl-t-gap: clamp(2px, .6cqi, 6px);
+                        /* containing block for the absolutely-positioned role picker */
+                        position: relative;
+                        display: flex;
+                        flex-direction: column;
+                        gap: calc(var(--bbgl-t-gap) * 1.5);
+                        width: 100%;
+                        height: 100%;
+                        min-height: 0;
+                        box-sizing: border-box;
+                        padding: 2px 4px 0;
+                        /* ach pages never scroll — everything is sized to fit instead */
+                        overflow: hidden;
+                    }
+
+                    /* ─── Identity block ───────────────────────────────────────────── */
+                    .bbgl-titles-head {
                         display: flex;
                         flex-direction: column;
                         align-items: center;
-                        justify-content: center;
-                        gap: 8px;
+                        gap: calc(var(--bbgl-t-gap) * .5);
+                        flex: 0 0 auto;
                         text-align: center;
+                        min-width: 0;
+                    }
+
+                    /* line-height and the padding leave room for descenders — at 1.05 with the
+                       page's overflow:hidden the bottom of the name was being shaved off. */
+                    .bbgl-titles-name {
+                        font-family: var(--bbgl-ach-font);
+                        font-size: var(--bbgl-t-fs-name);
+                        font-weight: 700;
+                        line-height: 1.2;
+                        padding-bottom: .1em;
+                        letter-spacing: .01em;
+                        color: #fff;
+                        max-width: 100%;
+                        overflow: hidden;
+                        text-overflow: ellipsis;
+                        white-space: nowrap;
+                    }
+
+                    /* Rank over title, stacked. */
+                    .bbgl-titles-sub {
+                        display: flex;
+                        flex-direction: column;
+                        align-items: center;
+                        gap: calc(var(--bbgl-t-gap) * .5);
+                        margin-top: calc(var(--bbgl-t-gap) * .75);
+                        font-size: var(--bbgl-t-fs-sub);
+                        line-height: 1.25;
+                        min-width: 0;
+                        max-width: 100%;
+                    }
+
+                    .bbgl-titles-rankname {
+                        color: #d9a05b;
+                        font-weight: 700;
+                    }
+
+                    /* ─── Level bar + rank bracket axis ─────────────────────────────── */
+                    .bbgl-rank-track {
+                        display: flex;
+                        flex-direction: column;
+                        width: 100%;
+                        flex: 0 0 auto;
+                        /* room for the floating level number above the point */
+                        margin-top: calc(var(--bbgl-t-fs-label) * 1.1);
+                    }
+
+                    .bbgl-rank-caps {
+                        display: flex;
+                        justify-content: space-between;
+                        width: 100%;
+                    }
+
+                    .bbgl-rank-cap {
+                        font-size: var(--bbgl-t-fs-cap);
+                        font-weight: 700;
+                        letter-spacing: .04em;
+                        text-transform: uppercase;
+                        color: rgba(255, 255, 255, .6);
+                        white-space: nowrap;
+                    }
+
+                    .bbgl-rank-row {
+                        display: flex;
+                        align-items: center;
+                        gap: calc(var(--bbgl-t-gap) * 1.5);
+                        width: 100%;
+                    }
+
+                    .bbgl-rank-end {
+                        flex: 0 0 auto;
+                        font-size: var(--bbgl-t-fs-cap);
+                        font-weight: 700;
+                        color: rgba(255, 255, 255, .45);
+                        font-variant-numeric: tabular-nums;
+                    }
+
+                    .bbgl-rank-line {
+                        position: relative;
+                        flex: 1 1 auto;
+                        height: 3px;
+                        border-radius: 2px;
+                        background: rgba(255, 255, 255, .12);
+                        box-shadow: inset 0 1px 2px rgba(0, 0, 0, .5);
+                    }
+
+                    .bbgl-rank-fill {
+                        position: absolute;
+                        top: 0;
+                        left: 0;
+                        height: 100%;
+                        border-radius: 2px;
+                        background: linear-gradient(90deg, #7a5c3e, #b8763a, #d9a05b);
+                    }
+
+                    .bbgl-rank-knob {
+                        position: absolute;
+                        top: 50%;
+                        width: clamp(5px, 1.3cqi, 9px);
+                        height: clamp(5px, 1.3cqi, 9px);
+                        border-radius: 50%;
+                        transform: translate(-50%, -50%);
+                        background: #f0c987;
+                        box-shadow: 0 0 5px rgba(240, 201, 135, .8);
+                        cursor: help;
+                    }
+
+                    /* Current gym level, floating above the moving point. */
+                    .bbgl-rank-knob-lv {
+                        position: absolute;
+                        bottom: 100%;
+                        left: 50%;
+                        transform: translate(-50%, -2px);
+                        font-size: var(--bbgl-t-fs-label);
+                        font-weight: 700;
+                        line-height: 1;
+                        color: #f0c987;
+                        font-variant-numeric: tabular-nums;
+                        pointer-events: none;
+                    }
+
+                    /* Bracket axis hanging off the line, widths straight from LEVEL_TITLE_BANDS. */
+                    .bbgl-rank-brackets {
+                        position: absolute;
+                        top: 100%;
+                        left: 0;
+                        right: 0;
+                        display: flex;
+                        align-items: flex-start;
+                    }
+
+                    .bbgl-rank-bracket {
+                        position: relative;
                         box-sizing: border-box;
-                        /* Nudge on top of the measured centering above; magnitude differs per mode. */
-                        transform: translateY(-4px);
+                        min-width: 0;
+                        padding-top: calc(var(--bbgl-t-fs-bracket) * .55);
+                        text-align: center;
+                        cursor: help;
                     }
 
-                    #bbgl-panel.bbgl-compact .bbgl-ach-locked {
-                        transform: translateY(2px);
+                    /* The [___] arm: side walls plus a floor, drawn with borders. */
+                    .bbgl-rank-bracket-arm {
+                        display: block;
+                        height: calc(var(--bbgl-t-fs-bracket) * .5);
+                        margin: 0 1px;
+                        border: 1px solid rgba(255, 255, 255, .22);
+                        border-top: none;
                     }
 
-                    /* --ach-gap is stamped by resizeAchLockedPage() (06-section-v-logic.js) to the
-                       real measured height of the visible area, so this scales off the container's
-                       actual live height rather than the width-only --bbgl-page-t breakpoint. */
-                    #bbgl-panel.bbgl-mode-page .bbgl-ach-locked {
-                        transform: translateY(clamp(-2.5px, calc(0px - var(--ach-gap, 300px) * 0.012), 0px));
+                    .bbgl-rank-bracket-label {
+                        display: block;
+                        font-size: var(--bbgl-t-fs-bracket);
+                        line-height: 1.1;
+                        color: rgba(255, 255, 255, .32);
+                        overflow: hidden;
+                        text-overflow: ellipsis;
+                        white-space: nowrap;
+                        padding: 0 1px;
                     }
 
-                    .bbgl-ach-locked-icon {
-                        font-size: var(--bbgl-ach-fs-icon);
-                        opacity: .55;
-                        filter: grayscale(1);
+                    .bbgl-rank-bracket.is-revealed .bbgl-rank-bracket-label {
+                        color: rgba(255, 255, 255, .7);
                     }
 
-                    .bbgl-ach-locked-text {
-                        font-size: var(--bbgl-ach-fs-message);
-                        font-weight: 600;
-                        color: rgba(255, 255, 255, .75);
-                        letter-spacing: .02em;
-                        max-width: 26ch;
+                    .bbgl-rank-bracket.is-revealed .bbgl-rank-bracket-arm {
+                        border-color: rgba(217, 160, 91, .5);
+                    }
+
+                    /* ─── Unlock grid, 2x2 ─────────────────────────────────────────── */
+                    .bbgl-titles-grid {
+                        display: flex;
+                        flex-direction: column;
+                        gap: var(--bbgl-t-gap);
+                        flex: 0 0 auto;
+                        min-width: 0;
+                        /* clears the bracket axis, which is absolutely positioned under the line */
+                        margin-top: calc(var(--bbgl-t-fs-bracket) * 2.6);
+                    }
+
+                    /* The composed title reuses the tooltip's title element so both places pick up
+                       the same per-word finish rules (see .bbgl-title-word below). */
+                    .bbgl-lvl-title.bbgl-titles-title {
+                        font-style: normal;
+                        font-weight: 700;
+                    }
+
+                    /* Two columns, filled in source order str, def, spd, dex — which puts STR/SPD
+                       down the left and DEF/DEX down the right. */
+                    .bbgl-title-rows {
+                        display: grid;
+                        grid-template-columns: repeat(2, minmax(0, 1fr));
+                        gap: var(--bbgl-t-gap) calc(var(--bbgl-t-gap) * 2);
+                        justify-items: center;
+                    }
+
+                    .bbgl-title-row {
+                        display: flex;
+                        align-items: center;
+                        gap: calc(var(--bbgl-t-gap) * 1.5);
+                        min-width: 0;
+                    }
+
+                    .bbgl-title-row-label {
+                        flex: 0 0 auto;
+                        width: 3.2ch;
+                        font-size: var(--bbgl-t-fs-label);
+                        font-weight: 700;
+                        letter-spacing: .04em;
+                        cursor: help;
+                    }
+
+                    /* Fixed-size star cells rather than 11 stretch columns — stretching would size
+                       each star to 1/11th of its column. --bbgl-t-star clamps them in every mode. */
+                    .bbgl-title-stars {
+                        display: grid;
+                        grid-template-columns: repeat(11, var(--bbgl-t-star));
+                        gap: var(--bbgl-t-gap);
+                        justify-content: start;
+                        min-width: 0;
+                    }
+
+                    .bbgl-title-star {
+                        position: relative;
+                        width: var(--bbgl-t-star);
+                        height: var(--bbgl-t-star);
+                        display: flex;
+                        align-items: center;
+                        justify-content: center;
+                        border-radius: 3px;
+                        box-sizing: border-box;
+                        border: 1px solid transparent;
+                    }
+
+                    .bbgl-title-star svg {
+                        width: 78%;
+                        height: 78%;
+                        display: block;
+                    }
+
+                    .bbgl-title-star.is-unlocked {
+                        cursor: pointer;
+                        color: #ffcc44;
+                        filter: drop-shadow(0 0 2px rgba(255, 204, 68, .45));
+                    }
+
+                    .bbgl-title-star.is-unlocked:hover {
+                        border-color: rgba(255, 255, 255, .35);
+                    }
+
+                    /* Locked stars are a dim outline with --star-fill (stamped inline per star)
+                       filling them bottom-up, so the next tier visibly creeps toward unlocking. */
+                    .bbgl-title-star.is-locked {
+                        cursor: help;
+                        color: rgba(255, 255, 255, .16);
+                    }
+
+                    .bbgl-title-star.is-locked::after {
+                        content: '';
+                        position: absolute;
+                        left: 0;
+                        right: 0;
+                        bottom: 0;
+                        height: var(--star-fill, 0%);
+                        background: rgba(255, 204, 68, .22);
+                        border-radius: 0 0 3px 3px;
+                        pointer-events: none;
+                    }
+
+                    .bbgl-title-star.is-primary,
+                    .bbgl-title-star.is-both {
+                        border-color: #a855f7;
+                        background: rgba(168, 85, 247, .22);
+                    }
+
+                    .bbgl-title-star.is-secondary {
+                        border-color: #d8b4fe;
+                        background: rgba(216, 180, 254, .16);
+                    }
+
+                    /* Equipped in both slots at once — split the two highlight colors. */
+                    .bbgl-title-star.is-both {
+                        background: linear-gradient(135deg, rgba(168, 85, 247, .3) 50%, rgba(216, 180, 254, .22) 50%);
+                    }
+
+                    .bbgl-title-star-tier {
+                        position: absolute;
+                        bottom: -1px;
+                        right: 1px;
+                        font-size: var(--bbgl-t-fs-tier);
+                        line-height: 1;
+                        font-weight: 700;
+                        color: rgba(255, 255, 255, .55);
+                        pointer-events: none;
+                    }
+
+                    /* Reuses .bbgl-enh-sw-opt for the segments; only the wrapper differs, since the
+                       enhancers switch is absolutely pinned into a section title row. */
+                    .bbgl-title-mode-switch {
+                        align-self: flex-end;
+                        display: flex;
+                        align-items: center;
+                        cursor: help;
+                    }
+
+                    .bbgl-title-mode-switch .bbgl-enh-sw-opt.is-unavailable {
+                        opacity: .35;
+                        cursor: default;
+                    }
+
+                    /* ─── Role picker popover ──────────────────────────────────────── */
+                    .bbgl-title-pick {
+                        position: absolute;
+                        z-index: 40;
+                        display: flex;
+                        gap: 2px;
+                        padding: 3px;
+                        border-radius: 4px;
+                        background: rgba(20, 20, 24, .97);
+                        border: 1px solid rgba(255, 255, 255, .22);
+                        box-shadow: 0 4px 12px rgba(0, 0, 0, .6);
+                    }
+
+                    .bbgl-title-pick button {
+                        padding: 2px 6px;
+                        font-size: clamp(6px, 1.4cqi, 10px);
+                        font-weight: 700;
+                        letter-spacing: .03em;
+                        text-transform: uppercase;
+                        color: #eee;
+                        background: rgba(255, 255, 255, .08);
+                        border: 1px solid rgba(255, 255, 255, .18);
+                        border-radius: 3px;
+                        cursor: pointer;
+                        white-space: nowrap;
+                    }
+
+                    .bbgl-title-pick button:hover {
+                        background: rgba(168, 85, 247, .35);
                     }
 
                     .bbgl-ach-title-row {
@@ -7643,17 +8168,6 @@
 
                     #bbgl-panel.bbgl-compact .bbgl-ach-subsection-title {
                         font-size: clamp(9px, 1.6cqi, 10px);
-                    }
-
-                    /* The -2px expanded-only font reduction below touched several base/unscoped
-                       rules that compact also reads (no dedicated compact override existed for
-                       them). These restore compact's original sizes so the reduction is expanded-only. */
-                    #bbgl-panel.bbgl-compact .bbgl-ach-locked-icon {
-                        font-size: 28px;
-                    }
-
-                    #bbgl-panel.bbgl-compact .bbgl-ach-locked-text {
-                        font-size: 13px;
                     }
 
                     #bbgl-panel.bbgl-compact .ach-sub {
@@ -8613,7 +9127,10 @@
         } else {
             reqs = [{
                     type: 'battlestats',
-                    url: `https://api.torn.com/user/?selections=battlestats&key=${userConfig.apiKey}&timestamp=${ts}`
+                    // `basic` rides along in the same request — v1 takes comma-separated
+                    // selections and still bills it as one call — purely to learn the player's
+                    // name for the titles page. Nothing else reads it.
+                    url: `https://api.torn.com/user/?selections=battlestats,basic&key=${userConfig.apiKey}&timestamp=${ts}`
                 },
                 {
                     type: 'log',
@@ -8660,6 +9177,8 @@
                 if (r.data.log) logs = { ...logs, ...r.data.log };
                 if (r.cfg.type === 'battlestats') bs = r.data;
             });
+            // Name comes from the `basic` selection bundled into the battlestats call above.
+            if (bs && bs.name) meta.playerName = bs.name;
 
             const tsSec = Math.floor(ts / 1000);
             if (!meta.syncFloor) meta.syncFloor = {};
@@ -9504,11 +10023,12 @@ const DataController = {
         let unlockedCount = 1;
         let rouletteCounter = 0;
         let careerLevelExp = 0;
-        // Stat-ratio title state — same reward-gating scope as careerLevelExp below (skipped
-        // entirely in demo mode, respects installDateKey/rewardStartTs), replayed fresh from the
-        // full timeline on every cache rebuild rather than persisted to DB. See
-        // advanceStatTitleState() in 03-section-ii-utils.js for the per-day step logic.
-        let statTitleState = null;
+        // Stat-title progress — cumulative E per stat, each unlocking that stat's own word ladder
+        // (STAT_TITLE_THRESHOLDS, 03-section-ii-utils.js). Same reward-gating scope as
+        // careerLevelExp below (skipped entirely in demo mode, respects installDateKey/
+        // rewardStartTs), recomputed from the full timeline on every cache rebuild rather than
+        // persisted to DB. Only the player's chosen slots live in userConfig.
+        const statTitleE = { str: 0, def: 0, spd: 0, dex: 0 };
         // Reward gating: stickers (and their unlock progression) only count from the install
         // week onward. Pre-install weeks still render their bar/day counts elsewhere, but earn
         // no stickers here. EXP uses a stricter gate: full days before the install day contribute
@@ -9538,7 +10058,11 @@ const DataController = {
                     const hasTrainLog = daySeries.some(s => s.type === 'gym');
                     const isHJ = (daySeries === day.series) ? hjDaySet.has(day.date) : findHappyJumps(daySeries).length > 0;
                     careerLevelExp += computeDailyLevelExp(e, hasTrainLog, isHJ);
-                    statTitleState = advanceStatTitleState(statTitleState, { date: day.date, endBreakdown: day.endBreakdown, eSpent: { total: e } });
+                    // Per-stat, off the same gated slice `e` was summed from — day.eSpent[stat]
+                    // would skip the install-day sub-day filter applied to daySeries above.
+                    daySeries.forEach(s => {
+                        if (s.type === 'gym' && statTitleE[s.stat] !== undefined) statTitleE[s.stat] += (s.cost || 0);
+                    });
                 });
             }
             if (wk >= todayWeekKey) return;
@@ -9580,7 +10104,7 @@ const DataController = {
         this._cache.featuredDays = featuredSet;
         this._cache.unlockedCount = unlockedCount;
         runtime.careerLevelExp = careerLevelExp;
-        runtime.statTitleState = statTitleState;
+        runtime.statTitleE = statTitleE;
         if (!runtime.demoMode) {
             const existingStates = (_historyCache && _historyCache.meta && _historyCache.meta.stickers) ? _historyCache.meta.stickers : {};
             const freshStates = {};
@@ -9603,9 +10127,9 @@ const DataController = {
         this.buildProgressionCache();
         return runtime.careerLevelExp || 0;
     },
-    getStatTitleState() {
+    getStatTitleE() {
         this.buildProgressionCache();
-        return runtime.statTitleState || null;
+        return runtime.statTitleE || { str: 0, def: 0, spd: 0, dex: 0 };
     },
     getUnlockedCount() {
         this.buildProgressionCache();
@@ -11121,62 +11645,13 @@ function computeAchievements(s) {
     };
 }
 
-// #bbgl-ach-pages' own top edge already clears the SVG toggle row (via the container's
-// padding-top), and #bbgl-ach-footer's top edge is the top of the page-dot/nav bar. Rather
-// than trying to replicate that gap with CSS box-model math (which the grid layout under
-// #bbgl-achievements-container doesn't resolve the way plain flex would), measure the two
-// real rects directly and pin the locked page's height to exactly the space between them.
-// Also stamps that measured gap as --ach-gap so the page-mode transform (04-section-iii-styles.js)
-// can scale its correction off the container's actual live height, not just a width breakpoint.
-//
-// A ResizeObserver on both elements re-runs this automatically whenever their real layout
-// changes, instead of relying on every call site that might move them (page-flip CRT animation,
-// panel mode toggle, tall-mode toggle, page-mode's own fresh mount, window resize, font load,
-// ...) to remember to call it. A single measurement isn't trustworthy, though — whichever of
-// those transitions is in flight when this fires, the first reading can land mid-animation and
-// look plausible (not just implausibly tiny) while still being wrong. So instead of accepting
-// one reading, poll every frame until two consecutive readings agree (layout has stopped
-// moving) before committing. Each call supersedes any still-running poll from an earlier call.
-let _achLockedResizeObserver = null;
-let _achLockedStabilizeToken = 0;
-
-function resizeAchLockedPage() {
-    const container = document.getElementById('bbgl-ach-pages');
-    const footer = document.getElementById('bbgl-ach-footer');
-    if (!container || !footer) return;
-    if (!_achLockedResizeObserver && typeof ResizeObserver === 'function') {
-        _achLockedResizeObserver = new ResizeObserver(() => resizeAchLockedPage());
-    }
-    if (_achLockedResizeObserver) {
-        _achLockedResizeObserver.observe(container);
-        _achLockedResizeObserver.observe(footer);
-    }
-    const token = ++_achLockedStabilizeToken;
-    let lastGap = null;
-    const tick = () => {
-        if (token !== _achLockedStabilizeToken) return;
-        const c = document.getElementById('bbgl-ach-pages');
-        const f = document.getElementById('bbgl-ach-footer');
-        const lockedEl = c && c.querySelector('.bbgl-ach-locked');
-        if (!c || !f || !lockedEl) return;
-        const gap = f.getBoundingClientRect().top - c.getBoundingClientRect().top;
-        if (gap >= 40 && lastGap !== null && Math.abs(gap - lastGap) < 0.5) {
-            lockedEl.style.height = gap + 'px';
-            lockedEl.style.setProperty('--ach-gap', gap + 'px');
-            return;
-        }
-        lastGap = gap;
-        requestAnimationFrame(tick);
-    };
-    requestAnimationFrame(tick);
-}
-
 function achRefreshPageDom() {
     const container = document.getElementById('bbgl-ach-pages');
     if (!container || !runtime._achCache) return;
+    // The titles page's role picker lives inside the markup about to be replaced.
+    closeTitleRolePicker();
     container.innerHTML = buildAchievementsPage(runtime._achPage, runtime._achCache);
     updateAchPageIndicator();
-    resizeAchLockedPage();
 }
 
 function renderAchievements() {
@@ -11361,8 +11836,127 @@ function achFmtTimeHMS(ts) {
     return String(h).padStart(2, '0') + ':' + String(m).padStart(2, '0') + ':' + String(s).padStart(2, '0') + ' ' + achTimeZoneSuffix();
 }
 
-function achBuildPageLocked() {
-    return `<div class="bbgl-ach-locked"><div class="bbgl-ach-locked-icon">\u{1F512}</div><div class="bbgl-ach-locked-text">Reach Level 100 to unlock this page!</div></div>`;
+// ─── Titles page (achievements page 5) ──────────────────────────────────────
+// Dedicated to the leveling side of the script, stacked top to bottom: the Clay -> Fully Bricked
+// rank track, the player dashboard, then the stat-title unlock grid. Every star is one phase of
+// one stat's word ladder, unlocked by E spent on that stat alone (STAT_TITLE_THRESHOLDS,
+// 03-section-ii-utils.js). Words are deliberately NOT shown on the stars — the only place a word
+// appears is the composed title in the dashboard, so equipping one is how you find out what it
+// says. Deliberately headerless: no section titles, so the space goes to content.
+
+// Stamped into DB meta from the `basic` selection that rides along with the battlestats call
+// (05-section-iv-data.js). Torn's own sidebar can't be scraped for this — its class names are
+// hashed per build — so an em dash stands in until the first sync lands.
+function achTitlePlayerName() {
+    const h = getActiveHistory();
+    return (h && h.meta && h.meta.playerName) || '—';
+}
+
+// The level bar's rank axis: a bracket per band hanging off the line, like a graph's x-axis.
+// Widths come straight from levelRankBrackets() (03-section-ii-utils.js), which derives them from
+// LEVEL_TITLE_BANDS — nothing here needs touching if the bands change.
+function achTitleBracketsHTML(atrophy, level) {
+    return levelRankBrackets(atrophy, level).map(b => {
+        const cls = 'bbgl-rank-bracket' + (b.unlocked ? ' is-revealed' : '');
+        const tip = b.unlocked
+            ? `${b.label} · Levels ${b.start}-${b.end}`
+            : `Levels ${b.start}-${b.end} — reach level ${b.start} to reveal`;
+        return `<div class="${cls}" style="width:${b.widthPct.toFixed(4)}%" data-tooltip="${achEsc(tip)}"><span class="bbgl-rank-bracket-arm"></span><span class="bbgl-rank-bracket-label">${achEsc(b.label)}</span></div>`;
+    }).join('');
+}
+
+// One star. Locked stars carry a partial fill and an "E so far / E needed" tooltip; only the very
+// next locked phase can show any fill, everything past it reads 0.
+//
+// The tooltip names both words this tier would supply — primary is the noun, secondary the
+// adjective — with "Locked" standing in that same slot until the tier is earned. Read straight off
+// STAT_TITLE_WORDS rather than through statTitleWord(), which clamps down to the nearest defined
+// phase: that's right for composing a title but would misreport an undecided tier as owning some
+// earlier tier's words.
+function achTitleStarHTML(stat, phase, unlockedPhase, statE, role) {
+    const unlocked = phase <= unlockedPhase;
+    const need = STAT_TITLE_THRESHOLDS[phase] || 0;
+    const prev = phase > 0 ? (STAT_TITLE_THRESHOLDS[phase - 1] || 0) : 0;
+    const span = Math.max(1, need - prev);
+    const pct = unlocked ? 100 : Math.max(0, Math.min(100, ((statE - prev) / span) * 100));
+    const cls = ['bbgl-title-star'];
+    if (unlocked) cls.push('is-unlocked');
+    else cls.push('is-locked');
+    if (role) cls.push('is-' + role);
+    const words = (STAT_TITLE_WORDS[stat] || [])[phase] || null;
+    let body;
+    if (!unlocked) {
+        body = `<i>Locked</i><i>${Formatter.number(Math.min(statE, need))} / ${Formatter.number(need)} E</i>`;
+    } else if (words) {
+        body = `<i>Primary: ${words.noun}</i><i>Secondary: ${words.adj}</i>`;
+    } else {
+        body = `<i>Not yet named</i>`;
+    }
+    const tip = `${achStatFull(stat)} · Tier ${phase}${body}`;
+    return `<div class="${cls.join(' ')}" data-title-stat="${stat}" data-title-phase-idx="${phase}"${unlocked ? '' : ' data-locked="1"'} data-tooltip="${achEsc(tip)}" style="--star-fill:${pct.toFixed(1)}%">${ICONS.TITLE_STAR}<span class="bbgl-title-star-tier">${phase}</span></div>`;
+}
+
+function achBuildPageTitles() {
+    const totalExp = getLiveLevelExp();
+    const { atrophy, level } = calculateLevelProgress(totalExp);
+    const rankAtrophy = (runtime.devMode && runtime._devRankOverride) ? runtime._devRankOverride.atrophy : atrophy;
+    const rankLevel = (runtime.devMode && runtime._devRankOverride) ? runtime._devRankOverride.level : level;
+    const rankName = atrophyTitle(rankAtrophy, rankLevel);
+    // The bar is a plain 0-100 gym-level track, so the point sits at the level itself. Atrophy 1/2
+    // technically start below zero (LEVEL_ATRO_START), which just pins the point to the left edge.
+    const rankPct = Math.max(0, Math.min(100, rankLevel || 0));
+
+    const eByStat = getLiveStatTitleE();
+    const sel = getLiveStatTitleSelection();
+    const phases = sel.phases;
+
+    const roleFor = (stat, phase) => {
+        const isP = sel.primary && sel.primary.stat === stat && sel.primary.phase === phase;
+        const isS = sel.secondary && sel.secondary.stat === stat && sel.secondary.phase === phase;
+        return isP && isS ? 'both' : (isP ? 'primary' : (isS ? 'secondary' : ''));
+    };
+
+    // 2x2: STR/SPD down the left, DEF/DEX down the right. Source order is str, def, spd, dex so a
+    // 2-column grid fills the rows correctly, and halving the row width keeps the stars small
+    // enough that the whole page still fits without scrolling.
+    const gridCells = ['str', 'def', 'spd', 'dex'].map(k => {
+        const stars = STAT_TITLE_THRESHOLDS.map((_, i) => achTitleStarHTML(k, i, phases[k], eByStat[k] || 0, roleFor(k, i))).join('');
+        return `<div class="bbgl-title-row"><div class="bbgl-title-row-label ach-stat-${k}" data-tooltip="${achEsc(`${Formatter.number(Math.round(eByStat[k] || 0))} E spent on ${achStatFull(k)}`)}">${k.toUpperCase()}</div><div class="bbgl-title-stars">${stars}</div></div>`;
+    }).join('');
+
+    const titleHtml = composeStatTitleHTML(sel);
+
+    // Free-floating identity block — no row labels, the values speak for themselves.
+    const head = `<div class="bbgl-titles-head">` +
+        `<div class="bbgl-titles-name">${achEsc(achTitlePlayerName())}</div>` +
+        `<div class="bbgl-titles-sub"><span class="bbgl-titles-rankname">${achEsc(rankName)}</span>` +
+        (titleHtml ? `<i class="bbgl-lvl-title bbgl-titles-title">${titleHtml}</i>` : '') +
+        `</div></div>`;
+
+    // Level bar: Clay / Fully Bricked ride above the ends, 0 and 100 sit beside the line itself,
+    // the live gym level floats over the moving point, and the rank brackets hang underneath.
+    const bar = `<div class="bbgl-rank-track">` +
+        `<div class="bbgl-rank-caps"><span class="bbgl-rank-cap">Clay</span><span class="bbgl-rank-cap">Fully Bricked</span></div>` +
+        `<div class="bbgl-rank-row"><span class="bbgl-rank-end">0</span>` +
+        `<div class="bbgl-rank-line"><div class="bbgl-rank-fill" style="width:${rankPct.toFixed(2)}%"></div>` +
+        `<div class="bbgl-rank-knob" style="left:${rankPct.toFixed(2)}%" data-tooltip="${achEsc(`"${rankName}"`)}"><span class="bbgl-rank-knob-lv">${level}</span></div>` +
+        `<div class="bbgl-rank-brackets">${achTitleBracketsHTML(rankAtrophy, rankLevel)}</div>` +
+        `</div><span class="bbgl-rank-end">100</span></div>` +
+        `</div>`;
+
+    // Earned/Custom switch, reusing the enhancers page's segmented-switch styling. Custom is
+    // unavailable until there's a saved pick to switch back to — picking any star creates one and
+    // flips the mode on its own.
+    const isCustom = sel.mode === 'custom';
+    const switchTip = 'Earned follows your two highest stats automatically. Custom keeps the title you picked, and clicking any unlocked star switches you to it.';
+    const modeSwitch = `<div class="bbgl-title-mode-switch" data-tooltip="${achEsc(switchTip)}">` +
+        `<span class="bbgl-enh-sw-opt${isCustom ? '' : ' active'}" data-title-mode="earned">Earned</span>` +
+        `<span class="bbgl-enh-sw-opt${isCustom ? ' active' : ''}${sel.hasCustom ? '' : ' is-unavailable'}" data-title-mode="custom">Custom</span>` +
+        `</div>`;
+
+    const grid = `<div class="bbgl-titles-grid">${modeSwitch}<div class="bbgl-title-rows">${gridCells}</div></div>`;
+
+    return `<div class="bbgl-titles-page">${head}${bar}${grid}</div>`;
 }
 
 function achBuildPage0(d) {
@@ -11793,7 +12387,7 @@ function buildAchievementsPage(pageIdx, d) {
     } else if (pageIdx === 3) {
         return achBuildPage2(d);
     } else if (pageIdx === 5) {
-        return achBuildPageLocked();
+        return achBuildPageTitles();
     } else {
         const consistRows = [mk('Best Training Streak', d.longestStreak, {
             key: 'training-streak',
@@ -12765,7 +13359,7 @@ async function clearData() {
         runtime.apiCallTotal = 0;
         runtime.stickerSlots = [];
         runtime.careerLevelExp = 0;
-        runtime.statTitleState = null;
+        runtime.statTitleE = null;
         runtime._lastLevelExp = undefined;
         runtime._targetLevelExp = undefined;
         runtime._isAnimatingLevel = false;
@@ -13547,10 +14141,10 @@ const BestGymController = {
     // so only entries at/after the precise install moment count on the exact install day (mirrors
     // buildProgressionCache()'s handling of past days, 06-section-v-logic.js). Returns zeros in
     // demo mode or if there's no today data yet. Shared by getLiveLevelExp() and
-    // getLiveStatTitleState() so this filtering logic exists in exactly one place.
+    // getLiveStatTitleE() so this filtering logic exists in exactly one place.
     function getTodayTrainingContext() {
         const h = getActiveHistory();
-        if (runtime.demoMode || !h || !h.today) return { todayE: 0, hasTrainLog: false, isHJ: false };
+        if (runtime.demoMode || !h || !h.today) return { todayE: 0, todayEByStat: { str: 0, def: 0, spd: 0, dex: 0 }, hasTrainLog: false, isHJ: false };
         const today = Formatter.dateLogical();
         const installDateKey = getInstallDateKey();
         const rewardStartTs = (h.meta && h.meta.rewardStartDate) || null;
@@ -13563,10 +14157,17 @@ const BestGymController = {
             todaySeries = todaySeries.filter(s => s.ts >= rewardStartTs);
         }
         const todayE = (todaySeries === h.today.series && h.today.eSpent) ? (h.today.eSpent.total || 0) : todaySeries.filter(s => s.type === 'gym').reduce((sum, s) => sum + (s.cost || 0), 0);
+        // Per-stat split of the same filtered slice, for the stat-title ladders. Always summed
+        // from the series rather than read off h.today.eSpent so it can't disagree with todayE
+        // above on install day, where the sub-day filter applies to one and not the other.
+        const todayEByStat = { str: 0, def: 0, spd: 0, dex: 0 };
+        todaySeries.forEach(s => {
+            if (s.type === 'gym' && todayEByStat[s.stat] !== undefined) todayEByStat[s.stat] += (s.cost || 0);
+        });
         const hasTrainLog = todaySeries.some(s => s.type === 'gym');
         const { hjDaySet } = DataController.getHappyJumpData();
         const isHJ = (todaySeries === h.today.series) ? hjDaySet.has(today) : findHappyJumps(todaySeries).length > 0;
-        return { todayE, hasTrainLog, isHJ };
+        return { todayE, todayEByStat, hasTrainLog, isHJ };
     }
 
     // career EXP + today's in-progress EXP — the live total both level bars display.
@@ -13575,23 +14176,84 @@ const BestGymController = {
         return DataController.getCareerLevelExp() + computeDailyLevelExp(todayE, hasTrainLog, isHJ);
     }
 
-    // Live stat-title state — layers today's not-yet-committed contribution on top of the cached
-    // as-of-yesterday state (DataController.getStatTitleState()) via one more call to the same
-    // advanceStatTitleState() step used for the historical replay, without mutating the cache.
-    function getLiveStatTitleState() {
+    // Per-stat cumulative E for the title ladders: the cached as-of-yesterday totals plus today's
+    // not-yet-committed spend, without mutating the cache.
+    function getLiveStatTitleE() {
+        const cached = DataController.getStatTitleE();
+        const { todayEByStat } = getTodayTrainingContext();
+        const out = {};
+        STAT_KEYS.forEach(k => {
+            out[k] = (cached[k] || 0) + (todayEByStat[k] || 0);
+        });
+        return out;
+    }
+
+    // The slot selection the title renders from — manual pick if there is one, otherwise the
+    // auto-follow of the top two stats (resolveStatTitleSelection(), 03-section-ii-utils.js).
+    function getLiveStatTitleSelection() {
+        const eByStat = getLiveStatTitleE();
         // Dev-only preview override (11-section-x-devtools.js, stripped from release builds) —
-        // when active, short-circuits the real computed state entirely so every phase/stat
-        // combination can be previewed without needing real training history to produce it.
+        // bypasses both the stored pick and the unlocked-phase clamp, so any stat/phase pair can
+        // be previewed without the training history that would really unlock it.
         if (runtime.devMode && runtime._devTitleOverride) {
-            const { phase, primary, secondary } = runtime._devTitleOverride;
-            return { displayedPair: [primary, secondary], phase };
+            const o = runtime._devTitleOverride;
+            return { primary: o.primary, secondary: o.secondary, phases: statTitlePhases(eByStat), mode: 'custom', hasCustom: true };
         }
-        const cached = DataController.getStatTitleState();
         const h = getActiveHistory();
-        const { todayE } = getTodayTrainingContext();
         const endBreakdown = (h && h.today && h.today.endBreakdown) || {};
-        const live = advanceStatTitleState(cached, { date: Formatter.dateLogical(), endBreakdown, eSpent: { total: todayE } });
-        return { displayedPair: live.displayedPair, phase: statTitlePhaseForE(live.cumulativeE) };
+        return resolveStatTitleSelection(eByStat, endBreakdown);
+    }
+
+    // Re-render everywhere the composed title appears after a slot change: the level-bar tooltips
+    // and, if it's the page currently on screen, the titles page's own dashboard + star highlights.
+    // Reuses the last known EXP total so this can't fight the level bar's running animation.
+    function refreshStatTitleUI() {
+        const total = (runtime._lastLevelExp !== undefined) ? runtime._lastLevelExp : getLiveLevelExp();
+        getLevelBars().forEach(b => renderLevelBar(b, total));
+        if (runtime._achPage === 5) achRefreshPageDom();
+    }
+
+    function closeTitleRolePicker() {
+        if (runtime._titlePicker && runtime._titlePicker.parentNode) runtime._titlePicker.parentNode.removeChild(runtime._titlePicker);
+        runtime._titlePicker = null;
+    }
+
+    // Primary/Secondary/Both popover for one unlocked star. Anchored inside .bbgl-titles-page
+    // (position:absolute, so it's the containing block) and flipped below the star when there
+    // isn't room above.
+    function openTitleRolePicker(star) {
+        closeTitleRolePicker();
+        const page = star.closest('.bbgl-titles-page');
+        if (!page) return;
+        const stat = star.dataset.titleStat;
+        const phase = parseInt(star.dataset.titlePhaseIdx, 10);
+        if (!stat || !Number.isFinite(phase)) return;
+        const pick = document.createElement('div');
+        pick.className = 'bbgl-title-pick';
+        [
+            ['primary', 'Primary'],
+            ['secondary', 'Secondary'],
+            ['both', 'Both']
+        ].forEach(([role, label]) => {
+            const b = document.createElement('button');
+            b.type = 'button';
+            b.textContent = label;
+            b.onclick = (ev) => {
+                ev.stopPropagation();
+                applyStatTitlePick(getLiveStatTitleSelection(), stat, phase, role);
+                closeTitleRolePicker();
+                refreshStatTitleUI();
+            };
+            pick.appendChild(b);
+        });
+        page.appendChild(pick);
+        const pr = page.getBoundingClientRect(),
+            sr = star.getBoundingClientRect();
+        const left = Math.max(2, Math.min(sr.left - pr.left + (sr.width - pick.offsetWidth) / 2, pr.width - pick.offsetWidth - 2));
+        const above = sr.top - pr.top - pick.offsetHeight - 4;
+        pick.style.left = left + 'px';
+        pick.style.top = (above < 0 ? sr.bottom - pr.top + 4 : above) + 'px';
+        runtime._titlePicker = pick;
     }
 
     // Every level bar instance (panel + gym page), whichever are currently in the DOM.
@@ -13619,13 +14281,11 @@ const BestGymController = {
         bar.container.dataset.atrophy = atrophy;
         bar.container.dataset.level = level;
         const lvLine = level >= 100 ? 'Level 100  •  Max Level' : `Level ${level}  •  ${Math.round(pct)}%`;
-        const statState = getLiveStatTitleState();
-        const statTitle = statState.displayedPair ? composeStatTitle(statState.displayedPair, statState.phase) : '';
-        // data-title-phase drives the dull-silver-to-iridescent-diamond finish progression in
-        // 04-section-iii-styles.js — independent of composeStatTitle()'s own internal clamp for
-        // missing words, since the visual finish is defined for all 11 phases regardless of
-        // whether that phase's words exist yet.
-        const statTitleHtml = statTitle ? `<i class="bbgl-lvl-title" data-title-phase="${statState.phase}">${statTitle}</i>` : '';
+        // Each word carries its own data-title-phase, driving the dull-silver-to-iridescent-diamond
+        // finish per word in 04-section-iii-styles.js — the two slots are chosen independently, so
+        // a Phase 1 adjective can sit next to a Phase 9 noun and each shows its own tier.
+        const statTitleWords = composeStatTitleHTML(getLiveStatTitleSelection());
+        const statTitleHtml = statTitleWords ? `<i class="bbgl-lvl-title">${statTitleWords}</i>` : '';
         // Dev-only rank preview override (11-section-x-devtools.js, stripped from release builds)
         // — feeds an arbitrary atrophy/level into atrophyTitle() only, so every rank band can be
         // previewed on demand. Deliberately scoped to just the text lookup: the numeric level,
@@ -14198,7 +14858,7 @@ const BestGymController = {
             row: 'areaRow___Eheay',
             id: 'nav-gym-log-flyout'
         },
-        GYM_LOG_ICON = `<svg xmlns="http://www.w3.org/2000/svg" stroke="transparent" stroke-width="0" width="18" height="18" viewBox="60 20 280 215"><g transform="scale(1, 1.15)"><path d="${ICONS.LOGO_PATH}"></path></g></svg>`;
+        GYM_LOG_ICON = `<svg xmlns="http://www.w3.org/2000/svg" stroke="transparent" stroke-width="0" width="18" height="18" viewBox="60 20 280 215"><defs><linearGradient id="bbgl_notif_purple_grad" x1="0%" y1="0%" x2="0%" y2="100%"><stop offset="0%" stop-color="#d896e0"></stop><stop offset="100%" stop-color="#ab47bc"></stop></linearGradient></defs><g transform="scale(1, 1.15)"><path d="${ICONS.LOGO_PATH}"></path></g></svg>`;
 
     function syncSidebarState() {
         const a = window.location.hash.includes('gymlog'),
@@ -14617,7 +15277,7 @@ const BestGymController = {
         r.appendChild(l);
         c.appendChild(r);
         document.querySelectorAll(cfg.target).forEach(n => {
-            const _liveContainer = Array.from(n.classList).filter(cl => !cl.startsWith('active___')).join(' ');
+            const _liveContainer = Array.from(n.classList).filter(cl => !cl.startsWith('active___') && !cl.startsWith('attention___')).join(' ');
             if (_liveContainer) {
                 const hasNotif = c.classList.contains('bbgl-sb-notif');
                 c.className = _liveContainer;
@@ -16255,8 +16915,18 @@ const BestGymController = {
                 fMax = sc.max,
                 step = sc.step,
                 steps = Math.round((fMax - fMin) / step);
-            const pL = [];
+            let pL = [];
             for (let i = 0; i <= steps; i++) pL.push(Formatter.axis(fMin + (i * step)));
+            // Step-aware: if this scale's own labels never land on a non-zero decimal digit
+            // (e.g. a step of 5k means every tick is a whole k already), the decimal is pure
+            // noise across the whole axis - drop it from all of them, not just the ones with
+            // a hardcoded whole-number rule above. Reused below for the actual rendered labels
+            // too, not just this width-measurement pass.
+            let _yForceWhole = pL.length > 0 && pL.every(s => !/\.\d*[1-9]/.test(s));
+            if (_yForceWhole) {
+                pL = [];
+                for (let i = 0; i <= steps; i++) pL.push(Formatter.axis(fMin + (i * step), true));
+            }
             const _yMaxStr = pL.reduce((a, b) => b.length > a.length ? b : a, pL[0] || '10');
             const _yMT = document.createElementNS('http://www.w3.org/2000/svg', 'text');
             _yMT.setAttribute('class', 'g-text y-label');
@@ -16327,7 +16997,7 @@ const BestGymController = {
                 t.setAttribute("x", -6);
                 t.setAttribute("y", expandedPanel ? y - 1 : y + 3);
                 t.setAttribute("class", "g-text y-label");
-                t.textContent = Formatter.axis(v);
+                t.textContent = Formatter.axis(v, _yForceWhole);
                 g.appendChild(t);
             }
             const gx = (v) => {
@@ -16490,8 +17160,10 @@ const BestGymController = {
                         const cr = p.y,
                             dl = cr - str,
                             sg = dl >= 0 ? '+' : '',
-                            pc = str > 0 ? (dl / str) * 100 : 0;
-                        body = `<div class="tt-row"><span class="tt-label">Rate</span> <span class="tt-total">${cr.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span></div><div class="tt-row"><span class="tt-label">Growth</span> <span style="color:${dl >= 0 ? CONSTANTS.COLORS.GAINS : '#ff5252'}; font-weight:bold;">${sg}${dl.toFixed(2)} <span style="font-size:10px; opacity:0.8;">(${sg}${pc.toFixed(1)}%)</span></span></div>`;
+                            pc = str > 0 ? (dl / str) * 100 : 0,
+                            crStr = Math.abs(cr) > 99 ? cr.toLocaleString(undefined, { maximumFractionDigits: 0 }) : cr.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }),
+                            dlStr = Math.abs(dl) > 99 ? Math.round(dl).toLocaleString() : dl.toFixed(2);
+                        body = `<div class="tt-row"><span class="tt-label">Rate</span> <span class="tt-total">${crStr}</span></div><div class="tt-row"><span class="tt-label">Growth</span> <span style="color:${dl >= 0 ? CONSTANTS.COLORS.GAINS : '#ff5252'}; font-weight:bold;">${sg}${dlStr} <span style="font-size:10px; opacity:0.8;">(${sg}${pc.toFixed(1)}%)</span></span></div>`;
                     } else if (graphState.mode === 'gains') body = `<div class="tt-row"><span class="tt-label">Gained</span> <span class="tt-val">+${Formatter.dual(p.y)}</span></div>`;
                     else {
                         const cv = p.y,
@@ -16525,7 +17197,8 @@ const BestGymController = {
             let nf = frac <= 1 ? 1 : frac <= 2 ? 2 : frac <= 5 ? 5 : 10,
                 step = nf * base;
             const _aM = Math.max(Math.abs(min), Math.abs(max)),
-                _mD = _aM >= 1e12 ? 1e12 : _aM >= 1e9 ? 1e9 : _aM >= 1e6 ? 1e6 : _aM >= 1e3 ? 1e3 : 1;
+                _mDTier = ABBR_TIERS.find(t => _aM >= t[0]),
+                _mD = _mDTier ? _mDTier[0] : 1;
             if (step < 0.1 * _mD) step = 0.1 * _mD;
             let gMin = Math.floor(min / step) * step,
                 gMax = Math.ceil(max / step) * step;
@@ -16536,7 +17209,22 @@ const BestGymController = {
                 gMin = Math.floor(min / step) * step;
                 gMax = Math.ceil(max / step) * step;
             }
-            if (gMax - max < (gMax - gMin) * 0.05) gMax += step;
+            // Once Formatter.axis is rendering this range at 100+ units of a tier, gridline
+            // spacing needs to be at least a half-unit (1k/2, 1m/2, ...) or rounding collapses
+            // multiple ticks onto the same label. Prefer a full unit (100m/101m/102m) - only
+            // drop to a half-unit if a full unit would leave just 2 ticks on the axis (e.g.
+            // 389k-390k), since Formatter.axis can render an exact .5 losslessly.
+            if (_aM / _mD >= 100 && step < _mD) {
+                step = _mD;
+                gMin = Math.floor(min / step) * step;
+                gMax = Math.ceil(max / step) * step;
+                if (Math.round((gMax - gMin) / step) + 1 <= 2) {
+                    step = _mD / 2;
+                    gMin = Math.floor(min / step) * step;
+                    gMax = Math.ceil(max / step) * step;
+                }
+            }
+            if (gMax - max < (gMax - gMin) * 0.01) gMax += step;
             return {
                 min: Math.max(0, gMin),
                 max: gMax,
@@ -18365,9 +19053,6 @@ const BestGymController = {
                 GraphController.draw();
                 setTimeout(GraphController.draw, 320);
             }
-            if (dom.topPanel.classList.contains('viewing-achievements')) {
-                setTimeout(resizeAchLockedPage, 320);
-            }
         };
         const tt = get('bbgl-tall-toggle');
         if (tt) tt.onclick = toggleTall;
@@ -18747,6 +19432,24 @@ const BestGymController = {
                 passive: true
             });
             achContainer.addEventListener('click', (e) => {
+                // Titles page (page 5). The picker is dismissed by any click that isn't on it or
+                // on another star, so it never survives a page flip or a stray click.
+                if (!e.target.closest('.bbgl-title-pick')) closeTitleRolePicker();
+                const star = e.target.closest('.bbgl-title-star.is-unlocked');
+                if (star) {
+                    e.stopPropagation();
+                    openTitleRolePicker(star);
+                    return;
+                }
+                const modeOpt = e.target.closest('[data-title-mode]');
+                if (modeOpt) {
+                    e.stopPropagation();
+                    if (!modeOpt.classList.contains('is-unavailable')) {
+                        setStatTitleMode(modeOpt.dataset.titleMode);
+                        refreshStatTitleUI();
+                    }
+                    return;
+                }
                 const swOpt = e.target.closest('.bbgl-enh-sw-opt');
                 if (swOpt) {
                     const toSelected = swOpt.dataset.mode === 'selected';
@@ -19497,11 +20200,12 @@ const BestGymController = {
         return buildDevSection('Rank Preview', [row, clearBtn]);
     }
 
-    // ─── Title Preview section (stat-title phase/combo testing) ────────────
-    // Overrides getLiveStatTitleState() (07-section-vi-ui.js) so every phase/primary/secondary
-    // combination can be previewed on demand without needing real training history to produce it.
-    // Gated behind runtime.devMode at the read site, and this whole file is stripped from release
-    // builds, so this can never affect a real user.
+    // ─── Title Preview section (stat-title slot testing) ───────────────────
+    // Overrides getLiveStatTitleSelection() (07-section-vi-ui.js) so any stat/phase can be dropped
+    // into either slot without the E spend that would really unlock it. Each slot picks its own
+    // phase now, matching the real system — that's the only way to preview a mismatched pair like
+    // a Phase 1 adjective on a Phase 10 noun. Gated behind runtime.devMode at the read site, and
+    // this whole file is stripped from release builds, so this can never affect a real user.
     function buildTitlePreviewSection() {
         const rowStyle = 'display:flex;gap:6px;';
         const selectStyle = 'flex:1;background:#333;color:#fff;border:1px solid #666;border-radius:4px;padding:5px 6px;font-family:sans-serif;font-size:12px;';
@@ -19518,42 +20222,43 @@ const BestGymController = {
             return sel;
         }
 
-        const phaseSelect = buildSelect(STAT_TITLE_PHASE_THRESHOLDS.map((_, i) => [String(i), `Phase ${i}`]));
+        const phaseOptions = STAT_TITLE_THRESHOLDS.map((_, i) => [String(i), `Phase ${i}`]);
         const primarySelect = buildSelect(STAT_KEYS.map(k => [k, achStatFull(k)]));
+        const primaryPhase = buildSelect(phaseOptions);
         const secondarySelect = buildSelect(STAT_KEYS.map(k => [k, achStatFull(k)]));
+        const secondaryPhase = buildSelect(phaseOptions);
         secondarySelect.selectedIndex = 1; // default to a stat different from primary
+
+        function refreshTitleUI() {
+            if (typeof refreshStatTitleUI === 'function') refreshStatTitleUI();
+        }
 
         function applyOverride() {
             runtime._devTitleOverride = {
-                phase: parseInt(phaseSelect.value, 10),
-                primary: primarySelect.value,
-                secondary: secondarySelect.value
+                primary: { stat: primarySelect.value, phase: parseInt(primaryPhase.value, 10) },
+                secondary: { stat: secondarySelect.value, phase: parseInt(secondaryPhase.value, 10) }
             };
-            const total = typeof getLiveLevelExp === 'function' ? getLiveLevelExp() : 0;
-            if (typeof getLevelBars === 'function' && typeof renderLevelBar === 'function') {
-                getLevelBars().forEach(b => renderLevelBar(b, total));
-            }
+            refreshTitleUI();
         }
-        [phaseSelect, primarySelect, secondarySelect].forEach(sel => sel.addEventListener('change', applyOverride));
+        [primarySelect, primaryPhase, secondarySelect, secondaryPhase].forEach(sel => sel.addEventListener('change', applyOverride));
 
-        const phaseRow = document.createElement('div');
-        phaseRow.style.cssText = rowStyle;
-        phaseRow.appendChild(phaseSelect);
+        // One row per slot: which stat, and which phase of that stat's ladder.
+        const primaryRow = document.createElement('div');
+        primaryRow.style.cssText = rowStyle;
+        primaryRow.appendChild(primarySelect);
+        primaryRow.appendChild(primaryPhase);
 
-        const statRow = document.createElement('div');
-        statRow.style.cssText = rowStyle;
-        statRow.appendChild(primarySelect);
-        statRow.appendChild(secondarySelect);
+        const secondaryRow = document.createElement('div');
+        secondaryRow.style.cssText = rowStyle;
+        secondaryRow.appendChild(secondarySelect);
+        secondaryRow.appendChild(secondaryPhase);
 
         const clearBtn = buildDevButton('Clear Override', () => {
             runtime._devTitleOverride = null;
-            const total = typeof getLiveLevelExp === 'function' ? getLiveLevelExp() : 0;
-            if (typeof getLevelBars === 'function' && typeof renderLevelBar === 'function') {
-                getLevelBars().forEach(b => renderLevelBar(b, total));
-            }
+            refreshTitleUI();
         });
 
-        return buildDevSection('Title Preview', [phaseRow, statRow, clearBtn]);
+        return buildDevSection('Title Preview', [primaryRow, secondaryRow, clearBtn]);
     }
 
     // ─── Onboarding section ─────────────────────────────────────────────────

@@ -26,6 +26,18 @@
         // sexiest streaks + happy hopping reference ACH_FMT.compact directly
     };
 
+    // Single source of truth for the k/m/b/t/q abbreviation ladder - shared by
+    // Formatter.abbr/axis here and by GraphController._calculateNiceScale
+    // (08-section-vii-graph.js), which needs the same tier magnitudes to decide
+    // gridline spacing.
+    const ABBR_TIERS = [
+        [1e15, 'q'],
+        [1e12, 't'],
+        [1e9, 'b'],
+        [1e6, 'm'],
+        [1e3, 'k']
+    ];
+
     const Formatter = {
         number(n, d = 0) {
             return (n === undefined || n === null) ? '0' : n.toLocaleString('en-US', {
@@ -37,14 +49,7 @@
             if (!n && n !== 0) return '0';
             const abs = Math.abs(n);
             if (abs < 1000) return Math.trunc(n).toString();
-            const tiers = [
-                [1e15, 'q'],
-                [1e12, 't'],
-                [1e9,  'b'],
-                [1e6,  'm'],
-                [1e3,  'k']
-            ];
-            for (const [mag, suffix] of tiers) {
+            for (const [mag, suffix] of ABBR_TIERS) {
                 if (abs >= mag) {
                     let dec = typeof d === 'function' ? d(mag, abs) : d;
                     let s = (n / mag).toFixed(dec);
@@ -88,9 +93,22 @@
             }
             return `<span class="view-std">${std}</span><span class="view-exp">${exp}</span>`;
         },
-        axis(n) {
+        axis(n, forceWhole = false) {
             if (n === 0) return '0';
             if (Math.abs(n) < 1000) return (Math.round(n * 10) / 10).toString();
+            if (forceWhole) return this.abbr(n, 0, false, true);
+            const abs = Math.abs(n);
+            const tier = ABBR_TIERS.find(t => abs >= t[0]);
+            if (tier && abs / tier[0] >= 100) {
+                // 100+ units of the tier: a tenths decimal is more precision than a gridline
+                // needs, but dropping it entirely can hide a real difference between ticks.
+                // Round to the nearest half-unit instead - shows ".5" only when the value
+                // actually falls there, whole otherwise (102m, 102.5m, 103m).
+                const half = Math.round((n / tier[0]) * 2) / 2;
+                return (Number.isInteger(half) ? half.toString() : half.toFixed(1)) + tier[1];
+            }
+            // Under 100 units of the tier (1.0k-99.9k, 1.0m-99.9m, ...), the tenths decimal
+            // is the only precision available at that scale, so keep it.
             return this.abbr(n, 1, false, true);
         },
         parse(s) {
@@ -514,10 +532,16 @@
     // lands on the literal displayed "69" for every atrophy tier regardless of where it started.
     // Level 100 is the universal finish line, but only atrophy 2 gets "Fully Bricked" — atrophy
     // 0/1 auto-roll into the next tier, so they keep band 6's capstone title instead.
+    //
+    // `max` is inclusive and doubles as the bracket axis on the titles page (levelRankBrackets()
+    // below reads widths straight off these numbers), so edit a max here and the axis re-draws
+    // itself — no second list to keep in sync. Band 3 ends at 69 rather than 68 purely so the
+    // axis reads 40-69 / 70-79; atrophyTitle() intercepts level 69 with the easter egg before any
+    // band lookup happens, so the boundary itself has no effect on which title you actually get.
     const LEVEL_TITLE_BANDS = [
         { max: 19, titles: ['Dry Clay', 'Parched Clay', 'Cracked Clay'] },
         { max: 39, titles: ['Moistened Clay', 'Saturated Clay', 'Dripping Wet Clay'] },
-        { max: 68, titles: ['Hand-Jerked Clay', 'Foot-Pumped Clay', 'Vacuum-Milked Clay'] },
+        { max: 69, titles: ['Hand-Jerked Clay', 'Foot-Pumped Clay', 'Vacuum-Milked Clay'] },
         { max: 79, titles: ['Block-Molded Clay', 'Block-Pressed Clay', 'Block-Cut Clay'] },
         { max: 89, titles: ['Pit-Fired Clay', 'Scove-Fired Clay', 'Kiln-Fired Clay'] },
         { max: 99, titles: ['Half-Bricked', 'Mostly Bricked', 'Competently Bricked'] }
@@ -532,24 +556,55 @@
         return band.titles[atrophy] || band.titles[0];
     }
 
-    // ─── Stat-Ratio Titles ──────────────────────────────────────────────────
+    // The rank axis under the titles page's level bar: one bracket per band, sized by its true
+    // share of the 0-LEVEL_CAP run so a 20-level band takes 20% and a 10-level band takes 10%.
+    // Everything derives from LEVEL_TITLE_BANDS, so adding, removing or resizing a band re-draws
+    // the axis with no other edits.
+    //
+    // A bracket reveals its name once you've reached it in the CURRENT atrophy tier and reads "?"
+    // until then — the first is therefore always revealed, and every bracket re-hides on atrophy
+    // since the whole tier's names change with it.
+    function levelRankBrackets(atrophy, level) {
+        const a = Math.max(0, Math.min(2, atrophy || 0));
+        const out = [];
+        let start = 0;
+        LEVEL_TITLE_BANDS.forEach(band => {
+            const span = band.max - start + 1;
+            const unlocked = level >= start;
+            out.push({
+                start,
+                end: band.max,
+                span,
+                widthPct: (span / LEVEL_CAP) * 100,
+                unlocked,
+                label: unlocked ? (band.titles[a] || band.titles[0]) : '?'
+            });
+            start = band.max + 1;
+        });
+        return out;
+    }
+
+    // ─── Stat Titles ────────────────────────────────────────────────────────
     // Second, independent title system appended after atrophyTitle() above (e.g. "Half-Bricked
-    // Beastly Tank"). Does not reset with atrophy — progresses on its own cumulative-E track.
-    // Which 2 of the 4 battle stats currently rank highest picks the words (the higher stat leads
-    // in its adjective form, the other follows in its noun form); a separate 10-tier phase ladder
-    // (keyed to cumulative E) escalates each stat's own word ladder in step. Full design: Dev/BBGL
-    // Working Plan - Titles & Level Curve.md, Part 2.
+    // Calloused Goon"). Does not reset with atrophy — each of the four battle stats runs its own
+    // 11-phase word ladder, unlocked by E spent on THAT stat alone (day.eSpent[stat], never the
+    // pooled total). Unlocked phases stay unlocked and the player picks which two fill the title:
+    // one supplies the noun (Primary), one the adjective (Secondary). Any stat can fill either
+    // slot, including the same stat/phase in both.
 
-    // Cumulative-E thresholds, index = phase. Phase 0 is the origin/basic title (0E).
-    const STAT_TITLE_PHASE_THRESHOLDS = [0, 10000, 25000, 45000, 70000, 105000, 155000, 230000, 330000, 455000, 605000];
+    // Per-stat cumulative-E thresholds, index = phase. Phase 0 is free (0E) so every stat always
+    // has one selectable word — the grid is never empty and a title always composes. Increments
+    // are backloaded: +10k, +12.5k, +15k, +17.5k, +20k, then +30k/35k/45k/55k/60k.
+    const STAT_TITLE_THRESHOLDS = [0, 10000, 22500, 37500, 55000, 75000, 105000, 140000, 185000, 240000, 300000];
 
-    // Combo re-check cadence and stability requirement — see advanceStatTitleState() below.
-    const STAT_TITLE_CHECKPOINT_E = 10000;
-    const STAT_TITLE_STABILITY_DAYS = 7;
+    // While the player has never made a manual pick, the displayed pair auto-follows their top two
+    // stats. Phase bumps apply the moment they unlock, but WHICH stats hold the two slots may only
+    // change this often — the simple replacement for the old checkpoint/stability-day debounce.
+    const STAT_TITLE_AUTO_PAIR_COOLDOWN_MS = 72 * 3600 * 1000;
 
-    // One evolving noun+adjective ladder per stat, indexed by phase (0-10). Phases 6-10 are
-    // `null` until those words are decided — composeStatTitle() clamps down to the highest
-    // defined phase rather than ever rendering a null/undefined word.
+    // One evolving noun+adjective ladder per stat, indexed by phase (0-10). Undecided phases are
+    // `null` — statTitleWord() clamps down to the highest defined phase at or below the one asked
+    // for rather than ever rendering a null/undefined word, so the ladder can ship half-written.
     const STAT_TITLE_WORDS = {
         str: [
             { noun: 'Limp', adj: 'Noodle' },
@@ -593,12 +648,32 @@
         ]
     };
 
-    // Highest phase index for which cumulativeE clears the threshold.
-    function statTitlePhaseForE(cumulativeE) {
-        for (let i = STAT_TITLE_PHASE_THRESHOLDS.length - 1; i >= 0; i--) {
-            if (cumulativeE >= STAT_TITLE_PHASE_THRESHOLDS[i]) return i;
+    // Highest phase index one stat's own cumulative E clears.
+    function statTitlePhaseForE(statE) {
+        for (let i = STAT_TITLE_THRESHOLDS.length - 1; i >= 0; i--) {
+            if (statE >= STAT_TITLE_THRESHOLDS[i]) return i;
         }
         return 0;
+    }
+
+    // {str,def,spd,dex} of E spent -> {str,def,spd,dex} of highest unlocked phase.
+    function statTitlePhases(eByStat) {
+        const out = {};
+        STAT_KEYS.forEach(k => {
+            out[k] = statTitlePhaseForE((eByStat && eByStat[k]) || 0);
+        });
+        return out;
+    }
+
+    // Word lookup that never returns a null entry: clamps down to the highest DEFINED phase at or
+    // below the requested one, and reports which phase actually supplied the word so the caller
+    // can colour it by what it really is rather than what was asked for.
+    function statTitleWord(stat, phase) {
+        const ladder = STAT_TITLE_WORDS[stat];
+        if (!ladder) return null;
+        let p = Math.max(0, Math.min(phase | 0, ladder.length - 1));
+        while (p > 0 && !ladder[p]) p--;
+        return ladder[p] ? { noun: ladder[p].noun, adj: ladder[p].adj, phase: p } : null;
     }
 
     // Top 2 of the 4 battle stats by raw value, descending. Ties break on STAT_KEYS order
@@ -611,68 +686,128 @@
             .slice(0, 2);
     }
 
-    function samePair(a, b) {
-        return !!a && !!b && a[0] === b[0] && a[1] === b[1];
+    // selection = { primary: {stat, phase}, secondary: {stat, phase} }. Primary supplies the noun
+    // (the identity — "Goon"), secondary the adjective modifying it ("Calloused"), so the phrase
+    // reads "<secondary.adj> <primary.noun>". Both slots are free-choice from anything unlocked,
+    // including the same stat and phase in both.
+    function composeStatTitleParts(selection) {
+        if (!selection || !selection.primary || !selection.secondary) return null;
+        const noun = statTitleWord(selection.primary.stat, selection.primary.phase);
+        const adj = statTitleWord(selection.secondary.stat, selection.secondary.phase);
+        if (!noun || !adj) return null;
+        return [{
+            text: adj.adj,
+            phase: adj.phase,
+            stat: selection.secondary.stat
+        }, {
+            text: noun.noun,
+            phase: noun.phase,
+            stat: selection.primary.stat
+        }];
     }
 
-    // pair = [leadStat, followStat], already ordered by whichever raw value was higher at the
-    // time this pair was locked in (see advanceStatTitleState). Lead renders in its adjective
-    // form, follow in its noun form. Clamps phase down to the highest index where both stats in
-    // the pair have words defined, so Phases 6-10 being null just means the title stops
-    // escalating there until those words are filled in — never renders a null/undefined word.
-    function composeStatTitle(pair, phase) {
-        if (!pair) return '';
-        let p = Math.max(0, Math.min(phase, STAT_TITLE_PHASE_THRESHOLDS.length - 1));
-        while (p > 0 && (!STAT_TITLE_WORDS[pair[0]][p] || !STAT_TITLE_WORDS[pair[1]][p])) p--;
-        const lead = STAT_TITLE_WORDS[pair[0]][p];
-        const follow = STAT_TITLE_WORDS[pair[1]][p];
-        if (!lead || !follow) return '';
-        return `${lead.adj} ${follow.noun}`;
+    // Plain text — clipboard, aria labels, anywhere markup would be wrong.
+    function composeStatTitle(selection) {
+        const parts = composeStatTitleParts(selection);
+        return parts ? parts.map(p => p.text).join(' ') : '';
     }
 
-    // The single "day-step" for the stat-title system, mirroring computeDailyLevelExp()'s role
-    // for EXP: pure, takes the state as of the previous day plus one day object, returns a NEW
-    // state (never mutates `state`). Called once per historical day from
-    // DataController.buildProgressionCache() and once more for "today" from
-    // getLiveStatTitleState() — the debounce/stability logic must not be duplicated between
-    // those two call sites, hence living here as one shared function.
+    // Each word carries its OWN data-title-phase, so a dull Phase 1 adjective can sit next to an
+    // iridescent Phase 10 noun — the finish progression in 04-section-iii-styles.js is per word,
+    // not per title.
+    function composeStatTitleHTML(selection) {
+        const parts = composeStatTitleParts(selection);
+        if (!parts) return '';
+        return parts.map(p => `<span class="bbgl-title-word" data-title-phase="${p.phase}">${p.text}</span>`).join(' ');
+    }
+
+    // Clamp a stored slot to something real — known stat, phase inside the ladder and never past
+    // what that stat has actually unlocked (guards hand-edited config and words being re-ordered
+    // out from under a saved pick).
+    function clampTitleSlot(slot, phases) {
+        if (!slot || !STAT_TITLE_WORDS[slot.stat]) return null;
+        const cap = phases ? (phases[slot.stat] || 0) : STAT_TITLE_THRESHOLDS.length - 1;
+        return {
+            stat: slot.stat,
+            phase: Math.max(0, Math.min(slot.phase | 0, cap))
+        };
+    }
+
+    function persistAutoTitlePair(pair, now) {
+        if (runtime.demoMode) return;
+        userConfig.titleAutoPair = { primary: pair[0], secondary: pair[1] };
+        userConfig.titleAutoPairChangedAt = now;
+        saveConfig();
+    }
+
+    // The selection actually displayed, given per-stat E and the current stat breakdown.
     //
-    // Mechanism: the actual top-2 ranking is tracked continuously as `candidatePair`, reset
-    // (with `candidateSinceDate`) whenever it changes. The displayed pair only updates when BOTH:
-    // (1) a new 10,000E cumulative checkpoint has been crossed since the last check, and (2) the
-    // candidate has held continuously (calendar days, not entry count — the timeline is sparse on
-    // rest days) for at least STAT_TITLE_STABILITY_DAYS. Missing a checkpoint's window just
-    // defers the swap to the next one — intentional lag, not a bug (see working-plan doc).
-    function advanceStatTitleState(state, day) {
-        const eSpent = (day.eSpent && day.eSpent.total) || 0;
-        const cumulativeE = (state ? state.cumulativeE : 0) + eSpent;
-        const actualPair = rankTopTwoStats(day.endBreakdown || {});
-
-        let candidatePair = state ? state.candidatePair : null;
-        let candidateSinceDate = state ? state.candidateSinceDate : null;
-        if (!samePair(candidatePair, actualPair)) {
-            candidatePair = actualPair;
-            candidateSinceDate = day.date;
+    // Custom mode: the saved manual pick, clamped to what's unlocked. Earned mode: the top two
+    // stats, each at its own highest unlocked phase — so a phase bump shows up the instant it
+    // unlocks — except that WHICH stats hold the two slots may only change once per
+    // STAT_TITLE_AUTO_PAIR_COOLDOWN_MS. That cooldown is the whole of the debounce now; the old
+    // checkpoint + stability-day machinery is gone.
+    //
+    // The two are stored separately (titleCustom vs titleAutoPair) precisely so the switch is
+    // non-destructive: flipping to Earned never overwrites the custom pick waiting behind it.
+    function resolveStatTitleSelection(eByStat, breakdown) {
+        const phases = statTitlePhases(eByStat);
+        const custom = userConfig.titleCustom;
+        const hasCustom = !!(custom && custom.primary && custom.secondary);
+        if (userConfig.titleMode === 'custom' && hasCustom) {
+            const primary = clampTitleSlot(custom.primary, phases);
+            const secondary = clampTitleSlot(custom.secondary, phases);
+            if (primary && secondary) return { primary, secondary, phases, mode: 'custom', hasCustom };
         }
-
-        let displayedPair = state ? state.displayedPair : null;
-        let lastCheckpointFloor = state ? state.lastCheckpointFloor : 0;
-        if (!state) {
-            // First-ever day: seed immediately, no stability gate (nothing to debounce against yet).
-            displayedPair = actualPair;
-            lastCheckpointFloor = Math.floor(cumulativeE / STAT_TITLE_CHECKPOINT_E);
+        let pair = rankTopTwoStats(breakdown || {});
+        const auto = userConfig.titleAutoPair;
+        const prev = (auto && STAT_TITLE_WORDS[auto.primary] && STAT_TITLE_WORDS[auto.secondary])
+            ? [auto.primary, auto.secondary]
+            : null;
+        // Before any battle stats have loaded, rankTopTwoStats() falls back to STAT_KEYS order.
+        // Seeding (and stamping the 72h cooldown) off that would lock str/def in for three days on
+        // every fresh install, so hold whatever is stored and don't persist until stats are real.
+        const hasStats = STAT_KEYS.some(k => (breakdown && breakdown[k]) > 0);
+        if (!hasStats) {
+            if (prev) pair = prev;
         } else {
-            const floor = Math.floor(cumulativeE / STAT_TITLE_CHECKPOINT_E);
-            if (floor > lastCheckpointFloor) {
-                lastCheckpointFloor = floor;
-                const daysSince = Math.floor((Formatter.parse(day.date) - Formatter.parse(candidateSinceDate)) / 86400000);
-                if (!samePair(candidatePair, displayedPair) && daysSince >= STAT_TITLE_STABILITY_DAYS) {
-                    displayedPair = candidatePair;
-                }
+            const now = Date.now();
+            if (!prev) {
+                persistAutoTitlePair(pair, now);
+            } else if (prev[0] !== pair[0] || prev[1] !== pair[1]) {
+                if (now - (userConfig.titleAutoPairChangedAt || 0) < STAT_TITLE_AUTO_PAIR_COOLDOWN_MS) pair = prev;
+                else persistAutoTitlePair(pair, now);
             }
         }
+        return {
+            primary: { stat: pair[0], phase: phases[pair[0]] },
+            secondary: { stat: pair[1], phase: phases[pair[1]] },
+            phases,
+            mode: 'earned',
+            hasCustom
+        };
+    }
 
-        return { cumulativeE, candidatePair, candidateSinceDate, displayedPair, lastCheckpointFloor };
+    // role: 'primary' (noun slot), 'secondary' (adjective slot), or 'both'. Picking anything is
+    // what flips the switch to Custom — you never have to set the mode first.
+    function applyStatTitlePick(current, stat, phase, role) {
+        const slot = { stat, phase };
+        const next = {
+            primary: role === 'secondary' ? current.primary : slot,
+            secondary: role === 'primary' ? current.secondary : slot
+        };
+        userConfig.titleCustom = next;
+        userConfig.titleMode = 'custom';
+        saveConfig();
+        return next;
+    }
+
+    // Earned/Custom switch. Zeroing the cooldown stamp on the way back to Earned lets it snap
+    // straight to the real top two instead of sitting on a stale pair for up to 72h.
+    function setStatTitleMode(mode) {
+        userConfig.titleMode = mode === 'custom' ? 'custom' : 'earned';
+        if (userConfig.titleMode === 'earned') userConfig.titleAutoPairChangedAt = 0;
+        saveConfig();
     }
 
     // Real-time daily EXP for the leveling bar (NOT the weekly progress bar).

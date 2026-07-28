@@ -510,7 +510,10 @@
         } else {
             reqs = [{
                     type: 'battlestats',
-                    url: `https://api.torn.com/user/?selections=battlestats&key=${userConfig.apiKey}&timestamp=${ts}`
+                    // `basic` rides along in the same request — v1 takes comma-separated
+                    // selections and still bills it as one call — purely to learn the player's
+                    // name for the titles page. Nothing else reads it.
+                    url: `https://api.torn.com/user/?selections=battlestats,basic&key=${userConfig.apiKey}&timestamp=${ts}`
                 },
                 {
                     type: 'log',
@@ -557,6 +560,8 @@
                 if (r.data.log) logs = { ...logs, ...r.data.log };
                 if (r.cfg.type === 'battlestats') bs = r.data;
             });
+            // Name comes from the `basic` selection bundled into the battlestats call above.
+            if (bs && bs.name) meta.playerName = bs.name;
 
             const tsSec = Math.floor(ts / 1000);
             if (!meta.syncFloor) meta.syncFloor = {};

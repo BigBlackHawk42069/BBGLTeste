@@ -330,7 +330,8 @@
         _achPage: 0,
         wasVersionWiped: false,
         careerLevelExp: 0,
-        statTitleState: null,
+        statTitleE: null,
+        _titlePicker: null,
         _devTitleOverride: null,
         _devRankOverride: null
     };
@@ -384,7 +385,20 @@
         bestGymSpecialist: true,
         bestGymUnpurchased: true,
         drugTracker: 'xanax', // ledger primary-drug counter: 'xanax' (2290) or 'lsd' (2230)
-        privacyAgreed: ''
+        privacyAgreed: '',
+        // Stat title. Two independent things, so the Earned/Custom switch can flip between them
+        // without either destroying the other:
+        //   titleMode    - 'earned' (auto-follows your top two stats) or 'custom' (your saved pick)
+        //   titleCustom  - the manual pick itself, {primary:{stat,phase}, secondary:{stat,phase}},
+        //                  where primary supplies the noun and secondary the adjective. Null until
+        //                  the first pick, which is also what flips titleMode to 'custom'.
+        //   titleAutoPair / titleAutoPairChangedAt - earned-mode bookkeeping: the pair currently
+        //                  held and when it last swapped, enforcing the 72h swap cooldown.
+        // See resolveStatTitleSelection() in 03-section-ii-utils.js.
+        titleMode: 'earned',
+        titleCustom: null,
+        titleAutoPair: null,
+        titleAutoPairChangedAt: 0
     };
     const ALLOWED_CONFIG_KEYS = Object.keys(userConfig);
     const r2 = (v) => Math.round(v * 100) / 100;
