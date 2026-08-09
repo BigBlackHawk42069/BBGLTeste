@@ -36,7 +36,7 @@
     const KEYS = {
         STATE: 'bbgl_view_state_v1',
         CONFIG: 'bbgl_config_v1',
-        SESSION: 'bbgl_trained_flag',
+        PENDING_SYNC: 'bbgl_pending_full_sync_v1',
         LAST_SYNC: 'bbgl_last_data_sync_v1',
         SESSION_CACHE: 'bbgl_session_cache_v1',
         DEMO: 'bbgl_demo_mode',
@@ -132,7 +132,6 @@
     const TRAIN_ENERGY_PARAM = [...TRAIN_LOGS, ...ENERGY_LOGS].join(',');   // reconcile call (10)
     const STAT_HAPPY_PARAM = [...HAPPY_LOGS, ...OD_LOGS].join(',');         // reconcile call (7)
     const STAT_ENHANCER_PARAM = STAT_LOGS.join(',');                        // conditional call (4)
-    const ENERGY_PARAM = ENERGY_LOGS.join(',');                             // train-click rider (6)
     // Backfill batches its backward scan into grouped `log=` calls (<=10 types each). Stat enhancers
     // get their own group since they are excluded from the live STAT_HAPPY_PARAM call and must still
     // be scanned historically. BACKFILL_GROUP_OF maps every code back to its group.
@@ -152,6 +151,17 @@
         EX_OD_LOG = 2211,
         ECAN_LOG = 2040,
         ECSTASY_LOG = 2210;
+    // Unified TRAIN call (5): all 4 stats + Ecstasy — Ecstasy rides along because Happy Jump state
+    // affects how a gain is interpreted, so it's part of what's needed for exp accuracy, not just an
+    // item stat. Used both for a real click (exp bar animates) and the passive gym-page heartbeat
+    // (exp bar snaps) — same shape either way, see `animate` in universalFetch.
+    const TRAIN_CODES = [...TRAIN_LOGS, ECSTASY_LOG];
+    // FULL_SYNC's two `log=` calls, grouped by why each is unconditional rather than by legacy
+    // request shape: items (energy + happy) have no proxy signal to gate behind, and neither does OD
+    // (it never moves battlestats) — so OD rides with train, which is otherwise redundant with the
+    // live TRAIN call but cheap insurance (self-heals a missed/aborted TRAIN call for free).
+    const ITEM_CODES = [...ENERGY_LOGS, ...HAPPY_LOGS];       // always (10)
+    const TRAIN_OD_CODES = [...TRAIN_LOGS, ...OD_LOGS];       // always (7)
     // Overlap buffer (seconds) subtracted from a group's last-success time to form its `from=` bound.
     // Comfortably exceeds the 2h heartbeat so a single missed beat still re-covers the gap; dedup
     // makes the overlap harmless.

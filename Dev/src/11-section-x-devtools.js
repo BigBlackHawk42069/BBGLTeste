@@ -54,6 +54,25 @@
         return buildDevSection('API', [hud]);
     }
 
+    // ─── Sync section (heartbeat gate override for testing TRAIN/FULL_SYNC) ────────────
+    function buildSyncSection() {
+        const fastBtn = buildDevButton('Fast Heartbeat: OFF', () => {
+            if (runtime._devHbIntervalMs) {
+                runtime._devHbIntervalMs = null;
+                fastBtn.textContent = 'Fast Heartbeat: OFF';
+                fastBtn.style.background = '#444';
+            } else {
+                runtime._devHbIntervalMs = 10000;
+                fastBtn.textContent = 'Fast Heartbeat: 10s';
+                fastBtn.style.background = '#6a1b9a';
+            }
+            // Drop any backoff from a prior failed tick so the shortened gate takes effect
+            // on the very next 3s interval instead of waiting out the old retry window.
+            runtime.hbRetryAfter = 0;
+        });
+        return buildDevSection('Sync', [fastBtn]);
+    }
+
     // ─── Triggers section (XP/level testing) ───────────────────────────────
     function buildTriggersSection() {
         const trainRow = document.createElement('div');
@@ -422,6 +441,7 @@
         w.appendChild(title);
 
         w.appendChild(buildApiCounterSection());
+        w.appendChild(buildSyncSection());
         w.appendChild(buildTriggersSection());
         w.appendChild(buildRankPreviewSection());
         w.appendChild(buildTitlePreviewSection());

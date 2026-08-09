@@ -103,7 +103,7 @@
     const KEYS = {
         STATE: 'bbgl_view_state_v1',
         CONFIG: 'bbgl_config_v1',
-        SESSION: 'bbgl_trained_flag',
+        PENDING_SYNC: 'bbgl_pending_full_sync_v1',
         LAST_SYNC: 'bbgl_last_data_sync_v1',
         SESSION_CACHE: 'bbgl_session_cache_v1',
         DEMO: 'bbgl_demo_mode',
@@ -199,7 +199,6 @@
     const TRAIN_ENERGY_PARAM = [...TRAIN_LOGS, ...ENERGY_LOGS].join(',');   // reconcile call (10)
     const STAT_HAPPY_PARAM = [...HAPPY_LOGS, ...OD_LOGS].join(',');         // reconcile call (7)
     const STAT_ENHANCER_PARAM = STAT_LOGS.join(',');                        // conditional call (4)
-    const ENERGY_PARAM = ENERGY_LOGS.join(',');                             // train-click rider (6)
     // Backfill batches its backward scan into grouped `log=` calls (<=10 types each). Stat enhancers
     // get their own group since they are excluded from the live STAT_HAPPY_PARAM call and must still
     // be scanned historically. BACKFILL_GROUP_OF maps every code back to its group.
@@ -219,6 +218,17 @@
         EX_OD_LOG = 2211,
         ECAN_LOG = 2040,
         ECSTASY_LOG = 2210;
+    // Unified TRAIN call (5): all 4 stats + Ecstasy — Ecstasy rides along because Happy Jump state
+    // affects how a gain is interpreted, so it's part of what's needed for exp accuracy, not just an
+    // item stat. Used both for a real click (exp bar animates) and the passive gym-page heartbeat
+    // (exp bar snaps) — same shape either way, see `animate` in universalFetch.
+    const TRAIN_CODES = [...TRAIN_LOGS, ECSTASY_LOG];
+    // FULL_SYNC's two `log=` calls, grouped by why each is unconditional rather than by legacy
+    // request shape: items (energy + happy) have no proxy signal to gate behind, and neither does OD
+    // (it never moves battlestats) — so OD rides with train, which is otherwise redundant with the
+    // live TRAIN call but cheap insurance (self-heals a missed/aborted TRAIN call for free).
+    const ITEM_CODES = [...ENERGY_LOGS, ...HAPPY_LOGS];       // always (10)
+    const TRAIN_OD_CODES = [...TRAIN_LOGS, ...OD_LOGS];       // always (7)
     // Overlap buffer (seconds) subtracted from a group's last-success time to form its `from=` bound.
     // Comfortably exceeds the 2h heartbeat so a single missed beat still re-covers the gap; dedup
     // makes the overlap harmless.
@@ -830,8 +840,11 @@
 
     function incrementApiCount(n) {
         runtime.apiCallTotal += n;
-        const hud = dom.apiHud;
-        if (hud) hud.innerHTML = `API Calls: ${runtime.apiCallTotal}`;
+        // Self-sufficient lookup — doesn't rely on the panel ever having been opened. The dev
+        // widget (and #bbgl-api-hud) is created unconditionally at boot, before this can first
+        // fire, so this always finds it once and stays accurate from the first call on.
+        if (!dom.apiHud) dom.apiHud = document.getElementById('bbgl-api-hud');
+        if (dom.apiHud) dom.apiHud.innerHTML = `API Calls: ${runtime.apiCallTotal}`;
     }
 
     // ─── Error messaging ────────────────────────────────────────────────────
@@ -1098,6 +1111,59 @@
         return band.titles[atrophy] || band.titles[0];
     }
 
+    // ─── Rank Hardening Finish ──────────────────────────────────────────────
+    // The rank line's own progression, deliberately built as the OPPOSITE of the stat title's:
+    // the title EMITS (outward glow, discrete phase jumps, animated rainbow at the top), the rank
+    // REFLECTS (a stamped impression in a surface, continuous, no halo). They can therefore share
+    // a tooltip without competing even when both are maxed.
+    //
+    // Two channels move independently, which is what keeps it from being a plain color ramp:
+    //   • hardness  — strictly monotonic. The impression sharpens: the soft diffuse blur collapses,
+    //                 the lit lip under each letter firms up, tracking tightens, opacity rises.
+    //   • moisture/heat — NOT monotonic, because the band names aren't either (Dry -> Moistened ->
+    //                 worked -> molded -> Fired -> Bricked). Clay is wettest in the MIDDLE. Gloss
+    //                 rises early then burns off, and the hue warms toward the firing bands.
+    // Lightness only ever climbs, so the "wet" stretch reads as sheen rather than going dark and
+    // losing contrast against the plaque behind it.
+    //
+    // Stops are [progress 0-1, [r,g,b], softness]. Continuous in `level` rather than banded on
+    // purpose: the finish is already warming before the word flips to "Pit-Fired", so the band
+    // name reads as a label on a continuum instead of snapping in lockstep with the color.
+    const RANK_HARDEN_STOPS = [
+        [0.00, [154, 149, 141], 0.55], // raw and dusty — barely formed, softest impression
+        [0.22, [168, 160, 150], 0.45], // moistened — sheen up, still takes a mushy stamp
+        [0.45, [181, 166, 144], 0.30], // worked and molded — starting to hold an edge
+        [0.68, [198, 154, 114], 0.16], // pit-fired — warming toward ember
+        [0.86, [201, 143, 110], 0.07], // cooled back to matte brick
+        [1.00, [212, 161, 132], 0.00]  // set hard, crisp permanent impression
+    ];
+
+    // Emits the inline custom properties the .bbgl-lvl-rank rule consumes. Computed in JS rather
+    // than as CSS steps so the ramp is genuinely continuous (every level moves it) with no reliance
+    // on color-mix(), and so the whole curve stays tunable from the one table above.
+    function rankHardenCSS(atrophy, level) {
+        const p = Math.max(0, Math.min(1, (level || 0) / LEVEL_CAP));
+        let i = 0;
+        while (i < RANK_HARDEN_STOPS.length - 2 && p > RANK_HARDEN_STOPS[i + 1][0]) i++;
+        const a = RANK_HARDEN_STOPS[i], b = RANK_HARDEN_STOPS[i + 1];
+        const t = b[0] === a[0] ? 0 : (p - a[0]) / (b[0] - a[0]);
+        const mix = (x, y) => x + (y - x) * t;
+        // Later atrophy tiers fire hotter: the arc resets each tier but its ceiling rises, mirroring
+        // the escalation already baked into LEVEL_TITLE_BANDS (Pit- -> Scove- -> Kiln-Fired).
+        const heat = Math.max(0, Math.min(2, atrophy || 0)) * p;
+        const ch = (k, warm) => Math.max(0, Math.min(255, Math.round(mix(a[1][k], b[1][k]) + warm * heat)));
+        const soft = mix(a[2], b[2]);
+        const hard = 1 - (soft / RANK_HARDEN_STOPS[0][2]);
+        return [
+            `--rank-ink:rgb(${ch(0, 11)},${ch(1, 3)},${ch(2, -9)})`,
+            `--rank-press:${(soft * 6.5).toFixed(2)}px`,
+            `--rank-press-a:${(0.30 + soft * 0.50).toFixed(2)}`,
+            `--rank-lip:${(hard * 0.17).toFixed(3)}`,
+            `--rank-track:${(soft * 0.10).toFixed(3)}em`,
+            `--rank-fade:${(0.74 + hard * 0.26).toFixed(2)}`
+        ].join(';');
+    }
+
     // The rank axis under the titles page's level bar: one bracket per band, sized by its true
     // share of the 0-LEVEL_CAP run so a 20-level band takes 20% and a 10-level band takes 10%.
     // Everything derives from LEVEL_TITLE_BANDS, so adding, removing or resizing a band re-draws
@@ -1149,7 +1215,7 @@
     // for rather than ever rendering a null/undefined word, so the ladder can ship half-written.
     const STAT_TITLE_WORDS = {
         str: [
-            { noun: 'Limp', adj: 'Noodle' },
+            { noun: 'Noodle', adj: 'Limp' },
             { noun: 'Fist', adj: 'Fisting' },
             { noun: 'Pounder', adj: 'Pounding' },
             { noun: 'Grinder', adj: 'Grinding' },
@@ -1159,7 +1225,7 @@
             null, null, null, null
         ],
         def: [
-            { noun: 'Soft', adj: 'Softie' },
+            { noun: 'Softie', adj: 'Soft' },
             { noun: 'Blister', adj: 'Blistered' },
             { noun: 'Flesh', adj: 'Fleshy' },
             { noun: 'Callous', adj: 'Calloused' },
@@ -1183,9 +1249,9 @@
             { noun: 'Silence', adj: 'Silent' },
             { noun: 'Creeper', adj: 'Creeping' },
             { noun: 'Squirmer', adj: 'Squirming' },
-            { noun: 'Slippery', adj: 'Glaze' },
-            { noun: 'Rascally', adj: 'Rascal' },
-            { noun: 'Ambiguous', adj: 'Ambiguity' },
+            { noun: 'Glaze', adj: 'Slippery' },
+            { noun: 'Rascal', adj: 'Rascally' },
+            { noun: 'Ambiguity', adj: 'Ambiguous' },
             null, null, null, null
         ]
     };
@@ -2615,6 +2681,111 @@
                         text-shadow: 0 0 4px rgba(255, 204, 68, 0.5);
                     }
 
+                    /* ─── Level Bar Plaque ───────────────────────────────────────────────
+                       The level bar's tooltip opts out of the shared grey chrome above and draws
+                       its own graphite plate. :has() lets that happen off the CONTENT alone —
+                       TooltipController wipes className on every show(), so a persisted variant
+                       class would never survive, and nothing about the shared controller needs to
+                       change. Every other tooltip in the script is untouched.
+                       The dark plate exists to buy contrast: the rank's earth tones and the title's
+                       glow both need a dark, CONSTANT backdrop, which #464646 never gave them. */
+                    #bbgl-tooltip:has(.bbgl-plaque) {
+                        background: none;
+                        padding: 0;
+                        border-radius: 0;
+                        filter: none;
+                        max-width: 340px;
+                    }
+
+                    #bbgl-tooltip:has(.bbgl-plaque) #bbgl-tooltip-arrow {
+                        display: none;
+                    }
+
+                    /* Deliberately constant — no per-level progression on the plate itself. The
+                       whole point of a custom panel is a controlled backdrop; if the plate moved
+                       too, the contrast target would move with it. Contents progress, frame holds. */
+                    .bbgl-plaque {
+                        padding: 9px 15px 7px;
+                        border-radius: 4px;
+                        background: linear-gradient(180deg, #34383d 0%, #2a2d31 55%, #232629 100%);
+                        border: 1px solid #191b1e;
+                        box-shadow:
+                            inset 0 1px 0 rgba(255, 255, 255, 0.09),
+                            inset 0 -1px 0 rgba(0, 0, 0, 0.45),
+                            0 2px 7px rgba(0, 0, 0, 0.55);
+                        text-align: center;
+                    }
+
+                    /* EMITS. The per-word phase colors below do all the work — the old gold fill and
+                       gold glow on the wrapper were double-glowing over them and flattening the
+                       distinction between phases. */
+                    #bbgl-tooltip .bbgl-plaque i.bbgl-lvl-title {
+                        display: block;
+                        margin: 0;
+                        font-size: 14px;
+                        font-weight: 700;
+                        font-style: normal;
+                        color: inherit;
+                        text-shadow: none;
+                    }
+
+                    /* REFLECTS. Stamped into the plate rather than sitting on it: a diffuse dark
+                       impression behind the letters plus a lit lip along their lower edge. Both are
+                       driven by inline custom properties from rankHardenCSS() (03-section-ii-utils.js)
+                       — as the clay hardens the blur collapses toward 0 and the lip firms up, so the
+                       impression sharpens instead of the color merely changing. No outward glow at
+                       any point; that channel belongs to the title.
+                       Fjalla One (condensed display, already loaded for the level badge/rank axis
+                       elsewhere) reads as engraved rather than as quoted speech — upright, not
+                       italic, now that the quote marks are gone from the text itself. */
+                    #bbgl-tooltip .bbgl-plaque i.bbgl-lvl-rank {
+                        display: block;
+                        margin: 0 0 1px;
+                        font-family: 'Fjalla One', Arial, sans-serif;
+                        font-size: 10.5px;
+                        font-style: normal;
+                        font-weight: 400;
+                        letter-spacing: calc(0.02em + var(--rank-track, 0px));
+                        color: var(--rank-ink, #9a958d);
+                        opacity: var(--rank-fade, 1);
+                        text-shadow:
+                            0 0 var(--rank-press, 4px) rgba(16, 13, 10, var(--rank-press-a, 0.5)),
+                            0 1px 0 rgba(255, 255, 255, var(--rank-lip, 0));
+                    }
+
+                    /* Fully Bricked only. A narrow specular band travelling ACROSS the letterforms —
+                       light catching a glazed surface, not light coming out of one. Slow (7s vs the
+                       title's 3s) so the two never read as the same effect if they ever coincide. */
+                    #bbgl-tooltip .bbgl-plaque i.bbgl-lvl-rank.is-vitrified {
+                        background: linear-gradient(100deg, #c9a184 42%, #fdf1e4 50%, #c9a184 58%);
+                        background-size: 300% 100%;
+                        -webkit-background-clip: text;
+                        background-clip: text;
+                        color: transparent;
+                        opacity: 1;
+                        text-shadow: none;
+                        animation: bbgl-rank-glaze 7s linear infinite;
+                    }
+
+                    @keyframes bbgl-rank-glaze {
+                        0% { background-position: 100% 50%; }
+                        100% { background-position: 0% 50%; }
+                    }
+
+                    /* Engraved spec line — a caption, not a third competing title. Monospace and
+                       letterspaced so it reads as a stamped serial number along the plate's base. */
+                    .bbgl-plaque-spec {
+                        margin-top: 7px;
+                        padding-top: 6px;
+                        border-top: 1px solid rgba(255, 255, 255, 0.07);
+                        font-family: Consolas, Menlo, 'DejaVu Sans Mono', monospace;
+                        font-size: 9.5px;
+                        line-height: 1.2;
+                        letter-spacing: 0.12em;
+                        text-transform: uppercase;
+                        color: #7d838a;
+                    }
+
                     /* Title finish progression, Phase 0-10 — dull silver to iridescent diamond.
                        Scoped to the individual WORD, not the whole title: the two slots are chosen
                        independently on the titles page, so a Phase 1 adjective can sit next to a
@@ -2628,54 +2799,60 @@
                         display: inline-block;
                     }
 
+                    /* Grey block (0-3): dead matte to bright silver. Lightness and glow both climb
+                       every step — the old ramp peaked at Phase 2 and then DIMMED into a greenish
+                       grey at Phase 3, so a promotion could visibly look like a demotion. */
                     .bbgl-title-word[data-title-phase="0"] {
-                        color: #888888;
+                        color: #6f7276;
                         text-shadow: none;
                     }
 
                     .bbgl-title-word[data-title-phase="1"] {
-                        color: #9a9a9e;
-                        text-shadow: 0 0 2px rgba(255, 255, 255, 0.15);
+                        color: #878b90;
+                        text-shadow: 0 0 2px rgba(255, 255, 255, 0.12);
                     }
 
                     .bbgl-title-word[data-title-phase="2"] {
-                        color: #d4d4d8;
-                        text-shadow: 0 0 3px rgba(255, 255, 255, 0.4);
+                        color: #a2a8ae;
+                        text-shadow: 0 0 2px rgba(255, 255, 255, 0.22);
                     }
 
                     .bbgl-title-word[data-title-phase="3"] {
-                        color: #b9c9ae;
-                        text-shadow: 0 0 3px rgba(200, 255, 200, 0.3);
+                        color: #c2c9d0;
+                        text-shadow: 0 0 3px rgba(255, 255, 255, 0.35);
                     }
 
+                    /* Green block (4-6): entering hue for the first time reads as the promotion, so
+                       Phase 4 starts soft rather than at full saturation and builds from there. */
                     .bbgl-title-word[data-title-phase="4"] {
-                        color: #3fae54;
-                        text-shadow: 0 0 3px rgba(63, 174, 84, 0.4);
+                        color: #6fcf8a;
+                        text-shadow: 0 0 3px rgba(111, 207, 138, 0.4);
                     }
 
                     .bbgl-title-word[data-title-phase="5"] {
-                        color: #39d35a;
-                        text-shadow: 0 0 4px rgba(57, 211, 90, 0.5);
+                        color: #4ddb7c;
+                        text-shadow: 0 0 4px rgba(77, 219, 124, 0.55);
                     }
 
                     .bbgl-title-word[data-title-phase="6"] {
-                        color: #4dff85;
-                        text-shadow: 0 0 3px rgba(77, 255, 133, 0.7), 0 0 8px rgba(77, 255, 133, 0.35);
+                        color: #38e86a;
+                        text-shadow: 0 0 3px rgba(56, 232, 106, 0.7), 0 0 9px rgba(56, 232, 106, 0.38);
                     }
 
+                    /* Gold block (7-9): 7 is the yellow-green hand-off into gold. */
                     .bbgl-title-word[data-title-phase="7"] {
-                        color: #c9d94a;
-                        text-shadow: 0 0 3px rgba(201, 217, 74, 0.6), 0 0 8px rgba(255, 204, 68, 0.3);
+                        color: #b9e05a;
+                        text-shadow: 0 0 3px rgba(185, 224, 90, 0.6), 0 0 9px rgba(255, 204, 68, 0.3);
                     }
 
                     .bbgl-title-word[data-title-phase="8"] {
                         color: #ffcc44;
-                        text-shadow: 0 0 4px rgba(255, 204, 68, 0.5);
+                        text-shadow: 0 0 4px rgba(255, 204, 68, 0.62), 0 0 10px rgba(255, 204, 68, 0.34);
                     }
 
                     .bbgl-title-word[data-title-phase="9"] {
                         color: #ffe066;
-                        text-shadow: 0 0 4px rgba(255, 224, 102, 0.7), 0 0 10px rgba(255, 204, 68, 0.4);
+                        text-shadow: 0 0 4px rgba(255, 224, 102, 0.75), 0 0 12px rgba(255, 204, 68, 0.45);
                     }
 
                     .bbgl-title-word[data-title-phase="10"] {
@@ -5758,13 +5935,20 @@
                         position: relative;
                         width: 100%;
                         margin-top: 24px;
-                        margin-bottom: -4px;
-                        --bbgl-track-h: 9px;
+                        margin-bottom: 2px;
+                        --bbgl-track-h: 12px;
                         display: flex;
                         flex-direction: column;
                         align-items: center;
                         container-type: inline-size;
                         clip-path: inset(-9999px 0 0 0);
+                    }
+
+                    /* Scoped override: the shared #bbgl-level-track / #bbgl-gym-level-track rule
+                       hardcodes 9px so the main panel bar is unaffected; the gym page bar tracks
+                       --bbgl-track-h so it stays in sync with the crown's anchor position above. */
+                    #bbgl-gym-level-track {
+                        height: var(--bbgl-track-h);
                     }
 
                     #bbgl-gym-level-num {
@@ -8611,7 +8795,6 @@
         dom.viName = root.querySelector('#vi-name-target');
         dom.refreshBtn = root.querySelector('#refresh-log-btn');
         dom.contentWrapper = root.querySelector('#bbgl-content-wrapper');
-        if (!dom.apiHud) dom.apiHud = document.getElementById('bbgl-api-hud');
         if (!dom.gymTab) dom.gymTab = document.getElementById('bbgl-gym-tab');
     }
 
@@ -9099,10 +9282,14 @@
             suppressed: true
         };
         const {
-            specId = null,
             manualWars = false,
-            silent = false
+            animate = false
         } = options;
+        // The level bar only animates when the caller explicitly says this is exp the user just
+        // earned by clicking Train. Every other path — the passive TRAIN heartbeat, FULL_SYNC,
+        // manual RESYNC — is catching up on exp earned elsewhere/earlier, so it snaps to the new
+        // value instead of replaying a level-up sequence the user didn't trigger.
+        const silent = !animate;
 
         if (!userConfig.apiKey || userConfig.apiKey.length < 16) {
             return {
@@ -9113,18 +9300,39 @@
 
         const ts = Date.now();
         const meta = getActiveHistory().meta;
-        const fromFor = key => {
-            const fl = meta.syncFloor && meta.syncFloor[key];
-            return fl ? `&from=${Math.max(0, fl - SYNC_FROM_BUFFER)}` : '';
+        // syncFloor is keyed per individual log code, not per named call-shape. A call that only
+        // covers a subset of a group must only ever advance the floor for the codes it actually
+        // requested — otherwise a narrower call silently pushes the window forward for codes it
+        // never asked about, and any entries before that point become permanently unreachable by
+        // the next wider sync, not just deferred. `from=` needs one cutoff for the whole request,
+        // so if any requested code has never been synced, omit `from=` entirely for this call (fetch everything)
+        // rather than risk a code being skipped; otherwise use the oldest floor among the
+        // requested codes, so no code's window is advanced further than it's actually earned.
+        const fromFor = codes => {
+            const floors = codes.map(c => meta.syncFloor && meta.syncFloor[c]).filter(f => f != null);
+            if (floors.length < codes.length) return '';
+            return `&from=${Math.max(0, Math.min(...floors) - SYNC_FROM_BUFFER)}`;
         };
+        const advanceFloor = (codes, tsSec) => {
+            if (!meta.syncFloor) meta.syncFloor = {};
+            codes.forEach(c => { meta.syncFloor[c] = tsSec; });
+        };
+        // Single source of truth for the code-array -> `log=` request shape, shared by every
+        // mission below so a subset call and the full reconcile call can never drift apart.
+        const logReq = codes => ({
+            type: 'log',
+            logCodes: codes,
+            url: `https://api.torn.com/user/?selections=log&log=${codes.join(',')}&key=${userConfig.apiKey}${fromFor(codes)}&timestamp=${ts}`
+        });
         let reqs = [];
 
-        if (mission === 'TRAIN_SINGLE' && specId) {
-            reqs.push({
-                type: 'log',
-                floorKey: 'trainEnergy',
-                url: `https://api.torn.com/user/?selections=log&log=${specId},${ENERGY_PARAM}&key=${userConfig.apiKey}${fromFor('trainEnergy')}&timestamp=${ts}`
-            });
+        if (mission === 'TRAIN') {
+            // Just enough to keep the exp bar accurate (all 4 stats' cost + Ecstasy for HJ
+            // detection). Used for both a real click (animate:true) and the passive gym-page
+            // heartbeat (panel closed) — same shape either way. No items, no battlestats, no
+            // OD/SE reconcile — those only matter once something is actually being viewed, and
+            // are picked up by the pending-flag-triggered or routine FULL_SYNC instead.
+            reqs.push(logReq(TRAIN_CODES));
         } else {
             reqs = [{
                     type: 'battlestats',
@@ -9133,16 +9341,12 @@
                     // name for the titles page. Nothing else reads it.
                     url: `https://api.torn.com/user/?selections=battlestats,basic&key=${userConfig.apiKey}&timestamp=${ts}`
                 },
-                {
-                    type: 'log',
-                    floorKey: 'trainEnergy',
-                    url: `https://api.torn.com/user/?selections=log&log=${TRAIN_ENERGY_PARAM}&key=${userConfig.apiKey}${fromFor('trainEnergy')}&timestamp=${ts}`
-                },
-                {
-                    type: 'log',
-                    floorKey: 'statHappy',
-                    url: `https://api.torn.com/user/?selections=log&log=${STAT_HAPPY_PARAM}&key=${userConfig.apiKey}${fromFor('statHappy')}&timestamp=${ts}`
-                }
+                // Items (energy + happy) have no proxy signal to gate behind, so they're always
+                // fetched. OD has no signal either (it never moves battlestats), so it rides with
+                // train — redundant with the live TRAIN call most of the time, but cheap insurance
+                // that self-heals a missed/aborted TRAIN call for free.
+                logReq(ITEM_CODES),
+                logReq(TRAIN_OD_CODES)
             ];
         }
 
@@ -9185,34 +9389,44 @@
             if (bs && bs.player_id) meta.playerId = bs.player_id;
 
             const tsSec = Math.floor(ts / 1000);
-            if (!meta.syncFloor) meta.syncFloor = {};
             reqs.forEach(c => {
-                if (c.floorKey) meta.syncFloor[c.floorKey] = tsSec;
+                if (c.logCodes) advanceFloor(c.logCodes, tsSec);
             });
 
-            if (mission !== 'TRAIN_SINGLE') {
+            // Only a true FULL_SYNC stamps the shared freshness clock — TRAIN is partial (no
+            // battlestats/items/OD), so marking LAST_SYNC fresh here would let a subsequent
+            // panel-open skip the full reconcile it still needs. Clearing PENDING_SYNC here too:
+            // this is the only point a full reconcile actually completes, whether it got here via
+            // the routine 30-min heartbeat or a pending-flag bypass — so this is the one place
+            // "a full sync is owed" stops being true, restarting the 30-min gate from now.
+            if (mission === 'FULL_SYNC') {
                 localStorage.setItem(KEYS.LAST_SYNC, ts.toString());
+                localStorage.removeItem(KEYS.PENDING_SYNC);
             }
+
+            await DataController.processDataPayload(logs, bs, { silent });
 
             // Stat enhancer check: if battlestats shows higher values than the last recorded
             // endBreakdown, stat-enhancing items were used since the last sync. Only then do we
-            // fire the extra call — almost always a no-op.
+            // fire the extra call — almost always a no-op. Must run AFTER processDataPayload
+            // above: that's what folds this sync's own training logs into endBreakdown, so
+            // checking beforehand would compare fresh battlestats against a stale endBreakdown
+            // and mistake an ordinary training gain (log just hasn't landed yet) for an
+            // unexplained one, firing this needlessly.
             const _s = getActiveHistory();
             const needsEnhancers = mission === 'FULL_SYNC' && bs &&
                 BS_STAT_ROWS.some(row => (bs[row.api] || 0) > (_s.today.endBreakdown[row.abbr] || 0));
-
-            await DataController.processDataPayload(logs, bs, { silent });
 
             if (needsEnhancers) {
                 try {
                     incrementApiCount(1);
                     const eRes = await fetch(
-                        `https://api.torn.com/user/?selections=log&log=${STAT_ENHANCER_PARAM}&key=${userConfig.apiKey}${fromFor('statEnhancers')}&timestamp=${Date.now()}`
+                        `https://api.torn.com/user/?selections=log&log=${STAT_ENHANCER_PARAM}&key=${userConfig.apiKey}${fromFor(STAT_LOGS)}&timestamp=${Date.now()}`
                     );
                     if (eRes.ok) {
                         const eData = await eRes.json();
                         if (!eData.error) {
-                            meta.syncFloor.statEnhancers = tsSec;
+                            advanceFloor(STAT_LOGS, tsSec);
                             await DataController.processDataPayload(eData.log || {}, null, { silent });
                         }
                     }
@@ -9250,7 +9464,7 @@
             btn.innerText = "Syncing...";
         }
 
-        const result = await universalFetch(mission, { ...options, manualWars: mission !== 'TRAIN_SINGLE' });
+        const result = await universalFetch(mission, { ...options, manualWars: mission !== 'TRAIN' });
 
         if (result.ok) {
             if (btn) {
@@ -9272,33 +9486,78 @@
         Perf.end('syncWithFeedback');
     }
 
-    // Conditional heartbeat: fires at most once per 20 minutes, and only while there's actually
-    // a reason to — the panel is open (any mode) or the gym page's exp bar is on screen — and
-    // this tab is the one being looked at. No visible surface, no fetch; tabbing away or closing
-    // the panel just lets it go quiet again on its own, no separate start/stop bookkeeping needed.
+    // Conditional heartbeat: fires at most once per 30 minutes, and only while there's actually a
+    // reason to — the panel is open (any mode, including the gym-log page) or the user is on the
+    // gym page — and this tab is the one being looked at. Called only from the interval in
+    // startBackgroundSync; nothing needs to poke it on navigation or panel-open because it
+    // re-checks the live URL/panel state itself.
+    //
+    // Panel open always wins with a full FULL_SYNC (items/battlestats/OD are visible there). If a
+    // FULL_SYNC is still owed from training that happened while the panel was closed (KEYS.PENDING_SYNC),
+    // this bypasses the 30-min gate so the data is current the moment it's actually looked at —
+    // but a successful FULL_SYNC still stamps LAST_SYNC same as always, so the routine cadence
+    // simply restarts counting from that completion rather than needing a separate reset path.
+    //
+    // Gym-page-only (panel closed) settles for the lightweight TRAIN call — the exp bar is all
+    // that's on screen, and it only needs the 5 codes in TRAIN_CODES. TRAIN never stamps the
+    // shared KEYS.LAST_SYNC (see universalFetch), so its own throttle lives in
+    // runtime.lastTrainLightSync; that throttle is also satisfied by a recent FULL_SYNC (which
+    // covers everything TRAIN does and more), so closing the panel right after a full sync
+    // doesn't immediately re-fetch.
     function heartbeatTick() {
+        // hbBusy guards against a tick firing while a prior fetch is still in flight (LAST_SYNC
+        // isn't written until it resolves). hbRetryAfter keeps a failing key or dead connection
+        // from re-attempting on every tick.
+        if (runtime.hbBusy || Date.now() < (runtime.hbRetryAfter || 0)) return;
         if (document.visibilityState !== 'visible') return;
         const panelOpen = dom.panel && dom.panel.style.display !== 'none';
-        const onGymPage = !!document.getElementById('bbgl-gym-level-container');
+        // Keyed off the URL, not the injected bar's DOM presence — the bar depends on Torn's own
+        // gym page render finishing, which races the script's own DOM-mutation observer with no
+        // guaranteed retry trigger. The URL is known instantly at document-start, no race possible.
+        const onGymPage = window.location.href.includes('gym.php');
         if (!panelOpen && !onGymPage) return;
-        const lastFull = localStorage.getItem(KEYS.LAST_SYNC);
-        const elapsed = lastFull ? (Date.now() - parseInt(lastFull)) : Infinity;
-        if (elapsed < 1200000) return; // 20 minutes
-        universalFetch('FULL_SYNC', { silent: true });
+
+        const lastFull = parseInt(localStorage.getItem(KEYS.LAST_SYNC)) || 0;
+        // Dev-only override (11-section-x-devtools.js, stripped from release builds): lets the
+        // 30-minute gate be shortened for testing without touching the real cadence. Unset in
+        // production, so this is always the 30-minute default there.
+        const gate = runtime._devHbIntervalMs || 1800000;
+
+        let mission, fire;
+        if (panelOpen) {
+            mission = 'FULL_SYNC';
+            const pending = localStorage.getItem(KEYS.PENDING_SYNC) === '1';
+            const sinceLast = lastFull ? Date.now() - lastFull : Infinity;
+            fire = pending || sinceLast >= gate;
+        } else {
+            mission = 'TRAIN';
+            const lastLight = Math.max(lastFull, runtime.lastTrainLightSync || 0);
+            const sinceLast = lastLight ? Date.now() - lastLight : Infinity;
+            fire = sinceLast >= gate;
+        }
+        if (!fire) return;
+
+        runtime.hbBusy = true;
+        universalFetch(mission)
+            .then(r => {
+                if (!r || !r.ok) runtime.hbRetryAfter = Date.now() + 300000;
+                else if (mission === 'TRAIN') runtime.lastTrainLightSync = Date.now();
+            })
+            .finally(() => {
+                runtime.hbBusy = false;
+            });
     }
 
+    // The interval is the ONLY thing that fires the heartbeat. heartbeatTick() self-gates on the
+    // URL and panel state every tick, so it doesn't matter how the user arrived at a surface —
+    // no per-surface hooks to scatter, no DOM-injection race to lose, no two hooks firing in the
+    // same frame. The gate inside (visibility + surface + 30-min elapsed, or a pending training
+    // catch-up) is what actually decides whether a call goes out; this just checks that cheaply
+    // and often.
     function startBackgroundSync() {
         if (runtime.bgSyncId) clearInterval(runtime.bgSyncId);
-        runtime.bgSyncId = setInterval(heartbeatTick, 60000);
-    }
-
-    // This makes sure your final gym training logs are saved even if you navigate away from the gym page.
-    async function checkExitSync() {
-        const f = sessionStorage.getItem(KEYS.SESSION);
-        if (f === 'true' && !window.location.href.includes('gym.php')) {
-            sessionStorage.removeItem(KEYS.SESSION);
-            await universalFetch('FULL_SYNC');
-        }
+        runtime.bgSyncId = setInterval(heartbeatTick, 3000);
+        heartbeatTick();
     }
 
     const GYM_STAT_LOGS = {
@@ -9480,7 +9739,7 @@
         if (!ds || ds.lastResult !== 'complete' || ds.acknowledged !== false) return;
         ds.acknowledged = true;
         await finalizeBackfill(ds, []);
-        window.dispatchEvent(new CustomEvent('bbgl:dataUpdated'));
+        window.dispatchEvent(new CustomEvent('bbgl:dataUpdated', { detail: { silent: true } }));
         renderBackfillButton();
         renderScanOverlay();
     }
@@ -9811,7 +10070,7 @@
             } catch (e) {
                 Log.error('Backfill discard failed', e);
             }
-            window.dispatchEvent(new CustomEvent('bbgl:dataUpdated'));
+            window.dispatchEvent(new CustomEvent('bbgl:dataUpdated', { detail: { silent: true } }));
             renderBackfillButton();
             renderScanOverlay();
             return;
@@ -9864,7 +10123,7 @@
             }
         }
 
-        window.dispatchEvent(new CustomEvent('bbgl:dataUpdated'));
+        window.dispatchEvent(new CustomEvent('bbgl:dataUpdated', { detail: { silent: true } }));
         renderBackfillButton();
         renderScanOverlay();
     }
@@ -13371,7 +13630,6 @@ async function clearData() {
             const k = localStorage.key(i);
             if (k && k.startsWith('bbgl_') && k !== KEYS.STORAGE && !keep.includes(k)) localStorage.removeItem(k);
         }
-        sessionStorage.removeItem(KEYS.SESSION);
         sessionStorage.removeItem(KEYS.SESSION_CACHE);
         DataController.invalidate();
         _historyCache = null;
@@ -13397,7 +13655,6 @@ async function factoryReset() {
         const k = localStorage.key(i);
         if (k && k.startsWith('bbgl_')) localStorage.removeItem(k);
     }
-    sessionStorage.removeItem(KEYS.SESSION);
     sessionStorage.removeItem(KEYS.SESSION_CACHE);
     DataController.invalidate();
     _historyCache = null;
@@ -13903,7 +14160,14 @@ const BestGymController = {
         if (!calendarState.selectedData) renderStats(DataController.getSlice('DAY', Formatter.dateLogical()), Formatter.dateLogical());
         else renderStats(calendarState.selectedData, calendarState.selectedLabel);
         Perf.end('renderPanel');
-        updateLevelBar();
+        // Always silent here: a real Train click's animated update is driven by the
+        // bbgl:dataUpdated listener (10-section-ix-init.js), which calls updateLevelBar()
+        // with the correct flag BEFORE calling this function — by the time we get here,
+        // _isAnimatingLevel is already set if an animation is in flight, so this call's
+        // own silent branch backs off instead of stomping it. Every other caller of
+        // renderPanelContent() (panel open, settings changes, etc.) is not a live-training
+        // moment and should just snap to the correct value.
+        updateLevelBar(true);
         updateSummaryCharts();
     }
 
@@ -14302,7 +14566,9 @@ const BestGymController = {
         }
         bar.container.dataset.atrophy = atrophy;
         bar.container.dataset.level = level;
-        const lvLine = level >= 100 ? 'Level 100  •  Max Level' : `Level ${level}  •  ${Math.round(pct)}%`;
+        // Single-spaced around the bullet: the spec line renders letterspaced in the plaque, so the
+        // old double spaces read as a gap there.
+        const lvLine = level >= 100 ? 'Level 100 • Max' : `Level ${level} • ${Math.round(pct)}%`;
         // Each word carries its own data-title-phase, driving the dull-silver-to-iridescent-diamond
         // finish per word in 04-section-iii-styles.js — the two slots are chosen independently, so
         // a Phase 1 adjective can sit next to a Phase 9 noun and each shows its own tier.
@@ -14316,13 +14582,29 @@ const BestGymController = {
         const rankOverride = runtime.devMode && runtime._devRankOverride;
         const rankAtrophy = rankOverride ? runtime._devRankOverride.atrophy : atrophy;
         const rankLevel = rankOverride ? runtime._devRankOverride.level : level;
+        // Vitrified glaze is reserved for the true end state (A2 at the cap, "Fully Bricked") rather
+        // than every tier's cap: it's then a genuinely once-ever finish, and it almost never has to
+        // share the plaque with a Phase 10 title's rainbow.
+        const vitrified = (rankAtrophy >= 2 && rankLevel >= LEVEL_CAP) ? ' is-vitrified' : '';
         // data-tooltip (not -html): the mobile touch handler only supports quick-tap-to-reveal
         // for this attribute — data-tooltip-html only reveals via the 400ms tap-and-hold gesture.
-        // <i> still renders fine since both the hover and tap code paths wrap this value in a div
-        // and set it via innerHTML either way. No <br> needed before the <i> tags below — they're
-        // already display:block (see #bbgl-tooltip i in 04-section-iii-styles.js), so an extra <br>
-        // would double up the line break and look like a big gap.
-        bar.container.setAttribute('data-tooltip', `${lvLine}<i class="bbgl-lvl-rank">"${atrophyTitle(rankAtrophy, rankLevel)}"</i>${statTitleHtml}`);
+        // The markup still renders since both the hover and tap code paths wrap this value in a div
+        // and set it via innerHTML either way.
+        //
+        // This one tooltip opts out of the shared grey tooltip chrome and draws its own graphite
+        // plaque instead — #bbgl-tooltip:has(.bbgl-plaque) in 04-section-iii-styles.js strips the
+        // default background/padding/arrow so the plate can own the whole surface. That buys the
+        // dark, controlled backdrop the rank's earth tones and the title's glow both need, without
+        // touching TooltipController or affecting any other tooltip in the script.
+        //
+        // Rank leads, reading as a lead-in modifying the title beneath it (the same left-to-right
+        // logic as the composed stat title itself: adjective, then noun). The level/percent still
+        // anchors the bottom as an engraved spec line.
+        bar.container.setAttribute('data-tooltip',
+            `<div class="bbgl-plaque">` +
+            `<i class="bbgl-lvl-rank${vitrified}" style="${rankHardenCSS(rankAtrophy, rankLevel)}">${atrophyTitle(rankAtrophy, rankLevel)}</i>` +
+            `${statTitleHtml}` +
+            `<div class="bbgl-plaque-spec">${lvLine}</div></div>`);
     }
 
     function updateLevelBar(silent) {
@@ -14339,11 +14621,11 @@ const BestGymController = {
         if (!bars.length) return;
 
         if (totalExp !== runtime._lastLevelExp) {
-            // Silent (background heartbeat) updates skip the animation queue entirely and just
-            // snap to the correct value — a level-up sequence playing on its own, with no click
-            // behind it, reads as a bug to anyone watching. If a real click's animation is
-            // already in flight, leave it running rather than stomping its state; it'll catch up
-            // on a later call.
+            // Silent updates — anything that isn't a train click (heartbeat, RESYNC, backfill,
+            // post-gym exit sync) — skip the animation queue and snap straight to the value. A
+            // level-up sequence playing for exp earned earlier or elsewhere reads as a bug to
+            // anyone watching. If a train click's animation is already in flight, leave it
+            // running rather than stomping its state; it'll catch up on a later call.
             if (silent) {
                 if (!runtime._isAnimatingLevel) {
                     runtime._lastLevelExp = totalExp;
@@ -15188,7 +15470,8 @@ const BestGymController = {
         track.appendChild(fill);
         container.appendChild(num);
         container.appendChild(track);
-        gymRoot.prepend(container);
+
+        gymRoot.querySelector('[class*="gymContent___"]')?.insertAdjacentElement('beforebegin', container);
 
         DataController.buildProgressionCache();
         renderLevelBar({ num, fill, container }, getLiveLevelExp());
@@ -17719,14 +18002,16 @@ const BestGymController = {
         else if (l === 'Train speed') id = 5302;
         else if (l === 'Train dexterity') id = 5303;
         if (id) {
-            sessionStorage.setItem(KEYS.SESSION, 'true');
-            if (!runtime.trainDebouncers) runtime.trainDebouncers = {};
-            if (runtime.trainDebouncers[id]) clearTimeout(runtime.trainDebouncers[id]);
-            runtime.trainDebouncers[id] = setTimeout(() => {
-                universalFetch('TRAIN_SINGLE', {
-                    specId: id
-                });
-                runtime.trainDebouncers[id] = null;
+            // A pending flag, not per-stat: TRAIN always fetches all 4 stats now, so clicking two
+            // different stats in the same window is still just one call once the debounce settles.
+            // The flag survives past this click (localStorage, not sessionStorage) so the next
+            // panel/gym-log open — even after closing the browser entirely — knows a full reconcile
+            // (items/battlestats/OD/SE) is still owed, however long that ends up being.
+            localStorage.setItem(KEYS.PENDING_SYNC, '1');
+            if (runtime.trainDebouncer) clearTimeout(runtime.trainDebouncer);
+            runtime.trainDebouncer = setTimeout(() => {
+                universalFetch('TRAIN', { animate: true });
+                runtime.trainDebouncer = null;
             }, 1000);
         }
     }
@@ -19268,8 +19553,8 @@ const BestGymController = {
             saveConfig();
             ai.value = '';
             localStorage.removeItem(KEYS.LAST_SYNC);
+            localStorage.removeItem(KEYS.PENDING_SYNC);
             sessionStorage.removeItem(KEYS.SESSION_CACHE);
-            sessionStorage.removeItem(KEYS.SESSION);
             const ot = cab.innerText;
             cab.innerText = "WIPED";
             setTimeout(() => {
@@ -19638,12 +19923,17 @@ const BestGymController = {
             _topCeilingCache = null;
         });
         window.addEventListener('bbgl:dataUpdated', (e) => {
+            // Must run BEFORE renderPanelContent() below: a real Train click's animated
+            // update needs to claim runtime._isAnimatingLevel synchronously here so that
+            // renderPanelContent()'s own (always-silent) trailing updateLevelBar() call
+            // sees the guard set and backs off instead of snapping the bar before the
+            // animation has a chance to play.
+            updateLevelBar(e.detail && e.detail.silent);
             // renderPanelContent() rebuilds the whole visible month's DOM (day cells, weekly
             // capsule bars, stickers) — real work with zero benefit if the panel isn't even on
             // screen (e.g. the conditional background heartbeat firing while collapsed/closed).
             // Mirrors the same guard the cross-tab sync handler already uses.
             if (dom.panel && dom.panel.style.display !== 'none') renderPanelContent();
-            updateLevelBar(e.detail && e.detail.silent);
             renderBackfillButton();
             renderScanOverlay();
         });
@@ -19692,7 +19982,6 @@ const BestGymController = {
         if (typeof window.initDevTools === 'function') window.initDevTools();
         if (!runtime.demoMode) {
             startBackgroundSync();
-            checkExitSync();
         }
         TooltipController.init();
         let tRaf = null,
@@ -20054,6 +20343,25 @@ const BestGymController = {
         hud.style.cssText = 'color:#fff;font-family:sans-serif;font-size:12px;text-align:center;';
         hud.innerHTML = `API Calls: ${runtime.apiCallTotal}`;
         return buildDevSection('API', [hud]);
+    }
+
+    // ─── Sync section (heartbeat gate override for testing TRAIN/FULL_SYNC) ────────────
+    function buildSyncSection() {
+        const fastBtn = buildDevButton('Fast Heartbeat: OFF', () => {
+            if (runtime._devHbIntervalMs) {
+                runtime._devHbIntervalMs = null;
+                fastBtn.textContent = 'Fast Heartbeat: OFF';
+                fastBtn.style.background = '#444';
+            } else {
+                runtime._devHbIntervalMs = 10000;
+                fastBtn.textContent = 'Fast Heartbeat: 10s';
+                fastBtn.style.background = '#6a1b9a';
+            }
+            // Drop any backoff from a prior failed tick so the shortened gate takes effect
+            // on the very next 3s interval instead of waiting out the old retry window.
+            runtime.hbRetryAfter = 0;
+        });
+        return buildDevSection('Sync', [fastBtn]);
     }
 
     // ─── Triggers section (XP/level testing) ───────────────────────────────
@@ -20424,6 +20732,7 @@ const BestGymController = {
         w.appendChild(title);
 
         w.appendChild(buildApiCounterSection());
+        w.appendChild(buildSyncSection());
         w.appendChild(buildTriggersSection());
         w.appendChild(buildRankPreviewSection());
         w.appendChild(buildTitlePreviewSection());

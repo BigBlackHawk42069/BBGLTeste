@@ -482,10 +482,14 @@
             suppressed: true
         };
         const {
-            specId = null,
             manualWars = false,
-            silent = false
+            animate = false
         } = options;
+        // The level bar only animates when the caller explicitly says this is exp the user just
+        // earned by clicking Train. Every other path — the passive TRAIN heartbeat, FULL_SYNC,
+        // manual RESYNC — is catching up on exp earned elsewhere/earlier, so it snaps to the new
+        // value instead of replaying a level-up sequence the user didn't trigger.
+        const silent = !animate;
 
         if (!userConfig.apiKey || userConfig.apiKey.length < 16) {
             return {
@@ -496,18 +500,39 @@
 
         const ts = Date.now();
         const meta = getActiveHistory().meta;
-        const fromFor = key => {
-            const fl = meta.syncFloor && meta.syncFloor[key];
-            return fl ? `&from=${Math.max(0, fl - SYNC_FROM_BUFFER)}` : '';
+        // syncFloor is keyed per individual log code, not per named call-shape. A call that only
+        // covers a subset of a group must only ever advance the floor for the codes it actually
+        // requested — otherwise a narrower call silently pushes the window forward for codes it
+        // never asked about, and any entries before that point become permanently unreachable by
+        // the next wider sync, not just deferred. `from=` needs one cutoff for the whole request,
+        // so if any requested code has never been synced, omit `from=` entirely for this call (fetch everything)
+        // rather than risk a code being skipped; otherwise use the oldest floor among the
+        // requested codes, so no code's window is advanced further than it's actually earned.
+        const fromFor = codes => {
+            const floors = codes.map(c => meta.syncFloor && meta.syncFloor[c]).filter(f => f != null);
+            if (floors.length < codes.length) return '';
+            return `&from=${Math.max(0, Math.min(...floors) - SYNC_FROM_BUFFER)}`;
         };
+        const advanceFloor = (codes, tsSec) => {
+            if (!meta.syncFloor) meta.syncFloor = {};
+            codes.forEach(c => { meta.syncFloor[c] = tsSec; });
+        };
+        // Single source of truth for the code-array -> `log=` request shape, shared by every
+        // mission below so a subset call and the full reconcile call can never drift apart.
+        const logReq = codes => ({
+            type: 'log',
+            logCodes: codes,
+            url: `https://api.torn.com/user/?selections=log&log=${codes.join(',')}&key=${userConfig.apiKey}${fromFor(codes)}&timestamp=${ts}`
+        });
         let reqs = [];
 
-        if (mission === 'TRAIN_SINGLE' && specId) {
-            reqs.push({
-                type: 'log',
-                floorKey: 'trainEnergy',
-                url: `https://api.torn.com/user/?selections=log&log=${specId},${ENERGY_PARAM}&key=${userConfig.apiKey}${fromFor('trainEnergy')}&timestamp=${ts}`
-            });
+        if (mission === 'TRAIN') {
+            // Just enough to keep the exp bar accurate (all 4 stats' cost + Ecstasy for HJ
+            // detection). Used for both a real click (animate:true) and the passive gym-page
+            // heartbeat (panel closed) — same shape either way. No items, no battlestats, no
+            // OD/SE reconcile — those only matter once something is actually being viewed, and
+            // are picked up by the pending-flag-triggered or routine FULL_SYNC instead.
+            reqs.push(logReq(TRAIN_CODES));
         } else {
             reqs = [{
                     type: 'battlestats',
@@ -516,16 +541,12 @@
                     // name for the titles page. Nothing else reads it.
                     url: `https://api.torn.com/user/?selections=battlestats,basic&key=${userConfig.apiKey}&timestamp=${ts}`
                 },
-                {
-                    type: 'log',
-                    floorKey: 'trainEnergy',
-                    url: `https://api.torn.com/user/?selections=log&log=${TRAIN_ENERGY_PARAM}&key=${userConfig.apiKey}${fromFor('trainEnergy')}&timestamp=${ts}`
-                },
-                {
-                    type: 'log',
-                    floorKey: 'statHappy',
-                    url: `https://api.torn.com/user/?selections=log&log=${STAT_HAPPY_PARAM}&key=${userConfig.apiKey}${fromFor('statHappy')}&timestamp=${ts}`
-                }
+                // Items (energy + happy) have no proxy signal to gate behind, so they're always
+                // fetched. OD has no signal either (it never moves battlestats), so it rides with
+                // train — redundant with the live TRAIN call most of the time, but cheap insurance
+                // that self-heals a missed/aborted TRAIN call for free.
+                logReq(ITEM_CODES),
+                logReq(TRAIN_OD_CODES)
             ];
         }
 
@@ -568,34 +589,44 @@
             if (bs && bs.player_id) meta.playerId = bs.player_id;
 
             const tsSec = Math.floor(ts / 1000);
-            if (!meta.syncFloor) meta.syncFloor = {};
             reqs.forEach(c => {
-                if (c.floorKey) meta.syncFloor[c.floorKey] = tsSec;
+                if (c.logCodes) advanceFloor(c.logCodes, tsSec);
             });
 
-            if (mission !== 'TRAIN_SINGLE') {
+            // Only a true FULL_SYNC stamps the shared freshness clock — TRAIN is partial (no
+            // battlestats/items/OD), so marking LAST_SYNC fresh here would let a subsequent
+            // panel-open skip the full reconcile it still needs. Clearing PENDING_SYNC here too:
+            // this is the only point a full reconcile actually completes, whether it got here via
+            // the routine 30-min heartbeat or a pending-flag bypass — so this is the one place
+            // "a full sync is owed" stops being true, restarting the 30-min gate from now.
+            if (mission === 'FULL_SYNC') {
                 localStorage.setItem(KEYS.LAST_SYNC, ts.toString());
+                localStorage.removeItem(KEYS.PENDING_SYNC);
             }
+
+            await DataController.processDataPayload(logs, bs, { silent });
 
             // Stat enhancer check: if battlestats shows higher values than the last recorded
             // endBreakdown, stat-enhancing items were used since the last sync. Only then do we
-            // fire the extra call — almost always a no-op.
+            // fire the extra call — almost always a no-op. Must run AFTER processDataPayload
+            // above: that's what folds this sync's own training logs into endBreakdown, so
+            // checking beforehand would compare fresh battlestats against a stale endBreakdown
+            // and mistake an ordinary training gain (log just hasn't landed yet) for an
+            // unexplained one, firing this needlessly.
             const _s = getActiveHistory();
             const needsEnhancers = mission === 'FULL_SYNC' && bs &&
                 BS_STAT_ROWS.some(row => (bs[row.api] || 0) > (_s.today.endBreakdown[row.abbr] || 0));
-
-            await DataController.processDataPayload(logs, bs, { silent });
 
             if (needsEnhancers) {
                 try {
                     incrementApiCount(1);
                     const eRes = await fetch(
-                        `https://api.torn.com/user/?selections=log&log=${STAT_ENHANCER_PARAM}&key=${userConfig.apiKey}${fromFor('statEnhancers')}&timestamp=${Date.now()}`
+                        `https://api.torn.com/user/?selections=log&log=${STAT_ENHANCER_PARAM}&key=${userConfig.apiKey}${fromFor(STAT_LOGS)}&timestamp=${Date.now()}`
                     );
                     if (eRes.ok) {
                         const eData = await eRes.json();
                         if (!eData.error) {
-                            meta.syncFloor.statEnhancers = tsSec;
+                            advanceFloor(STAT_LOGS, tsSec);
                             await DataController.processDataPayload(eData.log || {}, null, { silent });
                         }
                     }
@@ -633,7 +664,7 @@
             btn.innerText = "Syncing...";
         }
 
-        const result = await universalFetch(mission, { ...options, manualWars: mission !== 'TRAIN_SINGLE' });
+        const result = await universalFetch(mission, { ...options, manualWars: mission !== 'TRAIN' });
 
         if (result.ok) {
             if (btn) {
@@ -655,33 +686,78 @@
         Perf.end('syncWithFeedback');
     }
 
-    // Conditional heartbeat: fires at most once per 20 minutes, and only while there's actually
-    // a reason to — the panel is open (any mode) or the gym page's exp bar is on screen — and
-    // this tab is the one being looked at. No visible surface, no fetch; tabbing away or closing
-    // the panel just lets it go quiet again on its own, no separate start/stop bookkeeping needed.
+    // Conditional heartbeat: fires at most once per 30 minutes, and only while there's actually a
+    // reason to — the panel is open (any mode, including the gym-log page) or the user is on the
+    // gym page — and this tab is the one being looked at. Called only from the interval in
+    // startBackgroundSync; nothing needs to poke it on navigation or panel-open because it
+    // re-checks the live URL/panel state itself.
+    //
+    // Panel open always wins with a full FULL_SYNC (items/battlestats/OD are visible there). If a
+    // FULL_SYNC is still owed from training that happened while the panel was closed (KEYS.PENDING_SYNC),
+    // this bypasses the 30-min gate so the data is current the moment it's actually looked at —
+    // but a successful FULL_SYNC still stamps LAST_SYNC same as always, so the routine cadence
+    // simply restarts counting from that completion rather than needing a separate reset path.
+    //
+    // Gym-page-only (panel closed) settles for the lightweight TRAIN call — the exp bar is all
+    // that's on screen, and it only needs the 5 codes in TRAIN_CODES. TRAIN never stamps the
+    // shared KEYS.LAST_SYNC (see universalFetch), so its own throttle lives in
+    // runtime.lastTrainLightSync; that throttle is also satisfied by a recent FULL_SYNC (which
+    // covers everything TRAIN does and more), so closing the panel right after a full sync
+    // doesn't immediately re-fetch.
     function heartbeatTick() {
+        // hbBusy guards against a tick firing while a prior fetch is still in flight (LAST_SYNC
+        // isn't written until it resolves). hbRetryAfter keeps a failing key or dead connection
+        // from re-attempting on every tick.
+        if (runtime.hbBusy || Date.now() < (runtime.hbRetryAfter || 0)) return;
         if (document.visibilityState !== 'visible') return;
         const panelOpen = dom.panel && dom.panel.style.display !== 'none';
-        const onGymPage = !!document.getElementById('bbgl-gym-level-container');
+        // Keyed off the URL, not the injected bar's DOM presence — the bar depends on Torn's own
+        // gym page render finishing, which races the script's own DOM-mutation observer with no
+        // guaranteed retry trigger. The URL is known instantly at document-start, no race possible.
+        const onGymPage = window.location.href.includes('gym.php');
         if (!panelOpen && !onGymPage) return;
-        const lastFull = localStorage.getItem(KEYS.LAST_SYNC);
-        const elapsed = lastFull ? (Date.now() - parseInt(lastFull)) : Infinity;
-        if (elapsed < 1200000) return; // 20 minutes
-        universalFetch('FULL_SYNC', { silent: true });
+
+        const lastFull = parseInt(localStorage.getItem(KEYS.LAST_SYNC)) || 0;
+        // Dev-only override (11-section-x-devtools.js, stripped from release builds): lets the
+        // 30-minute gate be shortened for testing without touching the real cadence. Unset in
+        // production, so this is always the 30-minute default there.
+        const gate = runtime._devHbIntervalMs || 1800000;
+
+        let mission, fire;
+        if (panelOpen) {
+            mission = 'FULL_SYNC';
+            const pending = localStorage.getItem(KEYS.PENDING_SYNC) === '1';
+            const sinceLast = lastFull ? Date.now() - lastFull : Infinity;
+            fire = pending || sinceLast >= gate;
+        } else {
+            mission = 'TRAIN';
+            const lastLight = Math.max(lastFull, runtime.lastTrainLightSync || 0);
+            const sinceLast = lastLight ? Date.now() - lastLight : Infinity;
+            fire = sinceLast >= gate;
+        }
+        if (!fire) return;
+
+        runtime.hbBusy = true;
+        universalFetch(mission)
+            .then(r => {
+                if (!r || !r.ok) runtime.hbRetryAfter = Date.now() + 300000;
+                else if (mission === 'TRAIN') runtime.lastTrainLightSync = Date.now();
+            })
+            .finally(() => {
+                runtime.hbBusy = false;
+            });
     }
 
+    // The interval is the ONLY thing that fires the heartbeat. heartbeatTick() self-gates on the
+    // URL and panel state every tick, so it doesn't matter how the user arrived at a surface —
+    // no per-surface hooks to scatter, no DOM-injection race to lose, no two hooks firing in the
+    // same frame. The gate inside (visibility + surface + 30-min elapsed, or a pending training
+    // catch-up) is what actually decides whether a call goes out; this just checks that cheaply
+    // and often.
     function startBackgroundSync() {
         if (runtime.bgSyncId) clearInterval(runtime.bgSyncId);
-        runtime.bgSyncId = setInterval(heartbeatTick, 60000);
-    }
-
-    // This makes sure your final gym training logs are saved even if you navigate away from the gym page.
-    async function checkExitSync() {
-        const f = sessionStorage.getItem(KEYS.SESSION);
-        if (f === 'true' && !window.location.href.includes('gym.php')) {
-            sessionStorage.removeItem(KEYS.SESSION);
-            await universalFetch('FULL_SYNC');
-        }
+        runtime.bgSyncId = setInterval(heartbeatTick, 3000);
+        heartbeatTick();
     }
 
     const GYM_STAT_LOGS = {
@@ -863,7 +939,7 @@
         if (!ds || ds.lastResult !== 'complete' || ds.acknowledged !== false) return;
         ds.acknowledged = true;
         await finalizeBackfill(ds, []);
-        window.dispatchEvent(new CustomEvent('bbgl:dataUpdated'));
+        window.dispatchEvent(new CustomEvent('bbgl:dataUpdated', { detail: { silent: true } }));
         renderBackfillButton();
         renderScanOverlay();
     }
@@ -1194,7 +1270,7 @@
             } catch (e) {
                 Log.error('Backfill discard failed', e);
             }
-            window.dispatchEvent(new CustomEvent('bbgl:dataUpdated'));
+            window.dispatchEvent(new CustomEvent('bbgl:dataUpdated', { detail: { silent: true } }));
             renderBackfillButton();
             renderScanOverlay();
             return;
@@ -1247,7 +1323,7 @@
             }
         }
 
-        window.dispatchEvent(new CustomEvent('bbgl:dataUpdated'));
+        window.dispatchEvent(new CustomEvent('bbgl:dataUpdated', { detail: { silent: true } }));
         renderBackfillButton();
         renderScanOverlay();
     }

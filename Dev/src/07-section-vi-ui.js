@@ -369,7 +369,14 @@
         if (!calendarState.selectedData) renderStats(DataController.getSlice('DAY', Formatter.dateLogical()), Formatter.dateLogical());
         else renderStats(calendarState.selectedData, calendarState.selectedLabel);
         Perf.end('renderPanel');
-        updateLevelBar();
+        // Always silent here: a real Train click's animated update is driven by the
+        // bbgl:dataUpdated listener (10-section-ix-init.js), which calls updateLevelBar()
+        // with the correct flag BEFORE calling this function — by the time we get here,
+        // _isAnimatingLevel is already set if an animation is in flight, so this call's
+        // own silent branch backs off instead of stomping it. Every other caller of
+        // renderPanelContent() (panel open, settings changes, etc.) is not a live-training
+        // moment and should just snap to the correct value.
+        updateLevelBar(true);
         updateSummaryCharts();
     }
 
@@ -768,7 +775,9 @@
         }
         bar.container.dataset.atrophy = atrophy;
         bar.container.dataset.level = level;
-        const lvLine = level >= 100 ? 'Level 100  •  Max Level' : `Level ${level}  •  ${Math.round(pct)}%`;
+        // Single-spaced around the bullet: the spec line renders letterspaced in the plaque, so the
+        // old double spaces read as a gap there.
+        const lvLine = level >= 100 ? 'Level 100 • Max' : `Level ${level} • ${Math.round(pct)}%`;
         // Each word carries its own data-title-phase, driving the dull-silver-to-iridescent-diamond
         // finish per word in 04-section-iii-styles.js — the two slots are chosen independently, so
         // a Phase 1 adjective can sit next to a Phase 9 noun and each shows its own tier.
@@ -782,13 +791,29 @@
         const rankOverride = runtime.devMode && runtime._devRankOverride;
         const rankAtrophy = rankOverride ? runtime._devRankOverride.atrophy : atrophy;
         const rankLevel = rankOverride ? runtime._devRankOverride.level : level;
+        // Vitrified glaze is reserved for the true end state (A2 at the cap, "Fully Bricked") rather
+        // than every tier's cap: it's then a genuinely once-ever finish, and it almost never has to
+        // share the plaque with a Phase 10 title's rainbow.
+        const vitrified = (rankAtrophy >= 2 && rankLevel >= LEVEL_CAP) ? ' is-vitrified' : '';
         // data-tooltip (not -html): the mobile touch handler only supports quick-tap-to-reveal
         // for this attribute — data-tooltip-html only reveals via the 400ms tap-and-hold gesture.
-        // <i> still renders fine since both the hover and tap code paths wrap this value in a div
-        // and set it via innerHTML either way. No <br> needed before the <i> tags below — they're
-        // already display:block (see #bbgl-tooltip i in 04-section-iii-styles.js), so an extra <br>
-        // would double up the line break and look like a big gap.
-        bar.container.setAttribute('data-tooltip', `${lvLine}<i class="bbgl-lvl-rank">"${atrophyTitle(rankAtrophy, rankLevel)}"</i>${statTitleHtml}`);
+        // The markup still renders since both the hover and tap code paths wrap this value in a div
+        // and set it via innerHTML either way.
+        //
+        // This one tooltip opts out of the shared grey tooltip chrome and draws its own graphite
+        // plaque instead — #bbgl-tooltip:has(.bbgl-plaque) in 04-section-iii-styles.js strips the
+        // default background/padding/arrow so the plate can own the whole surface. That buys the
+        // dark, controlled backdrop the rank's earth tones and the title's glow both need, without
+        // touching TooltipController or affecting any other tooltip in the script.
+        //
+        // Rank leads, reading as a lead-in modifying the title beneath it (the same left-to-right
+        // logic as the composed stat title itself: adjective, then noun). The level/percent still
+        // anchors the bottom as an engraved spec line.
+        bar.container.setAttribute('data-tooltip',
+            `<div class="bbgl-plaque">` +
+            `<i class="bbgl-lvl-rank${vitrified}" style="${rankHardenCSS(rankAtrophy, rankLevel)}">${atrophyTitle(rankAtrophy, rankLevel)}</i>` +
+            `${statTitleHtml}` +
+            `<div class="bbgl-plaque-spec">${lvLine}</div></div>`);
     }
 
     function updateLevelBar(silent) {
@@ -805,11 +830,11 @@
         if (!bars.length) return;
 
         if (totalExp !== runtime._lastLevelExp) {
-            // Silent (background heartbeat) updates skip the animation queue entirely and just
-            // snap to the correct value — a level-up sequence playing on its own, with no click
-            // behind it, reads as a bug to anyone watching. If a real click's animation is
-            // already in flight, leave it running rather than stomping its state; it'll catch up
-            // on a later call.
+            // Silent updates — anything that isn't a train click (heartbeat, RESYNC, backfill,
+            // post-gym exit sync) — skip the animation queue and snap straight to the value. A
+            // level-up sequence playing for exp earned earlier or elsewhere reads as a bug to
+            // anyone watching. If a train click's animation is already in flight, leave it
+            // running rather than stomping its state; it'll catch up on a later call.
             if (silent) {
                 if (!runtime._isAnimatingLevel) {
                     runtime._lastLevelExp = totalExp;
@@ -1654,7 +1679,8 @@
         track.appendChild(fill);
         container.appendChild(num);
         container.appendChild(track);
-        gymRoot.prepend(container);
+
+        gymRoot.querySelector('[class*="gymContent___"]')?.insertAdjacentElement('beforebegin', container);
 
         DataController.buildProgressionCache();
         renderLevelBar({ num, fill, container }, getLiveLevelExp());

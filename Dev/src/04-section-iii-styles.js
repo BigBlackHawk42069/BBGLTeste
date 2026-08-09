@@ -1204,6 +1204,111 @@
                         text-shadow: 0 0 4px rgba(255, 204, 68, 0.5);
                     }
 
+                    /* ─── Level Bar Plaque ───────────────────────────────────────────────
+                       The level bar's tooltip opts out of the shared grey chrome above and draws
+                       its own graphite plate. :has() lets that happen off the CONTENT alone —
+                       TooltipController wipes className on every show(), so a persisted variant
+                       class would never survive, and nothing about the shared controller needs to
+                       change. Every other tooltip in the script is untouched.
+                       The dark plate exists to buy contrast: the rank's earth tones and the title's
+                       glow both need a dark, CONSTANT backdrop, which #464646 never gave them. */
+                    #bbgl-tooltip:has(.bbgl-plaque) {
+                        background: none;
+                        padding: 0;
+                        border-radius: 0;
+                        filter: none;
+                        max-width: 340px;
+                    }
+
+                    #bbgl-tooltip:has(.bbgl-plaque) #bbgl-tooltip-arrow {
+                        display: none;
+                    }
+
+                    /* Deliberately constant — no per-level progression on the plate itself. The
+                       whole point of a custom panel is a controlled backdrop; if the plate moved
+                       too, the contrast target would move with it. Contents progress, frame holds. */
+                    .bbgl-plaque {
+                        padding: 9px 15px 7px;
+                        border-radius: 4px;
+                        background: linear-gradient(180deg, #34383d 0%, #2a2d31 55%, #232629 100%);
+                        border: 1px solid #191b1e;
+                        box-shadow:
+                            inset 0 1px 0 rgba(255, 255, 255, 0.09),
+                            inset 0 -1px 0 rgba(0, 0, 0, 0.45),
+                            0 2px 7px rgba(0, 0, 0, 0.55);
+                        text-align: center;
+                    }
+
+                    /* EMITS. The per-word phase colors below do all the work — the old gold fill and
+                       gold glow on the wrapper were double-glowing over them and flattening the
+                       distinction between phases. */
+                    #bbgl-tooltip .bbgl-plaque i.bbgl-lvl-title {
+                        display: block;
+                        margin: 0;
+                        font-size: 14px;
+                        font-weight: 700;
+                        font-style: normal;
+                        color: inherit;
+                        text-shadow: none;
+                    }
+
+                    /* REFLECTS. Stamped into the plate rather than sitting on it: a diffuse dark
+                       impression behind the letters plus a lit lip along their lower edge. Both are
+                       driven by inline custom properties from rankHardenCSS() (03-section-ii-utils.js)
+                       — as the clay hardens the blur collapses toward 0 and the lip firms up, so the
+                       impression sharpens instead of the color merely changing. No outward glow at
+                       any point; that channel belongs to the title.
+                       Fjalla One (condensed display, already loaded for the level badge/rank axis
+                       elsewhere) reads as engraved rather than as quoted speech — upright, not
+                       italic, now that the quote marks are gone from the text itself. */
+                    #bbgl-tooltip .bbgl-plaque i.bbgl-lvl-rank {
+                        display: block;
+                        margin: 0 0 1px;
+                        font-family: 'Fjalla One', Arial, sans-serif;
+                        font-size: 10.5px;
+                        font-style: normal;
+                        font-weight: 400;
+                        letter-spacing: calc(0.02em + var(--rank-track, 0px));
+                        color: var(--rank-ink, #9a958d);
+                        opacity: var(--rank-fade, 1);
+                        text-shadow:
+                            0 0 var(--rank-press, 4px) rgba(16, 13, 10, var(--rank-press-a, 0.5)),
+                            0 1px 0 rgba(255, 255, 255, var(--rank-lip, 0));
+                    }
+
+                    /* Fully Bricked only. A narrow specular band travelling ACROSS the letterforms —
+                       light catching a glazed surface, not light coming out of one. Slow (7s vs the
+                       title's 3s) so the two never read as the same effect if they ever coincide. */
+                    #bbgl-tooltip .bbgl-plaque i.bbgl-lvl-rank.is-vitrified {
+                        background: linear-gradient(100deg, #c9a184 42%, #fdf1e4 50%, #c9a184 58%);
+                        background-size: 300% 100%;
+                        -webkit-background-clip: text;
+                        background-clip: text;
+                        color: transparent;
+                        opacity: 1;
+                        text-shadow: none;
+                        animation: bbgl-rank-glaze 7s linear infinite;
+                    }
+
+                    @keyframes bbgl-rank-glaze {
+                        0% { background-position: 100% 50%; }
+                        100% { background-position: 0% 50%; }
+                    }
+
+                    /* Engraved spec line — a caption, not a third competing title. Monospace and
+                       letterspaced so it reads as a stamped serial number along the plate's base. */
+                    .bbgl-plaque-spec {
+                        margin-top: 7px;
+                        padding-top: 6px;
+                        border-top: 1px solid rgba(255, 255, 255, 0.07);
+                        font-family: Consolas, Menlo, 'DejaVu Sans Mono', monospace;
+                        font-size: 9.5px;
+                        line-height: 1.2;
+                        letter-spacing: 0.12em;
+                        text-transform: uppercase;
+                        color: #7d838a;
+                    }
+
                     /* Title finish progression, Phase 0-10 — dull silver to iridescent diamond.
                        Scoped to the individual WORD, not the whole title: the two slots are chosen
                        independently on the titles page, so a Phase 1 adjective can sit next to a
@@ -1217,54 +1322,60 @@
                         display: inline-block;
                     }
 
+                    /* Grey block (0-3): dead matte to bright silver. Lightness and glow both climb
+                       every step — the old ramp peaked at Phase 2 and then DIMMED into a greenish
+                       grey at Phase 3, so a promotion could visibly look like a demotion. */
                     .bbgl-title-word[data-title-phase="0"] {
-                        color: #888888;
+                        color: #6f7276;
                         text-shadow: none;
                     }
 
                     .bbgl-title-word[data-title-phase="1"] {
-                        color: #9a9a9e;
-                        text-shadow: 0 0 2px rgba(255, 255, 255, 0.15);
+                        color: #878b90;
+                        text-shadow: 0 0 2px rgba(255, 255, 255, 0.12);
                     }
 
                     .bbgl-title-word[data-title-phase="2"] {
-                        color: #d4d4d8;
-                        text-shadow: 0 0 3px rgba(255, 255, 255, 0.4);
+                        color: #a2a8ae;
+                        text-shadow: 0 0 2px rgba(255, 255, 255, 0.22);
                     }
 
                     .bbgl-title-word[data-title-phase="3"] {
-                        color: #b9c9ae;
-                        text-shadow: 0 0 3px rgba(200, 255, 200, 0.3);
+                        color: #c2c9d0;
+                        text-shadow: 0 0 3px rgba(255, 255, 255, 0.35);
                     }
 
+                    /* Green block (4-6): entering hue for the first time reads as the promotion, so
+                       Phase 4 starts soft rather than at full saturation and builds from there. */
                     .bbgl-title-word[data-title-phase="4"] {
-                        color: #3fae54;
-                        text-shadow: 0 0 3px rgba(63, 174, 84, 0.4);
+                        color: #6fcf8a;
+                        text-shadow: 0 0 3px rgba(111, 207, 138, 0.4);
                     }
 
                     .bbgl-title-word[data-title-phase="5"] {
-                        color: #39d35a;
-                        text-shadow: 0 0 4px rgba(57, 211, 90, 0.5);
+                        color: #4ddb7c;
+                        text-shadow: 0 0 4px rgba(77, 219, 124, 0.55);
                     }
 
                     .bbgl-title-word[data-title-phase="6"] {
-                        color: #4dff85;
-                        text-shadow: 0 0 3px rgba(77, 255, 133, 0.7), 0 0 8px rgba(77, 255, 133, 0.35);
+                        color: #38e86a;
+                        text-shadow: 0 0 3px rgba(56, 232, 106, 0.7), 0 0 9px rgba(56, 232, 106, 0.38);
                     }
 
+                    /* Gold block (7-9): 7 is the yellow-green hand-off into gold. */
                     .bbgl-title-word[data-title-phase="7"] {
-                        color: #c9d94a;
-                        text-shadow: 0 0 3px rgba(201, 217, 74, 0.6), 0 0 8px rgba(255, 204, 68, 0.3);
+                        color: #b9e05a;
+                        text-shadow: 0 0 3px rgba(185, 224, 90, 0.6), 0 0 9px rgba(255, 204, 68, 0.3);
                     }
 
                     .bbgl-title-word[data-title-phase="8"] {
                         color: #ffcc44;
-                        text-shadow: 0 0 4px rgba(255, 204, 68, 0.5);
+                        text-shadow: 0 0 4px rgba(255, 204, 68, 0.62), 0 0 10px rgba(255, 204, 68, 0.34);
                     }
 
                     .bbgl-title-word[data-title-phase="9"] {
                         color: #ffe066;
-                        text-shadow: 0 0 4px rgba(255, 224, 102, 0.7), 0 0 10px rgba(255, 204, 68, 0.4);
+                        text-shadow: 0 0 4px rgba(255, 224, 102, 0.75), 0 0 12px rgba(255, 204, 68, 0.45);
                     }
 
                     .bbgl-title-word[data-title-phase="10"] {
@@ -4347,13 +4458,20 @@
                         position: relative;
                         width: 100%;
                         margin-top: 24px;
-                        margin-bottom: -4px;
-                        --bbgl-track-h: 9px;
+                        margin-bottom: 2px;
+                        --bbgl-track-h: 12px;
                         display: flex;
                         flex-direction: column;
                         align-items: center;
                         container-type: inline-size;
                         clip-path: inset(-9999px 0 0 0);
+                    }
+
+                    /* Scoped override: the shared #bbgl-level-track / #bbgl-gym-level-track rule
+                       hardcodes 9px so the main panel bar is unaffected; the gym page bar tracks
+                       --bbgl-track-h so it stays in sync with the crown's anchor position above. */
+                    #bbgl-gym-level-track {
+                        height: var(--bbgl-track-h);
                     }
 
                     #bbgl-gym-level-num {
@@ -7200,7 +7318,6 @@
         dom.viName = root.querySelector('#vi-name-target');
         dom.refreshBtn = root.querySelector('#refresh-log-btn');
         dom.contentWrapper = root.querySelector('#bbgl-content-wrapper');
-        if (!dom.apiHud) dom.apiHud = document.getElementById('bbgl-api-hud');
         if (!dom.gymTab) dom.gymTab = document.getElementById('bbgl-gym-tab');
     }
 

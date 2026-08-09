@@ -16,14 +16,16 @@
         else if (l === 'Train speed') id = 5302;
         else if (l === 'Train dexterity') id = 5303;
         if (id) {
-            sessionStorage.setItem(KEYS.SESSION, 'true');
-            if (!runtime.trainDebouncers) runtime.trainDebouncers = {};
-            if (runtime.trainDebouncers[id]) clearTimeout(runtime.trainDebouncers[id]);
-            runtime.trainDebouncers[id] = setTimeout(() => {
-                universalFetch('TRAIN_SINGLE', {
-                    specId: id
-                });
-                runtime.trainDebouncers[id] = null;
+            // A pending flag, not per-stat: TRAIN always fetches all 4 stats now, so clicking two
+            // different stats in the same window is still just one call once the debounce settles.
+            // The flag survives past this click (localStorage, not sessionStorage) so the next
+            // panel/gym-log open — even after closing the browser entirely — knows a full reconcile
+            // (items/battlestats/OD/SE) is still owed, however long that ends up being.
+            localStorage.setItem(KEYS.PENDING_SYNC, '1');
+            if (runtime.trainDebouncer) clearTimeout(runtime.trainDebouncer);
+            runtime.trainDebouncer = setTimeout(() => {
+                universalFetch('TRAIN', { animate: true });
+                runtime.trainDebouncer = null;
             }, 1000);
         }
     }
@@ -1565,8 +1567,8 @@
             saveConfig();
             ai.value = '';
             localStorage.removeItem(KEYS.LAST_SYNC);
+            localStorage.removeItem(KEYS.PENDING_SYNC);
             sessionStorage.removeItem(KEYS.SESSION_CACHE);
-            sessionStorage.removeItem(KEYS.SESSION);
             const ot = cab.innerText;
             cab.innerText = "WIPED";
             setTimeout(() => {
@@ -1935,12 +1937,17 @@
             _topCeilingCache = null;
         });
         window.addEventListener('bbgl:dataUpdated', (e) => {
+            // Must run BEFORE renderPanelContent() below: a real Train click's animated
+            // update needs to claim runtime._isAnimatingLevel synchronously here so that
+            // renderPanelContent()'s own (always-silent) trailing updateLevelBar() call
+            // sees the guard set and backs off instead of snapping the bar before the
+            // animation has a chance to play.
+            updateLevelBar(e.detail && e.detail.silent);
             // renderPanelContent() rebuilds the whole visible month's DOM (day cells, weekly
             // capsule bars, stickers) — real work with zero benefit if the panel isn't even on
             // screen (e.g. the conditional background heartbeat firing while collapsed/closed).
             // Mirrors the same guard the cross-tab sync handler already uses.
             if (dom.panel && dom.panel.style.display !== 'none') renderPanelContent();
-            updateLevelBar(e.detail && e.detail.silent);
             renderBackfillButton();
             renderScanOverlay();
         });
@@ -1989,7 +1996,6 @@
         if (typeof window.initDevTools === 'function') window.initDevTools();
         if (!runtime.demoMode) {
             startBackgroundSync();
-            checkExitSync();
         }
         TooltipController.init();
         let tRaf = null,

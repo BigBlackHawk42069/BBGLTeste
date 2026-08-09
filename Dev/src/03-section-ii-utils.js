@@ -288,8 +288,11 @@
 
     function incrementApiCount(n) {
         runtime.apiCallTotal += n;
-        const hud = dom.apiHud;
-        if (hud) hud.innerHTML = `API Calls: ${runtime.apiCallTotal}`;
+        // Self-sufficient lookup — doesn't rely on the panel ever having been opened. The dev
+        // widget (and #bbgl-api-hud) is created unconditionally at boot, before this can first
+        // fire, so this always finds it once and stays accurate from the first call on.
+        if (!dom.apiHud) dom.apiHud = document.getElementById('bbgl-api-hud');
+        if (dom.apiHud) dom.apiHud.innerHTML = `API Calls: ${runtime.apiCallTotal}`;
     }
 
     // ─── Error messaging ────────────────────────────────────────────────────
@@ -556,6 +559,59 @@
         return band.titles[atrophy] || band.titles[0];
     }
 
+    // ─── Rank Hardening Finish ──────────────────────────────────────────────
+    // The rank line's own progression, deliberately built as the OPPOSITE of the stat title's:
+    // the title EMITS (outward glow, discrete phase jumps, animated rainbow at the top), the rank
+    // REFLECTS (a stamped impression in a surface, continuous, no halo). They can therefore share
+    // a tooltip without competing even when both are maxed.
+    //
+    // Two channels move independently, which is what keeps it from being a plain color ramp:
+    //   • hardness  — strictly monotonic. The impression sharpens: the soft diffuse blur collapses,
+    //                 the lit lip under each letter firms up, tracking tightens, opacity rises.
+    //   • moisture/heat — NOT monotonic, because the band names aren't either (Dry -> Moistened ->
+    //                 worked -> molded -> Fired -> Bricked). Clay is wettest in the MIDDLE. Gloss
+    //                 rises early then burns off, and the hue warms toward the firing bands.
+    // Lightness only ever climbs, so the "wet" stretch reads as sheen rather than going dark and
+    // losing contrast against the plaque behind it.
+    //
+    // Stops are [progress 0-1, [r,g,b], softness]. Continuous in `level` rather than banded on
+    // purpose: the finish is already warming before the word flips to "Pit-Fired", so the band
+    // name reads as a label on a continuum instead of snapping in lockstep with the color.
+    const RANK_HARDEN_STOPS = [
+        [0.00, [154, 149, 141], 0.55], // raw and dusty — barely formed, softest impression
+        [0.22, [168, 160, 150], 0.45], // moistened — sheen up, still takes a mushy stamp
+        [0.45, [181, 166, 144], 0.30], // worked and molded — starting to hold an edge
+        [0.68, [198, 154, 114], 0.16], // pit-fired — warming toward ember
+        [0.86, [201, 143, 110], 0.07], // cooled back to matte brick
+        [1.00, [212, 161, 132], 0.00]  // set hard, crisp permanent impression
+    ];
+
+    // Emits the inline custom properties the .bbgl-lvl-rank rule consumes. Computed in JS rather
+    // than as CSS steps so the ramp is genuinely continuous (every level moves it) with no reliance
+    // on color-mix(), and so the whole curve stays tunable from the one table above.
+    function rankHardenCSS(atrophy, level) {
+        const p = Math.max(0, Math.min(1, (level || 0) / LEVEL_CAP));
+        let i = 0;
+        while (i < RANK_HARDEN_STOPS.length - 2 && p > RANK_HARDEN_STOPS[i + 1][0]) i++;
+        const a = RANK_HARDEN_STOPS[i], b = RANK_HARDEN_STOPS[i + 1];
+        const t = b[0] === a[0] ? 0 : (p - a[0]) / (b[0] - a[0]);
+        const mix = (x, y) => x + (y - x) * t;
+        // Later atrophy tiers fire hotter: the arc resets each tier but its ceiling rises, mirroring
+        // the escalation already baked into LEVEL_TITLE_BANDS (Pit- -> Scove- -> Kiln-Fired).
+        const heat = Math.max(0, Math.min(2, atrophy || 0)) * p;
+        const ch = (k, warm) => Math.max(0, Math.min(255, Math.round(mix(a[1][k], b[1][k]) + warm * heat)));
+        const soft = mix(a[2], b[2]);
+        const hard = 1 - (soft / RANK_HARDEN_STOPS[0][2]);
+        return [
+            `--rank-ink:rgb(${ch(0, 11)},${ch(1, 3)},${ch(2, -9)})`,
+            `--rank-press:${(soft * 6.5).toFixed(2)}px`,
+            `--rank-press-a:${(0.30 + soft * 0.50).toFixed(2)}`,
+            `--rank-lip:${(hard * 0.17).toFixed(3)}`,
+            `--rank-track:${(soft * 0.10).toFixed(3)}em`,
+            `--rank-fade:${(0.74 + hard * 0.26).toFixed(2)}`
+        ].join(';');
+    }
+
     // The rank axis under the titles page's level bar: one bracket per band, sized by its true
     // share of the 0-LEVEL_CAP run so a 20-level band takes 20% and a 10-level band takes 10%.
     // Everything derives from LEVEL_TITLE_BANDS, so adding, removing or resizing a band re-draws
@@ -607,7 +663,7 @@
     // for rather than ever rendering a null/undefined word, so the ladder can ship half-written.
     const STAT_TITLE_WORDS = {
         str: [
-            { noun: 'Limp', adj: 'Noodle' },
+            { noun: 'Noodle', adj: 'Limp' },
             { noun: 'Fist', adj: 'Fisting' },
             { noun: 'Pounder', adj: 'Pounding' },
             { noun: 'Grinder', adj: 'Grinding' },
@@ -617,7 +673,7 @@
             null, null, null, null
         ],
         def: [
-            { noun: 'Soft', adj: 'Softie' },
+            { noun: 'Softie', adj: 'Soft' },
             { noun: 'Blister', adj: 'Blistered' },
             { noun: 'Flesh', adj: 'Fleshy' },
             { noun: 'Callous', adj: 'Calloused' },
@@ -641,9 +697,9 @@
             { noun: 'Silence', adj: 'Silent' },
             { noun: 'Creeper', adj: 'Creeping' },
             { noun: 'Squirmer', adj: 'Squirming' },
-            { noun: 'Slippery', adj: 'Glaze' },
-            { noun: 'Rascally', adj: 'Rascal' },
-            { noun: 'Ambiguous', adj: 'Ambiguity' },
+            { noun: 'Glaze', adj: 'Slippery' },
+            { noun: 'Rascal', adj: 'Rascally' },
+            { noun: 'Ambiguity', adj: 'Ambiguous' },
             null, null, null, null
         ]
     };

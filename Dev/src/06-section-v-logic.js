@@ -3472,7 +3472,6 @@ async function clearData() {
             const k = localStorage.key(i);
             if (k && k.startsWith('bbgl_') && k !== KEYS.STORAGE && !keep.includes(k)) localStorage.removeItem(k);
         }
-        sessionStorage.removeItem(KEYS.SESSION);
         sessionStorage.removeItem(KEYS.SESSION_CACHE);
         DataController.invalidate();
         _historyCache = null;
@@ -3498,7 +3497,6 @@ async function factoryReset() {
         const k = localStorage.key(i);
         if (k && k.startsWith('bbgl_')) localStorage.removeItem(k);
     }
-    sessionStorage.removeItem(KEYS.SESSION);
     sessionStorage.removeItem(KEYS.SESSION_CACHE);
     DataController.invalidate();
     _historyCache = null;
