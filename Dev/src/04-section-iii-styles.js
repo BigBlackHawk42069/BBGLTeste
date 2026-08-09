@@ -674,11 +674,22 @@
                         --bbgl-f-top-mb: 3px;
                         --bbgl-bot-minh: 14px;
                         --bbgl-label-case: none;
+                        --bbgl-top-h: 177px;
+                        --bbgl-top-h-tall: 241px;
                         width: min(576px, calc(100vw - 20px));
                         height: 633px;
                         max-height: calc(100vh - 50px) !important;
                         overflow-y: auto;
                         overflow-x: hidden;
+                    }
+
+                    /* #bbgl-top-panel's non-flow (position:absolute) height and #bbgl-bottom-panel/
+                       #bbgl-item-viewer's offset both read these two variables, so the header can
+                       never grow (tall mode) without the panels beneath it staying put in lockstep -
+                       see the #bbgl-top-panel rules below for how they're consumed. */
+                    #bbgl-panel.bbgl-compact {
+                        --bbgl-top-h: 30%;
+                        --bbgl-top-h-tall: 40%;
                     }
 
                     #bbgl-panel.bbgl-tall {
@@ -1576,7 +1587,6 @@
                     }
 
                     #bbgl-top-panel {
-                        flex: 0 0 30%;
                         box-sizing: border-box;
                         background-color: #2b2b2b;
                         box-shadow: inset 0 0 40px rgba(0, 0, 0, .95);
@@ -1587,31 +1597,48 @@
                         flex-direction: column;
                         padding-top: 2px;
                         padding-bottom: 8px;
-                        transition: flex-basis .3s, margin-bottom .3s, padding-top .3s;
+                        transition: height .3s, padding-top .3s;
                         z-index: 25;
                     }
 
-                    .bbgl-tall #bbgl-top-panel {
-                        flex: 0 0 40%;
-                        margin-bottom: -13.41%;
-                        z-index: 25;
+                    /* Taken out of flex flow so its height (incl. tall mode's growth) never
+                       displaces #bbgl-bottom-panel/#bbgl-item-viewer below it - they read the
+                       same --bbgl-top-h instead of flexing in response to this element. Page
+                       mode is excluded: #bbgl-content-wrapper is display:contents there, so this
+                       element flows as a direct flex child of #bbgl-panel via its own rule. */
+                    #bbgl-panel:not(.bbgl-mode-page) #bbgl-top-panel {
+                        position: absolute;
+                        top: 0;
+                        left: 0;
+                        right: 0;
+                        height: var(--bbgl-top-h);
+                    }
+
+                    #bbgl-panel.bbgl-tall:not(.bbgl-mode-page) #bbgl-top-panel {
+                        height: var(--bbgl-top-h-tall);
                         box-shadow: 0 5px 15px rgba(0, 0, 0, .5), inset 0 0 40px rgba(0, 0, 0, .95);
                         border-bottom: 1px solid #333;
                         padding-top: 18px;
                     }
 
-                    #bbgl-panel.bbgl-tall.bbgl-compact .ledger-content {
-                        padding-top: 8px !important;
-                    }
-
-                    .bbgl-expanded #bbgl-top-panel {
-                        flex: 0 0 177px;
-                    }
-
-                    .bbgl-expanded.bbgl-tall #bbgl-top-panel {
-                        flex: 0 0 241px;
-                        margin-bottom: -66px;
+                    #bbgl-panel.bbgl-expanded.bbgl-tall:not(.bbgl-mode-page) #bbgl-top-panel {
                         padding-top: 20px;
+                    }
+
+                    /* #bbgl-item-viewer takes #bbgl-bottom-panel's slot while viewing an active
+                       sticker item (see switchView()), so it needs the identical offset. Height
+                       is forced to auto: #bbgl-item-viewer's base rule sets a fixed height:100%
+                       for page mode's flex layout, which would make it ignore the bottom offset
+                       here and overflow past the panel edge. */
+                    #bbgl-panel:not(.bbgl-mode-page) #bbgl-bottom-panel,
+                    #bbgl-panel:not(.bbgl-mode-page) #bbgl-item-viewer {
+                        position: absolute;
+                        top: var(--bbgl-top-h);
+                        left: 0;
+                        right: 0;
+                        bottom: 0;
+                        height: auto;
+                        transition: top .3s;
                     }
 
                     #bbgl-tall-toggle,
@@ -1910,7 +1937,7 @@
                         flex: 1;
                         overflow-y: auto;
                         overflow-x: hidden;
-                        padding: 4px 2px;
+                        padding: 0 2px 8px;
                         display: grid;
                         grid-template-columns: repeat(4, 1fr);
                         gap: 0;
@@ -1927,17 +1954,12 @@
                     .bbgl-expanded .ledger-content {
                         grid-template-columns: repeat(4, 1fr);
                         grid-template-rows: minmax(0, 1fr);
-                        padding-top: 6px;
-                        padding-bottom: 14px;
+                        padding-bottom: 18px;
                     }
 
-                    #bbgl-panel.bbgl-tall.bbgl-expanded .ledger-content {
-                        padding-top: 12px;
-                    }
-
-                    /* Achievements diverges from the ledger's top padding, landing at a flat
-                       3px top in both modes, and gets +5px of side padding on top of the
-                       inherited 2px (both modes). */
+                    /* Achievements keeps its own flat 3px top padding in tall mode (unlike the
+                       ledger, which no longer needs a tall-specific override - see .stat-column),
+                       and gets +5px of side padding on top of the inherited 2px (both modes). */
                     #bbgl-panel.bbgl-tall.bbgl-expanded #bbgl-achievements-container {
                         padding-top: 3px;
                     }
@@ -1955,7 +1977,7 @@
                         display: flex;
                         flex-direction: column;
                         align-items: center;
-                        justify-content: flex-start;
+                        justify-content: center;
                         height: 100%;
                         border-right: 1px solid rgba(255, 255, 255, .05);
                         padding: 0 2px;
