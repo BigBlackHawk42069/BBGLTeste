@@ -244,8 +244,7 @@
                 if (dom.panel && dom.panel.style.display !== 'none') renderPanelContent();
                 // Keep this tab's scan mask in sync with whatever the scanning tab just persisted
                 // (start / heartbeat / pause / cap / complete). Passenger tabs mask off this.
-                renderScanOverlay();
-                renderBackfillButton();
+                renderScanUI();
             } catch (e) {
                 Log.warn('Cross-tab sync failed', e);
             }
@@ -303,6 +302,14 @@
             if (e.energy !== undefined) e.energy = parseInt(e.energy);
             return;
         }
+        // A non-item entry is a gym training row by definition, so the tag is stamped here rather
+        // than trusted from the record. The export format omits it (gym lines are identified by
+        // their shape: at/ts/stat/gain/cost/after), which means an imported series would otherwise
+        // carry untagged rows — and every reward computation keys off `type === 'gym'`
+        // (buildProgressionCache, 06-section-v-logic.js), silently scoring them as zero. Stamping
+        // at this single choke point covers every path: boot (loadHistory -> sanitizeDayRecord),
+        // import, and export, so already-stored untagged rows self-heal on the next load.
+        e.type = 'gym';
         if (e.ts !== undefined) e.ts = parseInt(e.ts);
         if (e.gain !== undefined) e.gain = parseFloat(e.gain);
         if (e.after !== undefined) e.after = parseFloat(e.after);
@@ -366,6 +373,46 @@
         };
     }
 
+    // The ONE place a Torn API request is built, counted, sent and parsed. Every network call in the
+    // script goes through here, so the base URL and the API key appear exactly once in the codebase.
+    //
+    // Returns a normalized envelope rather than throwing, because each caller's error policy is
+    // deliberately different: a sync surfaces a message to the user, the wars/faction fetches fail
+    // silent, and backfill treats specific Torn error codes as a soft stop. Callers branch on
+    // `apiError` / `http` / `netErr`; none of them re-derive the happy path.
+    //
+    // Params are interpolated raw rather than through URLSearchParams — every `log=` request depends
+    // on literal commas surviving into the query string. Undefined/null values are dropped, so an
+    // optional bound (`from`, `to`) is simply omitted when the caller has nothing to pass. Pass
+    // `timestamp` only where a cache-buster is actually wanted: Torn caches responses for ~29s, and
+    // the low-frequency wars/faction calls deliberately benefit from that.
+    async function tornGet(path, params) {
+        const qs = Object.entries({ ...params, key: userConfig.apiKey })
+            .filter(([, v]) => v !== undefined && v !== null)
+            .map(([k, v]) => `${k}=${v}`)
+            .join('&');
+        incrementApiCount(1);
+        try {
+            const res = await fetch(`https://api.torn.com/${path}?${qs}`);
+            if (!res.ok) return { ok: false, http: res.status };
+            const data = await res.json();
+            if (data.error) return { ok: false, apiError: data.error, data };
+            return { ok: true, data };
+        } catch (netErr) {
+            return { ok: false, netErr };
+        }
+    }
+
+    // Converts a failed tornGet envelope into the Error the sync path surfaces. `isTornError` marks
+    // a message as already user-facing copy, so universalFetch's catch passes it through verbatim
+    // instead of replacing it with the generic network-failure text.
+    function tornError(r) {
+        if (r.netErr) return r.netErr;
+        const e = new Error(r.apiError ? tornKeyErrorText(r.data) : `Torn returned an unexpected error (HTTP ${r.http}).`);
+        e.isTornError = true;
+        return e;
+    }
+
     async function fetchWars(manual) {
         const TWENTY_FOUR_HOURS = 24 * 60 * 60 * 1000;
         const lastSync = parseInt(localStorage.getItem(KEYS.WARS_SYNC) || '0');
@@ -373,24 +420,12 @@
         try {
             // user/?selections=faction is API v2-only (v1 returns error code 23), so the faction
             // ID has to come from the same v1 faction/rankedwars request via the "basic" selection.
-            incrementApiCount(1);
-            const res = await fetch(`https://api.torn.com/faction/?selections=rankedwars,basic&key=${userConfig.apiKey}`);
-            if (!res.ok) return;
-            const data = await res.json();
-            if (data.error) return;
-            const wars = data.rankedwars || {};
+            const r = await tornGet('faction/', { selections: 'rankedwars,basic' });
+            if (!r.ok) return;
+            const wars = r.data.rankedwars || {};
             // Resolve the player's current faction ID to tag each war with win/loss outcome.
-            const myFactionId = data.ID || null;
-            if (myFactionId) {
-                Object.values(wars).forEach(w => {
-                    if (!w || !w.war) return;
-                    if (w.war.end && w.war.winner != null) {
-                        w.outcome = w.war.winner === myFactionId ? 'won' : 'lost';
-                    }
-                    // Tag each war with the faction it belongs to for membership filtering.
-                    w.factionId = myFactionId;
-                });
-            }
+            const myFactionId = r.data.ID || null;
+            if (myFactionId) Object.values(wars).forEach(w => tagWar(w, myFactionId));
             localStorage.setItem(KEYS.WARS_DATA, JSON.stringify(wars));
             localStorage.setItem(KEYS.WARS_SYNC, Date.now().toString());
         } catch (e) {
@@ -398,16 +433,21 @@
         }
     }
 
+    // Stamps a war with the faction it belongs to (for membership filtering) and, once it has
+    // ended, whether that faction won. Shared by the current-faction and past-faction fetches.
+    function tagWar(w, factionId) {
+        if (!w || !w.war) return;
+        if (w.war.end && w.war.winner != null) w.outcome = w.war.winner === factionId ? 'won' : 'lost';
+        w.factionId = factionId;
+    }
+
     // Fetches log 6253 ("faction application accept receive") and stores a membership timeline.
     // Only called once at the start of backfill — historical data, not needed on every sync.
     async function fetchFactionHistory() {
         try {
-            incrementApiCount(1);
-            const res = await fetch(`https://api.torn.com/user/?selections=log&log=6253&key=${userConfig.apiKey}`);
-            if (!res.ok) return;
-            const data = await res.json();
-            if (data.error) return;
-            const joinEvents = Object.values(data.log || {})
+            const r = await tornGet('user/', { selections: 'log', log: 6253 });
+            if (!r.ok) return;
+            const joinEvents = Object.values(r.data.log || {})
                 .filter(e => e && e.data && e.data.faction && e.timestamp)
                 .sort((a, b) => a.timestamp - b.timestamp);
             const factionHistory = joinEvents.map((e, i) => ({
@@ -440,16 +480,11 @@
         try { const e = localStorage.getItem(KEYS.WARS_DATA); if (e) wars = JSON.parse(e); } catch (e) { /* start fresh */ }
         for (const membership of pastFactions) {
             try {
-                incrementApiCount(1);
-                const res = await fetch(`https://api.torn.com/faction/${membership.factionId}?selections=rankedwars&key=${userConfig.apiKey}`);
-                if (!res.ok) continue;
-                const data = await res.json();
-                if (data.error) continue;
-                Object.entries(data.rankedwars || {}).forEach(([id, w]) => {
+                const r = await tornGet(`faction/${membership.factionId}`, { selections: 'rankedwars' });
+                if (!r.ok) continue;
+                Object.entries(r.data.rankedwars || {}).forEach(([id, w]) => {
                     if (!w || !w.war) return;
-                    if (w.war.end && w.war.winner != null)
-                        w.outcome = w.war.winner === membership.factionId ? 'won' : 'lost';
-                    w.factionId = membership.factionId;
+                    tagWar(w, membership.factionId);
                     wars[id] = w;
                 });
             } catch (e) {
@@ -508,10 +543,12 @@
         // so if any requested code has never been synced, omit `from=` entirely for this call (fetch everything)
         // rather than risk a code being skipped; otherwise use the oldest floor among the
         // requested codes, so no code's window is advanced further than it's actually earned.
+        // Returns undefined when any requested code is unsynced, which tornGet drops from the query
+        // string entirely — the "fetch everything" case.
         const fromFor = codes => {
             const floors = codes.map(c => meta.syncFloor && meta.syncFloor[c]).filter(f => f != null);
-            if (floors.length < codes.length) return '';
-            return `&from=${Math.max(0, Math.min(...floors) - SYNC_FROM_BUFFER)}`;
+            if (floors.length < codes.length) return undefined;
+            return Math.max(0, Math.min(...floors) - SYNC_FROM_BUFFER);
         };
         const advanceFloor = (codes, tsSec) => {
             if (!meta.syncFloor) meta.syncFloor = {};
@@ -522,7 +559,7 @@
         const logReq = codes => ({
             type: 'log',
             logCodes: codes,
-            url: `https://api.torn.com/user/?selections=log&log=${codes.join(',')}&key=${userConfig.apiKey}${fromFor(codes)}&timestamp=${ts}`
+            params: { selections: 'log', log: codes.join(','), from: fromFor(codes), timestamp: ts }
         });
         let reqs = [];
 
@@ -539,7 +576,7 @@
                     // `basic` rides along in the same request — v1 takes comma-separated
                     // selections and still bills it as one call — purely to learn the player's
                     // name for the titles page. Nothing else reads it.
-                    url: `https://api.torn.com/user/?selections=battlestats,basic&key=${userConfig.apiKey}&timestamp=${ts}`
+                    params: { selections: 'battlestats,basic', timestamp: ts }
                 },
                 // Items (energy + happy) have no proxy signal to gate behind, so they're always
                 // fetched. OD has no signal either (it never moves battlestats), so it rides with
@@ -550,37 +587,23 @@
             ];
         }
 
-        incrementApiCount(reqs.length);
-
         // Wars runs in parallel with the main calls for FULL_SYNC — it has its own gate and
         // error handling so a failure cannot affect the main sync result.
         if (mission === 'FULL_SYNC') fetchWars(manualWars);
 
         try {
             // This safely performs the official Torn API request using your provided key.
-            const res = await Promise.all(reqs.map(c => fetch(c.url).then(r => {
-                if (!r.ok) {
-                    const se = new Error(`Torn returned an unexpected error (HTTP ${r.status}).`);
-                    se.isTornError = true;
-                    throw se;
-                }
-                return r.json();
-            }).then(d => ({
-                cfg: c,
-                data: d
-            }))));
-            const errObj = res.find(r => r.data.error);
-            if (errObj) {
-                const te = new Error(tornKeyErrorText(errObj.data));
-                te.isTornError = true;
-                throw te;
-            }
+            const res = await Promise.all(reqs.map(c => tornGet('user/', c.params).then(r => ({ cfg: c, r }))));
+            // Any failed leg fails the whole sync. Request order decides which message surfaces when
+            // more than one leg failed, so it stays deterministic regardless of completion order.
+            const failed = res.find(x => !x.r.ok);
+            if (failed) throw tornError(failed.r);
 
             let logs = {},
                 bs = null;
-            res.forEach(r => {
+            res.forEach(({ cfg, r }) => {
                 if (r.data.log) logs = { ...logs, ...r.data.log };
-                if (r.cfg.type === 'battlestats') bs = r.data;
+                if (cfg.type === 'battlestats') bs = r.data;
             });
             // Name and player_id come from the `basic` selection bundled into the battlestats call
             // above. player_id seeds the deterministic per-user sticker roulette (buildProgressionCache,
@@ -619,16 +642,13 @@
 
             if (needsEnhancers) {
                 try {
-                    incrementApiCount(1);
-                    const eRes = await fetch(
-                        `https://api.torn.com/user/?selections=log&log=${STAT_ENHANCER_PARAM}&key=${userConfig.apiKey}${fromFor(STAT_LOGS)}&timestamp=${Date.now()}`
-                    );
-                    if (eRes.ok) {
-                        const eData = await eRes.json();
-                        if (!eData.error) {
-                            advanceFloor(STAT_LOGS, tsSec);
-                            await DataController.processDataPayload(eData.log || {}, null, { silent });
-                        }
+                    // Same request shape as any other log call, but with its own cache-buster: this
+                    // fires seconds after `ts` was captured, past the point where reusing it could
+                    // land on Torn's ~29s cached copy of an earlier request.
+                    const r = await tornGet('user/', { ...logReq(STAT_LOGS).params, timestamp: Date.now() });
+                    if (r.ok) {
+                        advanceFloor(STAT_LOGS, tsSec);
+                        await DataController.processDataPayload(r.data.log || {}, null, { silent });
                     }
                 } catch (e) { Log.warn('Stat enhancer fetch failed', e); }
             }
@@ -835,8 +855,7 @@
         if (_historyCache && _historyCache.meta) {
             meta = _historyCache.meta;
         } else {
-            const stored = await DBManager.getStorage();
-            meta = (stored && stored.meta) || { baselineBreakdown: { ...ZERO_BREAKDOWN } };
+            meta = (await DBManager.getStorage() || sanitizeStorageRecord(null)).meta;
         }
         meta.backfill = ds;
         await DBManager.saveDays(meta, []);
@@ -847,16 +866,10 @@
     // Does NOT touch the in-memory cache or render — that is deferred to finalizeBackfill so the UI
     // is only rebuilt once the scan stops. Returns the persisted storage record.
     async function _persistBackfillSeries(ds, collected) {
-        let stored = await DBManager.getStorage();
-        if (!stored) stored = {
-            meta: {
-                baselineBreakdown: {
-                    ...ZERO_BREAKDOWN
-                }
-            },
-            series: []
-        };
-        if (!Array.isArray(stored.series)) stored.series = [];
+        // getStorage() already returns a sanitized record (meta populated, series an array) for an
+        // empty store — it only yields null when the DB itself failed to open, which is the single
+        // case the fallback covers. sanitizeStorageRecord(null) is that same canonical empty record.
+        const stored = await DBManager.getStorage() || sanitizeStorageRecord(null);
 
         if (collected && collected.length > 0) {
             const seenGym = new Set(stored.series.filter(e => e.type !== 'item').map(e => `${e.ts}_${e.stat}_${e.after}`));
@@ -918,10 +931,10 @@
         return stored;
     }
 
-    // Final save for a Deep Log Scan: persists any remaining rows, then rebuilds the in-memory
-    // history cache and invalidates derived caches so the UI reflects the freshly scanned history.
-    async function finalizeBackfill(ds, collected) {
-        const stored = await _persistBackfillSeries(ds, collected);
+    // Replaces the in-memory history cache from a just-persisted storage record and drops every
+    // derived cache. The one way a backfill write becomes visible to the UI — both the normal
+    // finalize path and the cancel-discard path end here.
+    function _hydrateFromStored(stored) {
         const rebuilt = DataController._rebuildFromSeries(stored.series || [], stored.meta.baselineBreakdown || ZERO_BREAKDOWN);
         _historyCache = {
             meta: stored.meta,
@@ -929,6 +942,12 @@
             today: rebuilt.today
         };
         DataController.invalidate();
+    }
+
+    // Final save for a Deep Log Scan: persists any remaining rows, then rebuilds the in-memory
+    // history cache and invalidates derived caches so the UI reflects the freshly scanned history.
+    async function finalizeBackfill(ds, collected) {
+        _hydrateFromStored(await _persistBackfillSeries(ds, collected));
     }
 
     // Called when you dismiss the 'Scan Complete' confirmation after a Deep Log Scan.
@@ -940,8 +959,7 @@
         ds.acknowledged = true;
         await finalizeBackfill(ds, []);
         window.dispatchEvent(new CustomEvent('bbgl:dataUpdated', { detail: { silent: true } }));
-        renderBackfillButton();
-        renderScanOverlay();
+        renderScanUI();
     }
 
     // Called by 'Proceed to partial logs' on a paused/error/cap masked stop-state: the scanned rows
@@ -958,8 +976,7 @@
         } catch (e) {
             Log.warn('Backfill proceed save failed', e);
         }
-        renderBackfillButton();
-        renderScanOverlay();
+        renderScanUI();
     }
 
     // Cancel-discard: throw away the reconstructed pre-install history but keep everything tracked
@@ -968,10 +985,7 @@
     // rowsUsed and cooldownUntil are deliberately preserved so a cancel-then-restart cannot dodge
     // Torn's rolling budget. Frontiers are reseeded to "now" so a future scan re-reconstructs cleanly.
     async function discardBackfillData(ds) {
-        let stored = await DBManager.getStorage();
-        if (!stored) stored = { meta: { baselineBreakdown: { ...ZERO_BREAKDOWN } }, series: [] };
-        if (!Array.isArray(stored.series)) stored.series = [];
-        if (!stored.meta) stored.meta = { baselineBreakdown: { ...ZERO_BREAKDOWN } };
+        const stored = await DBManager.getStorage() || sanitizeStorageRecord(null);
 
         // Install cutoff (seconds): rewardStartDate is the fixed install anchor; fall back to
         // privacyAgreed, then to now (keeps nothing older — still safe, never over-keeps).
@@ -987,10 +1001,8 @@
         // Restore the install-time baseline from live battlestats minus post-install live gains.
         let curStats = null;
         try {
-            const res = await fetch(`https://api.torn.com/user/?selections=battlestats&key=${userConfig.apiKey}&timestamp=${Date.now()}`);
-            incrementApiCount(1);
-            const data = await res.json();
-            if (!data.error) curStats = data;
+            const r = await tornGet('user/', { selections: 'battlestats', timestamp: Date.now() });
+            if (r.ok) curStats = r.data;
         } catch (e) {
             Log.warn('Discard baseline battlestats fetch failed', e);
         }
@@ -1025,21 +1037,29 @@
         stored.meta.backfill = ds;
 
         await DBManager.setStorage(stored);
-
-        const rebuilt = DataController._rebuildFromSeries(stored.series || [], stored.meta.baselineBreakdown || ZERO_BREAKDOWN);
-        _historyCache = { meta: stored.meta, history: rebuilt.history, today: rebuilt.today };
-        DataController.invalidate();
+        _hydrateFromStored(stored);
     }
 
-    // One backward log page for a group, with a changing &timestamp cache-buster. Torn's ~29s API
-    // cache is NOT keyed on `to`, so without this a rapid sequence of paged calls can return a stale
-    // (even empty) earlier response; the buster guarantees each page is fresh.
-    async function fetchBackfillPage(param, cursor) {
-        const url = `https://api.torn.com/user/?selections=log&log=${param}&key=${userConfig.apiKey}&to=${Math.floor(cursor)}&timestamp=${Date.now()}`;
-        incrementApiCount(1);
-        const resp = await fetch(url);
-        if (!resp.ok) throw new Error(resp.status);
-        return resp.json();
+    // One backward log page for a scan group, plus the stop/continue classification every caller
+    // needs. Returns { log, rowKeys } on success, or { halt: true } when the scan should stop softly:
+    // a network/HTTP failure, or Torn error code 14/5. Any other API error is thrown as fatal and
+    // lands in the scan loop's own catch.
+    //
+    // The &timestamp cache-buster is required, not cosmetic: Torn's ~29s response cache is NOT keyed
+    // on `to`, so without it a rapid sequence of paged calls can return a stale (even empty) earlier
+    // response — which the empty-page path would then misread as "this group is complete".
+    async function _scanPage(param, cursor) {
+        const r = await tornGet('user/', { selections: 'log', log: param, to: Math.floor(cursor), timestamp: Date.now() });
+        if (r.netErr || r.http) {
+            Log.warn('Deep scan page fetch failed', r.netErr || `HTTP ${r.http}`);
+            return { halt: true };
+        }
+        if (r.apiError) {
+            if (r.apiError.code === 14 || r.apiError.code === 5) return { halt: true };
+            throw new Error(r.apiError.error);
+        }
+        const log = r.data.log || {};
+        return { log, rowKeys: Object.keys(log) };
     }
 
     // Deep Log Scan: uses your API key to page back through your full training history on Torn's
@@ -1064,8 +1084,7 @@
         // and the cooldown so this run starts with a full budget.
         if (ds.cooldownUntil) {
             if (now < ds.cooldownUntil) {
-                renderBackfillButton();
-                renderScanOverlay();
+                renderScanUI();
                 return;
             }
             ds.cooldownUntil = 0;
@@ -1077,8 +1096,7 @@
         const freshStored = await DBManager.getStorage();
         const liveLock = freshStored && freshStored.meta && freshStored.meta.backfill && freshStored.meta.backfill.lock;
         if (liveLock && (Date.now() - liveLock) < BACKFILL.LOCK_STALE_MS) {
-            renderBackfillButton();
-            renderScanOverlay();
+            renderScanUI();
             return;
         }
 
@@ -1091,8 +1109,7 @@
             ds.acknowledged = false;
             ds.cooldownUntil = Date.now() + BACKFILL.COOLDOWN_MS;
             await persistBackfillState(ds);
-            renderBackfillButton();
-            renderScanOverlay();
+            renderScanUI();
             return;
         }
 
@@ -1161,59 +1178,36 @@
                 const fr = frontiers[pick];
                 const param = BACKFILL_GROUPS[pick];
 
-                let data;
-                try {
-                    data = await fetchBackfillPage(param, fr.cursor);
-                } catch (netErr) {
-                    Log.warn('Deep scan network error', netErr);
+                let page = await _scanPage(param, fr.cursor);
+                if (page.halt) {
                     stoppedEarly = true;
                     break;
                 }
-                if (data.error) {
-                    if (data.error.code === 14 || data.error.code === 5) {
-                        stoppedEarly = true;
-                        break;
-                    }
-                    throw new Error(data.error.error);
-                }
 
-                let rowKeys = data.log ? Object.keys(data.log) : [];
-                if (rowKeys.length === 0) {
+                if (page.rowKeys.length === 0) {
                     // An empty page only means "nothing retrievable past here" if it is real. Confirm
                     // with one cache-busted retry before trusting it, so a stale/empty cache hit can't
                     // falsely declare this group complete.
                     await new Promise(r => setTimeout(r, BACKFILL.THROTTLE_MS));
-                    let confirm;
-                    try {
-                        confirm = await fetchBackfillPage(param, fr.cursor);
-                    } catch (netErr) {
-                        Log.warn('Deep scan confirm network error', netErr);
+                    const confirm = await _scanPage(param, fr.cursor);
+                    if (confirm.halt) {
                         stoppedEarly = true;
                         break;
                     }
-                    if (confirm.error) {
-                        if (confirm.error.code === 14 || confirm.error.code === 5) {
-                            stoppedEarly = true;
-                            break;
-                        }
-                        throw new Error(confirm.error.error);
-                    }
-                    const cKeys = confirm.log ? Object.keys(confirm.log) : [];
-                    if (cKeys.length === 0) {
+                    if (confirm.rowKeys.length === 0) {
                         fr.complete = true;
                         continue;
                     }
-                    data = confirm;
-                    rowKeys = cKeys;
+                    page = confirm;
                 }
 
-                pending.push(...normalizeApiLogs(data.log));
-                sessionRows += rowKeys.length;
-                ds.rowsUsed = (ds.rowsUsed || 0) + rowKeys.length;
+                pending.push(...normalizeApiLogs(page.log));
+                sessionRows += page.rowKeys.length;
+                ds.rowsUsed = (ds.rowsUsed || 0) + page.rowKeys.length;
 
                 let oldestTs = fr.cursor;
-                for (const k of rowKeys) {
-                    const t = data.log[k].timestamp;
+                for (const k of page.rowKeys) {
+                    const t = page.log[k].timestamp;
                     if (t < oldestTs) oldestTs = t;
                 }
                 fr.cursor = oldestTs - 1;
@@ -1271,8 +1265,7 @@
                 Log.error('Backfill discard failed', e);
             }
             window.dispatchEvent(new CustomEvent('bbgl:dataUpdated', { detail: { silent: true } }));
-            renderBackfillButton();
-            renderScanOverlay();
+            renderScanUI();
             return;
         }
 
@@ -1324,8 +1317,7 @@
         }
 
         window.dispatchEvent(new CustomEvent('bbgl:dataUpdated', { detail: { silent: true } }));
-        renderBackfillButton();
-        renderScanOverlay();
+        renderScanUI();
     }
 
     // Crash/refresh recovery: on boot, a backfill heartbeat lock that has gone stale means a scan was

@@ -1240,6 +1240,14 @@
         };
     }
 
+    // The two surfaces that reflect backfill state (Settings button + masked overlay) are never
+    // meaningfully refreshed apart — every call site wants both. Both are idempotent, so this is
+    // safe to call from any exit path, cross-tab handler, or render pass.
+    function renderScanUI() {
+        renderBackfillButton();
+        renderScanOverlay();
+    }
+
     // Idle/syncing/done are separate spans inside the button (see buildResyncBtn) rather than a
     // literal text swap, since the idle label itself has to keep responding to compact/expanded
     // mode via CSS (view-std/view-exp) even while this function is driving it.
@@ -1609,8 +1617,7 @@
         if (iF) iF.onchange = (e) => importData(e.target.files[0]);
         // The backfill button's click behavior is state-dependent (open modal / resume / acknowledge),
         // so renderBackfillButton owns wiring its onclick for the current state.
-        renderBackfillButton();
-        renderScanOverlay();
+        renderScanUI();
         const clb = get('clear-btn');
         if (clb) clb.onclick = function() {
             this.blur();
@@ -1923,8 +1930,7 @@
                 // If a previous scan was interrupted (crash/refresh/close), its heartbeat lock is now
                 // stale; release it so the Resume button works again without a 24h lockout.
                 await recoverInterruptedBackfill();
-                renderBackfillButton();
-                renderScanOverlay();
+                renderScanUI();
                 if (loaded && ((_historyCache.history.length > 0) || (_historyCache.meta && _historyCache.meta.logStartDate)) && !localStorage.getItem('bbgl_initialized') && !sessionStorage.getItem('bbgl_dev_onboarding')) localStorage.setItem('bbgl_initialized', '1');
             } catch (e) {
                 Log.warn('IndexedDB boot failed, continuing with empty state', e);
@@ -1948,8 +1954,7 @@
             // screen (e.g. the conditional background heartbeat firing while collapsed/closed).
             // Mirrors the same guard the cross-tab sync handler already uses.
             if (dom.panel && dom.panel.style.display !== 'none') renderPanelContent();
-            renderBackfillButton();
-            renderScanOverlay();
+            renderScanUI();
         });
         updateLevelBar(); // initialize _lastLevelExp before first interaction
         let _domRaf = null;

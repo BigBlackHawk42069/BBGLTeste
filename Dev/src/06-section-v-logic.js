@@ -37,6 +37,16 @@ function findHappyJumps(seriesArr) {
     });
     return jumps;
 }
+
+// Identity key for a series entry, used by the incremental/full reconcilers to drop a stored row
+// once the freshly-fetched API row that supersedes it is about to take its place. Must be built
+// from fields that survive an export/import round trip: Torn's own log `id` does not (dropped on
+// export, see _applyLogToState's item branch) — an id-keyed item entry would never match its
+// re-synced counterpart post-import, leaving both in the series as duplicates. (ts, logId) is the
+// same natural key _applyLogToState and _persistBackfillSeries already dedup items on.
+function seriesDedupKey(e) {
+    return e.type === 'item' ? `item_${e.ts}_${e.logId}` : `${e.ts}_${e.stat}_${e.after}`;
+}
 const DataController = {
     _cache: {
         timeline: null,
@@ -890,9 +900,8 @@ const DataController = {
                     after: r2(l.after)
                 };
             });
-            const getSetKey = e => e.type === 'item' ? `item_${e.id}` : `${e.ts}_${e.stat}_${e.after}`;
-            const apiTsStatSet = new Set(apiEntries.map(getSetKey));
-            const kept = stored.series.filter(e => e.ts < minApiTs || e.ts > maxApiTs || !apiTsStatSet.has(getSetKey(e)));
+            const apiTsStatSet = new Set(apiEntries.map(seriesDedupKey));
+            const kept = stored.series.filter(e => e.ts < minApiTs || e.ts > maxApiTs || !apiTsStatSet.has(seriesDedupKey(e)));
             stored.series = [...kept, ...apiEntries].sort((a, b) => a.ts - b.ts);
         }
         stored.meta = {
@@ -931,8 +940,7 @@ const DataController = {
                 after: r2(l.after)
             };
         });
-        const getSetKey = e => e.type === 'item' ? `item_${e.id}` : `${e.ts}_${e.stat}_${e.after}`;
-        const apiTsStatSet = new Set(apiEntries.map(getSetKey));
+        const apiTsStatSet = new Set(apiEntries.map(seriesDedupKey));
         const earliestDay = Formatter.dateLogical(minApiTs * 1000);
 
         const allDays = [...(s.history || [])];
@@ -947,7 +955,7 @@ const DataController = {
         affected.forEach(d => {
             if (Array.isArray(d.series)) {
                 d.series.forEach(e => {
-                    if (e.ts < minApiTs || e.ts > maxApiTs || !apiTsStatSet.has(getSetKey(e))) keptAffected.push(e);
+                    if (e.ts < minApiTs || e.ts > maxApiTs || !apiTsStatSet.has(seriesDedupKey(e))) keptAffected.push(e);
                 });
             }
         });
@@ -3235,8 +3243,10 @@ async function exportData() {
     });
     const stickers = exportStorage?.meta?.stickers;
     if (exportStorage.meta) delete exportStorage.meta.stickers;
-    // syncFloor is device-local live-sync state; dropping it means a fresh import does one
-    // unbounded (self-healing) reconcile, then re-anchors from the imported data.
+    // syncFloor is device-local live-sync state (stale/wrong on another device or session), so it
+    // is never carried in the export itself — importData() re-seeds it from the imported series'
+    // own newest entry instead, which is what actually anchors the first post-import sync at the
+    // right seam (06-section-v-logic.js, importData).
     if (exportStorage.meta) delete exportStorage.meta.syncFloor;
     let rankedWars;
     try {
@@ -3355,6 +3365,11 @@ function importData(f, onDone, opts = {}) {
                         delete e.loggedAt;
                         return e;
                     });
+                    // sanitizeStorageRecord() above ran before this flatten, so its entry pass only
+                    // saw day-group wrappers, never the entries inside them. Re-run it now that the
+                    // real entries exist — this is what restores `type: 'gym'` on the gym rows the
+                    // export format leaves untagged, without which every imported day scores 0 EXP.
+                    j.storage.series.forEach(sanitizeEntry);
                 }
                 const importedMeta = j.storage.meta || {};
                 let stickers = importedMeta.stickers || j._s;
@@ -3365,6 +3380,23 @@ function importData(f, onDone, opts = {}) {
                 }
                 if (!stickers) stickers = {};
                 j.storage.meta.stickers = stickers;
+                // syncFloor is dropped on export (device-local live-sync state, stale on another
+                // device/session) — but leaving it unset makes the first post-import sync omit
+                // `from=` entirely, and Torn's log endpoint without `from=` is NOT a full-history
+                // dump (that's exactly what the Backfill engine exists to page around); it's a
+                // recent, effectively row-capped slice. Anything between the import's last entry
+                // and that slice's start would silently never get fetched by anything. Anchor every
+                // live-sync code (BACKFILL_GROUP_OF's key set — every code TRAIN_CODES/ITEM_CODES/
+                // TRAIN_OD_CODES/STAT_LOGS can ever request) to the import's own newest entry, so the
+                // next sync's `from=` picks up exactly at the seam instead of guessing wrong or
+                // skipping it. Stored raw (no buffer subtracted here) to match advanceFloor's own
+                // convention — fromFor() is what always backs off by SYNC_FROM_BUFFER at read time,
+                // regardless of how a floor was written; subtracting it here too would just double it.
+                const lastTs = j.storage.series.reduce((max, s) => s.ts > max ? s.ts : max, 0);
+                if (lastTs > 0) {
+                    j.storage.meta.syncFloor = {};
+                    Object.keys(BACKFILL_GROUP_OF).forEach(c => { j.storage.meta.syncFloor[c] = lastTs; });
+                }
                 await DBManager.setStorage(j.storage);
                 const rebuilt = DataController._rebuildFromSeries(j.storage.series || [], (j.storage.meta && j.storage.meta.baselineBreakdown) || ZERO_BREAKDOWN);
                 _historyCache = {

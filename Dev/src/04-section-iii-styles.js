@@ -847,7 +847,7 @@
                         overflow: visible !important;
                         align-content: flex-start;
                         grid-template-rows: 1fr;
-                        padding-top: clamp(26px, calc(32px - 6px * var(--bbgl-page-t)), 32px) !important;
+                        padding-top: clamp(12px, calc(18px - 6px * var(--bbgl-page-t)), 18px) !important;
                         padding-bottom: clamp(0px, calc(0px + 15px * var(--bbgl-page-t)), 15px);
                         padding-left: 4px !important;
                         padding-right: 4px !important;
