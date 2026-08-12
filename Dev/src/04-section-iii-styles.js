@@ -489,12 +489,12 @@
                         margin: 8px 10px 0;
                     }
 
-                    [class*="area-desktop___"][class*="active___"] [class*="defaultIcon___"] svg,
-                    [class*="area-mobile___"][class*="active___"] [class*="defaultIcon___"] svg {
-                        fill: #fff;
-                        stroke: #fff;
-                        filter: drop-shadow(0 0 4px rgba(255, 255, 255, .55));
-                    }
+                    /* No active-state rule for our sidebar icon. Torn no longer lights its own
+                       nav icons white on the active page, so BBGL deliberately doesn't either —
+                       the selected state comes entirely from Torn's native bar/background
+                       highlight, which syncSidebarState() reapplies by copying Torn's own hashed
+                       active class onto our entry. Only the purple update-notification styling
+                       below is ours. */
 
                     .bbgl-sb-notif [class*="desktopLink___"],
                     .bbgl-sb-notif [class*="mobileLink___"]:not(.sidebarMobileLink) {

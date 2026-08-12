@@ -1350,50 +1350,82 @@
                 c.removeEventListener('touchstart', graphState.handlers.start);
                 window.removeEventListener('mouseup', graphState.handlers.end);
                 window.removeEventListener('touchend', graphState.handlers.end);
-                c.removeEventListener('mouseleave', graphState.handlers.end);
+                // mouseleave is bound to the clear-highlight handler, not the drag-end one, so
+                // detaching `end` here never actually removed it — `c` is the persistent
+                // #bbgl-graph-container, so every redraw stacked another live mouseleave listener
+                // on it, each doing its own DOM sweep. Detach what was actually attached.
+                c.removeEventListener('mouseleave', graphState.handlers.leave);
             }
-            const gp = (e) => {
+            // A frame queued against the previous draw's point cache would highlight nodes that
+            // are no longer in the tree.
+            if (graphState.scrubRaf) {
+                cancelAnimationFrame(graphState.scrubRaf);
+                graphState.scrubRaf = null;
+            }
+            // Point-group geometry, snapshotted once per draw instead of re-queried per pointer
+            // event. _setupScrubbing runs at the tail of every draw() (the DOM is fully built by
+            // then), and a point group is emitted per data point PER stat series — an ALL-range
+            // view on a mature log is thousands of nodes, so the old per-event
+            // querySelectorAll + two parseFloat-per-node was the single hottest loop in the script.
+            const pts = [];
+            c.querySelectorAll('.g-point-group').forEach(g => {
+                pts.push({
+                    g,
+                    x: parseFloat(g.getAttribute('data-cx')),
+                    y: parseFloat(g.getAttribute('data-cy')),
+                    stat: g.getAttribute('data-stat')
+                });
+            });
+            const gpFromClient = (cx, cy) => {
                 const r = s.getBoundingClientRect(),
                     vb = s.viewBox.baseVal,
                     sx = vb.width / r.width,
                     sy = vb.height / r.height;
-                let cx = e.clientX,
-                    cy = e.clientY;
-                if (e.type.includes('touch') && e.touches.length > 0) {
-                    cx = e.touches[0].clientX;
-                    cy = e.touches[0].clientY;
-                }
                 return {
                     x: (cx - r.left) * sx - m.left,
                     y: (cy - r.top) * sy - m.top
                 };
             };
+            const clientXY = (e) => (e.type.includes('touch') && e.touches.length > 0) ? [e.touches[0].clientX, e.touches[0].clientY] : [e.clientX, e.clientY];
+            const gp = (e) => {
+                const [cx, cy] = clientXY(e);
+                return gpFromClient(cx, cy);
+            };
             const f = (x, y, st = null) => {
-                const sl = st ? `.g-point-group[data-stat="${st}"]` : '.g-point-group',
-                    grs = c.querySelectorAll(sl);
                 let min = Infinity,
                     cl = null;
-                grs.forEach(g => {
-                    const gx = parseFloat(g.getAttribute('data-cx')),
-                        gy = parseFloat(g.getAttribute('data-cy')),
-                        d = Math.sqrt(Math.pow(gx - x, 2) + (st ? 0 : Math.pow(gy - y, 2)));
+                for (const p of pts) {
+                    if (st && p.stat !== st) continue;
+                    const dx = p.x - x,
+                        dy = p.y - y,
+                        d = Math.sqrt(dx * dx + (st ? 0 : dy * dy));
                     if (d < min) {
                         min = d;
-                        cl = g;
+                        cl = p.g;
                     }
-                });
+                }
                 return {
                     g: cl,
                     d: min
                 };
             };
+            // Active group tracked locally rather than re-found via querySelectorAll('.active')
+            // on every highlight. The identity check also stops a scrub that stays within one
+            // point from rebuilding the tooltip every frame — show() writes innerHTML and then
+            // reads getBoundingClientRect, so each redundant call was a write/read layout thrash.
+            let activeGrp = null;
             const uh = (g) => {
-                c.querySelectorAll('.g-point-group.active').forEach(z => z.classList.remove('active'));
+                if (activeGrp === g) return;
+                if (activeGrp) activeGrp.classList.remove('active');
+                activeGrp = g;
                 g.classList.add('active');
                 TooltipController.show(g.getAttribute('data-tooltip-html'), g.getBoundingClientRect());
             };
             const ch = () => {
-                c.querySelectorAll('.g-point-group.active').forEach(z => z.classList.remove('active'));
+                if (activeGrp) {
+                    activeGrp.classList.remove('active');
+                    activeGrp = null;
+                }
                 TooltipController.hide();
             };
             const os = (e) => {
@@ -1407,17 +1439,33 @@
                     uh(cl.g);
                 }
             };
-            const om = (e) => {
-                if (e.type === 'touchmove') e.preventDefault();
-                const p = gp(e);
+            // Coalesced to one hit-test per frame. The global tooltip mousemove handler
+            // (10-section-ix-init.js) has always been rAF-throttled; this one wasn't, so a
+            // 120Hz pointer ran the full getBoundingClientRect + nearest-point search several
+            // times per painted frame with nothing to show for the extra passes. preventDefault
+            // still fires synchronously on the real event — deferring it would be too late to
+            // stop the touch scroll.
+            let scrubX = 0,
+                scrubY = 0;
+            const omFrame = () => {
+                graphState.scrubRaf = null;
+                const p = gpFromClient(scrubX, scrubY);
                 if (graphState.isDragging && graphState.lockedStat) {
-                    const m = f(p.x, p.y, graphState.lockedStat);
-                    if (m.g) uh(m.g);
+                    const hit = f(p.x, p.y, graphState.lockedStat);
+                    if (hit.g) uh(hit.g);
                 } else {
                     const cl = f(p.x, p.y);
                     if (cl.g && cl.d < 30) uh(cl.g);
                     else ch();
                 }
+            };
+            const om = (e) => {
+                if (e.type === 'touchmove') e.preventDefault();
+                const [cx, cy] = clientXY(e);
+                scrubX = cx;
+                scrubY = cy;
+                if (graphState.scrubRaf) return;
+                graphState.scrubRaf = requestAnimationFrame(omFrame);
             };
             const oe = () => {
                 graphState.isDragging = false;
@@ -1426,7 +1474,8 @@
             graphState.handlers = {
                 start: os,
                 scrub: om,
-                end: oe
+                end: oe,
+                leave: ch
             };
             c.addEventListener('mousedown', os);
             c.addEventListener('mousemove', om);

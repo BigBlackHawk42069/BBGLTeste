@@ -318,6 +318,17 @@
         c.style.setProperty('--total-rows', 6);
         c.style.setProperty('--bg-url', `url(${CAL_IMG_BASE}cal-grid-futr.jpg)`);
         const todayStr = Formatter.dateLogical();
+        // Per-render constants that renderCell() used to recompute for every one of the 42 cells:
+        // dateLogical() allocates a Date and runs three TimeManager calls, getWarMarkers()'s memo
+        // check costs a localStorage read plus a getActiveHistory() before it can even return the
+        // cached map, and firstDate only ever needed the timeline's first entry. None of them can
+        // change part-way through a synchronous render.
+        const _tl = DataController.getTimeline();
+        const cellCtx = {
+            today: todayStr,
+            warMarkers: getWarMarkers(),
+            firstDate: _tl.length > 0 ? _tl[0].date : (s ? s.today.date : null)
+        };
         const frag = document.createDocumentFragment();
         let batch = [],
             ridx = 0;
@@ -338,7 +349,7 @@
                 if (isArch) rd.style.setProperty('--bg-url', `url(${CAL_IMG_BASE}cal-grid-past.jpg)`);
                 let wdb = [];
                 batch.forEach(function tickWeekCell(i, cIdx) {
-                    renderCell(rd, i.y, i.m, i.d, i.g, ridx, cIdx);
+                    renderCell(rd, i.y, i.m, i.d, i.g, ridx, cIdx, cellCtx);
                     wdb.push({
                         date: Formatter.dateISO(i.y, i.m, i.d),
                         data: i.p
@@ -416,7 +427,9 @@
         return map;
     }
 
-    function renderCell(cont, y, m, d, g, rIdx, cIdx) {
+    // `ctx` carries the per-render constants hoisted out of this function by renderPanelContent()
+    // (see there) — single call site, so the extra parameter stays contained.
+    function renderCell(cont, y, m, d, g, rIdx, cIdx, ctx) {
         const ds = Formatter.dateISO(y, m, d),
             sl = DataController.getSlice('DAY', ds),
             isFlipped = cont.classList.contains('bbgl-row-archived'),
@@ -441,7 +454,7 @@
         cell.addEventListener('mouseleave', () => {
             if (!cell.classList.contains('is-viewing')) cell.classList.remove('shimmer-active');
         });
-        const isToday = (ds === Formatter.dateLogical());
+        const isToday = (ds === ctx.today);
         if (isFlipped && sl.meta.tier > 0) {
             let url = `url(${CAL_IMG_BASE}cal-grid-grn.jpg)`;
             if (sl.meta.tier === 2) url = `url(${CAL_IMG_BASE}cal-grid-gold.jpg)`;
@@ -490,7 +503,7 @@
         ns.innerText = d;
         cell.appendChild(ns);
         if (isFlipped) {
-            const wm = getWarMarkers()[ds];
+            const wm = ctx.warMarkers[ds];
             const eventImgs = [];
             if ((sl.lsdODs || 0) > 0) eventImgs.push(CAL_IMG_BASE + 'lsd-od.png');
             if ((sl.xanaxODs || 0) > 0) eventImgs.push(CAL_IMG_BASE + 'xan-od.png');
@@ -559,12 +572,16 @@
             cell.classList.add('is-viewing');
             if (buildShine) buildShine();
         }
-        const h = getActiveHistory();
-        const tl = DataController.getTimeline();
-        const firstDate = tl.length > 0 ? tl[0].date : (h ? h.today.date : null);
-        const isInteractive = !sl.meta.isGap || (firstDate && ds >= firstDate && ds <= Formatter.dateLogical());
-        if (isInteractive) cell.setAttribute('data-tooltip-html', generateRichTooltip(sl));
-        else cell.setAttribute('data-tooltip', TOOLTIPS.CELL_DATE(ds));
+        const isInteractive = !sl.meta.isGap || (ctx.firstDate && ds >= ctx.firstDate && ds <= ctx.today);
+        if (isInteractive) {
+            // Deferred until first hover/scrub. generateRichTooltip builds a ~1.5KB inline-styled
+            // grid, and eagerly doing that for all 42 cells on every render produced ~60KB of
+            // attribute markup to display one cell's worth at a time. The empty placeholder keeps
+            // TooltipController.resolve()'s [data-tooltip-html] match intact; the thunk is
+            // materialized and cached by TooltipController.htmlFor().
+            cell.setAttribute('data-tooltip-html', '');
+            cell._bbglTip = () => generateRichTooltip(sl);
+        } else cell.setAttribute('data-tooltip', TOOLTIPS.CELL_DATE(ds));
         cell.onclick = () => {
             if (isToday) closeHistory();
             else if (isInteractive) openHistory(sl, ds);
@@ -1340,20 +1357,34 @@
     function syncSidebarState() {
         const a = window.location.hash.includes('gymlog'),
             ids = [SB_DESKTOP.id, SB_MOBILE.id, SB_FLYOUT.id];
-        // Our own CSS lights the icon via the substring selector [class*="active___"], so the
-        // literal sentinel below guarantees the SVG glows even when nothing native is active
-        // (on /calendar.php Torn marks no nav item active, which is why the old hash-borrow
-        // approach left the button dark).
+        // Inert marker. This used to be what drove our own white icon glow via a
+        // [class*="active___"] rule, but Torn no longer lights its nav icons on the active page
+        // and BBGL follows suit, so nothing styles it any more — no CSS matches it. It's kept
+        // because it anchors the add/strip symmetry below (the else-branch clears every
+        // active___* class off our entries regardless of origin) and gives a stable hook if the
+        // active state ever needs its own styling again. The visible selected state now comes
+        // purely from Torn's own class, learned just below.
         const BBGL_ACTIVE = 'active___bbgl';
-        // Torn's native bar/background highlight, however, is keyed on its exact hashed active
+        // Torn's native bar/background highlight is keyed on its exact hashed active
         // class — one hash per build, shared across every sidebar entry. Opportunistically learn
-        // that hash from any genuinely-active nav item while browsing and cache it, so we can also
-        // reapply it on the gym-log page and get the full native bar (not just the icon). If it's
-        // never been seen this session we simply fall back to the icon-only glow — no regression.
-        const probe = document.querySelector('[id^="nav-"][class*="active___"]');
-        if (probe && !ids.includes(probe.id)) {
-            const real = Array.from(probe.classList).find(c => c.startsWith('active___') && c !== BBGL_ACTIVE);
-            if (real) runtime._sidebarActiveCls = real;
+        // that hash from any genuinely-active nav item while browsing and cache it, so we can
+        // reapply it on the gym-log page and get the native bar. This is now the only thing that
+        // marks our entry as selected, so if it has never been seen this session (a direct load
+        // straight onto /calendar.php#gymlog, where Torn marks nothing active) the entry simply
+        // shows no selected state until the user visits a page that has one.
+        //
+        // Learn once and stop. That probe is the only unanchored selector on this path (no id to
+        // bucket on, so it walks the document) and syncSidebarState runs on every DOM-mutation
+        // batch, but the hash is baked into Torn's build and can't change while the page is loaded
+        // — once we have it there is nothing left to discover. If Torn ships a new build
+        // mid-session the cached hash goes stale and the native bar stops applying on our page
+        // until reload: cosmetic, and self-healing on refresh.
+        if (!runtime._sidebarActiveCls) {
+            const probe = document.querySelector('[id^="nav-"][class*="active___"]');
+            if (probe && !ids.includes(probe.id)) {
+                const real = Array.from(probe.classList).find(c => c.startsWith('active___') && c !== BBGL_ACTIVE);
+                if (real) runtime._sidebarActiveCls = real;
+            }
         }
         const realActive = runtime._sidebarActiveCls;
         if (a) {
@@ -1363,12 +1394,26 @@
                 if (!c.classList.contains(BBGL_ACTIVE)) c.classList.add(BBGL_ACTIVE);
                 if (realActive && !c.classList.contains(realActive)) c.classList.add(realActive);
             });
-            document.querySelectorAll('[id^="nav-"]').forEach(navEl => {
-                if (ids.includes(navEl.id)) return;
-                [navEl, ...navEl.querySelectorAll('[class*="active___"]')].forEach(el => {
-                    Array.from(el.classList).filter(cls => cls.startsWith('active___')).forEach(cls => el.classList.remove(cls));
+            const strip = el => Array.from(el.classList).filter(cls => cls.startsWith('active___')).forEach(cls => el.classList.remove(cls));
+            if (realActive) {
+                // Same scope as the fallback below (nav entries and their descendants, never our
+                // own), but driven off the class bucket instead of two attribute-substring scans:
+                // selectors match right-to-left, so this starts from the handful of elements that
+                // actually carry Torn's active class rather than enumerating every [id^="nav-"]
+                // and re-scanning each one's subtree. Runs on every mutation batch while the gym
+                // log page is open, so the difference compounds.
+                const ownSel = ids.map(i => '#' + i).join(',');
+                document.querySelectorAll(`[id^="nav-"].${realActive}, [id^="nav-"] .${realActive}`).forEach(el => {
+                    if (el.closest(ownSel)) return;
+                    strip(el);
                 });
-            });
+            } else {
+                // Hash not learned yet (nothing has been active this session). One-time path.
+                document.querySelectorAll('[id^="nav-"]').forEach(navEl => {
+                    if (ids.includes(navEl.id)) return;
+                    [navEl, ...navEl.querySelectorAll('[class*="active___"]')].forEach(strip);
+                });
+            }
         } else {
             ids.forEach(id => {
                 const c = document.getElementById(id);
@@ -1397,6 +1442,23 @@
         _topCeilingCache = ceiling;
         _topCeilingTs = Date.now();
         return ceiling;
+    }
+
+    // True if any node in the list is — or contains — one of Torn's open/visible window shells.
+    // Hoisted out of the lifecycle observer's callback so it isn't reallocated every time
+    // attachLayoutObservers() re-arms, and so the two node lists can be walked in place instead of
+    // being spread into a throwaway array per mutation record.
+    function _containsLayoutWindow(nodeList) {
+        if (!nodeList || !nodeList.length) return false;
+        for (const n of nodeList) {
+            if (!n || n.nodeType !== 1) continue;
+            const cn = n.className || '';
+            if (typeof cn === 'string' && (cn.includes('visible___') || cn.includes('opened___'))) return true;
+            // The subtree probe is the expensive half of this scan, and a node with no element
+            // children cannot possibly contain a match.
+            if (n.firstElementChild && n.querySelector('[class*="visible___"], [class*="opened___"]')) return true;
+        }
+        return false;
     }
 
     function _getLayoutWindows() {
@@ -1429,6 +1491,17 @@
         next.forEach(w => prev.add(w));
     }
 
+    // Applies (or releases, with `offset` = '') the chat-window shove. Shared by the closed-panel
+    // fast path and the full pass below so the release stays byte-identical to what the full pass
+    // would have written.
+    function _applyChatShove(shoveTargets, offset) {
+        shoveTargets.forEach(t => {
+            t.style.right = offset;
+            const _tr = t.style.transition || '';
+            if (!_tr.includes('right')) t.style.transition = _tr ? _tr + ', right 0.2s ease-out' : 'right 0.2s ease-out';
+        });
+    }
+
     function handleLayout() {
         const p = dom.panel,
             tb = dom.gymTab,
@@ -1437,6 +1510,23 @@
             if (tb) tb.classList.toggle('bbgl-tab-active', !!isPanelOpen);
             return;
         }
+        // Closed panel — the common steady state, and the one this function used to do full price
+        // for. Everything past this point either measures the page to position a panel that's
+        // display:none (recomputed from scratch the moment it opens: openPanel sets display:flex
+        // BEFORE calling us) or is a legacy transform cleanup. The only effects that actually have
+        // to land are the tab going inactive and the chat shove being released — both idempotent,
+        // so do them once per close and let every later layout event (chat traffic, resizes,
+        // Torn's own DOM churn) fast-path out instead of paying two document-wide queries and a
+        // forced reflow apiece. The flag clears below whenever the panel is genuinely open.
+        if (!isPanelOpen) {
+            if (tb) tb.classList.remove('bbgl-tab-active');
+            if (!runtime._layoutClosedReset) {
+                runtime._layoutClosedReset = true;
+                _applyChatShove(_bbglGetChatShoveTargets(), '');
+            }
+            return;
+        }
+        runtime._layoutClosedReset = false;
         const peopBtn = (dom.peopleBtn && dom.peopleBtn.isConnected) ? dom.peopleBtn : (dom.peopleBtn = document.getElementById('people_panel_button'));
         const settBtn = (dom.settingsBtn && dom.settingsBtn.isConnected) ? dom.settingsBtn : (dom.settingsBtn = document.getElementById('notes_settings_button'));
         const noteBtn = (dom.notesBtn && dom.notesBtn.isConnected) ? dom.notesBtn : (dom.notesBtn = document.getElementById('notes_panel_button'));
@@ -1486,18 +1576,14 @@
             pPointer = 'auto';
         }
         const totalShift = viewState.expanded ? 581 : 305;
-        if (tb) tb.classList.toggle('bbgl-tab-active', !!isPanelOpen);
+        if (tb) tb.classList.add('bbgl-tab-active');
         p.style.setProperty('max-height', `calc(100vh - ${topCeiling}px)`, 'important');
         p.style.right = pRight;
         p.style.opacity = pOpacity;
         p.style.pointerEvents = pPointer; /* Cleanup: clear any stale parent-container transform from earlier approaches. */
         const _staleParent = (shoveTargets[0] && shoveTargets[0].parentElement) || null;
         if (_staleParent && _staleParent.style.transform) _staleParent.style.transform = '';
-        shoveTargets.forEach(t => {
-            t.style.right = isPanelOpen ? `${totalShift}px` : '';
-            const _tr = t.style.transition || '';
-            if (!_tr.includes('right')) t.style.transition = _tr ? _tr + ', right 0.2s ease-out' : 'right 0.2s ease-out';
-        });
+        _applyChatShove(shoveTargets, `${totalShift}px`);
         winInfo.forEach(({
             w,
             inChat
@@ -1567,13 +1653,25 @@
             if (runtime.layoutRafId) return;
             runtime.layoutRafId = requestAnimationFrame(function onLayoutFrame() {
                 runtime.layoutRafId = null;
-                _syncLayoutResizeTargets();
+                // handleLayout() already enumerates the visible windows and syncs the
+                // ResizeObserver off that same list. Calling _syncLayoutResizeTargets() here too
+                // meant every layout event ran _getLayoutWindows() twice, and that helper reads
+                // offsetWidth/offsetHeight per candidate — a forced synchronous layout per pass.
+                // Chat traffic alone fires this path constantly (watchChatRoot below observes
+                // #chatRoot's whole subtree), so the duplicate was not cheap.
                 handleLayout();
+                // The settle resync exists to re-observe windows that were still animating open
+                // when the frame above measured them. With the panel closed handleLayout()
+                // fast-paths out and nothing consumes a resize, so don't schedule a third pass.
                 clearTimeout(runtime._layoutResyncTimer);
-                runtime._layoutResyncTimer = setTimeout(function() {
-                    runtime._layoutResyncTimer = null;
-                    _syncLayoutResizeTargets();
-                }, 350);
+                runtime._layoutResyncTimer = null;
+                const _p = dom.panel;
+                if (_p && _p.style.display !== 'none' && !_p.classList.contains('bbgl-mode-page')) {
+                    runtime._layoutResyncTimer = setTimeout(function() {
+                        runtime._layoutResyncTimer = null;
+                        _syncLayoutResizeTargets();
+                    }, 350);
+                }
             });
         };
         if (!runtime.layoutResizeObserver) {
@@ -1607,19 +1705,20 @@
         };
         const watchLayoutLifecycle = () => {
             const o = new MutationObserver((muts) => {
+                // The only thing this scan can conclude is "call onLayoutChange()" — and with a
+                // frame already queued that call returns immediately on its own guard. So when
+                // layoutRafId is set the whole scan is foregone work. This matters because it
+                // observes document.body's entire subtree: Torn delivers chat traffic as bursts of
+                // many records, and every record after the first used to re-scan its nodes (a
+                // per-node attribute-substring subtree probe) to reach a conclusion already
+                // reached. Nothing is missed — the queued frame reads live DOM state when it runs,
+                // not a snapshot from when it was scheduled.
+                if (runtime.layoutRafId) return;
                 for (const m of muts) {
                     if (m.type !== 'childList') continue;
-                    const nodes = [];
-                    if (m.addedNodes && m.addedNodes.length) nodes.push(...m.addedNodes);
-                    if (m.removedNodes && m.removedNodes.length) nodes.push(...m.removedNodes);
-                    for (const n of nodes) {
-                        const el = n && n.nodeType === 1 ? n : null;
-                        if (!el) continue;
-                        const cn = el.className || '';
-                        if ((typeof cn === 'string' && (cn.includes('visible___') || cn.includes('opened___'))) || (el.querySelector && el.querySelector('[class*="visible___"], [class*="opened___"]'))) {
-                            onLayoutChange();
-                            return;
-                        }
+                    if (_containsLayoutWindow(m.addedNodes) || _containsLayoutWindow(m.removedNodes)) {
+                        onLayoutChange();
+                        return;
                     }
                 }
             });

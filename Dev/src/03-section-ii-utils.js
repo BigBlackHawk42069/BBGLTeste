@@ -207,6 +207,31 @@
         resolve(target) {
             return target.closest('[data-tooltip], [data-tooltip-html]');
         },
+        // Day cells defer building their tooltip markup until it's first actually needed: the
+        // calendar would otherwise generate ~1.5KB of HTML for all 42 cells on every render to
+        // show one at a time (see renderCell). They carry an empty data-tooltip-html placeholder
+        // so resolve()'s selector still matches, plus a _bbglTip thunk holding the real builder.
+        //
+        // Every read of data-tooltip-html must go through here. Reading the attribute directly
+        // would see the empty placeholder, treat it as falsy, and fall through to the plain-text
+        // branch — which for an interactive day cell means no tooltip at all.
+        htmlFor(el) {
+            if (!el) return null;
+            const h = el.getAttribute('data-tooltip-html');
+            if (h) return h;
+            if (typeof el._bbglTip === 'function') {
+                const built = el._bbglTip();
+                el._bbglTip = null;
+                el.setAttribute('data-tooltip-html', built);
+                return built;
+            }
+            return h;
+        },
+        // Presence test for callers that only need to know whether an element has an HTML tooltip,
+        // without paying to build a deferred one they aren't going to display.
+        hasHtml(el) {
+            return !!(el && (el.getAttribute('data-tooltip-html') || typeof el._bbglTip === 'function'));
+        },
         handleHover(e) {
             const t = this.resolve(e.target);
             if (!t) {
@@ -215,7 +240,7 @@
             }
             if (this.currentTarget === t) return;
             this.currentTarget = t;
-            const h = t.getAttribute('data-tooltip-html'),
+            const h = this.htmlFor(t),
                 txt = t.getAttribute('data-tooltip');
             const side = t.getAttribute('data-tooltip-side') || undefined;
             const anchorSel = t.getAttribute('data-tooltip-anchor');

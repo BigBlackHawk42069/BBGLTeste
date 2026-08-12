@@ -2027,7 +2027,7 @@
             const touch = e.touches[0];
             const el = document.elementFromPoint(touch.clientX, touch.clientY);
             const t = TooltipController.resolve(el);
-            const _sh = t ? t.getAttribute('data-tooltip-html') : null,
+            const _sh = TooltipController.htmlFor(t),
                 _st = t ? t.getAttribute('data-tooltip') : null;
             if (t && (_sh || _st)) {
                 if (TooltipController.currentTarget !== t) {
@@ -2091,7 +2091,7 @@
                             t.classList.add('shimmer-active');
                             if (t._buildShine) t._buildShine();
                         }
-                        const _th = t.getAttribute('data-tooltip-html'),
+                        const _th = TooltipController.htmlFor(t),
                             _tt = t.getAttribute('data-tooltip');
                         if (_th || _tt) TooltipController.show(_th || '<div style="text-align:center; color:#ddd;">' + _tt + '</div>', t.getBoundingClientRect());
                     }
@@ -2156,7 +2156,7 @@
                     _toolbarTipTimer = null;
                 }
                 const txt = t.getAttribute('data-tooltip'),
-                    h = t.getAttribute('data-tooltip-html');
+                    h = TooltipController.htmlFor(t);
                 if (h || txt) {
                     TooltipController.currentTarget = t;
                     TooltipController.show(h || '<div style="text-align:center; color:#ddd;">' + txt + '</div>', t.getBoundingClientRect());
@@ -2166,7 +2166,10 @@
                     }, 500);
                 }
             } else if (t && t.id !== 'bbgl-gym-tab') {
-                const h = t.getAttribute('data-tooltip-html'),
+                // Presence test only — this branch never renders the HTML, it just suppresses the
+                // tap tooltip for elements that have one. Materializing a deferred day-cell
+                // tooltip here would build markup that's immediately discarded.
+                const h = TooltipController.hasHtml(t),
                     txt = t.getAttribute('data-tooltip');
                 if (h) {
                     if (TooltipController.currentTarget === t) TooltipController.hide();

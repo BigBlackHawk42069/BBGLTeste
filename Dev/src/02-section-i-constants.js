@@ -358,10 +358,12 @@
         mode: 'values',
         isDragging: false,
         lockedStat: null,
+        scrubRaf: null,
         handlers: {
             scrub: null,
             start: null,
-            end: null
+            end: null,
+            leave: null
         }
     };
     let viewState = {

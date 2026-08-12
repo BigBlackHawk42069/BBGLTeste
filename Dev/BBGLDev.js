@@ -425,10 +425,12 @@
         mode: 'values',
         isDragging: false,
         lockedStat: null,
+        scrubRaf: null,
         handlers: {
             scrub: null,
             start: null,
-            end: null
+            end: null,
+            leave: null
         }
     };
     let viewState = {
@@ -759,6 +761,31 @@
         resolve(target) {
             return target.closest('[data-tooltip], [data-tooltip-html]');
         },
+        // Day cells defer building their tooltip markup until it's first actually needed: the
+        // calendar would otherwise generate ~1.5KB of HTML for all 42 cells on every render to
+        // show one at a time (see renderCell). They carry an empty data-tooltip-html placeholder
+        // so resolve()'s selector still matches, plus a _bbglTip thunk holding the real builder.
+        //
+        // Every read of data-tooltip-html must go through here. Reading the attribute directly
+        // would see the empty placeholder, treat it as falsy, and fall through to the plain-text
+        // branch — which for an interactive day cell means no tooltip at all.
+        htmlFor(el) {
+            if (!el) return null;
+            const h = el.getAttribute('data-tooltip-html');
+            if (h) return h;
+            if (typeof el._bbglTip === 'function') {
+                const built = el._bbglTip();
+                el._bbglTip = null;
+                el.setAttribute('data-tooltip-html', built);
+                return built;
+            }
+            return h;
+        },
+        // Presence test for callers that only need to know whether an element has an HTML tooltip,
+        // without paying to build a deferred one they aren't going to display.
+        hasHtml(el) {
+            return !!(el && (el.getAttribute('data-tooltip-html') || typeof el._bbglTip === 'function'));
+        },
         handleHover(e) {
             const t = this.resolve(e.target);
             if (!t) {
@@ -767,7 +794,7 @@
             }
             if (this.currentTarget === t) return;
             this.currentTarget = t;
-            const h = t.getAttribute('data-tooltip-html'),
+            const h = this.htmlFor(t),
                 txt = t.getAttribute('data-tooltip');
             const side = t.getAttribute('data-tooltip-side') || undefined;
             const anchorSel = t.getAttribute('data-tooltip-anchor');
@@ -1966,12 +1993,12 @@
                         margin: 8px 10px 0;
                     }
 
-                    [class*="area-desktop___"][class*="active___"] [class*="defaultIcon___"] svg,
-                    [class*="area-mobile___"][class*="active___"] [class*="defaultIcon___"] svg {
-                        fill: #fff;
-                        stroke: #fff;
-                        filter: drop-shadow(0 0 4px rgba(255, 255, 255, .55));
-                    }
+                    /* No active-state rule for our sidebar icon. Torn no longer lights its own
+                       nav icons white on the active page, so BBGL deliberately doesn't either —
+                       the selected state comes entirely from Torn's native bar/background
+                       highlight, which syncSidebarState() reapplies by copying Torn's own hashed
+                       active class onto our entry. Only the purple update-notification styling
+                       below is ours. */
 
                     .bbgl-sb-notif [class*="desktopLink___"],
                     .bbgl-sb-notif [class*="mobileLink___"]:not(.sidebarMobileLink) {
@@ -13415,8 +13442,10 @@ async function exportData() {
     });
     const stickers = exportStorage?.meta?.stickers;
     if (exportStorage.meta) delete exportStorage.meta.stickers;
-    // syncFloor is device-local live-sync state; dropping it means a fresh import does one
-    // unbounded (self-healing) reconcile, then re-anchors from the imported data.
+    // syncFloor is device-local live-sync state (stale/wrong on another device or session), so it
+    // is never carried in the export itself — importData() re-seeds it from the imported series'
+    // own newest entry instead, which is what actually anchors the first post-import sync at the
+    // right seam (06-section-v-logic.js, importData).
     if (exportStorage.meta) delete exportStorage.meta.syncFloor;
     let rankedWars;
     try {
@@ -13550,6 +13579,23 @@ function importData(f, onDone, opts = {}) {
                 }
                 if (!stickers) stickers = {};
                 j.storage.meta.stickers = stickers;
+                // syncFloor is dropped on export (device-local live-sync state, stale on another
+                // device/session) — but leaving it unset makes the first post-import sync omit
+                // `from=` entirely, and Torn's log endpoint without `from=` is NOT a full-history
+                // dump (that's exactly what the Backfill engine exists to page around); it's a
+                // recent, effectively row-capped slice. Anything between the import's last entry
+                // and that slice's start would silently never get fetched by anything. Anchor every
+                // live-sync code (BACKFILL_GROUP_OF's key set — every code TRAIN_CODES/ITEM_CODES/
+                // TRAIN_OD_CODES/STAT_LOGS can ever request) to the import's own newest entry, so the
+                // next sync's `from=` picks up exactly at the seam instead of guessing wrong or
+                // skipping it. Stored raw (no buffer subtracted here) to match advanceFloor's own
+                // convention — fromFor() is what always backs off by SYNC_FROM_BUFFER at read time,
+                // regardless of how a floor was written; subtracting it here too would just double it.
+                const lastTs = j.storage.series.reduce((max, s) => s.ts > max ? s.ts : max, 0);
+                if (lastTs > 0) {
+                    j.storage.meta.syncFloor = {};
+                    Object.keys(BACKFILL_GROUP_OF).forEach(c => { j.storage.meta.syncFloor[c] = lastTs; });
+                }
                 await DBManager.setStorage(j.storage);
                 const rebuilt = DataController._rebuildFromSeries(j.storage.series || [], (j.storage.meta && j.storage.meta.baselineBreakdown) || ZERO_BREAKDOWN);
                 _historyCache = {
@@ -14136,6 +14182,17 @@ const BestGymController = {
         c.style.setProperty('--total-rows', 6);
         c.style.setProperty('--bg-url', `url(${CAL_IMG_BASE}cal-grid-futr.jpg)`);
         const todayStr = Formatter.dateLogical();
+        // Per-render constants that renderCell() used to recompute for every one of the 42 cells:
+        // dateLogical() allocates a Date and runs three TimeManager calls, getWarMarkers()'s memo
+        // check costs a localStorage read plus a getActiveHistory() before it can even return the
+        // cached map, and firstDate only ever needed the timeline's first entry. None of them can
+        // change part-way through a synchronous render.
+        const _tl = DataController.getTimeline();
+        const cellCtx = {
+            today: todayStr,
+            warMarkers: getWarMarkers(),
+            firstDate: _tl.length > 0 ? _tl[0].date : (s ? s.today.date : null)
+        };
         const frag = document.createDocumentFragment();
         let batch = [],
             ridx = 0;
@@ -14156,7 +14213,7 @@ const BestGymController = {
                 if (isArch) rd.style.setProperty('--bg-url', `url(${CAL_IMG_BASE}cal-grid-past.jpg)`);
                 let wdb = [];
                 batch.forEach(function tickWeekCell(i, cIdx) {
-                    renderCell(rd, i.y, i.m, i.d, i.g, ridx, cIdx);
+                    renderCell(rd, i.y, i.m, i.d, i.g, ridx, cIdx, cellCtx);
                     wdb.push({
                         date: Formatter.dateISO(i.y, i.m, i.d),
                         data: i.p
@@ -14234,7 +14291,9 @@ const BestGymController = {
         return map;
     }
 
-    function renderCell(cont, y, m, d, g, rIdx, cIdx) {
+    // `ctx` carries the per-render constants hoisted out of this function by renderPanelContent()
+    // (see there) — single call site, so the extra parameter stays contained.
+    function renderCell(cont, y, m, d, g, rIdx, cIdx, ctx) {
         const ds = Formatter.dateISO(y, m, d),
             sl = DataController.getSlice('DAY', ds),
             isFlipped = cont.classList.contains('bbgl-row-archived'),
@@ -14259,7 +14318,7 @@ const BestGymController = {
         cell.addEventListener('mouseleave', () => {
             if (!cell.classList.contains('is-viewing')) cell.classList.remove('shimmer-active');
         });
-        const isToday = (ds === Formatter.dateLogical());
+        const isToday = (ds === ctx.today);
         if (isFlipped && sl.meta.tier > 0) {
             let url = `url(${CAL_IMG_BASE}cal-grid-grn.jpg)`;
             if (sl.meta.tier === 2) url = `url(${CAL_IMG_BASE}cal-grid-gold.jpg)`;
@@ -14308,7 +14367,7 @@ const BestGymController = {
         ns.innerText = d;
         cell.appendChild(ns);
         if (isFlipped) {
-            const wm = getWarMarkers()[ds];
+            const wm = ctx.warMarkers[ds];
             const eventImgs = [];
             if ((sl.lsdODs || 0) > 0) eventImgs.push(CAL_IMG_BASE + 'lsd-od.png');
             if ((sl.xanaxODs || 0) > 0) eventImgs.push(CAL_IMG_BASE + 'xan-od.png');
@@ -14377,12 +14436,16 @@ const BestGymController = {
             cell.classList.add('is-viewing');
             if (buildShine) buildShine();
         }
-        const h = getActiveHistory();
-        const tl = DataController.getTimeline();
-        const firstDate = tl.length > 0 ? tl[0].date : (h ? h.today.date : null);
-        const isInteractive = !sl.meta.isGap || (firstDate && ds >= firstDate && ds <= Formatter.dateLogical());
-        if (isInteractive) cell.setAttribute('data-tooltip-html', generateRichTooltip(sl));
-        else cell.setAttribute('data-tooltip', TOOLTIPS.CELL_DATE(ds));
+        const isInteractive = !sl.meta.isGap || (ctx.firstDate && ds >= ctx.firstDate && ds <= ctx.today);
+        if (isInteractive) {
+            // Deferred until first hover/scrub. generateRichTooltip builds a ~1.5KB inline-styled
+            // grid, and eagerly doing that for all 42 cells on every render produced ~60KB of
+            // attribute markup to display one cell's worth at a time. The empty placeholder keeps
+            // TooltipController.resolve()'s [data-tooltip-html] match intact; the thunk is
+            // materialized and cached by TooltipController.htmlFor().
+            cell.setAttribute('data-tooltip-html', '');
+            cell._bbglTip = () => generateRichTooltip(sl);
+        } else cell.setAttribute('data-tooltip', TOOLTIPS.CELL_DATE(ds));
         cell.onclick = () => {
             if (isToday) closeHistory();
             else if (isInteractive) openHistory(sl, ds);
@@ -15158,20 +15221,34 @@ const BestGymController = {
     function syncSidebarState() {
         const a = window.location.hash.includes('gymlog'),
             ids = [SB_DESKTOP.id, SB_MOBILE.id, SB_FLYOUT.id];
-        // Our own CSS lights the icon via the substring selector [class*="active___"], so the
-        // literal sentinel below guarantees the SVG glows even when nothing native is active
-        // (on /calendar.php Torn marks no nav item active, which is why the old hash-borrow
-        // approach left the button dark).
+        // Inert marker. This used to be what drove our own white icon glow via a
+        // [class*="active___"] rule, but Torn no longer lights its nav icons on the active page
+        // and BBGL follows suit, so nothing styles it any more — no CSS matches it. It's kept
+        // because it anchors the add/strip symmetry below (the else-branch clears every
+        // active___* class off our entries regardless of origin) and gives a stable hook if the
+        // active state ever needs its own styling again. The visible selected state now comes
+        // purely from Torn's own class, learned just below.
         const BBGL_ACTIVE = 'active___bbgl';
-        // Torn's native bar/background highlight, however, is keyed on its exact hashed active
+        // Torn's native bar/background highlight is keyed on its exact hashed active
         // class — one hash per build, shared across every sidebar entry. Opportunistically learn
-        // that hash from any genuinely-active nav item while browsing and cache it, so we can also
-        // reapply it on the gym-log page and get the full native bar (not just the icon). If it's
-        // never been seen this session we simply fall back to the icon-only glow — no regression.
-        const probe = document.querySelector('[id^="nav-"][class*="active___"]');
-        if (probe && !ids.includes(probe.id)) {
-            const real = Array.from(probe.classList).find(c => c.startsWith('active___') && c !== BBGL_ACTIVE);
-            if (real) runtime._sidebarActiveCls = real;
+        // that hash from any genuinely-active nav item while browsing and cache it, so we can
+        // reapply it on the gym-log page and get the native bar. This is now the only thing that
+        // marks our entry as selected, so if it has never been seen this session (a direct load
+        // straight onto /calendar.php#gymlog, where Torn marks nothing active) the entry simply
+        // shows no selected state until the user visits a page that has one.
+        //
+        // Learn once and stop. That probe is the only unanchored selector on this path (no id to
+        // bucket on, so it walks the document) and syncSidebarState runs on every DOM-mutation
+        // batch, but the hash is baked into Torn's build and can't change while the page is loaded
+        // — once we have it there is nothing left to discover. If Torn ships a new build
+        // mid-session the cached hash goes stale and the native bar stops applying on our page
+        // until reload: cosmetic, and self-healing on refresh.
+        if (!runtime._sidebarActiveCls) {
+            const probe = document.querySelector('[id^="nav-"][class*="active___"]');
+            if (probe && !ids.includes(probe.id)) {
+                const real = Array.from(probe.classList).find(c => c.startsWith('active___') && c !== BBGL_ACTIVE);
+                if (real) runtime._sidebarActiveCls = real;
+            }
         }
         const realActive = runtime._sidebarActiveCls;
         if (a) {
@@ -15181,12 +15258,26 @@ const BestGymController = {
                 if (!c.classList.contains(BBGL_ACTIVE)) c.classList.add(BBGL_ACTIVE);
                 if (realActive && !c.classList.contains(realActive)) c.classList.add(realActive);
             });
-            document.querySelectorAll('[id^="nav-"]').forEach(navEl => {
-                if (ids.includes(navEl.id)) return;
-                [navEl, ...navEl.querySelectorAll('[class*="active___"]')].forEach(el => {
-                    Array.from(el.classList).filter(cls => cls.startsWith('active___')).forEach(cls => el.classList.remove(cls));
+            const strip = el => Array.from(el.classList).filter(cls => cls.startsWith('active___')).forEach(cls => el.classList.remove(cls));
+            if (realActive) {
+                // Same scope as the fallback below (nav entries and their descendants, never our
+                // own), but driven off the class bucket instead of two attribute-substring scans:
+                // selectors match right-to-left, so this starts from the handful of elements that
+                // actually carry Torn's active class rather than enumerating every [id^="nav-"]
+                // and re-scanning each one's subtree. Runs on every mutation batch while the gym
+                // log page is open, so the difference compounds.
+                const ownSel = ids.map(i => '#' + i).join(',');
+                document.querySelectorAll(`[id^="nav-"].${realActive}, [id^="nav-"] .${realActive}`).forEach(el => {
+                    if (el.closest(ownSel)) return;
+                    strip(el);
                 });
-            });
+            } else {
+                // Hash not learned yet (nothing has been active this session). One-time path.
+                document.querySelectorAll('[id^="nav-"]').forEach(navEl => {
+                    if (ids.includes(navEl.id)) return;
+                    [navEl, ...navEl.querySelectorAll('[class*="active___"]')].forEach(strip);
+                });
+            }
         } else {
             ids.forEach(id => {
                 const c = document.getElementById(id);
@@ -15215,6 +15306,23 @@ const BestGymController = {
         _topCeilingCache = ceiling;
         _topCeilingTs = Date.now();
         return ceiling;
+    }
+
+    // True if any node in the list is — or contains — one of Torn's open/visible window shells.
+    // Hoisted out of the lifecycle observer's callback so it isn't reallocated every time
+    // attachLayoutObservers() re-arms, and so the two node lists can be walked in place instead of
+    // being spread into a throwaway array per mutation record.
+    function _containsLayoutWindow(nodeList) {
+        if (!nodeList || !nodeList.length) return false;
+        for (const n of nodeList) {
+            if (!n || n.nodeType !== 1) continue;
+            const cn = n.className || '';
+            if (typeof cn === 'string' && (cn.includes('visible___') || cn.includes('opened___'))) return true;
+            // The subtree probe is the expensive half of this scan, and a node with no element
+            // children cannot possibly contain a match.
+            if (n.firstElementChild && n.querySelector('[class*="visible___"], [class*="opened___"]')) return true;
+        }
+        return false;
     }
 
     function _getLayoutWindows() {
@@ -15247,6 +15355,17 @@ const BestGymController = {
         next.forEach(w => prev.add(w));
     }
 
+    // Applies (or releases, with `offset` = '') the chat-window shove. Shared by the closed-panel
+    // fast path and the full pass below so the release stays byte-identical to what the full pass
+    // would have written.
+    function _applyChatShove(shoveTargets, offset) {
+        shoveTargets.forEach(t => {
+            t.style.right = offset;
+            const _tr = t.style.transition || '';
+            if (!_tr.includes('right')) t.style.transition = _tr ? _tr + ', right 0.2s ease-out' : 'right 0.2s ease-out';
+        });
+    }
+
     function handleLayout() {
         const p = dom.panel,
             tb = dom.gymTab,
@@ -15255,6 +15374,23 @@ const BestGymController = {
             if (tb) tb.classList.toggle('bbgl-tab-active', !!isPanelOpen);
             return;
         }
+        // Closed panel — the common steady state, and the one this function used to do full price
+        // for. Everything past this point either measures the page to position a panel that's
+        // display:none (recomputed from scratch the moment it opens: openPanel sets display:flex
+        // BEFORE calling us) or is a legacy transform cleanup. The only effects that actually have
+        // to land are the tab going inactive and the chat shove being released — both idempotent,
+        // so do them once per close and let every later layout event (chat traffic, resizes,
+        // Torn's own DOM churn) fast-path out instead of paying two document-wide queries and a
+        // forced reflow apiece. The flag clears below whenever the panel is genuinely open.
+        if (!isPanelOpen) {
+            if (tb) tb.classList.remove('bbgl-tab-active');
+            if (!runtime._layoutClosedReset) {
+                runtime._layoutClosedReset = true;
+                _applyChatShove(_bbglGetChatShoveTargets(), '');
+            }
+            return;
+        }
+        runtime._layoutClosedReset = false;
         const peopBtn = (dom.peopleBtn && dom.peopleBtn.isConnected) ? dom.peopleBtn : (dom.peopleBtn = document.getElementById('people_panel_button'));
         const settBtn = (dom.settingsBtn && dom.settingsBtn.isConnected) ? dom.settingsBtn : (dom.settingsBtn = document.getElementById('notes_settings_button'));
         const noteBtn = (dom.notesBtn && dom.notesBtn.isConnected) ? dom.notesBtn : (dom.notesBtn = document.getElementById('notes_panel_button'));
@@ -15304,18 +15440,14 @@ const BestGymController = {
             pPointer = 'auto';
         }
         const totalShift = viewState.expanded ? 581 : 305;
-        if (tb) tb.classList.toggle('bbgl-tab-active', !!isPanelOpen);
+        if (tb) tb.classList.add('bbgl-tab-active');
         p.style.setProperty('max-height', `calc(100vh - ${topCeiling}px)`, 'important');
         p.style.right = pRight;
         p.style.opacity = pOpacity;
         p.style.pointerEvents = pPointer; /* Cleanup: clear any stale parent-container transform from earlier approaches. */
         const _staleParent = (shoveTargets[0] && shoveTargets[0].parentElement) || null;
         if (_staleParent && _staleParent.style.transform) _staleParent.style.transform = '';
-        shoveTargets.forEach(t => {
-            t.style.right = isPanelOpen ? `${totalShift}px` : '';
-            const _tr = t.style.transition || '';
-            if (!_tr.includes('right')) t.style.transition = _tr ? _tr + ', right 0.2s ease-out' : 'right 0.2s ease-out';
-        });
+        _applyChatShove(shoveTargets, `${totalShift}px`);
         winInfo.forEach(({
             w,
             inChat
@@ -15385,13 +15517,25 @@ const BestGymController = {
             if (runtime.layoutRafId) return;
             runtime.layoutRafId = requestAnimationFrame(function onLayoutFrame() {
                 runtime.layoutRafId = null;
-                _syncLayoutResizeTargets();
+                // handleLayout() already enumerates the visible windows and syncs the
+                // ResizeObserver off that same list. Calling _syncLayoutResizeTargets() here too
+                // meant every layout event ran _getLayoutWindows() twice, and that helper reads
+                // offsetWidth/offsetHeight per candidate — a forced synchronous layout per pass.
+                // Chat traffic alone fires this path constantly (watchChatRoot below observes
+                // #chatRoot's whole subtree), so the duplicate was not cheap.
                 handleLayout();
+                // The settle resync exists to re-observe windows that were still animating open
+                // when the frame above measured them. With the panel closed handleLayout()
+                // fast-paths out and nothing consumes a resize, so don't schedule a third pass.
                 clearTimeout(runtime._layoutResyncTimer);
-                runtime._layoutResyncTimer = setTimeout(function() {
-                    runtime._layoutResyncTimer = null;
-                    _syncLayoutResizeTargets();
-                }, 350);
+                runtime._layoutResyncTimer = null;
+                const _p = dom.panel;
+                if (_p && _p.style.display !== 'none' && !_p.classList.contains('bbgl-mode-page')) {
+                    runtime._layoutResyncTimer = setTimeout(function() {
+                        runtime._layoutResyncTimer = null;
+                        _syncLayoutResizeTargets();
+                    }, 350);
+                }
             });
         };
         if (!runtime.layoutResizeObserver) {
@@ -15425,19 +15569,20 @@ const BestGymController = {
         };
         const watchLayoutLifecycle = () => {
             const o = new MutationObserver((muts) => {
+                // The only thing this scan can conclude is "call onLayoutChange()" — and with a
+                // frame already queued that call returns immediately on its own guard. So when
+                // layoutRafId is set the whole scan is foregone work. This matters because it
+                // observes document.body's entire subtree: Torn delivers chat traffic as bursts of
+                // many records, and every record after the first used to re-scan its nodes (a
+                // per-node attribute-substring subtree probe) to reach a conclusion already
+                // reached. Nothing is missed — the queued frame reads live DOM state when it runs,
+                // not a snapshot from when it was scheduled.
+                if (runtime.layoutRafId) return;
                 for (const m of muts) {
                     if (m.type !== 'childList') continue;
-                    const nodes = [];
-                    if (m.addedNodes && m.addedNodes.length) nodes.push(...m.addedNodes);
-                    if (m.removedNodes && m.removedNodes.length) nodes.push(...m.removedNodes);
-                    for (const n of nodes) {
-                        const el = n && n.nodeType === 1 ? n : null;
-                        if (!el) continue;
-                        const cn = el.className || '';
-                        if ((typeof cn === 'string' && (cn.includes('visible___') || cn.includes('opened___'))) || (el.querySelector && el.querySelector('[class*="visible___"], [class*="opened___"]'))) {
-                            onLayoutChange();
-                            return;
-                        }
+                    if (_containsLayoutWindow(m.addedNodes) || _containsLayoutWindow(m.removedNodes)) {
+                        onLayoutChange();
+                        return;
                     }
                 }
             });
@@ -17535,50 +17680,82 @@ const BestGymController = {
                 c.removeEventListener('touchstart', graphState.handlers.start);
                 window.removeEventListener('mouseup', graphState.handlers.end);
                 window.removeEventListener('touchend', graphState.handlers.end);
-                c.removeEventListener('mouseleave', graphState.handlers.end);
+                // mouseleave is bound to the clear-highlight handler, not the drag-end one, so
+                // detaching `end` here never actually removed it — `c` is the persistent
+                // #bbgl-graph-container, so every redraw stacked another live mouseleave listener
+                // on it, each doing its own DOM sweep. Detach what was actually attached.
+                c.removeEventListener('mouseleave', graphState.handlers.leave);
             }
-            const gp = (e) => {
+            // A frame queued against the previous draw's point cache would highlight nodes that
+            // are no longer in the tree.
+            if (graphState.scrubRaf) {
+                cancelAnimationFrame(graphState.scrubRaf);
+                graphState.scrubRaf = null;
+            }
+            // Point-group geometry, snapshotted once per draw instead of re-queried per pointer
+            // event. _setupScrubbing runs at the tail of every draw() (the DOM is fully built by
+            // then), and a point group is emitted per data point PER stat series — an ALL-range
+            // view on a mature log is thousands of nodes, so the old per-event
+            // querySelectorAll + two parseFloat-per-node was the single hottest loop in the script.
+            const pts = [];
+            c.querySelectorAll('.g-point-group').forEach(g => {
+                pts.push({
+                    g,
+                    x: parseFloat(g.getAttribute('data-cx')),
+                    y: parseFloat(g.getAttribute('data-cy')),
+                    stat: g.getAttribute('data-stat')
+                });
+            });
+            const gpFromClient = (cx, cy) => {
                 const r = s.getBoundingClientRect(),
                     vb = s.viewBox.baseVal,
                     sx = vb.width / r.width,
                     sy = vb.height / r.height;
-                let cx = e.clientX,
-                    cy = e.clientY;
-                if (e.type.includes('touch') && e.touches.length > 0) {
-                    cx = e.touches[0].clientX;
-                    cy = e.touches[0].clientY;
-                }
                 return {
                     x: (cx - r.left) * sx - m.left,
                     y: (cy - r.top) * sy - m.top
                 };
             };
+            const clientXY = (e) => (e.type.includes('touch') && e.touches.length > 0) ? [e.touches[0].clientX, e.touches[0].clientY] : [e.clientX, e.clientY];
+            const gp = (e) => {
+                const [cx, cy] = clientXY(e);
+                return gpFromClient(cx, cy);
+            };
             const f = (x, y, st = null) => {
-                const sl = st ? `.g-point-group[data-stat="${st}"]` : '.g-point-group',
-                    grs = c.querySelectorAll(sl);
                 let min = Infinity,
                     cl = null;
-                grs.forEach(g => {
-                    const gx = parseFloat(g.getAttribute('data-cx')),
-                        gy = parseFloat(g.getAttribute('data-cy')),
-                        d = Math.sqrt(Math.pow(gx - x, 2) + (st ? 0 : Math.pow(gy - y, 2)));
+                for (const p of pts) {
+                    if (st && p.stat !== st) continue;
+                    const dx = p.x - x,
+                        dy = p.y - y,
+                        d = Math.sqrt(dx * dx + (st ? 0 : dy * dy));
                     if (d < min) {
                         min = d;
-                        cl = g;
+                        cl = p.g;
                     }
-                });
+                }
                 return {
                     g: cl,
                     d: min
                 };
             };
+            // Active group tracked locally rather than re-found via querySelectorAll('.active')
+            // on every highlight. The identity check also stops a scrub that stays within one
+            // point from rebuilding the tooltip every frame — show() writes innerHTML and then
+            // reads getBoundingClientRect, so each redundant call was a write/read layout thrash.
+            let activeGrp = null;
             const uh = (g) => {
-                c.querySelectorAll('.g-point-group.active').forEach(z => z.classList.remove('active'));
+                if (activeGrp === g) return;
+                if (activeGrp) activeGrp.classList.remove('active');
+                activeGrp = g;
                 g.classList.add('active');
                 TooltipController.show(g.getAttribute('data-tooltip-html'), g.getBoundingClientRect());
             };
             const ch = () => {
-                c.querySelectorAll('.g-point-group.active').forEach(z => z.classList.remove('active'));
+                if (activeGrp) {
+                    activeGrp.classList.remove('active');
+                    activeGrp = null;
+                }
                 TooltipController.hide();
             };
             const os = (e) => {
@@ -17592,17 +17769,33 @@ const BestGymController = {
                     uh(cl.g);
                 }
             };
-            const om = (e) => {
-                if (e.type === 'touchmove') e.preventDefault();
-                const p = gp(e);
+            // Coalesced to one hit-test per frame. The global tooltip mousemove handler
+            // (10-section-ix-init.js) has always been rAF-throttled; this one wasn't, so a
+            // 120Hz pointer ran the full getBoundingClientRect + nearest-point search several
+            // times per painted frame with nothing to show for the extra passes. preventDefault
+            // still fires synchronously on the real event — deferring it would be too late to
+            // stop the touch scroll.
+            let scrubX = 0,
+                scrubY = 0;
+            const omFrame = () => {
+                graphState.scrubRaf = null;
+                const p = gpFromClient(scrubX, scrubY);
                 if (graphState.isDragging && graphState.lockedStat) {
-                    const m = f(p.x, p.y, graphState.lockedStat);
-                    if (m.g) uh(m.g);
+                    const hit = f(p.x, p.y, graphState.lockedStat);
+                    if (hit.g) uh(hit.g);
                 } else {
                     const cl = f(p.x, p.y);
                     if (cl.g && cl.d < 30) uh(cl.g);
                     else ch();
                 }
+            };
+            const om = (e) => {
+                if (e.type === 'touchmove') e.preventDefault();
+                const [cx, cy] = clientXY(e);
+                scrubX = cx;
+                scrubY = cy;
+                if (graphState.scrubRaf) return;
+                graphState.scrubRaf = requestAnimationFrame(omFrame);
             };
             const oe = () => {
                 graphState.isDragging = false;
@@ -17611,7 +17804,8 @@ const BestGymController = {
             graphState.handlers = {
                 start: os,
                 scrub: om,
-                end: oe
+                end: oe,
+                leave: ch
             };
             c.addEventListener('mousedown', os);
             c.addEventListener('mousemove', om);
@@ -20040,7 +20234,7 @@ const BestGymController = {
             const touch = e.touches[0];
             const el = document.elementFromPoint(touch.clientX, touch.clientY);
             const t = TooltipController.resolve(el);
-            const _sh = t ? t.getAttribute('data-tooltip-html') : null,
+            const _sh = TooltipController.htmlFor(t),
                 _st = t ? t.getAttribute('data-tooltip') : null;
             if (t && (_sh || _st)) {
                 if (TooltipController.currentTarget !== t) {
@@ -20104,7 +20298,7 @@ const BestGymController = {
                             t.classList.add('shimmer-active');
                             if (t._buildShine) t._buildShine();
                         }
-                        const _th = t.getAttribute('data-tooltip-html'),
+                        const _th = TooltipController.htmlFor(t),
                             _tt = t.getAttribute('data-tooltip');
                         if (_th || _tt) TooltipController.show(_th || '<div style="text-align:center; color:#ddd;">' + _tt + '</div>', t.getBoundingClientRect());
                     }
@@ -20169,7 +20363,7 @@ const BestGymController = {
                     _toolbarTipTimer = null;
                 }
                 const txt = t.getAttribute('data-tooltip'),
-                    h = t.getAttribute('data-tooltip-html');
+                    h = TooltipController.htmlFor(t);
                 if (h || txt) {
                     TooltipController.currentTarget = t;
                     TooltipController.show(h || '<div style="text-align:center; color:#ddd;">' + txt + '</div>', t.getBoundingClientRect());
@@ -20179,7 +20373,10 @@ const BestGymController = {
                     }, 500);
                 }
             } else if (t && t.id !== 'bbgl-gym-tab') {
-                const h = t.getAttribute('data-tooltip-html'),
+                // Presence test only — this branch never renders the HTML, it just suppresses the
+                // tap tooltip for elements that have one. Materializing a deferred day-cell
+                // tooltip here would build markup that's immediately discarded.
+                const h = TooltipController.hasHtml(t),
                     txt = t.getAttribute('data-tooltip');
                 if (h) {
                     if (TooltipController.currentTarget === t) TooltipController.hide();
