@@ -1,0 +1,17 @@
+{
+  "name": "big-black-gym-log",
+  "version": "0.9.91",
+  "private": true,
+  "description": "A high-fidelity, gamified stat tracker built to integrate seamlessly with Torn's native UI.",
+  "type": "module",
+  "scripts": {
+    "dev": "node esbuild.config.mjs --watch",
+    "build": "node esbuild.config.mjs",
+    "typecheck": "tsc --noEmit",
+    "test": "node --test --experimental-strip-types"
+  },
+  "devDependencies": {
+    "esbuild": "^0.28.2",
+    "typescript": "^7.0.2"
+  }
+}
