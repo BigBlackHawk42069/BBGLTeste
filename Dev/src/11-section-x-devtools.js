@@ -205,7 +205,7 @@
     // Overrides getLiveStatTitleSelection() (07-section-vi-ui.js) so any stat/phase can be dropped
     // into either slot without the E spend that would really unlock it. Each slot picks its own
     // phase now, matching the real system — that's the only way to preview a mismatched pair like
-    // a Phase 1 adjective on a Phase 10 noun. Gated behind runtime.devMode at the read site, and
+    // a Tier 1 adjective on a Tier 10 noun. Gated behind runtime.devMode at the read site, and
     // this whole file is stripped from release builds, so this can never affect a real user.
     function buildTitlePreviewSection() {
         const rowStyle = 'display:flex;gap:6px;';
@@ -223,7 +223,8 @@
             return sel;
         }
 
-        const phaseOptions = STAT_TITLE_THRESHOLDS.map((_, i) => [String(i), `Phase ${i}`]);
+        // Value stays the internal 0-based phase; the label shows the player-facing 1-10 tier.
+        const phaseOptions = STAT_TITLE_THRESHOLDS.map((_, i) => [String(i), `Tier ${i + 1}`]);
         const primarySelect = buildSelect(STAT_KEYS.map(k => [k, achStatFull(k)]));
         const primaryPhase = buildSelect(phaseOptions);
         const secondarySelect = buildSelect(STAT_KEYS.map(k => [k, achStatFull(k)]));

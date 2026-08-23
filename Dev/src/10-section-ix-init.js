@@ -227,15 +227,20 @@
         });
     }
 
+    // Steps one page in either direction. Bounds are enforced HERE, not at the call sites: they
+    // used to each carry their own guard and had drifted apart (the arrows refused to step below
+    // page 0 while swipe allowed it, so the sponsor page was unreachable by arrow). Callers now
+    // just say which way they want to go and this no-ops at the ends. gotoStickerPage()
+    // (09-section-viii-stickers.js) owns the actual clamp + state write + render, so this only adds
+    // the slide animation around it.
     function changeStickerPage(d) {
+        const target = Math.max(STICKER_SPONSOR_PAGE, Math.min(runtime.currentStickerPage + d, stickerPageCount() - 1));
+        if (target === runtime.currentStickerPage) return;
         if (!userConfig.animations) {
-            viewState.currentStickerPage += d;
-            runtime.currentStickerPage = viewState.currentStickerPage;
-            saveViewState();
-            renderStickers();
+            gotoStickerPage(target);
             return;
         }
-        const oldActive = (runtime.currentStickerPage === -1) ? document.getElementById('bbgl-sponsor-grid') : dom.stickerGrid,
+        const oldActive = (runtime.currentStickerPage === STICKER_SPONSOR_PAGE) ? document.getElementById('bbgl-sponsor-grid') : dom.stickerGrid,
             bg = dom.stickerGridBg;
         if (oldActive) {
             const ghost = oldActive.cloneNode(true);
@@ -277,11 +282,8 @@
                 once: true
             });
         }
-        viewState.currentStickerPage += d;
-        runtime.currentStickerPage = viewState.currentStickerPage;
-        saveViewState();
-        renderStickers();
-        const newActive = (runtime.currentStickerPage === -1) ? document.getElementById('bbgl-sponsor-grid') : dom.stickerGrid;
+        gotoStickerPage(target);
+        const newActive = (runtime.currentStickerPage === STICKER_SPONSOR_PAGE) ? document.getElementById('bbgl-sponsor-grid') : dom.stickerGrid;
         if (newActive) {
             newActive.style.animation = d > 0 ? 'bbgl-slide-in-r 0.3s ease forwards' : 'bbgl-slide-in-l 0.3s ease forwards';
             newActive.addEventListener('animationend', () => newActive.style.animation = '', {
@@ -725,10 +727,15 @@
             } else if (tgt === 'stickers') {
                 tp.classList.add('viewing-stickers');
                 renderStickers();
-                if (cm !== 'stickers' && dom.stickerSponsor && userConfig.animations) {
-                    dom.stickerSponsor.classList.remove('shimmer-once');
-                    void dom.stickerSponsor.offsetWidth;
-                    dom.stickerSponsor.classList.add('shimmer-once');
+                // One-time gold attention glow on the prev arrow, which carries the sponsor page's
+                // gold treatment via .is-sponsor (set in renderStickers()) — it used to be its own
+                // #sticker-sponsor-btn element sitting at the identical position. The CSS rule is
+                // scoped to .is-sponsor too, so this can't glow gold on a plain grey arrow if the
+                // view is entered on some other page.
+                if (cm !== 'stickers' && dom.stickerPrev && userConfig.animations) {
+                    dom.stickerPrev.classList.remove('shimmer-once');
+                    void dom.stickerPrev.offsetWidth;
+                    dom.stickerPrev.classList.add('shimmer-once');
                 }
             } else if (tgt === 'achievements') {
                 tp.classList.add('viewing-achievements');
@@ -1398,22 +1405,23 @@
         if (act) act.onclick = toggleAchievementsView;
         const st = get('bbgl-sticker-toggle');
         if (st) st.onclick = toggleStickerView;
+        // Big edge arrows, plus the mini prev/next flanking the pagination dots
+        // (#bbgl-sticker-pagination-bar) — a second, smaller control for the same action, not a
+        // replacement. None of these carry a bounds guard: changeStickerPage() clamps and no-ops at
+        // the ends itself, which is what keeps every control (these, the dots, and swipe) agreeing
+        // on where the page range starts and stops.
         const sp = get('sticker-prev-btn'),
             sn = get('sticker-next-btn'),
-            ssp = get('sticker-sponsor-btn');
-        if (sp) sp.onclick = (e) => {
+            smp = get('sticker-mini-prev-btn'),
+            smn = get('sticker-mini-next-btn');
+        const stickerStep = d => (e) => {
             e.stopPropagation();
-            if (runtime.currentStickerPage > 0) changeStickerPage(-1);
+            changeStickerPage(d);
         };
-        if (sn) sn.onclick = (e) => {
-            e.stopPropagation();
-            if (runtime.currentStickerPage < Math.ceil((runtime.stickerData.length || 0) / 10) - 1) changeStickerPage(1);
-        };
-        if (ssp) ssp.onclick = (e) => {
-            e.stopPropagation();
-            if (ssp.classList.contains('disabled')) return;
-            if (runtime.currentStickerPage === 0) changeStickerPage(-1);
-        };
+        if (sp) sp.onclick = stickerStep(-1);
+        if (sn) sn.onclick = stickerStep(1);
+        if (smp) smp.onclick = stickerStep(-1);
+        if (smn) smn.onclick = stickerStep(1);
         const pm = get('prev-month-btn');
         if (pm) pm.onclick = () => changeMonth(-1);
         const nm = get('next-month-btn');
@@ -1681,11 +1689,7 @@
                 if (window._bbglScrubbing) return;
                 const dx = e.changedTouches[0].clientX - _sgX,
                     dy = e.changedTouches[0].clientY - _sgY;
-                if (Math.abs(dx) > 40 && Math.abs(dx) > Math.abs(dy) * 1.5) {
-                    const dir = dx < 0 ? 1 : -1,
-                        maxP = Math.ceil((runtime.stickerData.length || 0) / 10) - 1;
-                    if ((dir < 0 && runtime.currentStickerPage > -1) || (dir > 0 && runtime.currentStickerPage < maxP)) changeStickerPage(dir);
-                }
+                if (Math.abs(dx) > 40 && Math.abs(dx) > Math.abs(dy) * 1.5) changeStickerPage(dx < 0 ? 1 : -1);
             }, {
                 passive: true
             });
@@ -1703,6 +1707,14 @@
             e.stopPropagation();
             gotoAchievementsPage(1);
         };
+        // Set up once here, not per achievements/stickers DOM rebuild — #bbgl-top-panel and the
+        // toolbar icons it watches are never destroyed, unlike .bbgl-title-block (see
+        // observeTitleBlockFrames() for the contrasting per-rebuild case). Keeps whichever
+        // pagination cluster is active (#bbgl-ach-footer or #bbgl-sticker-pagination-bar) centred
+        // against the SVG icon toolbar as the panel resizes or changes mode — see
+        // layoutToolbarPaginationPosition()/observeToolbarPaginationPosition()
+        // (07-section-vi-ui.js).
+        observeToolbarPaginationPosition();
         const achContainer = get('bbgl-achievements-container');
         if (achContainer) {
             let _achX = 0,
@@ -1724,22 +1736,22 @@
                 passive: true
             });
             achContainer.addEventListener('click', (e) => {
-                // Titles page (page 5). The picker is dismissed by any click that isn't on it or
-                // on another star, so it never survives a page flip or a stray click.
-                if (!e.target.closest('.bbgl-title-pick')) closeTitleRolePicker();
+                // Titles page (page 0). Picking is two clicks straight on the stars — first word,
+                // then second — with no intermediate menu.
                 const star = e.target.closest('.bbgl-title-star.is-unlocked');
                 if (star) {
                     e.stopPropagation();
-                    openTitleRolePicker(star);
+                    handleTitleStarPick(star);
                     return;
                 }
-                const modeOpt = e.target.closest('[data-title-mode]');
-                if (modeOpt) {
+                // Reset arrow beside the title — drops the hand-picked pair and goes back to the
+                // automatic one. Only rendered while a custom pick exists.
+                const titleReset = e.target.closest('[data-title-reset]');
+                if (titleReset) {
                     e.stopPropagation();
-                    if (!modeOpt.classList.contains('is-unavailable')) {
-                        setStatTitleMode(modeOpt.dataset.titleMode);
-                        refreshStatTitleUI();
-                    }
+                    clearTitlePick();
+                    setStatTitleMode('earned');
+                    refreshStatTitleUI();
                     return;
                 }
                 const swOpt = e.target.closest('.bbgl-enh-sw-opt');

@@ -563,13 +563,14 @@
     //
     // `max` is inclusive and doubles as the bracket axis on the titles page (levelRankBrackets()
     // below reads widths straight off these numbers), so edit a max here and the axis re-draws
-    // itself — no second list to keep in sync. Band 3 ends at 69 rather than 68 purely so the
-    // axis reads 40-69 / 70-79; atrophyTitle() intercepts level 69 with the easter egg before any
-    // band lookup happens, so the boundary itself has no effect on which title you actually get.
+    // itself — no second list to keep in sync. Even 20-level bands throughout except the last two,
+    // which stay 10 apiece. Level 69's easter egg (LEVEL_TITLE_EASTER_EGG_LEVEL below) intercepts
+    // before any band lookup happens, so it isn't pinned to a boundary here — it just falls
+    // wherever it falls inside band 4.
     const LEVEL_TITLE_BANDS = [
         { max: 19, titles: ['Dry Clay', 'Parched Clay', 'Cracked Clay'] },
         { max: 39, titles: ['Moistened Clay', 'Saturated Clay', 'Dripping Wet Clay'] },
-        { max: 69, titles: ['Hand-Jerked Clay', 'Foot-Pumped Clay', 'Vacuum-Milked Clay'] },
+        { max: 59, titles: ['Hand-Jerked Clay', 'Foot-Pumped Clay', 'Vacuum-Milked Clay'] },
         { max: 79, titles: ['Block-Molded Clay', 'Block-Pressed Clay', 'Block-Cut Clay'] },
         { max: 89, titles: ['Pit-Fired Clay', 'Scove-Fired Clay', 'Kiln-Fired Clay'] },
         { max: 99, titles: ['Half-Bricked', 'Mostly Bricked', 'Competently Bricked'] }
@@ -577,8 +578,15 @@
     const LEVEL_TITLE_EASTER_EGG_LEVEL = 69;
     const LEVEL_TITLE_EASTER_EGG = ['Nice ;)', 'Really Nice ;)', 'Super Nice ;)'];
 
+    // The one true end state: the final atrophy tier at the level cap. Drives the "Fully Bricked"
+    // title, the plaque's vitrified glaze, and the rank bar's iridescent capstone, so it lives here
+    // rather than being re-spelled at each of those three call sites.
+    function isFullyBricked(atrophy, level) {
+        return (atrophy || 0) >= 2 && (level || 0) >= LEVEL_CAP;
+    }
+
     function atrophyTitle(atrophy, level) {
-        if (atrophy >= 2 && level >= 100) return 'Fully Bricked';
+        if (isFullyBricked(atrophy, level)) return 'Fully Bricked';
         if (level === LEVEL_TITLE_EASTER_EGG_LEVEL) return LEVEL_TITLE_EASTER_EGG[atrophy] || LEVEL_TITLE_EASTER_EGG[0];
         const band = LEVEL_TITLE_BANDS.find(b => level <= b.max) || LEVEL_TITLE_BANDS[LEVEL_TITLE_BANDS.length - 1];
         return band.titles[atrophy] || band.titles[0];
@@ -665,25 +673,86 @@
         return out;
     }
 
+    // ─── Rank Bar Progression ───────────────────────────────────────────────
+    // The titles page's horizontal rank bar. Deliberately the OPPOSITE read of the rank text's
+    // hardening finish above: the text is a stamped impression that REFLECTS, the bar EMITS — it
+    // gets louder, glossier and eventually animated as you climb toward Fully Bricked.
+    //
+    // Three channels, all monotonic in level (unlike the rank text's moisture channel), because the
+    // whole point is that every level feels like a step up:
+    //   • colour   — one continuous gradient spanning the entire journey, revealed left-to-right.
+    //                The bar never re-colours a stretch it already showed; climbing just uncovers
+    //                more of a gradient that was always there, so crossing a band has no visible
+    //                seam.
+    //   • glow     — linear in progress, concentrated at the fill's leading edge.
+    //   • shine    — absent through the dull-green stretch, fades in across the gold hand-off, and
+    //                runs its full sweep by the end. Gold already reads as shiny on its own, so the
+    //                animation is what's left to escalate with once the colour has peaked.
+    //
+    // Colour stops are pinned to LEVEL_TITLE_BANDS' own boundaries, so re-sizing a band moves the
+    // gradient with it and the colour keeps changing in step with the rank name. One entry per band
+    // start, plus a final stop for the cap.
+    const RANK_BAR_STOPS = [
+        '#3d5c42', // dull, desaturated — barely lit
+        '#4a7a4e', // green finding itself
+        '#5fa85c', // full clean green
+        '#9fc44f', // yellow-green, the hand-off
+        '#e0b348', // gold proper
+        '#ffd96b', // bright gold, first flecks of white
+        '#fff0b8'  // diamond teased, never fully delivered until Fully Bricked
+    ];
+
+    // Progress below this is the "no shine yet" stretch; from here to the cap the sweep fades in.
+    const RANK_BAR_SHINE_START = 0.45;
+
+    // Emits the inline custom properties .bbgl-rank-fill and friends consume. Same approach as
+    // rankHardenCSS() above — computed in JS so the whole curve stays tunable from the tables here
+    // and the gradient can be derived from the bands rather than hand-copied into the stylesheet.
+    function rankBarProgressCSS(atrophy, level) {
+        const p = Math.max(0, Math.min(1, (level || 0) / LEVEL_CAP));
+        // Band starts as a percentage of the run, plus the cap — one position per RANK_BAR_STOPS
+        // entry. Left end of the bar is level 0, so these read left-to-right like the fill does.
+        const positions = [0].concat(LEVEL_TITLE_BANDS.slice(0, -1).map(b => ((b.max + 1) / LEVEL_CAP) * 100)).concat([100]);
+        const grad = RANK_BAR_STOPS
+            .map((c, i) => `${c} ${(positions[i] !== undefined ? positions[i] : 100).toFixed(2)}%`)
+            .join(',');
+        // Later atrophy tiers fire hotter, echoing rankHardenCSS()'s heat channel — the climb resets
+        // each tier but its ceiling rises.
+        const heat = Math.max(0, Math.min(2, atrophy || 0)) * p * 0.08;
+        const shine = Math.max(0, Math.min(1, (p - RANK_BAR_SHINE_START) / (1 - RANK_BAR_SHINE_START)));
+        return [
+            `--rank-fill-pct:${(p * 100).toFixed(2)}%`,
+            `--rank-grad:linear-gradient(to right,${grad})`,
+            `--rank-glow-blur:${(2 + p * 10).toFixed(2)}px`,
+            `--rank-glow-a:${Math.min(1, 0.15 + p * 0.65 + heat).toFixed(3)}`,
+            `--rank-shine-o:${(shine * 0.85).toFixed(3)}`,
+            // Sweep tightens from a slow drift to a brisk pass as the shine takes over.
+            `--rank-shine-dur:${(4.5 - shine * 2.5).toFixed(2)}s`
+        ].join(';');
+    }
+
     // ─── Stat Titles ────────────────────────────────────────────────────────
     // Second, independent title system appended after atrophyTitle() above (e.g. "Half-Bricked
     // Calloused Goon"). Does not reset with atrophy — each of the four battle stats runs its own
-    // 11-phase word ladder, unlocked by E spent on THAT stat alone (day.eSpent[stat], never the
+    // 10-phase word ladder, unlocked by E spent on THAT stat alone (day.eSpent[stat], never the
     // pooled total). Unlocked phases stay unlocked and the player picks which two fill the title:
     // one supplies the noun (Primary), one the adjective (Secondary). Any stat can fill either
     // slot, including the same stat/phase in both.
 
     // Per-stat cumulative-E thresholds, index = phase. Phase 0 is free (0E) so every stat always
     // has one selectable word — the grid is never empty and a title always composes. Increments
-    // are backloaded: +10k, +12.5k, +15k, +17.5k, +20k, then +30k/35k/45k/55k/60k.
-    const STAT_TITLE_THRESHOLDS = [0, 10000, 22500, 37500, 55000, 75000, 105000, 140000, 185000, 240000, 300000];
+    // are backloaded: +10k, +12.5k, +15k, +17.5k, +20k, then +30k/35k/45k/55k.
+    //
+    // Ten tiers, indexed 0-9 internally but displayed as 1-10 everywhere the player sees them
+    // (achTitleStarHTML(), 06-section-v-logic.js) — the free tier reads as "1" rather than "0".
+    const STAT_TITLE_THRESHOLDS = [0, 10000, 22500, 37500, 55000, 75000, 105000, 140000, 185000, 240000];
 
     // While the player has never made a manual pick, the displayed pair auto-follows their top two
     // stats. Phase bumps apply the moment they unlock, but WHICH stats hold the two slots may only
     // change this often — the simple replacement for the old checkpoint/stability-day debounce.
     const STAT_TITLE_AUTO_PAIR_COOLDOWN_MS = 72 * 3600 * 1000;
 
-    // One evolving noun+adjective ladder per stat, indexed by phase (0-10). Undecided phases are
+    // One evolving noun+adjective ladder per stat, indexed by phase (0-9). Undecided phases are
     // `null` — statTitleWord() clamps down to the highest defined phase at or below the one asked
     // for rather than ever rendering a null/undefined word, so the ladder can ship half-written.
     const STAT_TITLE_WORDS = {
@@ -695,7 +764,7 @@
             { noun: 'Banger', adj: 'Banging' },
             { noun: 'Ripper', adj: 'Ripping' },
             { noun: 'Goon', adj: 'Goonish' },
-            null, null, null, null
+            null, null, null
         ],
         def: [
             { noun: 'Softie', adj: 'Soft' },
@@ -706,7 +775,7 @@
             { noun: 'Firmness', adj: 'Firm' },
             { noun: 'Slab', adj: 'Rock-Hard' },
             // Boulder/Impenetrable pending — parked, not yet assigned a phase.
-            null, null, null, null
+            null, null, null
         ],
         spd: [
             { noun: 'Blindman', adj: 'Blind' },
@@ -715,7 +784,7 @@
             { noun: 'Prowler', adj: 'Prowling' },
             { noun: 'Predator', adj: 'Predatory' },
             { noun: 'Longshot', adj: 'Longshot' },
-            null, null, null, null, null
+            null, null, null, null
         ],
         dex: [
             { noun: 'Noise', adj: 'Noisy' },
@@ -725,7 +794,7 @@
             { noun: 'Glaze', adj: 'Slippery' },
             { noun: 'Rascal', adj: 'Rascally' },
             { noun: 'Ambiguity', adj: 'Ambiguous' },
-            null, null, null, null
+            null, null, null
         ]
     };
 
@@ -793,13 +862,28 @@
         return parts ? parts.map(p => p.text).join(' ') : '';
     }
 
+    // One finished word. Shared by the composed title and the titles page's mid-pick preview so both
+    // pick up the identical per-word finish rules.
+    function statTitleWordHTML(text, phase) {
+        return `<span class="bbgl-title-word" data-title-phase="${phase}">${text}</span>`;
+    }
+
     // Each word carries its OWN data-title-phase, so a dull Phase 1 adjective can sit next to an
-    // iridescent Phase 10 noun — the finish progression in 04-section-iii-styles.js is per word,
+    // iridescent Phase 9 noun — the finish progression in 04-section-iii-styles.js is per word,
     // not per title.
     function composeStatTitleHTML(selection) {
         const parts = composeStatTitleParts(selection);
         if (!parts) return '';
-        return parts.map(p => `<span class="bbgl-title-word" data-title-phase="${p.phase}">${p.text}</span>`).join(' ');
+        return parts.map(p => statTitleWordHTML(p.text, p.phase)).join(' ');
+    }
+
+    // The titles page's two-click picker shows only the first word until the second click completes
+    // the pair. First click fills the adjective slot (the phrase reads adjective-then-noun), so the
+    // half-built title previews that word alone.
+    function statTitlePickPreviewHTML(pick) {
+        if (!pick) return '';
+        const w = statTitleWord(pick.stat, pick.phase);
+        return w ? statTitleWordHTML(w.adj, w.phase) : '';
     }
 
     // Clamp a stored slot to something real — known stat, phase inside the ladder and never past
@@ -829,8 +913,8 @@
     // STAT_TITLE_AUTO_PAIR_COOLDOWN_MS. That cooldown is the whole of the debounce now; the old
     // checkpoint + stability-day machinery is gone.
     //
-    // The two are stored separately (titleCustom vs titleAutoPair) precisely so the switch is
-    // non-destructive: flipping to Earned never overwrites the custom pick waiting behind it.
+    // The two are stored separately (titleCustom vs titleAutoPair) precisely so the reset arrow is
+    // non-destructive: going back to Earned never overwrites the custom pick waiting behind it.
     function resolveStatTitleSelection(eByStat, breakdown) {
         const phases = statTitlePhases(eByStat);
         const custom = userConfig.titleCustom;
@@ -838,7 +922,7 @@
         if (userConfig.titleMode === 'custom' && hasCustom) {
             const primary = clampTitleSlot(custom.primary, phases);
             const secondary = clampTitleSlot(custom.secondary, phases);
-            if (primary && secondary) return { primary, secondary, phases, mode: 'custom', hasCustom };
+            if (primary && secondary) return { primary, secondary, phases, mode: 'custom' };
         }
         let pair = rankTopTwoStats(breakdown || {});
         const auto = userConfig.titleAutoPair;
@@ -864,13 +948,13 @@
             primary: { stat: pair[0], phase: phases[pair[0]] },
             secondary: { stat: pair[1], phase: phases[pair[1]] },
             phases,
-            mode: 'earned',
-            hasCustom
+            mode: 'earned'
         };
     }
 
-    // role: 'primary' (noun slot), 'secondary' (adjective slot), or 'both'. Picking anything is
-    // what flips the switch to Custom — you never have to set the mode first.
+    // role: 'primary' (noun slot), 'secondary' (adjective slot), or 'both'. Picking anything is what
+    // switches you off the automatic pair — you never have to set the mode first, and the titles
+    // page's reset arrow is how you get back.
     function applyStatTitlePick(current, stat, phase, role) {
         const slot = { stat, phase };
         const next = {
@@ -883,8 +967,9 @@
         return next;
     }
 
-    // Earned/Custom switch. Zeroing the cooldown stamp on the way back to Earned lets it snap
-    // straight to the real top two instead of sitting on a stale pair for up to 72h.
+    // Drives the titles page's reset arrow (and nothing else now that the Earned/Custom switch is
+    // gone — picking a star sets 'custom' on its own). Zeroing the cooldown stamp on the way back to
+    // Earned lets it snap straight to the real top two instead of sitting on a stale pair for 72h.
     function setStatTitleMode(mode) {
         userConfig.titleMode = mode === 'custom' ? 'custom' : 'earned';
         if (userConfig.titleMode === 'earned') userConfig.titleAutoPairChangedAt = 0;

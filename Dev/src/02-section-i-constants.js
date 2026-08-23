@@ -225,6 +225,13 @@
         BASE_RIGHT: 5
     };
     const PAGE_TITLES = ["Sweat Equity", "Casino Collection", "Frequent Felon Passport", "Memories of Misdemeanors", "Postcards from the Frontline"];
+    // The sponsorship page is an ordinary stickerbook page that happens to sit BEFORE page 0, so
+    // that PAGE_TITLES above (and the sticker slice arithmetic in renderStickers()) can stay plainly
+    // 0-indexed rather than every page number carrying an offset. It is not a sentinel/"no page"
+    // value: it's the first entry of the real page range, [STICKER_SPONSOR_PAGE, pageCount-1] — see
+    // stickerPageTitle()/gotoStickerPage() in 09-section-viii-stickers.js.
+    const STICKER_SPONSOR_PAGE = -1;
+    const STICKER_SPONSOR_TITLE = "Sponsorship";
     const _d = s => atob(s);
     const CUSTOM_STICKERS = [
         //Sweat Equity
@@ -321,6 +328,17 @@
         backfillAbort: null,   // null | 'pause' | 'cancel' — checked each scan-loop iteration
         apiCallTotal: 0,
         resizeObserver: null,
+        // Titles page (07-section-vi-ui.js, layoutTitleBlockFrames/observeTitleBlockFrames) —
+        // separate from resizeObserver above (GraphController's), so disconnecting one never
+        // touches the other. Re-created every time achRefreshPageDom() rebuilds the titles page,
+        // since the blocks it observes are destroyed on each innerHTML swap.
+        titleFrameResizeObserver: null,
+        // Pagination dot clusters docked to the SVG icon toolbar — both the achievements footer
+        // and the stickerbook's own bar (07-section-vi-ui.js,
+        // layoutToolbarPaginationPosition/observeToolbarPaginationPosition) — watches
+        // #bbgl-top-panel, which is never destroyed, so unlike titleFrameResizeObserver above this
+        // is set up exactly once rather than per DOM rebuild.
+        toolbarPaginationResizeObserver: null,
         stickerSlots: [],
         stickerData: [],
         currentStickerPage: 0,
@@ -341,7 +359,9 @@
         wasVersionWiped: false,
         careerLevelExp: 0,
         statTitleE: null,
-        _titlePicker: null,
+        // Half-finished stat-title pick on the titles page: {stat, phase} once the first word has
+        // been clicked, null otherwise. See handleTitleStarPick() in 07-section-vi-ui.js.
+        _titlePick: null,
         _devTitleOverride: null,
         _devRankOverride: null
     };

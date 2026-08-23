@@ -20,56 +20,79 @@
         runtime.stickerData = it;
     }
 
+    // Total numbered pages (the sponsor page at STICKER_SPONSOR_PAGE sits before these and is not
+    // counted here). Was recomputed inline at four call sites across two files.
+    function stickerPageCount() {
+        return Math.ceil(runtime.stickerData.length / 10);
+    }
+
+    // PAGE_TITLES stays plainly 0-indexed; only the sponsor page needs translating.
+    function stickerPageTitle(p) {
+        return p === STICKER_SPONSOR_PAGE ? STICKER_SPONSOR_TITLE : (PAGE_TITLES[p] || "");
+    }
+
+    // The single place page state is mutated — clamped to the real page range so no caller has to
+    // carry its own bounds guard (they used to, and disagreed: the arrows refused to step below
+    // page 0 while swipe allowed it, which is why the mini prev arrow couldn't reach sponsorship).
+    // Persisting to viewState here rather than at each call site is what makes dot clicks survive a
+    // panel close/reopen; previously only some of them did.
+    function gotoStickerPage(p) {
+        const t = Math.max(STICKER_SPONSOR_PAGE, Math.min(p, stickerPageCount() - 1));
+        if (t === runtime.currentStickerPage) return;
+        runtime.currentStickerPage = t;
+        viewState.currentStickerPage = t;
+        saveViewState();
+        renderStickers();
+    }
+
+    // One dot builder for every page, sponsor included. The sponsor dot always carries
+    // pg-dot-sponsor (its gold treatment is pure CSS off that class, so it reads as gold from every
+    // page, not just its own) and picks up 'active' by the same rule as the numbered dots.
+    function renderStickerDots() {
+        const dc = dom.stickerPagination;
+        if (!dc) return;
+        dc.innerHTML = '';
+        const cur = runtime.currentStickerPage;
+        for (let i = STICKER_SPONSOR_PAGE; i < stickerPageCount(); i++) {
+            const d = document.createElement('div');
+            d.className = 'pg-dot' +
+                (i === STICKER_SPONSOR_PAGE ? ' pg-dot-sponsor' : '') +
+                (i === cur ? ' active' : '');
+            d.onclick = () => gotoStickerPage(i);
+            dc.appendChild(d);
+        }
+    }
+
     function renderStickers() {
         Perf.start('renderStickers');
         if (!runtime.stickerData.length) loadStickerData();
-        if (runtime.currentStickerPage === -1) {
-            renderSponsorshipPage();
+        const isSponsor = runtime.currentStickerPage === STICKER_SPONSOR_PAGE;
+        const sg = document.getElementById('bbgl-sponsor-grid');
+        if (sg) sg.style.display = isSponsor ? 'grid' : 'none';
+        if (dom.stickerGrid) dom.stickerGrid.style.display = isSponsor ? 'none' : '';
+        const te = dom.stickerTitle;
+        if (te) te.innerText = stickerPageTitle(runtime.currentStickerPage);
+        const tp = stickerPageCount(),
+            pb = dom.stickerPrev,
+            nb = dom.stickerNext;
+        if (pb) {
+            pb.classList.toggle('disabled', runtime.currentStickerPage <= STICKER_SPONSOR_PAGE);
+            // Gold when the step it would take lands on the sponsor page — this is the whole of
+            // what used to be a second, separately-positioned #sticker-sponsor-btn element.
+            pb.classList.toggle('is-sponsor', runtime.currentStickerPage === 0);
+        }
+        if (nb) nb.classList.toggle('disabled', runtime.currentStickerPage >= tp - 1);
+        renderStickerDots();
+        // Docked against the SVG icon toolbar, same as the achievements pagination footer — see
+        // layoutToolbarPaginationPosition() (07-section-vi-ui.js). Doesn't depend on which sticker
+        // page is showing, so this runs unconditionally ahead of every return below rather than
+        // being duplicated at each one.
+        retryToolbarPaginationLayout(() => document.getElementById('bbgl-top-panel').classList.contains('viewing-stickers'));
+        if (isSponsor) {
+            const comingSoon = document.getElementById('bbgl-coming-soon');
+            if (comingSoon) comingSoon.style.display = 'none';
             Perf.end('renderStickers');
             return;
-        }
-        const sg = document.getElementById('bbgl-sponsor-grid');
-        if (sg) sg.style.display = 'none';
-        if (dom.stickerGrid) dom.stickerGrid.style.display = '';
-        const dc = dom.stickerPagination,
-            te = dom.stickerTitle;
-        if (te) te.innerText = PAGE_TITLES[runtime.currentStickerPage] || "";
-        const tp = Math.ceil(runtime.stickerData.length / 10),
-            pb = dom.stickerPrev,
-            nb = dom.stickerNext,
-            sb = dom.stickerSponsor;
-        if (pb) {
-            if (runtime.currentStickerPage <= 0) pb.classList.add('disabled');
-            else pb.classList.remove('disabled');
-        }
-        if (sb) {
-            if (runtime.currentStickerPage === 0) sb.classList.remove('disabled');
-            else sb.classList.add('disabled');
-        }
-        if (nb) {
-            if (runtime.currentStickerPage >= tp - 1) nb.classList.add('disabled');
-            else nb.classList.remove('disabled');
-        }
-        if (dc) {
-            dc.innerHTML = '';
-            const sd = document.createElement('div');
-            sd.className = 'pg-dot';
-            sd.onclick = () => {
-                runtime.currentStickerPage = -1;
-                viewState.currentStickerPage = -1;
-                saveViewState();
-                renderStickers();
-            };
-            dc.appendChild(sd);
-            for (let i = 0; i < tp; i++) {
-                const d = document.createElement('div');
-                d.className = `pg-dot ${i === runtime.currentStickerPage ? 'active' : ''}`;
-                d.onclick = () => {
-                    runtime.currentStickerPage = i;
-                    renderStickers();
-                };
-                dc.appendChild(d);
-            }
         }
         const start = runtime.currentStickerPage * 10,
             pi = runtime.stickerData.slice(start, start + 10);
@@ -257,9 +280,11 @@
                 slot.innerHTML = `<svg class="sponsor-sticker-svg" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg"><polygon points="${pts}" fill="#ffffff"/></svg><span class="sponsor-sticker-label">${labelText}</span>`;
                 sg.appendChild(slot);
             }
-            const pag = dom.stickerPagination;
-            if (pag && pag.parentElement === container) container.insertBefore(sg, pag);
-            else container.appendChild(sg);
+            // #bbgl-sticker-pagination-bar is a sibling of #bbgl-sticker-container now (see its own
+            // comment in 04-section-iii-styles.js for why), not a descendant of it — so there's no
+            // longer an anchor to insert before within this container; the sponsor grid simply
+            // appends alongside the sticker grid.
+            container.appendChild(sg);
         }
         renderStickers();
     }
@@ -277,42 +302,5 @@
         }
         _sponsorBurstPoints = pts.join(' ');
         return _sponsorBurstPoints;
-    }
-
-    function renderSponsorshipPage() {
-        if (dom.stickerTitle) dom.stickerTitle.innerText = "Sponsorship";
-        if (dom.stickerGrid) dom.stickerGrid.style.display = 'none';
-        const comingSoon = document.getElementById('bbgl-coming-soon');
-        if (comingSoon) comingSoon.style.display = 'none';
-        const sg = document.getElementById('bbgl-sponsor-grid');
-        if (sg) sg.style.display = 'grid';
-        if (dom.stickerPrev) dom.stickerPrev.classList.add('disabled');
-        if (dom.stickerSponsor) dom.stickerSponsor.classList.add('disabled');
-        if (dom.stickerNext) dom.stickerNext.classList.remove('disabled');
-        const dc = dom.stickerPagination;
-        if (dc) {
-            dc.innerHTML = '';
-            const tp = Math.ceil(runtime.stickerData.length / 10);
-            const sd = document.createElement('div');
-            sd.className = 'pg-dot pg-dot-sponsor active';
-            sd.onclick = () => {
-                runtime.currentStickerPage = -1;
-                viewState.currentStickerPage = -1;
-                saveViewState();
-                renderStickers();
-            };
-            dc.appendChild(sd);
-            for (let i = 0; i < tp; i++) {
-                const d = document.createElement('div');
-                d.className = 'pg-dot';
-                d.onclick = () => {
-                    runtime.currentStickerPage = i;
-                    viewState.currentStickerPage = i;
-                    saveViewState();
-                    renderStickers();
-                };
-                dc.appendChild(d);
-            }
-        }
     }
 
