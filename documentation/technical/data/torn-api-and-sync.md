@@ -2,7 +2,7 @@
 
 Sources:
 
-- [`src/data/torn-api.js`](../../../src/data/torn-api.js) — `universalFetch`
+- [`src/torn/api.js`](../../../src/torn/api.js) — `universalFetch`
 - [`src/data/sync.js`](../../../src/data/sync.js) — heartbeat, exit sync, BroadcastChannel, some settings HTML
 
 ## Key rules
@@ -82,9 +82,9 @@ _syncChannel.onmessage = (event) => {
 
 `app._syncChannel` is the same instance `DBManager` posts to. `storage` events on `KEYS.LAST_SYNC` are synthesized as `{ from: 'storage_event' }` so older browsers without a channel still refresh.
 
-## Settings HTML living in this file
+## Layout helpers living in this file
 
-`buildSettingsFeaturesSection`, `buildSettingsLogFormatSection`, `buildSettingsDataSection`, `buildSettingsApiSection`, `buildSettingsInfoSection`, `buildResyncBtn`, `setResyncBtnState` are UI. `getSettingsHTML` calls them via `app.buildSettings*`. Also here (layout helpers used by `torn-inject`): `getTopCeiling`, `_getLayoutWindows`, `_syncLayoutResizeTargets`, `syncSidebarState`, `syncChangelogNotif`.
+`getTopCeiling`, `_getLayoutWindows`, `_syncLayoutResizeTargets`, `syncSidebarState`, `syncChangelogNotif`. Settings UI is Preact (`Settings.tsx`).
 
 ## Implementing a change
 

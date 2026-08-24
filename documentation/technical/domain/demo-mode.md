@@ -23,15 +23,7 @@ Demo mode lets a user click through calendar, ledger, graph, stickers, and achie
 
 `getActiveHistory` lazy-builds this once per demo session.
 
-## Welcome HTML (mis-filed)
-
-These builders are assigned on `app` from `demo.js` but are UI:
-
-- `buildWelcomeIntroSection` — remote welcome copy + privacy button
-- `buildWelcomeInitSection` — API key, timezone, week start, START TRACKING
-- `buildWelcomeReturningSection` — import existing export
-
-`getWelcomeHTML` in `templates.js` interpolates `app.buildWelcome*`. Do not call them as bare names.
+Welcome UI is Preact (`Welcome.tsx`). `demo.js` is data-only (`generateDemoData`, enter/exit, masks).
 
 ## Implementing a change
 

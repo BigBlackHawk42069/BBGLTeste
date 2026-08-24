@@ -2,42 +2,39 @@
 
 Sources:
 
-- [`src/ui/stickers.js`](../../../src/ui/stickers.js)
-- [`src/ui/achievements-view.js`](../../../src/ui/achievements-view.js) — includes `computeAchievements` (domain logic)
+- [`src/ui/preact/views/Stickers.tsx`](../../../src/ui/preact/views/Stickers.tsx) — grid, sponsor page, dots, nav, title, item-viewer chrome
+- [`src/ui/stickers.js`](../../../src/ui/stickers.js) — `loadStickerData`, RAF viewer, page-change ghosts, dropdowns
+- [`src/ui/preact/views/Achievements.tsx`](../../../src/ui/preact/views/Achievements.tsx) — six pages from `computeAchievements` props
+- [`src/ui/achievements-view.js`](../../../src/ui/achievements-view.js) — `computeAchievements`, copy, formatters, page-turn CRT
 - [`src/ui/docs.js`](../../../src/ui/docs.js)
 - [`src/ui/scan-overlay.js`](../../../src/ui/scan-overlay.js)
 
 ## Stickerbook
 
-`loadStickerData` builds `runtime.stickerData` from `CUSTOM_STICKERS` + `DataController.getStickerMap` / `getUnlockedCount` / `isStickerCleared`.
+`loadStickerData` builds `runtime.stickerData` from `CUSTOM_STICKERS` + `DataController.getUnlockedCount()`. Preact owns the grid, sponsorship page (`page === -1`), coming-soon pages (`page >= 2`), pagination dots, and title (`PAGE_TITLES`).
 
-`renderStickers`:
+`openItemViewer` / `animateViewer` / `closeItemViewer` are the 3D-ish spin viewer (`runtime.viewerLoopId`). The rotating pedestal is an `Island` so RAF can write transforms without Preact wiping them. `viewState.activeItemId` is synced across tabs.
 
-- Page `-1` is the sponsorship page (`renderSponsorshipPage`)
-- Pages `0…` show 10 stickers; titles from `PAGE_TITLES`
-- Locked stickers stay silhouetted; unlocked get the CDN art; cleared (`'+'`) get a persistent mark via `markStickerCleared` → IDB `meta.stickers`
-
-`openItemViewer` / `animateViewer` / `closeItemViewer` are the 3D-ish spin viewer (`runtime.viewerLoopId`). `viewState.activeItemId` is synced across tabs.
-
-`toggleStickerView` / `changeStickerPage` persist `currentStickerPage`.
+`toggleStickerView` / `changeStickerPage` persist `currentStickerPage`. Slide ghosts stay in `changeStickerPage` when `userConfig.animations` is on. `renderStickers` is `notifyUi`.
 
 ## Achievements
 
 `computeAchievements(historyState)` walks every day and returns lifetime energy/gains, green/gold/diamond day & week counts, streaks, per-stat bests (train/day/week/month), happy jumps, item totals. Cached on `runtime._achCache` until `DataController.invalidate`.
 
-Six pages (`runtime._achPage` / `viewState.achPage`):
+Six pages (`runtime._achPage` / `viewState.achPage`), rendered as JSX:
 
-| Page | Builder |
+| Page | Content |
 |---|---|
 | 0 | Per-stat bests |
 | 1 | Streaks |
-| 2 | Happy jumps + OD / energy items |
-| 3–4 | Locked until career level 100 (`achBuildPageLocked`) |
-| overview | Endocrine enhancers (`computeEnhancersForPeriod`) — lifetime vs selected slice (`viewState.achEnhPeriodMode`) |
+| 2 | Endocrine enhancers (`computeEnhancersForPeriod`) — lifetime vs selected slice (`viewState.achEnhPeriodMode`) |
+| 3 | Happy jumps + OD / energy items |
+| 4 | Rewards reaped |
+| 5 | Locked until career level 100 |
 
-`handleAchCopy` writes a `👑BBGL Achievements` clipboard block. CRT in/out animation when `userConfig.animations`.
+`handleAchCopy` writes a `👑BBGL Achievements` clipboard block from `data-ach-key` / `data-clip`. CRT in/out is `runtime._achCrt` when `userConfig.animations`. Nav, dots, swipe, enhancer switch, and copy clicks live on `AchievementsView`.
 
-This file is UI, but `exportData` calls `app.computeAchievements` for the JSON `achievements` key. If you extract a `domain/achievements.ts`, keep that `app.` assignment.
+`exportData` still calls `app.computeAchievements` for the JSON `achievements` key.
 
 ## Remote docs
 
@@ -59,14 +56,14 @@ Repo files (not bundled): `UserDocs/privacy.html`, `privacy-tech.html`, `changel
 
 Modals: `openPrivacyModal` / `openChangelogModal` / `openFeatureGuideModal`. First-run welcome gates START TRACKING on the privacy checkbox (`userConfig.privacyAgreed = new Date().toISOString()`).
 
-`docCache` lives on `app` (assigned from `torn-inject.js`).
+`docCache` lives on `app` (assigned from `torn/inject.js`).
 
 ## Scan overlay
 
-`renderScanOverlay` reads `meta.backfill` + `runtime.backfilling` and mounts a full-panel mask (scanning / paused / cap / error / complete / settings-locked). Pause/cancel buttons set `runtime.backfillAbort`. See [Backfill](../data/backfill.md).
+`renderScanOverlay` notifies Preact (`ScanOverlay.tsx`) from `meta.backfill` + `runtime.backfilling`. Pause/cancel buttons set `runtime.backfillAbort`. See [Backfill](../data/backfill.md).
 
 ## Implementing a change
 
 - New sticker art: `CUSTOM_STICKERS` only — progression math is already generic over `.length`.
-- New achievement row: add it in `computeAchievements` **and** the page builder, plus a `data-ach-key` / `data-clip` so copy keeps working.
+- New achievement row: add it in `computeAchievements` **and** the matching page in `Achievements.tsx`, plus a `data-ach-key` / `data-clip` so copy keeps working.
 - New UserDoc: add the HTML under `UserDocs/`, fetch via `fetchDoc('filename-without-html')`. Do not inline the article in JS.

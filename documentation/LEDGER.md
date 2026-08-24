@@ -1,7 +1,7 @@
 # Technical Documentation Ledger
 
 **Description:**
-This document is the master registry for Big Black Gym Log (BBGL): a Tampermonkey userscript that injects a gym / battle-stat tracker into `torn.com`. It is for developers working in this repository. Its purpose is to track documentation of the TypeScript/esbuild source layout, runtime contracts, IndexedDB/localStorage schema, Torn API usage, domain math, and vanilla DOM views so a new contributor can change the product without breaking existing installs.
+This document is the master registry for Big Black Gym Log (BBGL): a Tampermonkey userscript that injects a gym / battle-stat tracker into `torn.com`. It is for developers working in this repository. Its purpose is to track documentation of the TypeScript/esbuild source layout, runtime contracts, IndexedDB/localStorage schema, Torn API usage, domain math, the Preact app (`src/ui/preact`), and the Torn adapter (`src/torn`) so a new contributor can change the product without breaking existing installs.
 
 **Product:** Big Black Gym Log `0.9.91`  
 **Published artifact:** [`BigBlackGymLog.js`](../BigBlackGymLog.js) at repo root (single IIFE + userscript header).  
@@ -47,7 +47,7 @@ When marking an item as **[X]**, **[P]**, or **[!]**, you must provide the link/
 
 - **[X]** **System Overview & Layering** - (/documentation/technical/architecture.md)
   - [x] Tampermonkey IIFE artifact vs TypeScript source (`src/main.ts` → esbuild → `BigBlackGymLog.js`)
-  - [x] Import rules (`core` → `domain` → `data` → `ui` → `boot`)
+  - [x] Import rules (`core` → `domain` → `data` → `torn` / `ui` → `boot`; `ui/preact` must not import `torn/`)
   - [x] Late-bound `app` object (`src/app-context.js`) for cross-module calls
   - [x] Known extraction leftovers (mis-filed functions, blanket imports)
 - **[X]** **Runtime Contracts** - (/documentation/technical/core/runtime-contracts.md)
@@ -91,7 +91,7 @@ When marking an item as **[X]**, **[P]**, or **[!]**, you must provide the link/
 - **[X]** **Demo Mode** - (/documentation/technical/domain/demo-mode.md)
   - [x] `generateDemoData` (365-day seeded simulation)
   - [x] `getActiveHistory` demo branch
-  - [x] Welcome HTML builders currently live in `src/domain/demo.js`
+  - [x] Welcome UI is Preact (`Welcome.tsx`); `demo.js` is data-only
 
 ### C. Persistence & Network
 
@@ -103,6 +103,7 @@ When marking an item as **[X]**, **[P]**, or **[!]**, you must provide the link/
   - [x] JSON export schema (human-readable series + `_s` stickers)
   - [x] `clearData` vs `factoryReset`
 - **[X]** **Torn API & Sync** - (/documentation/technical/data/torn-api-and-sync.md)
+  - `universalFetch` lives in `src/torn/api.js`
   - [x] `universalFetch` missions (`FULL_SYNC`, `TRAIN_SINGLE`)
   - [x] Heartbeat (30 min), gym-exit sync, refresh cooldown
   - [x] `BroadcastChannel('bbgl_sync')` passenger reload
@@ -112,36 +113,28 @@ When marking an item as **[X]**, **[P]**, or **[!]**, you must provide the link/
   - [x] Scan overlay + settings button states
 - **[X]** **Ranked Wars & Faction History** - (/documentation/technical/data/wars.md)
   - [x] `fetchWars`, `fetchFactionHistory`, `getWarMarkers`
-  - [x] Calendar `renderCell` currently lives in `src/data/wars.js`
+  - [x] Calendar cells are Preact (`Calendar.tsx`); `wars.js` keeps fetch + `getWarMarkers` only
 
-### D. UI (Preact shell + vanilla views)
+### D. UI (Preact app + Torn adapter)
 
 - **[X]** **Styles & Static Assets** - (/documentation/technical/ui/styles-and-assets.md)
   - [x] `injectStyles()` (`#bbgl-styles`, Google Fonts, CSS token substitution)
   - [x] `CUSTOM_STICKERS`, `ASSETS`, `ICONS`, `cdnize()`
 - **[X]** **Panel Shell, Templates & Events** - (/documentation/technical/ui/panel-and-views.md)
-  - [x] Preact chrome (`Dashboard` + `useUiTick`) + frozen `Island` hosts for vanilla views
-  - [x] Settings HTML still from `getSettingsHTML`; welcome filled by `switchView`
-  - [x] `togglePanel`, `switchView`; header/toolbar clicks live on Preact, island clicks in `setupEventListeners`
-  - [x] Panel mode vs `#gymlog` page mode
+  - [x] Preact Dashboard / Settings / Welcome / stickers / achievements; `setupEventListeners` removed
 - **[X]** **Calendar, Ledger & Graph** - (/documentation/technical/ui/calendar-ledger-graph.md)
-  - [x] Month grid, weekly capsule bars, career level bar
-  - [x] Ledger `renderStats` / clipboard session text
-  - [x] `GraphController` (values / rates / gains)
+  - [x] Preact calendar + ledger + graph HUD; graph draw/scrub stay controllers
 - **[X]** **Stickers, Achievements & Docs** - (/documentation/technical/ui/stickers-and-achievements.md)
-  - [x] Stickerbook, item viewer, sponsorship page
-  - [x] `computeAchievements` + 6-page view (logic still in `ui/achievements-view.js`)
-  - [x] `fetchDoc` / privacy / changelog / feature guide / scan overlay
+  - [x] Stickerbook + achievement pages are Preact; RAF viewer and `handleAchCopy` stay controllers
 - **[X]** **Torn Injection & Best Gym** - (/documentation/technical/ui/torn-inject-and-best-gym.md)
-  - [x] Sidebar (`SB_DESKTOP` / `SB_MOBILE` / `SB_FLYOUT`) + footer notes tab
-  - [x] `installDomHooks` at `document-start`, layout shove vs Torn chrome
-  - [x] `BestGymController` + `GYM_TIERS`
+  - Adapter in `src/torn/` (`api.js`, `inject.js`, `best-gym.js`, `widgets/`)
 
 ### E. Boot & Local Development
 
 - **[X]** **Boot Sequence** - (/documentation/technical/boot/boot-and-events.md)
   - [x] `main.ts` load guard → `boot()` → `installDomHooks` + `init`
   - [x] Hash routing (`#gymlog`), storage-event view sync
+  - [x] `events.js` removed; view clicks are Preact
 - **[X]** **Build, Tests & Tooling** - (/documentation/technical/development.md)
   - [x] Scripts: `npm run build`, `npm run dev`, `npm run typecheck`, `npm test`
   - [x] esbuild IIFE + `userscript.meta.js` banner + Preact JSX (`jsxImportSource: preact`)

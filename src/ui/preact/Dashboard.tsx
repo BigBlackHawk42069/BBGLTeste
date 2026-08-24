@@ -1,14 +1,19 @@
+import { useEffect } from 'preact/hooks';
 import { ICONS } from '../icons.ts';
-import { runtime, userConfig, viewState } from '../../core/state.ts';
-import { TOOLTIPS, buildEmptyLevelTrackSVG, getSettingsHTML } from '../templates.js';
+import { runtime, viewState } from '../../core/state.ts';
+import { TOOLTIPS, buildEmptyLevelTrackSVG } from '../templates.js';
+import { Settings } from './Settings.tsx';
+import { Welcome } from './Welcome.tsx';
 import { app } from '../../app-context.js';
 import { Raw } from './html.tsx';
-import { Island } from './Island.tsx';
 import { useUiTick } from './store.ts';
 import { onCopySession, onDemoExit, onHeaderClick, onPopoutClick } from './chrome.ts';
-
-const WEEK_MON = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
-const WEEK_SUN = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+import { CalendarGrid, CalendarSwipe, MonthHeader, WeekRow } from './views/Calendar.tsx';
+import { GraphView } from './views/Graph.tsx';
+import { LedgerChrome } from './views/Ledger.tsx';
+import { AchievementsView } from './views/Achievements.tsx';
+import { ItemViewer, StickerTitle, StickersView } from './views/Stickers.tsx';
+import { ScanOverlay } from './ScanOverlay.tsx';
 
 function Header() {
   return (
@@ -43,67 +48,6 @@ function Header() {
   );
 }
 
-function GraphHud() {
-  return (
-    <div id="bbgl-graph-container">
-      <div class="g-hud">
-        <div class="g-toggles">
-          <div class="g-pill active" data-type="mode" data-val="values">Gains</div>
-          <div class="g-pill" data-type="mode" data-val="rates">Rates</div>
-        </div>
-        <div class="g-toggles">
-          <div class="g-pill p-str active" data-type="stat" data-val="str">STR</div>
-          <div class="g-pill p-def" data-type="stat" data-val="def">DEF</div>
-          <div class="g-pill p-spd active" data-type="stat" data-val="spd">SPD</div>
-          <div class="g-pill p-dex" data-type="stat" data-val="dex">DEX</div>
-          <div class="g-pill p-tot" data-type="stat" data-val="total">TOT</div>
-        </div>
-      </div>
-      <svg id="bbgl-graph-svg" />
-    </div>
-  );
-}
-
-function AchievementsChrome() {
-  return (
-    <>
-      <div id="bbgl-achievements-container" class="ledger-content">
-        <div class="bbgl-ach-scroll">
-          <div id="bbgl-ach-pages" />
-        </div>
-      </div>
-      <div id="bbgl-ach-footer" class="bbgl-ach-footer">
-        <div class="bbgl-ach-footer-side bbgl-ach-footer-left">
-          <button type="button" class="bbgl-ach-nav bbgl-ach-prev" aria-label="Previous achievements page">
-            {'\u276e'}
-          </button>
-        </div>
-        <div id="bbgl-ach-pageindicator" />
-        <div class="bbgl-ach-footer-side bbgl-ach-footer-right">
-          <button type="button" class="bbgl-ach-nav bbgl-ach-next" aria-label="Next achievements page">
-            {'\u276f'}
-          </button>
-        </div>
-      </div>
-    </>
-  );
-}
-
-function StickerChrome() {
-  return (
-    <>
-      <div id="bbgl-sticker-bg" />
-      <div id="bbgl-sticker-container">
-        <div id="sticker-sponsor-btn" class="sticker-nav-btn disabled">❮</div>
-        <div id="sticker-prev-btn" class="sticker-nav-btn">❮</div>
-        <div id="sticker-next-btn" class="sticker-nav-btn">❯</div>
-        <div id="bbgl-sticker-grid" />
-        <div id="bbgl-sticker-pagination" />
-      </div>
-    </>
-  );
-}
-
 function TopPanel() {
   const sub = viewState.subView;
   const overlay = sub === 'settings' || sub === 'welcome';
@@ -127,24 +71,20 @@ function TopPanel() {
       <div id="bbgl-sticker-toggle" data-tooltip={TOOLTIPS.STICKERBOOK} onClick={() => app.toggleStickerView()}>
         <Raw html={ICONS.STICKERBOOK} />
       </div>
-      <Island id="bbgl-item-counters" />
       <div id="bbgl-copy-btn" class="copy-hist-btn" data-tooltip={TOOLTIPS.COPY_SESSION} onClick={onCopySession}>
         <Raw html={ICONS.CLIPBOARD} />
       </div>
-      <Island id="bbgl-sticker-title" />
-      <Island id="bbgl-date-label" class="ui-floating-label">LOADING...</Island>
-      <Island id="bbgl-summary-label" class="ui-floating-summary" />
-      <Island id="bbgl-ledger-view" class="ledger-content" />
-      <Island contents><GraphHud /></Island>
-      <Island contents><AchievementsChrome /></Island>
-      <Island contents><StickerChrome /></Island>
+      <StickerTitle />
+      <LedgerChrome />
+      <GraphView />
+      <AchievementsView />
+      <StickersView />
       <div class="glass-overlay" />
     </div>
   );
 }
 
 function BottomPanel() {
-  const weekDays = userConfig.weekStartMode === 'mon' ? WEEK_MON : WEEK_SUN;
   const overlay = viewState.subView === 'settings' || viewState.subView === 'welcome';
   const hideForViewer = viewState.subView === 'stickers' && viewState.activeItemId;
   return (
@@ -161,83 +101,34 @@ function BottomPanel() {
       >
         DEMO MODE
       </div>
-      <Island contents>
-        <div class="bbgl-header-wrapper">
-          <div class="bbgl-month-header">
-            <div class="title-group">
-              <div class="title-stack">
-                <div class="header-row header-row--alltime">
-                  <div class="stats-btn" id="all-time-btn">
-                    <Raw html={ICONS.CHART} />
-                  </div>
-                  <div class="header-trigger" id="all-time-trigger">∞</div>
-                </div>
-                <div class="header-row header-row--year">
-                  <div class="stats-btn" id="year-stats-btn">
-                    <Raw html={ICONS.CHART} />
-                  </div>
-                  <div class="header-trigger" id="year-trigger" />
-                  <div id="bbgl-year-dropdown" class="bbgl-dropdown-menu" />
-                </div>
-                <div class="header-row header-row--month">
-                  <div class="stats-btn" id="month-stats-btn">
-                    <Raw html={ICONS.CHART} />
-                  </div>
-                  <div class="header-trigger" id="month-trigger" />
-                  <div id="bbgl-month-dropdown" class="bbgl-dropdown-menu" />
-                </div>
-              </div>
-            </div>
-            <button class="arrow-btn" id="prev-month-btn">❮</button>
-            <button class="arrow-btn" id="next-month-btn">❯</button>
-          </div>
-          <div id="bbgl-level-bg" dangerouslySetInnerHTML={{ __html: buildEmptyLevelTrackSVG() }} />
-          <div id="bbgl-level-container">
-            <div id="bbgl-level-flag-clip">
-              <span id="bbgl-level-num">Lv 1</span>
-            </div>
-            <div id="bbgl-level-track">
-              <div id="bbgl-level-fill" />
-            </div>
-          </div>
+      <MonthHeader />
+      <div id="bbgl-level-bg" dangerouslySetInnerHTML={{ __html: buildEmptyLevelTrackSVG() }} />
+      <div id="bbgl-level-container">
+        <div id="bbgl-level-flag-clip">
+          <span id="bbgl-level-num">Lv 1</span>
         </div>
-      </Island>
+        <div id="bbgl-level-track">
+          <div id="bbgl-level-fill" />
+        </div>
+      </div>
       <div class="bbgl-grid-container">
-        <div class="bbgl-week-row">
-          {weekDays.map(d => <span key={d}>{d}</span>)}
-        </div>
-        <div class="calendar-wrapper" id="swipe-area">
-          <Island id="bbgl-cal-container" class="bbgl-cal-container" />
-        </div>
+        <WeekRow />
+        <CalendarSwipe>
+          <CalendarGrid />
+        </CalendarSwipe>
       </div>
     </div>
   );
 }
 
-function ItemViewer() {
-  return (
-    <Island contents>
-      <div id="bbgl-item-viewer">
-        <div class="viewer-window">
-          <div class="viewer-stage">
-            <div class="viewer-pedestal" id="vi-pedestal-wrapper">
-              <div class="viewer-obj" id="vi-obj-target">
-                <div class="layer-front" />
-                <div class="layer-back" />
-              </div>
-            </div>
-          </div>
-        </div>
-        <div class="viewer-info-overlay">
-          <div class="vi-name" id="vi-name-target">Item Name</div>
-        </div>
-      </div>
-    </Island>
-  );
-}
-
 export function Dashboard() {
   useUiTick();
+  useEffect(() => {
+    const panel = document.getElementById('bbgl-panel');
+    if (panel && typeof app.cacheDOM === 'function') app.cacheDOM(panel);
+    if (typeof app.refreshInitLock === 'function') app.refreshInitLock();
+    if (typeof app.renderScanOverlay === 'function') app.renderScanOverlay();
+  });
   const sub = viewState.subView;
   return (
     <>
@@ -247,11 +138,12 @@ export function Dashboard() {
         <BottomPanel />
         <ItemViewer />
         <div id="bbgl-settings-view" class={sub === 'settings' ? 'active-view' : ''}>
-          <Island id="bbgl-settings-inner" contents html={getSettingsHTML()} />
+          <Settings />
         </div>
         <div id="bbgl-welcome-view" class={sub === 'welcome' ? 'active-view' : ''}>
-          <Island id="bbgl-welcome-inner" contents />
+          <Welcome />
         </div>
+        <ScanOverlay />
       </div>
     </>
   );

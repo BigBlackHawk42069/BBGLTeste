@@ -68,6 +68,6 @@ export function atrophyTitle(atrophy: number, level: number): string {
 ## UI consumers
 
 - `updateLevelBar` / `getLiveLevelExp` / `renderLevelBar` (`torn-inject.js` + `calendar.js`) read `runtime.careerLevelExp` plus **today's** live XP so the bar moves during the current day.
-- `achBuildPageLocked` hides later achievement pages until `level >= 100`.
+- Achievement page 5 stays locked until career `level >= 100` (`Achievements.tsx`).
 
 When changing the curve, update `leveling.test.ts` first — the UI only displays what these functions return.

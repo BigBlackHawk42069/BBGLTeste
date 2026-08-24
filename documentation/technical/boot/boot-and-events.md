@@ -5,7 +5,6 @@ Sources:
 - [`src/main.ts`](../../../src/main.ts)
 - [`src/boot/boot.ts`](../../../src/boot/boot.ts)
 - [`src/boot/init.js`](../../../src/boot/init.js)
-- [`src/boot/events.js`](../../../src/boot/events.js)
 
 ## Order of operations
 
@@ -35,7 +34,7 @@ IIFE
 
 Current import list (order is dependency-friendly, not alphabetical):
 
-`panel, tooltip, torn-api, history, db, sync, sanitize, wars, backfill, demo, achievements-view, ledger, import-export, best-gym, calendar, torn-inject, templates, docs, graph, stickers, init, scan-overlay, events`
+`panel, tooltip, torn-api, history, db, sync, sanitize, wars, backfill, demo, achievements-view, ledger, import-export, best-gym, calendar, torn-inject, templates, docs, graph, stickers, init, scan-overlay, mount`
 
 ## init() details
 
@@ -51,7 +50,7 @@ Current import list (order is dependency-friendly, not alphabetical):
 - Hash contains `gymlog` → page mode (`renderPageMode`), maybe open changelog after 400ms
 - Else → tear down `#bbgl-page-container`, restore panel or reset selection
 
-`renderPageMode` wipes Torn `.content-wrapper`, injects the native header + dashboard, `mountDashboard(p)` (which calls `setupEventListeners`), `restoreInternalState`, `renderPanelContent`. Settings gear in the native header calls `toggleSettingsView`. Page demo-exit forwards `.click()` to `#bbgl-demo-exit`.
+`renderPageMode` wipes Torn `.content-wrapper`, injects the native header + dashboard, `mountDashboard(p)`, `restoreInternalState`, `renderPanelContent`. Settings gear in the native header calls `toggleSettingsView`. Page demo-exit forwards `.click()` to `#bbgl-demo-exit`.
 
 ## Multi-tab view sync
 
@@ -65,7 +64,7 @@ Current import list (order is dependency-friendly, not alphabetical):
 
 ## Events
 
-See [Panel & Views](../ui/panel-and-views.md) for the `setupEventListeners` map. `init` additionally binds:
+View clicks live on the Preact tree. `init` additionally binds:
 
 - capture-phase `click` on `#bbgl-gym-tab` → `togglePanel(true)`
 - `BestGymController.handleTrainClick` then `handleGymClick`

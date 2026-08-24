@@ -4,7 +4,7 @@ import { Dashboard } from './Dashboard.tsx';
 
 export function mountDashboard(panel: HTMLElement): void {
   render(<Dashboard />, panel);
-  if (typeof app.setupEventListeners === 'function') app.setupEventListeners(panel);
+  if (typeof app.cacheDOM === 'function') app.cacheDOM(panel);
 }
 
 export function unmountDashboard(panel: HTMLElement): void {

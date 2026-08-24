@@ -85,7 +85,7 @@ If the change is a breaking data format, also decide whether to raise `WIPE_BELO
 | Change how days are rebuilt | `domain/history-engine.ts` + tests |
 | Persist a new field | `types.ts` + `sanitize.js` + `db.js` |
 | Call Torn | `universalFetch` only |
-| Add a settings row | `buildSettings*` in `sync.js` + bind in `events.js` |
-| Add a toolbar view | `templates.js` + `panel.js` `switchView` + `events.js` + `handleStorageEvent` |
+| Add a settings row | `Settings.tsx` |
+| Add a toolbar view | `Dashboard.tsx` + `panel.js` `switchView` + `handleStorageEvent` |
 | Fix sidebar inject | `torn-inject.js` `SB_*` + `installDomHooks` |
 | Cross-file call | `app.fn = fn` + `app.fn()` from others |

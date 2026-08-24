@@ -2,22 +2,25 @@
 
 Sources:
 
-- [`src/ui/calendar.js`](../../../src/ui/calendar.js) — `renderPanelContent`, month grid, weekly bars, level bar, selection
-- [`src/data/wars.js`](../../../src/data/wars.js) — `renderCell` (mis-filed)
-- [`src/ui/best-gym.js`](../../../src/ui/best-gym.js) — `buildCapsuleBar`, `CAL_IMG_BASE`, `CAP_*`
-- [`src/ui/ledger.js`](../../../src/ui/ledger.js) — `renderStats`, `buildSessionText`
-- [`src/ui/graph.js`](../../../src/ui/graph.js) — `GraphController`
+- [`src/ui/preact/views/Calendar.tsx`](../../../src/ui/preact/views/Calendar.tsx) — month grid, day cells, weekly bars, month header
+- [`src/ui/preact/views/Ledger.tsx`](../../../src/ui/preact/views/Ledger.tsx) — ledger columns, date/summary/item counters
+- [`src/ui/preact/views/Graph.tsx`](../../../src/ui/preact/views/Graph.tsx) — HUD pills; SVG host stays an Island
+- [`src/ui/calendar.js`](../../../src/ui/calendar.js) — `renderPanelContent` orchestration, level-bar animation, `openHistory`
+- [`src/data/wars.js`](../../../src/data/wars.js) — `getWarMarkers` only
+- [`src/torn/best-gym.js`](../../../src/torn/best-gym.js) — `buildCapsuleBar`, `CAL_IMG_BASE`, `CAP_*`
+- [`src/ui/ledger.js`](../../../src/ui/ledger.js) — `renderStats` (sets `runtime.currentStats` + `notifyUi`), `buildSessionText`
+- [`src/ui/graph.js`](../../../src/ui/graph.js) — `GraphController` draw / scrub
 
 All of these **read** `app.getActiveHistory()` / `app.DataController.getSlice` and **listen** to `bbgl:dataUpdated`. They do not write series.
 
 ## Calendar
 
-`renderPanelContent()` rebuilds the visible month:
+`Calendar.tsx` paints the visible month; `renderPanelContent()` notifies UI and runs side effects (pending restore, graph/sticker/achievements, level bar):
 
-- Weekday header respects `weekStartMode`
+- Weekday header respects `weekStartMode` (`WeekRow`)
 - Ghost cells for adjacent months
-- Each day: `app.renderCell` → slice tier, archived-row flip, sticker deco, war markers, shimmer
-- Weekly row: `computeWeekCapsules` → `app.buildCapsuleBar` (five-slot SVG)
+- Each day: Preact `DayCell` → slice tier, archived-row flip, sticker deco, war markers, shimmer
+- Weekly row: `computeWeekCompletion` → `app.buildCapsuleBar` (five-slot SVG)
 - Selection: `openHistory` / `closeHistory` / `updateCellSelection` set `calendarState.selectedData` + `viewState.activeViewLabel` and refresh ledger or graph
 - `calcAllTimeStats` / `calcPeriodStats('month'|'year')` build `ALL` / `MONTH` / `YEAR` slices
 - `changeMonth` + dropdowns persist `calYear` / `calMonth` on `viewState`

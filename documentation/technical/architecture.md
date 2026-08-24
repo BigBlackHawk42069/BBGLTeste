@@ -59,21 +59,26 @@ export function boot() {
 
 Shared mutables live in [`src/core/state.ts`](../../src/core/state.ts) and keep object identity so call sites do not need a store.
 
-The **panel chrome** is a Preact tree in [`src/ui/preact/`](../../src/ui/preact/) (`mountDashboard` → same IDs/classes as before). `saveViewState` / `saveConfig` call `pingUi()` so header, toolbar, and view classes re-render. Vanilla-filled hosts are wrapped in `Island` (`memo` that never updates). Do **not** call `render()` a second time on the panel — that remounts and wipes islands. Torn chrome (sidebar, footer, Best Gym) stays vanilla.
+The **BBGL-owned panel** is a Preact tree in [`src/ui/preact/`](../../src/ui/preact/) (`mountDashboard` → `#bbgl-panel`). Settings, welcome, ledger, calendar, graph HUD, stickers, achievements, scan overlay, and modals are JSX. `saveViewState` / `saveConfig` call `pingUi()` so those views re-render. Frozen `Island` hosts remain only for the graph SVG and the sticker viewer pedestal (imperative draw / RAF). Do **not** call `render()` a second time on the panel.
+
+Torn’s page is **not** a Preact tree. [`src/torn/`](../../src/torn/) finds mount nodes (sidebar, footer tab, Best Gym, gym level bar, `#gymlog` header) and `render()`s small widgets into them. `installDomHooks` / `MutationObserver` stay in the adapter.
 
 ```
 core/     constants, state, log          → imports nothing above itself
 domain/   time, capsules, leveling, day, history, demo
-data/     db, sanitize, torn-api, sync, backfill, wars, import-export
-ui/       preact shell, styles, templates, panel, calendar, ledger, graph, stickers, …
+data/     db, sanitize, sync, backfill, wars, import-export
+torn/     Torn DOM + api.torn.com adapter (may import core, domain, data, ui/preact widgets)
+ui/       Preact app + leftover vanilla controllers (graph draw, sticker RAF)
 boot/     events, init, boot             → may import everything
 ```
 
 Intended import rules:
 
-- `core/` imports nothing from `domain/`, `data/`, `ui/`, or `boot/`
-- `domain/` may import `core/` only
-- `data/` may import `core/` and `domain/`
+- `core/` imports nothing from `domain/`, `data/`, `ui/`, `torn/`, or `boot/`
+- `domain/` may import `core/` only — no Preact, no HTML strings
+- `data/` may import `core/` and `domain/` — no Preact, no HTML strings
+- `torn/` may import `core/`, `domain/`, `data/`, and `ui/preact` widgets
+- `ui/preact` must not import `torn/` (no Torn selectors in the log UI)
 - `ui/` may import `core/`, `domain/`, and `data/`
 - `boot/` may import everything
 - Domain never imports UI. Data never imports UI. UI reacts to `bbgl:dataUpdated`
@@ -84,14 +89,16 @@ Intended import rules:
 
 ```
 Torn DOM / gym page
-    → boot (hooks, hash routing, storage events)
-        → ui views (panel, calendar, ledger, graph, stickers, achievements)
+    → torn/ (hooks find mount nodes, universalFetch, Best Gym fiber walk)
+        → render small Preact widgets (footer, Best Gym, gym level, #gymlog header)
+        → api.torn.com
+    → boot (hash routing, storage events)
+        → ui/preact (Dashboard, Settings, Welcome, Ledger, Calendar, Graph HUD, stickers, achievements, modals)
             → domain (history, leveling, capsules)
                 → core state (historyCache, userConfig, viewState)
-        → data (DBManager, universalFetch, backfill)
-            → api.torn.com  (fetch only)
+        → data (DBManager, backfill, wars)
             → IndexedDB bbgl_db + localStorage
-        → domain ──bbgl:dataUpdated──→ ui
+        → domain ──bbgl:dataUpdated──→ ui (notifyUi / renderPanelContent)
 ```
 
 ## The `app` object
@@ -134,25 +141,29 @@ src/
     day.ts                initializeDayObject, normalizeApiLogs, findHappyJumps
     history-engine.ts     pure rebuildFromSeries / reconcileIncremental
     history.js            DataController + getActiveHistory
-    demo.js               generateDemoData + welcome section HTML
+    demo.js               generateDemoData (welcome UI is Preact)
   data/
     db.js                 DBManager
     sanitize.js           sanitize* / validateImportSchema
-    torn-api.js           universalFetch
-    sync.js               heartbeat, exit sync, BroadcastChannel, some settings HTML
+    sync.js               heartbeat, exit sync, BroadcastChannel
     backfill.js           scan lock / checkpoint / cap
-    wars.js               ranked wars + (currently) renderCell
+    wars.js               ranked wars + getWarMarkers
     import-export.js      export / import / clear / factoryReset
+  torn/
+    api.js                universalFetch
+    inject.js             observers, sidebar/footer inject, layout
+    best-gym.js           gym fiber walk + capsule SVG generators
+    widgets/              FooterTab, BestGym, GymLevelBar, PageHeader
   ui/
     styles.css + styles.ts
     assets.ts / icons.ts
+    preact/               Dashboard, Settings, Welcome, Ledger, Calendar, Graph, Modals
     templates.js, panel.js, tooltip.js
-    calendar.js, ledger.js, graph.js
-    stickers.js, achievements-view.js
+    calendar.js, ledger.js, graph.js   (orchestration + graph draw/scrub)
+    stickers.js, achievements-view.js  (RAF viewer, computeAchievements, copy)
     docs.js, scan-overlay.js
-    torn-inject.js, best-gym.js
   boot/
-    boot.ts, init.js, events.js
+    boot.ts, init.js
 ```
 
 ## Known extraction leftovers (shipped, do not "fix" silently)
@@ -161,10 +172,7 @@ The mechanical extract from the old single IIFE left some functions in the wrong
 
 | Lives in | Actually is | Call through |
 |---|---|---|
-| `src/data/wars.js` `renderCell` | Calendar day cell renderer | `app.renderCell` |
-| `src/data/sync.js` `buildSettings*Section`, `getTopCeiling` | Settings HTML + panel layout helpers | `app.buildSettings*` / `app.getTopCeiling` |
-| `src/domain/demo.js` `buildWelcome*Section` | Welcome-view HTML | `app.buildWelcome*` |
-| `src/ui/best-gym.js` `CAL_IMG_BASE`, `CAP_*`, `buildCapsuleBar` | Calendar capsule SVG | `app.buildCapsuleBar` |
+| `src/torn/best-gym.js` `CAL_IMG_BASE`, `CAP_*`, `buildCapsuleBar` | Calendar capsule SVG | `app.buildCapsuleBar` |
 | `src/ui/achievements-view.js` `computeAchievements` | Domain achievement rollup | `app.computeAchievements` |
 | `src/domain/history.js` imports `CUSTOM_STICKERS` from `ui/assets.ts` | Domain → UI leak (sticker catalog) | keep until stickers move to `core/` |
 
@@ -180,7 +188,7 @@ When you add a new cross-file function:
 ## What we will not do
 
 - No Node HTTP server or backend
-- No React/Vue. **Preact** is the one allowed UI runtime (panel chrome + frozen islands; bundled into the IIFE)
+- No React/Vue. **Preact** is the one allowed UI runtime (BBGL screens + Torn widgets; bundled into the IIFE)
 - No additional runtime packages without an explicit decision
 - No storage-key or IndexedDB schema migration unless you also bump `WIPE_BELOW_VERSION` and accept wiping users
 - No bundling `UserDocs` or sticker/calendar CDN images

@@ -712,7 +712,8 @@ ${BBGL_ERROR_CODE}`);
       if (m3 === "stickers") return dom.stickerContainer;
       if (m3 === "achievements") return dom.achievementsContainer;
       return dom.ledgerView;
-    }, cel = gel(cm), nel = gel(tgt);
+    };
+    const cel = gel(cm), nel = gel(tgt);
     const applyView = () => {
       tp.classList.remove("viewing-graph", "viewing-stickers", "viewing-achievements");
       sp.classList.remove("active-view");
@@ -726,97 +727,8 @@ ${BBGL_ERROR_CODE}`);
       }
       if (tgt === "welcome") {
         if (wv) {
-          const welcomeHost = wv.querySelector("#bbgl-welcome-inner") || wv;
-          welcomeHost.innerHTML = app.getWelcomeHTML();
-          app.populateWelcomeContent(welcomeHost);
           wv.classList.add("active-view");
-          const cwb = wv.querySelector(".close-settings-btn");
-          if (cwb) cwb.onclick = (e3) => {
-            if (e3) e3.stopPropagation();
-            switchView("ledger");
-          };
-          const iak = wv.querySelector("#init-api-key");
-          if (iak) iak.value = userConfig.apiKey || "";
-          const iwp = wv.querySelector("#init-api-paste");
-          if (iwp && iak) iwp.onclick = async () => {
-            try {
-              const t3 = await navigator.clipboard.readText();
-              if (t3) iak.value = t3.trim();
-            } catch (e3) {
-              bbglError(MSG_CLIPBOARD_DENIED);
-            }
-          };
-          const ilocSel = wv.querySelector("#init-loc-select");
-          if (ilocSel) {
-            ilocSel.value = userConfig.buttonLocation;
-            ilocSel.onchange = () => app.onChangeLoc(ilocSel.value);
-          }
-          const idaySel = wv.querySelector("#init-day-start");
-          if (idaySel) {
-            idaySel.value = userConfig.dayStartMode;
-            idaySel.onchange = () => app.onChangeDayStart(idaySel.value);
-          }
-          const iweekSel = wv.querySelector("#init-week-start");
-          if (iweekSel) {
-            iweekSel.value = userConfig.weekStartMode;
-            iweekSel.onchange = () => app.onChangeWeekStart(iweekSel.value);
-          }
-          const ipb = wv.querySelector("#init-privacy-btn");
-          if (ipb) ipb.onclick = function() {
-            this.blur();
-            app.openPrivacyModal();
-          };
-          const isb = wv.querySelector("#init-start-btn");
-          if (isb && iak) isb.onclick = async function() {
-            this.blur();
-            const v3 = iak.value.trim();
-            if (!/^[a-zA-Z0-9]{16}$/.test(v3)) {
-              bbglError(MSG_KEY_FORMAT_INVALID);
-              return;
-            }
-            isb.style.color = "#69f0ae";
-            isb.innerText = "VERIFYING...";
-            isb.disabled = true;
-            try {
-              const res = await fetch(`https://api.torn.com/user/?selections=battlestats,log&log=5300&key=${v3}`), data = await res.json();
-              if (data.error) {
-                bbglError(`Key Verification Failed: ${tornKeyErrorText(data)}`);
-                isb.style.color = "";
-                isb.innerText = "START TRACKING";
-                isb.disabled = false;
-                return;
-              }
-              userConfig.apiKey = v3;
-              saveConfig();
-              localStorage.setItem("bbgl_initialized", "1");
-              app.refreshInitLock();
-              calendarState.selectedData = null;
-              calendarState.selectedLabel = Formatter.dateLogical();
-              viewState.activeViewLabel = null;
-              app.syncWithFeedback("FULL_SYNC");
-              app.openBackfillChoiceModal();
-            } catch (e3) {
-              bbglError(MSG_KEY_NETWORK_ERROR);
-              isb.style.color = "";
-              isb.innerText = "START TRACKING";
-              isb.disabled = false;
-            }
-          };
-          const cb = wv.querySelector("#init-create-api-btn");
-          if (cb) cb.onclick = function() {
-            this.blur();
-            window.open("https://www.torn.com/preferences.php#tab=api?step=addNewKey&user=basic,battlestats,log&faction=rankedwars&logIds=54,50,23,6,52,56,3&title=BigBlackGymLog", "_blank");
-          };
-          const rib = wv.querySelector("#init-returning-import-btn"), rif = wv.querySelector("#init-import-file");
-          if (rib && rif) rib.onclick = function() {
-            this.blur();
-            rif.click();
-          };
-          if (rif) rif.onchange = (e3) => {
-            const f4 = e3.target.files[0];
-            if (f4) app.importDataFromWelcome(f4);
-          };
-          app.refreshInitMask(wv);
+          if (typeof app.refreshInitMask === "function") app.refreshInitMask(wv);
         }
         tp.style.display = "none";
         bp.style.display = "none";
@@ -824,15 +736,7 @@ ${BBGL_ERROR_CODE}`);
         sp.classList.add("active-view");
         tp.style.display = "none";
         bp.style.display = "none";
-        const ki = document.getElementById("set-api-key");
-        if (ki) ki.value = userConfig.apiKey || "";
-        const at = document.getElementById("set-anim-toggle");
-        if (at) at.checked = userConfig.animations;
-        const rt = document.getElementById("set-rate-toggle");
-        if (rt) rt.checked = userConfig.ratesEnabled;
-        const ls = document.getElementById("set-loc-select");
-        if (ls) ls.value = userConfig.buttonLocation;
-        app.refreshDemoMasks();
+        if (typeof app.refreshDemoMasks === "function") app.refreshDemoMasks();
       } else if (tgt === "graph") {
         tp.classList.add("viewing-graph");
         app.GraphController.restoreUi();
@@ -1168,7 +1072,7 @@ ${BBGL_ERROR_CODE}`);
   app.generateRichTooltip = generateRichTooltip;
   app.updateFooterTooltip = updateFooterTooltip;
 
-  // src/data/torn-api.js
+  // src/torn/api.js
   function resetRefreshBtn(btn) {
     if (!btn) return;
     if (btn.dataset.timerId) {
@@ -2705,43 +2609,6 @@ ${BBGL_ERROR_CODE}`);
     const sib = dom.panel.querySelector("#" + siblingId);
     if (sib && sib.value !== val) sib.value = val;
   }
-  function buildResyncBtn() {
-    const idle = `<span class="bbgl-rs-idle"><span class="view-std">RESYNC</span><span class="view-exp">RESYNC LOG</span></span>`, syncing = `<span class="bbgl-rs-sync" style="display:none;"><span class="view-std">...</span><span class="view-exp">Syncing...</span></span>`, done = `<span class="bbgl-rs-done" style="display:none;">Resynced!</span>`;
-    return `<button id="resync-btn" class="bbgl-tab-title-btn">${idle}${syncing}${done}</button>`;
-  }
-  function buildSettingsFeaturesSection() {
-    const bestGymGroup = app.buildToggle("set-bestgym-toggle", `<span data-tooltip-html="${app.TOOLTIPS.BEST_GYM}">BB Best Gym</span>`, "bbgl-bestgym-lead") + app.buildToggle("set-bestgym-spec-toggle", `<span data-tooltip-html="${app.TOOLTIPS.BEST_GYM_SPEC}">Specialty Gyms</span>`, "bbgl-subgroup-row") + app.buildToggle("set-bestgym-unpurch-toggle", `<span data-tooltip-html="${app.TOOLTIPS.BEST_GYM_UNPURCHASED}">Unpurchased Gyms</span>`, "bbgl-subgroup-row bbgl-subgroup-row-last");
-    const backfillBtn = app.buildButton("backfill-btn", "Big Black Backfill", "purple", "margin: 8px 10px 8px 10px; width: calc(100% - 20px); display: block;");
-    return app.buildSection("Big Black Features", bestGymGroup + app.buildToggle("set-rate-toggle", `<span data-tooltip-html="${app.TOOLTIPS.RATES}">Rate Displays</span>`) + app.buildToggle("set-anim-toggle", `<span data-tooltip-html="${app.TOOLTIPS.ANIM}">Animations</span>`) + app.buildRow(`<span data-tooltip-html="${app.TOOLTIPS.DRUG_TRACKER}">Drug Use Tracker</span>`, `<select id="set-drug-tracker" class="bbgl-native-select"><option value="xanax">Xanax</option><option value="lsd">LSD</option></select>`) + `<div class="bbgl-mask-host bbgl-demo-maskable" data-mask-text="Not available in demo mode">${backfillBtn}</div>`, "", buildResyncBtn());
-  }
-  function buildSettingsLogFormatSection() {
-    return app.buildSection("Log Format", app.buildRow(`<span data-tooltip-html="${app.TOOLTIPS.LOC}">Log Access</span>`, `<select id="set-loc-select" class="bbgl-native-select"><option value="notes">Footer Tab</option><option value="sidebar">Sidebar</option><option value="both">Both</option></select>`) + app.buildRow(`<span data-tooltip-html="${app.TOOLTIPS.DAY_START}">Log Timezone</span>`, app.generateDayStartSelect("set-day-start", userConfig.dayStartMode)) + app.buildRow(`<span data-tooltip-html="${app.TOOLTIPS.WEEK_START}">Week Start</span>`, `<select id="set-week-start" class="bbgl-native-select"><option value="sun">Sun \u2013 Sat</option><option value="mon">Mon \u2013 Sun</option></select>`));
-  }
-  function buildSettingsApiSection() {
-    const inputHTML = app.buildApiEntryField("set");
-    const topBtn = app.buildButton("create-api-btn", "CREATE API KEY", "", `margin: 0 10px 0 10px; width: calc(100% - 20px); display: block; ${app.stackBtnStyle("top")}`);
-    const stack = `<div class="bbgl-btn-grid" style="margin: 0 10px 10px 10px;">` + app.buildButton("clear-api-btn", "CLEAR API KEY", "red", "border-radius: 0 0 0 5px;") + app.buildButton("updt-settings-btn", "REGISTER API KEY", "green", "border-radius: 0 0 5px 0;") + `</div>`;
-    return app.buildSection("API Access", `<div class="bbgl-mask-host bbgl-demo-maskable" data-mask-text="Not available in demo mode">${inputHTML}${topBtn}${stack}</div>`, "margin-bottom: 5px;");
-  }
-  function buildSettingsDataSection() {
-    const refreshBtn = app.buildButton("refresh-log-btn", "REFRESH LOG", "", "display: none;");
-    const grid = `<div class="bbgl-btn-grid" style="margin: 8px 10px 0 10px;">${app.buildButton("export-btn", "EXPORT LOG", "", "border-radius: 5px 0 0 0; border-bottom: none;")}${app.buildButton("import-btn", "IMPORT LOG", "", "border-radius: 0 5px 0 0; border-bottom: none;")}<input type="file" id="import-file" accept=".json,application/json" style="display:none"></div>`;
-    const inner = refreshBtn + grid + app.buildButton("clear-btn", "CLEAR LOG", "red", "margin: 0 10px 8px 10px; width: calc(100% - 20px); display: block; border-top-left-radius: 0; border-top-right-radius: 0;");
-    return app.buildSection("Data Management", `<div class="bbgl-mask-host bbgl-demo-maskable" data-mask-text="Not available in demo mode">${inner}</div>`);
-  }
-  function buildSettingsInfoSection() {
-    const authorCredit = `<div class="bbgl-settings-author-credit">By <a class="bbgl-author-link" href="https://www.torn.com/profiles.php?XID=3550896" target="_blank" rel="noopener noreferrer">BigBlackHawk</a></div>`;
-    const guideBtn = app.buildButton("feature-guide-btn", "FEATURE GUIDE", "", `margin: 8px 10px 0 10px; width: calc(100% - 20px); display: block; ${app.stackBtnStyle("top")}`);
-    const stack = `<div style="margin: 0 10px 0 10px; display: flex; flex-direction: column;">` + app.buildButton("settings-changelog-btn", "CHANGELOG", "", `width: 100%; ${app.stackBtnStyle("mid")}`) + app.buildButton("settings-privacy-btn", "PRIVACY DISCLOSURE", "", `width: 100%; ${app.stackBtnStyle("mid")}`) + `</div>`;
-    const demoBtn = app.buildButton("settings-demo-btn", runtime.demoMode ? "EXIT DEMO" : "DEMO MODE", "purple", `margin: 0 10px 8px 10px; width: calc(100% - 20px); display: block; ${app.stackBtnStyle("bottom")}`);
-    return app.buildSection("Information", authorCredit + guideBtn + `<div class="bbgl-mask-host bbgl-demo-maskable" data-mask-text="Not available in demo mode">${stack}</div>${demoBtn}`);
-  }
-  function setResyncBtnState(btn, state) {
-    const idle = btn.querySelector(".bbgl-rs-idle"), syncing = btn.querySelector(".bbgl-rs-sync"), done = btn.querySelector(".bbgl-rs-done");
-    if (idle) idle.style.display = state === "idle" ? "" : "none";
-    if (syncing) syncing.style.display = state === "syncing" ? "" : "none";
-    if (done) done.style.display = state === "done" ? "" : "none";
-  }
   app._syncChannel = _syncChannel;
   app._xtabSyncTimer = _xtabSyncTimer;
   app.syncWithFeedback = syncWithFeedback;
@@ -2755,13 +2622,6 @@ ${BBGL_ERROR_CODE}`);
   app._syncLayoutResizeTargets = _syncLayoutResizeTargets;
   app.syncChangelogNotif = syncChangelogNotif;
   app.syncSiblingSelect = syncSiblingSelect;
-  app.buildResyncBtn = buildResyncBtn;
-  app.buildSettingsFeaturesSection = buildSettingsFeaturesSection;
-  app.buildSettingsLogFormatSection = buildSettingsLogFormatSection;
-  app.buildSettingsApiSection = buildSettingsApiSection;
-  app.buildSettingsDataSection = buildSettingsDataSection;
-  app.buildSettingsInfoSection = buildSettingsInfoSection;
-  app.setResyncBtnState = setResyncBtnState;
 
   // src/data/sanitize.js
   function defaultBackfill() {
@@ -3005,151 +2865,6 @@ ${BBGL_ERROR_CODE}`);
     _warMarkerCache = { raw, cutoff, map };
     return map;
   }
-  function renderCell(cont, y3, m3, d3, g4, rIdx, cIdx) {
-    const ds = Formatter.dateISO(y3, m3, d3), sl = app.DataController.getSlice("DAY", ds), isFlipped = cont.classList.contains("bbgl-row-archived"), cell = document.createElement("div");
-    cell.className = "bbgl-day-cell" + (isFlipped ? " is-archived" : "") + (g4 ? " ghost-cell" : "");
-    cell.dataset.date = ds;
-    let buildShine = null;
-    cell.addEventListener("mouseenter", () => {
-      if (userConfig.animations) {
-        cell.classList.add("shimmer-active");
-        if (buildShine) buildShine();
-      }
-    });
-    cell.addEventListener("mouseleave", () => {
-      if (!cell.classList.contains("is-viewing")) cell.classList.remove("shimmer-active");
-    });
-    const isToday = ds === Formatter.dateLogical();
-    if (isFlipped && sl.meta.tier > 0) {
-      let url = `url(${app.CAL_IMG_BASE}}cal-grid-grn.jpg)`;
-      if (sl.meta.tier === 2) url = `url(${app.CAL_IMG_BASE}}cal-grid-gold.jpg)`;
-      else if (sl.meta.tier === 3) url = `url(${app.CAL_IMG_BASE}}cal-grid-dmnd.jpg)`;
-      cell.style.backgroundImage = url;
-      cell.style.backgroundSize = "700% 600%";
-      cell.style.backgroundPosition = `${(cIdx * (100 / 6)).toFixed(4)}% ${(rIdx * (100 / 5)).toFixed(4)}%`;
-    }
-    if (!isFlipped && sl.meta.tier > 0) {
-      const wrap = document.createElement("div"), img = document.createElement("img");
-      let tType = "green", url = `${app.CAL_IMG_BASE}}rwrd-grn.png`;
-      if (sl.meta.tier === 2) {
-        tType = "gold";
-        url = `${app.CAL_IMG_BASE}}rwrd-gold.png`;
-      } else if (sl.meta.tier === 3) {
-        tType = "diamond";
-        url = `${app.CAL_IMG_BASE}}rwrd-dmnd.png`;
-      }
-      wrap.className = `jewel-wrapper jewel-type-${tType}`;
-      img.className = "jewel-asset";
-      img.src = url;
-      wrap.appendChild(img);
-      cell.appendChild(wrap);
-      cell.classList.add("is-plate");
-      buildShine = () => {
-        if (wrap.querySelector(".jewel-shine")) return;
-        const sh = document.createElement("div");
-        sh.className = "jewel-shine";
-        sh.style.maskImage = `url("${url}")`;
-        sh.style.webkitMaskImage = `url("${url}")`;
-        if (sl.meta.tier === 2) {
-          wrap.appendChild(sh);
-        } else {
-          wrap.insertBefore(sh, img);
-          const so = document.createElement("div");
-          so.className = "jewel-shine-over";
-          so.style.setProperty("--jewel-mask", `url("${url}")`);
-          wrap.appendChild(so);
-        }
-      };
-    }
-    const ns = document.createElement("span");
-    ns.className = "day-num";
-    ns.innerText = d3;
-    cell.appendChild(ns);
-    if (isFlipped) {
-      const wm = getWarMarkers()[ds];
-      const eventImgs = [];
-      if ((sl.lsdODs || 0) > 0) eventImgs.push(app.CAL_IMG_BASE + "lsd-od.png");
-      if ((sl.xanaxODs || 0) > 0) eventImgs.push(app.CAL_IMG_BASE + "xan-od.png");
-      if ((sl.exODs || 0) > 0) eventImgs.push("PLACEHOLDER_EX_OD_URL");
-      if (wm && wm.warStart) eventImgs.push(app.CAL_IMG_BASE + "war-strt.png");
-      if (wm && wm.warWon) eventImgs.push(app.CAL_IMG_BASE + "war-win.png");
-      if (wm && wm.warLost) eventImgs.push(app.CAL_IMG_BASE + "war-lost.png");
-      eventImgs.forEach((url, i3) => {
-        const ep = document.createElement("div");
-        ep.className = "bbgl-event-post-it" + (eventImgs.length > 1 && i3 === eventImgs.length - 1 ? " bbgl-event-post-it-top" : "");
-        ep.style.backgroundImage = `url('${url}')`;
-        ep.style.setProperty("--ei", i3);
-        ep.style.setProperty("--stack-total", eventImgs.length);
-        cell.appendChild(ep);
-      });
-    }
-    if (isFlipped && sl.meta.tier > 0) {
-      const item = app.DataController.getStickerMap().get(ds);
-      if (item) {
-        const uid = Math.floor(new Date(Date.UTC(y3, m3, d3)).getTime() / 864e5);
-        const sw = document.createElement("div"), si = document.createElement("img");
-        sw.className = "sticker-wrapper" + (sl.meta.tier === 3 ? " sticker-tier-diamond" : "");
-        sw.style.setProperty(
-          "--rot",
-          `${uid * 17 % 21 - 10}deg`
-        );
-        si.src = item.url;
-        si.className = "cell-sticker-deco";
-        sw.appendChild(si);
-        cell.appendChild(sw);
-        buildShine = () => {
-          if (sw.querySelector(".sticker-shine")) return;
-          const ss = document.createElement("div");
-          ss.className = "sticker-shine";
-          ss.style.webkitMaskImage = `url("${item.url}")`;
-          ss.style.maskImage = `url("${item.url}")`;
-          let grad = `linear-gradient(115deg,rgba(0,200,150,0.55) 0%,rgba(0,255,180,0.65) 20%,rgba(0,255,255,0.7) 35%,rgba(255,255,255,0.75) 50%,rgba(255,0,255,0.85) 65%,rgba(0,150,255,0.9) 80%,rgba(0,200,150,0.85) 100%)`;
-          if (sl.meta.tier === 2) grad = `linear-gradient(115deg,rgba(184,134,11,0.7) 0%,rgba(212,175,55,0.85) 11%,rgba(255,255,240,1.0) 13%,rgba(212,175,55,0.8) 15%,rgba(0,255,255,0.7) 35%,rgba(255,0,255,0.85) 65%,rgba(0,150,255,0.9) 80%,rgba(184,134,11,0.85) 100%)`;
-          else if (sl.meta.tier === 3) grad = `linear-gradient(115deg,rgba(0,255,255,0.85) 0%,rgba(200,100,255,0.85) 5%,rgba(255,0,255,0.85) 10%,rgba(0,150,255,0.85) 15%,rgba(0,255,255,0.75) 35%,rgba(255,0,255,0.85) 65%,rgba(0,150,255,0.9) 80%,rgba(0,255,255,0.85) 85%,rgba(200,100,255,0.85) 90%,rgba(255,0,255,0.85) 95%,rgba(0,150,255,0.85) 100%)`;
-          ss.style.backgroundImage = grad;
-          ss.style.mixBlendMode = "overlay";
-          if (sl.meta.tier >= 2) ss.style.filter = "brightness(1.5)";
-          sw.appendChild(ss);
-        };
-        if (app.DataController._cache.featuredDays && app.DataController._cache.featuredDays.has(ds) && !app.DataController.isStickerCleared(item.id)) {
-          const pi = document.createElement("div");
-          pi.className = "new-sticker-post-it";
-          pi.onclick = (e3) => {
-            e3.stopPropagation();
-            cell.style.setProperty("overflow", "visible", "important");
-            cell.style.setProperty("z-index", "100", "important");
-            pi.classList.add("post-it-rip");
-            app.DataController.markStickerCleared(item.id);
-            setTimeout(() => {
-              if (pi.parentNode) pi.remove();
-              cell.style.removeProperty("overflow");
-              cell.style.removeProperty("z-index");
-              cell.click();
-            }, 600);
-          };
-          cell.appendChild(pi);
-        }
-      }
-    }
-    if (isToday) cell.id = `active-date-today`;
-    cell._buildShine = buildShine;
-    if (calendarState.selectedLabel === ds || !calendarState.selectedLabel && isToday) {
-      cell.classList.add("is-viewing");
-      if (buildShine) buildShine();
-    }
-    const h3 = app.getActiveHistory();
-    const tl = app.DataController.getTimeline();
-    const firstDate = tl.length > 0 ? tl[0].date : h3 ? h3.today.date : null;
-    const isInteractive = !sl.meta.isGap || firstDate && ds >= firstDate && ds <= Formatter.dateLogical();
-    if (isInteractive) cell.setAttribute("data-tooltip-html", app.generateRichTooltip(sl));
-    else cell.setAttribute("data-tooltip", app.app.TOOLTIPS.CELL_DATE(ds));
-    cell.onclick = () => {
-      if (isToday) app.closeHistory();
-      else if (isInteractive) app.openHistory(sl, ds);
-    };
-    cont.appendChild(cell);
-    if (isInteractive && viewState.activeViewLabel === ds && calendarState.selectedLabel !== ds) runtime._pendingHistoryRestore = { sl, label: ds };
-  }
   app.fetchWars = fetchWars;
   app.fetchFactionHistory = fetchFactionHistory;
   app.getFactionHistory = getFactionHistory;
@@ -3157,7 +2872,6 @@ ${BBGL_ERROR_CODE}`);
   app.wasInFactionDuringWar = wasInFactionDuringWar;
   app._warMarkerCache = _warMarkerCache;
   app.getWarMarkers = getWarMarkers;
-  app.renderCell = renderCell;
 
   // src/ui/icons.ts
   var ASSETS = {
@@ -3639,39 +3353,24 @@ ${BBGL_ERROR_CODE}`);
     }
   }
   function buildBackfillChoiceModalHTML() {
-    const intro = `<div style="padding:6px 4px 14px; color:#ccc; font-size:12px; line-height:1.6; text-align:center;">Start tracking now with no log history, or use Big Black Backfill to reconstruct your training history from Torn's logs. You can always get Big Black Backfilled later from the Settings.</div>`;
-    const buttons = `<div style="display:flex; gap:0; margin:0 6px 2px;">${app.buildButton("bbgl-choice-fresh-btn", "START EMPTY LOG", "", "flex:1; border-radius:4px 0 0 4px; margin:0;")}${app.buildButton("bbgl-choice-backfill-btn", "BIG BLACK BACKFILL", "purple", "flex:1; border-radius:0 4px 4px 0; margin:0;")}</div>`;
-    return `<div class="bbgl-modal-overlay" id="bbgl-choice-modal"><div class="bbgl-modal-window"><div class="close-settings-btn bbgl-close-x" id="bbgl-choice-close" title="Close">${ICONS.CLOSE}</div>${app.buildSection("Start Tracking", intro + buttons, "margin-bottom:8px;")}</div></div>`;
+    return "";
   }
   function closeBackfillChoiceModal() {
+    if (typeof app.closeBackfillChoiceModal === "function" && app.closeBackfillChoiceModal !== closeBackfillChoiceModal) {
+      app.closeBackfillChoiceModal();
+      return;
+    }
+    const host = document.getElementById("bbgl-choice-modal-host");
+    if (host && host.parentNode) host.parentNode.removeChild(host);
     const m3 = document.getElementById("bbgl-choice-modal");
     if (m3 && m3.parentNode) m3.parentNode.removeChild(m3);
   }
   function openBackfillChoiceModal() {
     if (runtime.demoMode) return;
-    closeBackfillChoiceModal();
-    document.body.insertAdjacentHTML("beforeend", buildBackfillChoiceModalHTML());
-    const modal = document.getElementById("bbgl-choice-modal");
-    if (!modal) return;
-    const close = () => {
-      closeBackfillChoiceModal();
-      app.switchView("ledger");
-    };
-    modal.querySelector("#bbgl-choice-close").onclick = close;
-    modal.onclick = (e3) => {
-      if (e3.target === modal) close();
-    };
-    const fresh = modal.querySelector("#bbgl-choice-fresh-btn");
-    if (fresh) fresh.onclick = function() {
-      this.blur();
-      close();
-    };
-    const bf = modal.querySelector("#bbgl-choice-backfill-btn");
-    if (bf) bf.onclick = function() {
-      this.blur();
-      close();
-      backfillLogs(document.getElementById("backfill-btn"));
-    };
+    if (typeof app.openBackfillChoiceModal === "function" && app.openBackfillChoiceModal !== openBackfillChoiceModal) {
+      app.openBackfillChoiceModal();
+      return;
+    }
   }
   var _backfillCountdownId = null;
   function formatCountdown(ms) {
@@ -3706,75 +3405,7 @@ ${BBGL_ERROR_CODE}`);
     }, 4e3);
   }
   function renderBackfillButton() {
-    const btn = document.getElementById("backfill-btn");
-    if (!btn) return;
-    if (_backfillCountdownId) {
-      clearInterval(_backfillCountdownId);
-      _backfillCountdownId = null;
-    }
-    if (_backfillConfirmTimeout) {
-      clearTimeout(_backfillConfirmTimeout);
-      _backfillConfirmTimeout = null;
-    }
-    btn.disabled = false;
-    btn.style.pointerEvents = "";
-    btn.style.opacity = "";
-    btn.style.color = "";
-    btn.removeAttribute("data-tooltip");
-    delete btn.dataset.originalText;
-    btn.onclick = null;
-    if (runtime.demoMode) return;
-    const s3 = app.getActiveHistory();
-    const ds = s3.meta && s3.meta.backfill;
-    if (runtime.backfilling || ds && ds.acknowledged === false) {
-      btn.style.opacity = "0.6";
-      btn.style.pointerEvents = "none";
-      btn.innerHTML = ds && ds.lastResult === "partial" ? BACKFILL_RESUME_LABEL : BACKFILL_IDLE_LABEL;
-      return;
-    }
-    if (ds && ds.lastResult === "partial" && ds.cooldownUntil && Date.now() < ds.cooldownUntil) {
-      btn.style.opacity = "0.6";
-      btn.disabled = true;
-      btn.innerHTML = BACKFILL_RESUME_LABEL;
-      const updateTooltip = () => {
-        const remaining = ds.cooldownUntil - Date.now();
-        btn.setAttribute("data-tooltip", app.app.TOOLTIPS.BACKFILL_RESUME_COOLDOWN(formatCountdown(Math.max(0, remaining))));
-      };
-      updateTooltip();
-      _backfillCountdownId = setInterval(() => {
-        if (Date.now() >= ds.cooldownUntil) {
-          clearInterval(_backfillCountdownId);
-          _backfillCountdownId = null;
-          renderBackfillButton();
-          return;
-        }
-        updateTooltip();
-      }, 1e3);
-      return;
-    }
-    if (ds && ds.lastResult === "partial") {
-      btn.innerHTML = BACKFILL_RESUME_LABEL;
-      btn.onclick = function() {
-        this.blur();
-        armBackfillConfirm(btn, () => startBackfillFromSettings());
-      };
-      return;
-    }
-    if (ds && ds.lastResult === "complete") {
-      btn.style.color = "#69f0ae";
-      btn.innerHTML = "Fully Backfilled!";
-      btn.setAttribute("data-tooltip", ds.completion === "exhausted" ? app.app.TOOLTIPS.BACKFILL_COMPLETE_EXHAUSTED : app.app.TOOLTIPS.BACKFILL_COMPLETE_ORIGIN);
-      btn.onclick = function() {
-        this.blur();
-        armBackfillConfirm(btn, () => startBackfillFromSettings());
-      };
-      return;
-    }
-    btn.innerHTML = BACKFILL_IDLE_LABEL;
-    btn.onclick = function() {
-      this.blur();
-      armBackfillConfirm(btn, () => startBackfillFromSettings());
-    };
+    if (typeof app.notifyUi === "function") app.notifyUi();
   }
   app.backfillDayStart = backfillDayStart;
   app.ensureBackfillTargets = ensureBackfillTargets;
@@ -3979,31 +3610,10 @@ ${BBGL_ERROR_CODE}`);
   function enterDemoFromSettings() {
     enterDemo("settings");
   }
-  function buildWelcomeIntroSection() {
-    const body = `<div id="bbgl-welcome-intro-text">${app.DOC_LOADING_HTML}</div>${app.buildButton("init-privacy-btn", "PRIVACY DISCLOSURE", "", "margin:0 10px 8px 10px; width: calc(100% - 20px); display:block;")}`;
-    return `<div class="bbgl-prefs-tab-title" style="border-radius:5px 5px 0 0; margin-top:0;">Welcome to Big Black Gym Log</div><div class="bbgl-settings-body" style="margin-bottom:5px;">${body}</div>`;
-  }
-  function buildWelcomeInitSection() {
-    const inputHTML = app.buildApiEntryField("init", "margin:8px 10px;");
-    const createBtn = app.buildButton("init-create-api-btn", "CREATE API KEY", "", "margin:0 10px 8px 10px; width: calc(100% - 20px); display:block;");
-    const rows = app.buildRow(`<span data-tooltip-html="${app.TOOLTIPS.DAY_START}">Log Timezone</span>`, app.generateDayStartSelect("init-day-start", userConfig.dayStartMode)) + app.buildRow(`<span data-tooltip-html="${app.TOOLTIPS.WEEK_START}">Week Start</span>`, `<select id="init-week-start" class="bbgl-native-select"><option value="sun">Sun &ndash; Sat</option><option value="mon">Mon &ndash; Sun</option></select>`);
-    const startBtn = app.buildButton("init-start-btn", "START TRACKING", "green", "margin:8px 10px; width: calc(100% - 20px); display:block;");
-    const body = `<div id="init-section-masked-body" class="bbgl-mask-host" data-mask-text="Please agree to the privacy disclosure first.">${inputHTML}${createBtn}${rows}${startBtn}</div>`;
-    return app.buildSection("Initialization Settings", body, "margin-bottom:5px;");
-  }
-  function buildWelcomeReturningSection() {
-    const note = `<div id="bbgl-welcome-returning-text">${app.DOC_LOADING_HTML}</div>`;
-    const importBtn = app.buildButton("init-returning-import-btn", "IMPORT LOG", "", "margin:0 10px 8px 10px; width: calc(100% - 20px); display:block;");
-    const hiddenFile = `<input type="file" id="init-import-file" accept=".json,application/json" style="display:none">`;
-    return app.buildSection("Returning User", note + importBtn + hiddenFile, "margin-bottom:5px;");
-  }
   app.generateDemoData = generateDemoData;
   app.refreshDemoMasks = refreshDemoMasks;
   app.enterDemo = enterDemo;
   app.enterDemoFromSettings = enterDemoFromSettings;
-  app.buildWelcomeIntroSection = buildWelcomeIntroSection;
-  app.buildWelcomeInitSection = buildWelcomeInitSection;
-  app.buildWelcomeReturningSection = buildWelcomeReturningSection;
 
   // src/ui/achievements-view.js
   function computeAchievements(s3) {
@@ -4300,10 +3910,7 @@ ${BBGL_ERROR_CODE}`);
     requestAnimationFrame(tick);
   }
   function achRefreshPageDom() {
-    const container = document.getElementById("bbgl-ach-pages");
-    if (!container || !runtime._achCache) return;
-    container.innerHTML = buildAchievementsPage(runtime._achPage, runtime._achCache);
-    updateAchPageIndicator();
+    if (typeof app.notifyUi === "function") app.notifyUi();
     resizeAchLockedPage();
   }
   function renderAchievements() {
@@ -4313,52 +3920,34 @@ ${BBGL_ERROR_CODE}`);
       runtime._achPage = viewState.achPage || 0;
     }
     if (!runtime._achCache) return;
-    achRefreshPageDom();
+    if (typeof app.notifyUi === "function") app.notifyUi();
   }
   function updateAchPageIndicator() {
-    const ind = document.getElementById("bbgl-ach-pageindicator");
-    if (!ind) return;
-    ind.innerHTML = "";
-    for (let i3 = 0; i3 < 6; i3++) {
-      const d3 = document.createElement("div");
-      d3.className = "pg-dot" + (i3 === runtime._achPage ? " active" : "");
-      d3.onclick = () => {
-        if (i3 !== runtime._achPage) gotoAchievementsPage(i3 - runtime._achPage);
-      };
-      ind.appendChild(d3);
-    }
-    const p3 = document.querySelector(".bbgl-ach-prev"), n2 = document.querySelector(".bbgl-ach-next");
-    if (p3) {
-      p3.style.display = "";
-      p3.removeAttribute("aria-hidden");
-    }
-    if (n2) {
-      n2.style.display = "";
-      n2.removeAttribute("aria-hidden");
-    }
+    if (typeof app.notifyUi === "function") app.notifyUi();
   }
   function gotoAchievementsPage(dir) {
     if (runtime._achAnimating) return;
-    const container = document.getElementById("bbgl-ach-pages");
-    if (!container || !runtime._achCache) return;
+    if (!runtime._achCache) return;
     const newPage = runtime._achPage + dir;
     if (newPage < 0 || newPage > 5) return;
     const apply = () => {
       runtime._achPage = newPage;
       viewState.achPage = newPage;
       saveViewState();
-      achRefreshPageDom();
+      if (typeof app.notifyUi === "function") app.notifyUi();
     };
     if (userConfig.animations) {
       runtime._achAnimating = true;
-      container.classList.add("bbgl-crt-out");
+      runtime._achCrt = "bbgl-crt-out";
+      if (typeof app.notifyUi === "function") app.notifyUi();
       setTimeout(() => {
-        container.classList.remove("bbgl-crt-out");
         apply();
-        container.classList.add("bbgl-crt-in");
+        runtime._achCrt = "bbgl-crt-in";
+        if (typeof app.notifyUi === "function") app.notifyUi();
         setTimeout(() => {
-          container.classList.remove("bbgl-crt-in");
+          runtime._achCrt = "";
           runtime._achAnimating = false;
+          if (typeof app.notifyUi === "function") app.notifyUi();
         }, 300);
       }, 280);
     } else {
@@ -4392,34 +3981,6 @@ ${BBGL_ERROR_CODE}`);
   }
   function achEsc(s3) {
     return String(s3).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/"/g, "&quot;");
-  }
-  function achRowHTML(r4) {
-    const isFxClass = r4.statClass && r4.statClass.startsWith("ach-fx-");
-    const subCls = !isFxClass && r4.statClass ? " " + achEsc(r4.statClass) : "";
-    const valCls = isFxClass && r4.statClass ? " " + achEsc(r4.statClass) : "";
-    const valNum = r4.dualHtml ? r4.dualHtml : r4.display === "\u2014" || r4.display === "\u2014" ? `<span class="ach-null">\u2014</span>` : achEsc(r4.display);
-    const tip = r4.tip ? ` data-tooltip="${achEsc(r4.tip)}"` : "";
-    const dateEl = r4.clipDate ? `<div class="ach-date">${achEsc(r4.clipDate)}</div>` : "";
-    const subEl = r4.sub ? `<span class="ach-sub${subCls}">${achEsc(r4.sub)}</span>` : "";
-    return `<div class="bbgl-ach-row"${tip} data-ach-key="${achEsc(r4.key || "")}" data-clip="${achEsc(r4.label + ": " + r4.rawVal)}" data-clip-date="${achEsc(r4.clipDate || "")}"><div class="ach-row-main"><div class="ach-k-stack"><span class="ach-k">${achEsc(r4.label)}:</span>${dateEl}</div><div class="ach-v-wrap">${subEl}<span class="ach-value${valCls}">${valNum}</span></div></div></div>`;
-  }
-  function achRowsClip(rows) {
-    return rows.map((r4) => r4.clipDate ? `${r4.label}: ${r4.rawVal} (${r4.clipDate})` : `${r4.label}: ${r4.rawVal}`).join("\n");
-  }
-  function achBuildSection(title, rows, sectionKey = "", colCount = 4) {
-    const COLS = colCount, rpc = rows.length ? Math.ceil(rows.length / COLS) : 0, cols = Array.from({ length: COLS }, (_3, ci) => {
-      const chunk = [];
-      for (let r4 = 0; r4 < rpc; r4++) {
-        const i3 = ci * rpc + r4;
-        if (i3 < rows.length) chunk.push(rows[i3]);
-      }
-      return chunk;
-    }), colsHTML = cols.map((chunk) => `<div class="bbgl-ach-col">${chunk.map(achRowHTML).join("")}</div>`).join(""), clipAll = achRowsClip(rows);
-    return `<div class="bbgl-ach-section"><div class="bbgl-ach-title-row"><span class="bbgl-ach-section-title" data-ach-section="${achEsc(sectionKey)}" data-clip-section="${achEsc(clipAll)}" data-clip-title="${achEsc(title)}" data-tooltip="Click any stat or row to copy its data, or click this title to copy the entire section to your clipboard.">${achEsc(title)}</span></div><div class="bbgl-ach-cols"${COLS !== 4 ? ` style="grid-template-columns:repeat(${COLS},minmax(0,1fr));"` : ""}>${colsHTML}</div></div>`;
-  }
-  function achBuildDualSection(titleA, rowsA, titleB, rowsB, sectionKeyA = "", sectionKeyB = "") {
-    const clipA = achRowsClip(rowsA), clipB = achRowsClip(rowsB);
-    return `<div class="bbgl-ach-dual"><div class="bbgl-ach-dual-headers"><div class="bbgl-ach-section-title" data-ach-section="${achEsc(sectionKeyA)}" data-clip-section="${achEsc(clipA)}" data-clip-title="${achEsc(titleA)}">${achEsc(titleA)}</div><div class="bbgl-ach-section-title" data-ach-section="${achEsc(sectionKeyB)}" data-clip-section="${achEsc(clipB)}" data-clip-title="${achEsc(titleB)}">${achEsc(titleB)}</div></div><div class="bbgl-ach-dual-body"><div class="bbgl-ach-col-half">${rowsA.map(achRowHTML).join("")}</div><div class="bbgl-ach-col-half">${rowsB.map(achRowHTML).join("")}</div></div></div>`;
   }
   function achFmtWeekShort(weekOf) {
     if (!weekOf) return "";
@@ -4458,18 +4019,18 @@ ${BBGL_ERROR_CODE}`);
     return String(h3).padStart(2, "0") + ":" + String(m3).padStart(2, "0") + ":" + String(s3).padStart(2, "0") + " " + achTimeZoneSuffix();
   }
   function achBuildPageLocked() {
-    return `<div class="bbgl-ach-locked"><div class="bbgl-ach-locked-icon">\u{1F512}</div><div class="bbgl-ach-locked-text">Reach Level 100 to unlock this page!</div></div>`;
+    return "";
   }
   function achBuildPage0(d3) {
     const ps = d3.perStatBest || { bestTrain: {}, bestDay: {}, bestWeek: {}, bestMonth: {} };
-    const STATS = ["str", "def", "spd", "dex"];
-    const STAT_LABEL = { str: "Strength", def: "Defense", spd: "Speed", dex: "Dexterity" };
+    const STATS2 = ["str", "def", "spd", "dex"];
+    const STAT_LABEL2 = { str: "Strength", def: "Defense", spd: "Speed", dex: "Dexterity" };
     const rows = [{ key: "best-train", short: "Single Train", long: "Highest Single Train", tip: "Highest gains achieved from a single click, per individual stat.", recs: ps.bestTrain, getDate: (r4) => achFmtDate(r4.date), getTime: (r4) => r4.ts ? achFmtTimeHMS(r4.ts) : "" }, { key: "best-day", short: "Best Day", long: "Best Training Day", tip: "Highest gains achieved in a single calendar day, per individual stat.", recs: ps.bestDay, getDate: (r4) => achFmtDate(r4.date) }, { key: "best-week", short: "Best Week", long: "Best Training Week", tip: "Highest gains achieved in a single calendar week, per individual stat.", recs: ps.bestWeek, getDate: (r4) => achFmtWeekShort(r4.weekOf) }, { key: "best-month", short: "Best Month", long: "Best Month", tip: "Highest gains achieved in a single calendar month, per individual stat.", recs: ps.bestMonth, getDate: (r4) => achFmtMonthLong(r4.rawMonth) }];
-    const headerStats = STATS.map((sk) => `<div class="ach-stat-header ach-stat-${sk} bbgl-ach-col-copy" data-stat="${sk}" data-tooltip="Click to copy ${STAT_LABEL[sk]} column" style="cursor:pointer">${STAT_LABEL[sk]}</div>`).join("");
+    const headerStats = STATS2.map((sk) => `<div class="ach-stat-header ach-stat-${sk} bbgl-ach-col-copy" data-stat="${sk}" data-tooltip="Click to copy ${STAT_LABEL2[sk]} column" style="cursor:pointer">${STAT_LABEL2[sk]}</div>`).join("");
     const header = `<div class="bbgl-ach-grid-header"><div class="ach-grid-label-area"><span class="bbgl-ach-section-title" data-ach-section="greatest-gains" data-clip-title="Greatest Gains" data-tooltip="Click any stat or row to copy its data, or click this title to copy the entire section to your clipboard.">Greatest Gains</span></div>${headerStats}</div>`;
     const rowsHTML = rows.map((r4) => {
       const labelArea = `<div class="ach-grid-label-area"><div class="ach-k"><span class="ach-title-short">${achEsc(r4.short)}</span><span class="ach-title-long">${achEsc(r4.long)}</span></div></div>`;
-      const cells = STATS.map((sk) => {
+      const cells = STATS2.map((sk) => {
         const rec = r4.recs ? r4.recs[sk] : null;
         const valHTML = rec ? "+" + Formatter.dual(rec.value) : '<span class="ach-null">\u2014</span>';
         const dateHTML = rec ? `<div class="ach-date">${achEsc(r4.getDate(rec))}</div>` : "";
@@ -4482,14 +4043,14 @@ ${BBGL_ERROR_CODE}`);
     return `<div class="bbgl-ach-section bbgl-ach-section-page0">${header}${rowsHTML}</div>`;
   }
   function achBuildPage1(d3) {
-    const STATS = ["str", "def", "spd", "dex"];
-    const STAT_LABEL = { str: "Strength", def: "Defense", spd: "Speed", dex: "Dexterity" };
+    const STATS2 = ["str", "def", "spd", "dex"];
+    const STAT_LABEL2 = { str: "Strength", def: "Defense", spd: "Speed", dex: "Dexterity" };
     const rows = [{ key: "training-streak", short: "Best Streak", long: "Best Training Streak", tip: "Total stats gained during your longest consecutive training streak.", len: d3.longestStreak, start: d3.longestStreakStart, end: d3.longestStreakEnd, gains: d3.longestStreakGains }, { key: "green-streak", short: "Best Green", long: "Best Green Streak", tip: "Total stats gained during your longest streak of achieving at least Green (1,000E+).", len: d3.longestGoalStreak, start: d3.longestGoalStreakStart, end: d3.longestGoalStreakEnd, gains: d3.longestGoalStreakGains }, { key: "gold-streak", short: "Best Gold", long: "Best Gold Streak", tip: "Total stats gained during your longest streak of achieving at least Gold (1,500E+).", len: d3.longestGoldStreak, start: d3.longestGoldStreakStart, end: d3.longestGoldStreakEnd, gains: d3.longestGoldStreakGains }, { key: "diamond-streak", short: "Best Diamond", long: "Best Diamond Streak", tip: "Total stats gained during your longest streak of achieving Diamond (2,000E+).", len: d3.longestDiamondStreak, start: d3.longestDiamondStreakStart, end: d3.longestDiamondStreakEnd, gains: d3.longestDiamondStreakGains }];
-    const headerStats = STATS.map((sk) => `<div class="ach-stat-header ach-stat-${sk}">${STAT_LABEL[sk]}</div>`).join("") + `<div class="ach-stat-header ach-stat-tot">Total</div>`;
+    const headerStats = STATS2.map((sk) => `<div class="ach-stat-header ach-stat-${sk}">${STAT_LABEL2[sk]}</div>`).join("") + `<div class="ach-stat-header ach-stat-tot">Total</div>`;
     const header = `<div class="bbgl-ach-grid-header"><div class="ach-grid-label-area"><span class="bbgl-ach-section-title" data-ach-section="sexiest-streaks" data-clip-title="Sexiest Streaks" data-tooltip="Click any stat or row to copy its data, or click this title to copy the entire section to your clipboard.">SEXIEST STREAKS</span></div>${headerStats}</div>`;
     const rowsHTML = rows.map((r4) => {
       const dayBit = `<span class="ach-streak-days">${r4.len ? r4.len + "d" : "\u2014"}</span>`;
-      const presentStats = r4.gains ? STATS.filter((sk) => (r4.gains[sk] || 0) > 0) : [];
+      const presentStats = r4.gains ? STATS2.filter((sk) => (r4.gains[sk] || 0) > 0) : [];
       const total = presentStats.reduce((a3, sk) => a3 + (r4.gains[sk] || 0), 0);
       const dateText = r4.start && r4.end ? achEsc(achFmtStreakRange(r4.start, r4.end)) : "\u2014";
       const dateHTML = `<div class="ach-date ach-streak-date">${dayBit}<span class="ach-streak-sep">\u2022</span><span class="ach-streak-daterange">${dateText}</span></div>`;
@@ -4497,7 +4058,7 @@ ${BBGL_ERROR_CODE}`);
       const inlineDays = r4.len ? `<span class="ach-streak-days ach-streak-days-inline"> \xB7 ${r4.len}d</span>` : "";
       const inlineDate = r4.start && r4.end ? `<span class="bbgl-ach-streak-date-inline">&nbsp;&nbsp;${dateText}</span>` : "";
       const labelArea = `<div class="ach-grid-label-area"><div class="ach-k"><span class="ach-title-short">${achEsc(r4.short)}</span><span class="ach-title-long">${achEsc(r4.long)}</span>${inlineDays}${inlineDate}</div></div>`;
-      const cells = STATS.map((sk) => {
+      const cells = STATS2.map((sk) => {
         const v3 = r4.gains && r4.gains[sk] || 0;
         const valHTML = v3 > 0 ? "+" + achEsc(achFmtGain(v3)) : '<span class="ach-null">\u2014</span>';
         return `<div class="bbgl-ach-stat-cell" data-ach-key="${r4.key}" data-stat="${sk}"><span class="ach-value">${valHTML}</span></div>`;
@@ -4521,7 +4082,7 @@ ${BBGL_ERROR_CODE}`);
   function achBuildPage2(d3) {
     const STAT_ABBR = { str: "STR", def: "DEF", spd: "SPD", dex: "DEX" };
     const STAT_FULL = { str: "Strength", def: "Defense", spd: "Speed", dex: "Dexterity" };
-    const STATS = ["str", "def", "spd", "dex"];
+    const STATS2 = ["str", "def", "spd", "dex"];
     const isExpanded = achIsExpandedMode();
     const countRow = (label, shortLabel, count, key, tip, tipIsHtml) => {
       const clipVal = String(count);
@@ -4535,7 +4096,7 @@ ${BBGL_ERROR_CODE}`);
       const dateStr = achFmtDate(rec.date);
       const timeStr = achFmtTimeHM(rec.ts) + " \u2013 " + achFmtTimeHM(rec.tsEnd || rec.ts) + " " + achTimeZoneSuffix();
       const timeStrClip = achFmtTimeHMClip(rec.ts) + " \u2013 " + achFmtTimeHMClip(rec.tsEnd || rec.ts) + " TCT";
-      const trained = STATS.filter((sk) => (rec.stats[sk] || 0) > 0);
+      const trained = STATS2.filter((sk) => (rec.stats[sk] || 0) > 0);
       const statCells = trained.map((sk) => `<div class="bbgl-ach-hh-cell bbgl-ach-hh-cell-stat bbgl-ach-stat-cell" data-ach-key="${key}" data-stat="${sk}" data-tooltip="Total ${achEsc(STAT_FULL[sk])} gained during this jump."><span class="bbgl-ach-hh-val">+${achEsc(achFmtGain(rec.stats[sk]))}</span><span class="bbgl-ach-hh-tag ach-stat-${sk}">${STAT_ABBR[sk]}</span></div>`).join("");
       const totalCell = `<div class="bbgl-ach-hh-cell bbgl-ach-hh-cell-total bbgl-ach-stat-cell" data-ach-key="${key}" data-stat="total" data-tooltip="Total overall stats gained during this jump."><span class="bbgl-ach-hh-tag ach-stat-tot">Total</span><span class="bbgl-ach-hh-val">+${achEsc(achFmtGain(rec.value))}</span></div>`;
       const clipParts = trained.map((sk) => STAT_ABBR[sk] + ": +" + achFmtGain(rec.stats[sk]));
@@ -4548,7 +4109,7 @@ ${BBGL_ERROR_CODE}`);
     let clipAll = `Happy Jumps Performed: ${d3.happyJumps || 0}
 Best Happy Jump: ${d3.bestHappyJump && d3.bestHappyJump.total ? (() => {
       const rec = d3.bestHappyJump.total;
-      const trained = STATS.filter((sk) => (rec.stats[sk] || 0) > 0);
+      const trained = STATS2.filter((sk) => (rec.stats[sk] || 0) > 0);
       const parts = trained.map((sk) => STAT_ABBR[sk] + ": +" + achFmtGain(rec.stats[sk]));
       parts.push("Total: +" + achFmtGain(rec.value));
       return parts.join(" | ");
@@ -4645,7 +4206,7 @@ Best Happy Jump: ${d3.bestHappyJump && d3.bestHappyJump.total ? (() => {
     const LEFT_COL = [2150, 2130, 2290, 2040, 4900];
     const RIGHT_COL = [2140, 2120, 2230, 2190, 8981];
     const OD_AFTER = { 2290: XANAX_OD_LOG, 2230: LSD_OD_LOG };
-    const buildRow2 = (id) => {
+    const buildRow = (id) => {
       const meta = ITEM_LOG_META[id];
       const label = meta.achLabel || meta.label;
       const tipLabel = meta.achTipLabel || label;
@@ -4682,7 +4243,7 @@ Best Happy Jump: ${d3.bestHappyJump && d3.bestHappyJump.total ? (() => {
       return `<div class="bbgl-ach-row bbgl-ach-enh-row bbgl-ach-od-row bbgl-subgroup-row bbgl-subgroup-row-last" data-tooltip="${achEsc(tip)}" data-ach-key="${key}" data-clip="${achEsc(clipVal)}"><div class="ach-row-main"><div class="ach-k-stack"><span class="ach-k"><span class="ach-title-long">ODs:</span><span class="ach-title-short">ODs:</span></span></div><div class="ach-v-wrap"><span class="ach-value">${countHtml}</span><span class="ach-value ach-enh-gained ach-enh-od">${gainedHtml}</span></div></div></div>`;
     };
     const buildColHTML = (col) => col.map((id) => {
-      let html = buildRow2(id);
+      let html = buildRow(id);
       const odId = OD_AFTER[id];
       if (odId && od[odId] && od[odId].count > 0) html += buildODSubRow(odId);
       return html;
@@ -5103,10 +4664,6 @@ Best Happy Jump: ${d3.bestHappyJump && d3.bestHappyJump.total ? (() => {
   app.achFmtWeekRange = achFmtWeekRange;
   app.achFmtStreakRange = achFmtStreakRange;
   app.achEsc = achEsc;
-  app.achRowHTML = achRowHTML;
-  app.achRowsClip = achRowsClip;
-  app.achBuildSection = achBuildSection;
-  app.achBuildDualSection = achBuildDualSection;
   app.achFmtWeekShort = achFmtWeekShort;
   app.achFmtMonthLong = achFmtMonthLong;
   app.achFmtTimeTCT = achFmtTimeTCT;
@@ -5114,7 +4671,6 @@ Best Happy Jump: ${d3.bestHappyJump && d3.bestHappyJump.total ? (() => {
   app.achTimeZoneSuffix = achTimeZoneSuffix;
   app.achFmtTimeHMClip = achFmtTimeHMClip;
   app.achFmtTimeHMS = achFmtTimeHMS;
-  app.achBuildPageLocked = achBuildPageLocked;
   app.achBuildPage0 = achBuildPage0;
   app.achBuildPage1 = achBuildPage1;
   app.achFmtTimeHM = achFmtTimeHM;
@@ -5180,118 +4736,10 @@ Best Happy Jump: ${d3.bestHappyJump && d3.bestHappyJump.total ? (() => {
     }), 1e3);
   }
   function renderStats(sl, rawLbl) {
-    const c3 = dom.ledgerView;
-    if (!c3) return;
+    if (!sl) return;
     if (!sl.stats) sl = app.DataController._hydrate(sl, [], rawLbl, "DAY");
-    const s3 = sl.stats, isP = sl.resolution !== "DAY";
-    const dEl = dom.dateLabel;
-    if (dEl) {
-      const isExp = dom.panel.classList.contains("bbgl-expanded") || dom.panel.classList.contains("bbgl-mode-page");
-      let l3;
-      if (sl.resolution === "WEEK") {
-        const start = sl._weekStart || (sl._dailyList && sl._dailyList.length > 0 ? sl._dailyList[0].date : null) || sl.date;
-        const end = sl._weekEnd || (sl._dailyList && sl._dailyList.length > 0 ? sl._dailyList[sl._dailyList.length - 1].date : null) || sl.date;
-        l3 = `Week of ${Formatter.dateMonthDay(start)}<span class="view-exp"> - ${Formatter.dateMonthDay(end)}</span>`;
-      } else {
-        l3 = isExp ? Formatter.dateFull(sl.label) : Formatter.datePretty(sl.label);
-        if (!l3) l3 = sl.label;
-        if (sl.resolution === "MONTH") {
-          l3 = sl.label + " " + calendarState.year;
-        } else if (isP && sl._dailyList.length > 0 && sl.resolution !== "ALL") {
-          const endLabel = Formatter.dateMonthDay(sl._dailyList[sl._dailyList.length - 1].date);
-          l3 += `<span class="view-exp"> (${Formatter.dateMonthDay(sl._dailyList[0].date)} - ${endLabel})</span>`;
-        }
-      }
-      dEl.innerHTML = l3;
-    }
-    const sumEl = dom.summaryLabel;
-    if (sumEl) sumEl.innerHTML = `Total E: ${Formatter.dual(s3.total.cost)} <span style="opacity:0.3; margin:0 6px">|</span> Total Gains: ${Formatter.dual(s3.total.gain)}`;
-    const lm = { "STR": "Strength", "DEF": "Defense", "SPD": "Speed", "DEX": "Dexterity", "TOT": "Total" };
-    runtime.currentStats = { sl, s: s3 };
-    if (dom.itemCounters) {
-      const items = sl.items || {};
-      const isDay = sl.resolution === "DAY";
-      const cnt = (code) => items[code] || 0;
-      const shortOf = (code) => ITEM_LOG_META[code] && ITEM_LOG_META[code].short || `#${code}`;
-      const drugCode = userConfig.drugTracker === "lsd" ? 2230 : XANAX_LOG;
-      const secondaryCode = userConfig.drugTracker === "lsd" ? XANAX_LOG : 2230;
-      const parts = [];
-      let drugSub = "";
-      if (!isDay) {
-        const days = app.DataController.periodCalendarDays(sl);
-        const drugAvg = days > 0 ? cnt(drugCode) / days : 0;
-        drugSub = sl.resolution === "ALL" ? "" : `<span class="bbgl-ic-sub">(${drugAvg.toFixed(2)})</span>`;
-      }
-      const nameOf = (c4) => {
-        if (c4 === 2290) return "Xanax";
-        if (c4 === 2230) return "LSD";
-        if (c4 === 2040) return "Cans";
-        if (c4 === 2190) return "FHC";
-        if (c4 === 8981) return "Eggs";
-        return shortOf(c4);
-      };
-      const isAll = sl.resolution === "ALL";
-      const drugTip = `<div style="text-align:center">${nameOf(drugCode)} Taken` + (!isDay && !isAll ? `<br><span class="tt-sub">(Avg/Day)</span>` : ``) + `</div>`;
-      parts.push(`<span class="bbgl-ic" data-tooltip-html='${drugTip}'>${shortOf(drugCode)}: ${cnt(drugCode)}${drugSub}</span>`);
-      [ECAN_LOG, 2190, secondaryCode, 8981].forEach((code) => {
-        const c4 = cnt(code);
-        if (c4 <= 0) return;
-        const sub = code === ECAN_LOG && sl.resolution !== "ALL" ? `<span class="bbgl-ic-sub">(+${Math.round(sl.ecanEnergy || 0)})</span>` : "";
-        let dynTip = "";
-        if (code === ECAN_LOG) {
-          dynTip = `<div style="text-align:center">Cans Used` + (!isAll ? `<br><span class="tt-sub">(Energy Gained)</span>` : ``) + `</div>`;
-        } else {
-          dynTip = `<div style="text-align:center">${nameOf(code)} Used</div>`;
-        }
-        parts.push(`<span class="bbgl-ic bbgl-ic-dyn" data-tooltip-html='${dynTip}'>${shortOf(code)}: ${c4}${sub}</span>`);
-      });
-      const refills = cnt(4900);
-      const refillVal = isDay ? refills > 0 ? `<span class="bbgl-ic-yes">\u2713</span>` : `<span class="bbgl-ic-no">\u2717</span>` : `${refills}`;
-      const refillTip = `<div style="text-align:center">Refills Used</div>`;
-      parts.push(`<span class="bbgl-ic" data-tooltip-html='${refillTip}'>Refill: ${refillVal}</span>`);
-      dom.itemCounters.innerHTML = parts.join("");
-    }
-    const todayStr = Formatter.dateLogical();
-    const slLastDate = sl._dailyList && sl._dailyList.length > 0 ? sl._dailyList[sl._dailyList.length - 1].date : sl.date;
-    const isCurrentPeriod = sl.resolution === "ALL" || slLastDate >= todayStr;
-    const col = (lc, k3, cl) => {
-      const d3 = s3[k3], ft = lm[lc] || lc;
-      let rh = "", rt = "";
-      const fmtR = (n2) => {
-        if (!n2 && n2 !== 0) return "0";
-        const a3 = Math.abs(n2);
-        if (a3 >= 1e15) return (n2 / 1e15).toFixed(4) + "q";
-        if (a3 >= 1e12) return (n2 / 1e12).toFixed(4) + "t";
-        if (a3 >= 1e9) return (n2 / 1e9).toFixed(4) + "b";
-        if (a3 >= 100) return Math.round(n2).toLocaleString("en-US");
-        return n2.toFixed(1);
-      };
-      const mkTip = (r1, r22, pct, sg) => `<div style='text-align:center;line-height:1.6'><div style='margin-bottom:0px'>Growth Rate</div><div style='font-size:0.85em;opacity:0.35;margin-bottom:3px'>(Gains/150E)</div><div>${fmtR(r1)} \u2192 ${fmtR(r22)}</div><div style='font-size:0.85em;color:#aaa'>${sg}${Math.round(pct)}%</div></div>`;
-      if (isP && k3 !== "total") {
-        let th = `<span style="opacity:0.3">--</span>`;
-        if (userConfig.ratesEnabled && sl._dailyList.length > 0) {
-          const _fpd = /* @__PURE__ */ new Date(sl._dailyList[0].date + "T00:00:00Z");
-          _fpd.setUTCDate(_fpd.getUTCDate() - 1);
-          const r1 = app.DataController.getHistoricalRate(_fpd.toISOString().slice(0, 10), k3), r22 = app.DataController._hydrate(sl._dailyList[sl._dailyList.length - 1], [], "", "DAY").stats[k3].rate, del = r22 - r1, sg = del >= 0 ? "+" : "", pct = r1 > 0 ? (r22 - r1) / r1 * 100 : 0;
-          th = `<div class="rates-group" style="display:flex;flex-direction:column;align-items:center;line-height:1.1"><span>${sg}${Formatter.achAbbr(del, ACH_FMT.compact)}</span><span class="view-exp rate-pct" style="font-size:0.8em;opacity:0.7;margin-top:2px;margin-bottom:-2px;">(${sg}${Formatter.ratePct(pct)}%)</span></div>`;
-          rt = mkTip(r1, r22, pct, sg);
-        }
-        rh = userConfig.ratesEnabled ? th : "";
-      } else {
-        if (userConfig.ratesEnabled && k3 !== "total") {
-          const _pd = /* @__PURE__ */ new Date(sl.date + "T00:00:00Z");
-          _pd.setUTCDate(_pd.getUTCDate() - 1);
-          const r1 = app.DataController.getHistoricalRate(_pd.toISOString().slice(0, 10), k3), r22 = d3.rate, del = r22 - r1, sg = del >= 0 ? "+" : "", pct = r1 > 0 ? del / r1 * 100 : 0;
-          rh = userConfig.ratesEnabled ? Formatter.dual(d3.rate, true) : "";
-          rt = mkTip(r1, r22, pct, sg);
-        } else {
-          rh = userConfig.ratesEnabled ? Formatter.dual(d3.rate, true) : "";
-          rt = `Growth Rate (Gains / 150E)`;
-        }
-      }
-      return `<div class="stat-column" data-copy-stat="${k3}"><div class="col-header cell-stack"><div class="l-top c-label ${cl} bbgl-copy-label" data-tooltip="Click to copy ${ft} data" style="cursor:pointer"><span class="view-std">${lc}</span><span class="view-exp">${ft}</span></div><div class="l-bot" data-tooltip="${isP ? `Energy Used on ${ft}` : `Energy Used`}">${Formatter.dual(d3.cost)} E</div></div><div class="bbgl-spacer"></div><div class="col-data-block cell-stack c-gain"><div class="l-top" data-tooltip="${ft} Gained">+${Formatter.dual(d3.gain)}</div><div class="l-bot" data-tooltip="${rt}">${rh}</div></div><div class="bbgl-spacer"></div><div class="col-data-block cell-stack c-total"><div class="l-top" data-tooltip="${isCurrentPeriod ? "Current" : "Ending"} ${ft}">${Formatter.dual(d3.end)}</div><div class="l-bot" data-tooltip="Starting ${ft}">${Formatter.dual(d3.start)}</div></div></div>`;
-    };
-    c3.innerHTML = ` ${col("STR", "str", "t-str")} ${col("DEF", "def", "t-def")} ${col("SPD", "spd", "t-spd")} ${col("DEX", "dex", "t-dex")} `;
+    runtime.currentStats = { sl, s: sl.stats };
+    if (typeof app.notifyUi === "function") app.notifyUi();
   }
   app.buildSessionText = buildSessionText;
   app.flashCopied = flashCopied;
@@ -5672,7 +5120,324 @@ Please enter a new key to continue.`);
   app.clearData = clearData;
   app.factoryReset = factoryReset;
 
-  // src/ui/best-gym.js
+  // node_modules/preact/dist/preact.module.js
+  var n;
+  var l;
+  var u;
+  var t;
+  var i;
+  var r;
+  var o;
+  var e;
+  var f;
+  var c;
+  var a;
+  var s;
+  var h;
+  var p;
+  var v;
+  var y;
+  var d = {};
+  var w = [];
+  var _ = /acit|ex(?:s|g|n|p|$)|rph|grid|ows|mnc|ntw|ine[ch]|zoo|^ord|itera/i;
+  var g = Array.isArray;
+  function m(n2, l3) {
+    for (var u4 in l3) n2[u4] = l3[u4];
+    return n2;
+  }
+  function b(n2) {
+    n2 && n2.parentNode && n2.parentNode.removeChild(n2);
+  }
+  function k(l3, u4, t3) {
+    var i3, r4, o3, e3 = {};
+    for (o3 in u4) "key" == o3 ? i3 = u4[o3] : "ref" == o3 ? r4 = u4[o3] : e3[o3] = u4[o3];
+    if (arguments.length > 2 && (e3.children = arguments.length > 3 ? n.call(arguments, 2) : t3), "function" == typeof l3 && null != l3.defaultProps) for (o3 in l3.defaultProps) void 0 === e3[o3] && (e3[o3] = l3.defaultProps[o3]);
+    return x(l3, e3, i3, r4, null);
+  }
+  function x(n2, t3, i3, r4, o3) {
+    var e3 = { type: n2, props: t3, key: i3, ref: r4, __k: null, __: null, __b: 0, __e: null, __c: null, constructor: void 0, __v: null == o3 ? ++u : o3, __i: -1, __u: 0 };
+    return null == o3 && null != l.vnode && l.vnode(e3), e3;
+  }
+  function S(n2) {
+    return n2.children;
+  }
+  function C(n2, l3) {
+    this.props = n2, this.context = l3;
+  }
+  function $(n2, l3) {
+    if (null == l3) return n2.__ ? $(n2.__, n2.__i + 1) : null;
+    for (var u4; l3 < n2.__k.length; l3++) if (null != (u4 = n2.__k[l3]) && null != u4.__e) return u4.__e;
+    return "function" == typeof n2.type ? $(n2) : null;
+  }
+  function I(n2) {
+    if (n2.__P && n2.__d) {
+      var u4 = n2.__v, t3 = u4.__e, i3 = [], r4 = [], o3 = m({}, u4);
+      o3.__v = u4.__v + 1, l.vnode && l.vnode(o3), q(n2.__P, o3, u4, n2.__n, n2.__P.namespaceURI, 32 & u4.__u ? [t3] : null, i3, null == t3 ? $(u4) : t3, !!(32 & u4.__u), r4), o3.__v = u4.__v, o3.__.__k[o3.__i] = o3, D(i3, o3, r4), u4.__e = u4.__ = null, o3.__e != t3 && P(o3);
+    }
+  }
+  function P(n2) {
+    if (null != (n2 = n2.__) && null != n2.__c) return n2.__e = n2.__c.base = null, n2.__k.some(function(l3) {
+      if (null != l3 && null != l3.__e) return n2.__e = n2.__c.base = l3.__e;
+    }), P(n2);
+  }
+  function A(n2) {
+    (!n2.__d && (n2.__d = true) && i.push(n2) && !H.__r++ || r != l.debounceRendering) && ((r = l.debounceRendering) || o)(H);
+  }
+  function H() {
+    try {
+      for (var n2, l3 = 1; i.length; ) i.length > l3 && i.sort(e), n2 = i.shift(), l3 = i.length, I(n2);
+    } finally {
+      i.length = H.__r = 0;
+    }
+  }
+  function L(n2, l3, u4, t3, i3, r4, o3, e3, f4, c3, a3) {
+    var s3, h3, p3, v3, y3, _3, g4 = t3 && t3.__k || w, m3 = l3.length;
+    for (f4 = T(u4, l3, g4, f4, m3), s3 = 0; s3 < m3; s3++) null != (p3 = u4.__k[s3]) && (h3 = -1 != p3.__i && g4[p3.__i] || d, p3.__i = s3, _3 = q(n2, p3, h3, i3, r4, o3, e3, f4, c3, a3), v3 = p3.__e, p3.ref && h3.ref != p3.ref && (h3.ref && J(h3.ref, null, p3), a3.push(p3.ref, p3.__c || v3, p3)), null == y3 && null != v3 && (y3 = v3), 4 & p3.__u ? (f4 = j(p3, f4, n2), h3.__e && (h3.__e = null)) : "function" == typeof p3.type && void 0 !== _3 ? f4 = _3 : v3 && (f4 = v3.nextSibling), p3.__u &= -7);
+    return u4.__e = y3, f4;
+  }
+  function T(n2, l3, u4, t3, i3) {
+    var r4, o3, e3, f4, c3, a3 = u4.length, s3 = a3, h3 = 0;
+    for (n2.__k = new Array(i3), r4 = 0; r4 < i3; r4++) null != (o3 = l3[r4]) && "boolean" != typeof o3 && "function" != typeof o3 ? ("string" == typeof o3 || "number" == typeof o3 || "bigint" == typeof o3 || o3.constructor == String ? o3 = n2.__k[r4] = x(null, o3, null, null, null) : g(o3) ? o3 = n2.__k[r4] = x(S, { children: o3 }, null, null, null) : void 0 === o3.constructor && o3.__b > 0 ? o3 = n2.__k[r4] = x(o3.type, o3.props, o3.key, o3.ref ? o3.ref : null, o3.__v) : n2.__k[r4] = o3, f4 = r4 + h3, o3.__ = n2, o3.__b = n2.__b + 1, e3 = null, -1 != (c3 = o3.__i = O(o3, u4, f4, s3)) && (s3--, (e3 = u4[c3]) && (e3.__u |= 2)), null == e3 || null == e3.__v ? (-1 == c3 && (i3 > a3 ? h3-- : i3 < a3 && h3++), "function" != typeof o3.type && (o3.__u |= 4)) : c3 != f4 && (c3 == f4 - 1 ? h3-- : c3 == f4 + 1 ? h3++ : (c3 > f4 ? h3-- : h3++, o3.__u |= 4))) : n2.__k[r4] = null;
+    if (s3) for (r4 = 0; r4 < a3; r4++) null != (e3 = u4[r4]) && 0 == (2 & e3.__u) && (e3.__e == t3 && (t3 = $(e3)), K(e3, e3));
+    return t3;
+  }
+  function j(n2, l3, u4) {
+    var t3, i3;
+    if ("function" == typeof n2.type) {
+      for (t3 = n2.__k, i3 = 0; t3 && i3 < t3.length; i3++) t3[i3] && (t3[i3].__ = n2, l3 = j(t3[i3], l3, u4));
+      return l3;
+    }
+    n2.__e != l3 && (l3 && n2.type && !l3.parentNode && (l3 = $(n2)), l3 = u4.insertBefore(n2.__e, l3 || null));
+    do {
+      l3 = l3 && l3.nextSibling;
+    } while (null != l3 && 8 == l3.nodeType);
+    return l3;
+  }
+  function F(n2, l3) {
+    return l3 = l3 || [], null == n2 || "boolean" == typeof n2 || (g(n2) ? n2.some(function(n3) {
+      F(n3, l3);
+    }) : l3.push(n2)), l3;
+  }
+  function O(n2, l3, u4, t3) {
+    var i3, r4, o3, e3 = n2.key, f4 = n2.type, c3 = l3[u4], a3 = null != c3 && 0 == (2 & c3.__u);
+    if (null === c3 && null == e3 || a3 && e3 == c3.key && f4 == c3.type) return u4;
+    if (t3 > (a3 ? 1 : 0)) {
+      for (i3 = u4 - 1, r4 = u4 + 1; i3 >= 0 || r4 < l3.length; ) if (null != (c3 = l3[o3 = i3 >= 0 ? i3-- : r4++]) && 0 == (2 & c3.__u) && e3 == c3.key && f4 == c3.type) return o3;
+    }
+    return -1;
+  }
+  function z(n2, l3, u4) {
+    "-" == l3[0] ? n2.setProperty(l3, null == u4 ? "" : u4) : n2[l3] = null == u4 ? "" : "number" != typeof u4 || _.test(l3) ? u4 : u4 + "px";
+  }
+  function N(n2, l3, u4, t3, i3) {
+    var r4, o3;
+    n: if ("style" == l3) if ("string" == typeof u4) n2.style.cssText = u4;
+    else {
+      if ("string" == typeof t3 && (n2.style.cssText = t3 = ""), t3) for (l3 in t3) u4 && l3 in u4 || z(n2.style, l3, "");
+      if (u4) for (l3 in u4) t3 && u4[l3] == t3[l3] || z(n2.style, l3, u4[l3]);
+    }
+    else if ("o" == l3[0] && "n" == l3[1]) r4 = l3 != (l3 = l3.replace(s, "$1")), o3 = l3.toLowerCase(), l3 = o3 in n2 || "onFocusOut" == l3 || "onFocusIn" == l3 ? o3.slice(2) : l3.slice(2), n2.l || (n2.l = {}), n2.l[l3 + r4] = u4, u4 ? t3 ? u4[a] = t3[a] : (u4[a] = h, n2.addEventListener(l3, r4 ? v : p, r4)) : n2.removeEventListener(l3, r4 ? v : p, r4);
+    else {
+      if ("http://www.w3.org/2000/svg" == i3) l3 = l3.replace(/xlink(H|:h)/, "h").replace(/sName$/, "s");
+      else if ("width" != l3 && "height" != l3 && "href" != l3 && "list" != l3 && "form" != l3 && "tabIndex" != l3 && "download" != l3 && "rowSpan" != l3 && "colSpan" != l3 && "role" != l3 && "popover" != l3 && l3 in n2) try {
+        n2[l3] = null == u4 ? "" : u4;
+        break n;
+      } catch (n3) {
+      }
+      "function" == typeof u4 || (null == u4 || false === u4 && "-" != l3[4] ? n2.removeAttribute(l3) : n2.setAttribute(l3, "popover" == l3 && 1 == u4 ? "" : u4));
+    }
+  }
+  function V(n2) {
+    return function(u4) {
+      if (this.l) {
+        var t3 = this.l[u4.type + n2];
+        if (null == u4[c]) u4[c] = h++;
+        else if (u4[c] < t3[a]) return;
+        return t3(l.event ? l.event(u4) : u4);
+      }
+    };
+  }
+  function q(n2, u4, t3, i3, r4, o3, e3, f4, c3, a3) {
+    var s3, h3, p3, v3, y3, d3, _3, k3, x3, M3, I2, P4, A4, H3, T4, j4, F3 = u4.type;
+    if (void 0 !== u4.constructor) return null;
+    128 & t3.__u && (c3 = !!(32 & t3.__u), o3 = [f4 = u4.__e = t3.__e]), (s3 = l.__b) && s3(u4);
+    n: if ("function" == typeof F3) {
+      h3 = e3.length;
+      try {
+        if (x3 = u4.props, M3 = F3.prototype && F3.prototype.render, I2 = (s3 = F3.contextType) && i3[s3.__c], P4 = s3 ? I2 ? I2.props.value : s3.__ : i3, t3.__c ? k3 = (p3 = u4.__c = t3.__c).__ = p3.__E : (M3 ? u4.__c = p3 = new F3(x3, P4) : (u4.__c = p3 = new C(x3, P4), p3.constructor = F3, p3.render = Q), I2 && I2.sub(p3), p3.state || (p3.state = {}), p3.__n = i3, v3 = p3.__d = true, p3.__h = [], p3._sb = []), M3 && null == p3.__s && (p3.__s = p3.state), M3 && null != F3.getDerivedStateFromProps && (p3.__s == p3.state && (p3.__s = m({}, p3.__s)), m(p3.__s, F3.getDerivedStateFromProps(x3, p3.__s))), y3 = p3.props, d3 = p3.state, p3.__v = u4, v3) M3 && null == F3.getDerivedStateFromProps && null != p3.componentWillMount && p3.componentWillMount(), M3 && null != p3.componentDidMount && p3.__h.push(p3.componentDidMount);
+        else {
+          if (M3 && null == F3.getDerivedStateFromProps && x3 !== y3 && null != p3.componentWillReceiveProps && p3.componentWillReceiveProps(x3, P4), u4.__v == t3.__v || !p3.__e && null != p3.shouldComponentUpdate && false === p3.shouldComponentUpdate(x3, p3.__s, P4)) {
+            u4.__v != t3.__v && (p3.props = x3, p3.state = p3.__s, p3.__d = false), u4.__e = t3.__e, u4.__k = t3.__k, u4.__k.some(function(n3) {
+              n3 && (n3.__ = u4);
+            }), w.push.apply(p3.__h, p3._sb), p3._sb = [], p3.__h.length && e3.push(p3), f4 = $(t3);
+            break n;
+          }
+          null != p3.componentWillUpdate && p3.componentWillUpdate(x3, p3.__s, P4), M3 && null != p3.componentDidUpdate && p3.__h.push(function() {
+            p3.componentDidUpdate(y3, d3, _3);
+          });
+        }
+        if (p3.context = P4, p3.props = x3, p3.__P = n2, p3.__e = false, A4 = l.__r, H3 = 0, M3) p3.state = p3.__s, p3.__d = false, A4 && A4(u4), s3 = p3.render(p3.props, p3.state, p3.context), w.push.apply(p3.__h, p3._sb), p3._sb = [];
+        else do {
+          p3.__d = false, A4 && A4(u4), s3 = p3.render(p3.props, p3.state, p3.context), p3.state = p3.__s;
+        } while (p3.__d && ++H3 < 25);
+        p3.state = p3.__s, null != p3.getChildContext && (i3 = m(m({}, i3), p3.getChildContext())), M3 && !v3 && null != p3.getSnapshotBeforeUpdate && (_3 = p3.getSnapshotBeforeUpdate(y3, d3)), T4 = null != s3 && s3.type === S && null == s3.key ? E(s3.props.children) : s3, f4 = L(n2, g(T4) ? T4 : [T4], u4, t3, i3, r4, o3, e3, f4, c3, a3), p3.base = u4.__e, u4.__u &= -161, p3.__h.length && e3.push(p3), k3 && (p3.__E = p3.__ = null);
+      } catch (n3) {
+        if (e3.length = h3, u4.__v = null, c3 || null != o3) {
+          if (n3.then) {
+            for (u4.__u |= c3 ? 160 : 128; f4 && 8 == f4.nodeType && f4.nextSibling; ) f4 = f4.nextSibling;
+            null != o3 && (o3[o3.indexOf(f4)] = null), u4.__e = f4;
+          } else if (null != o3) for (j4 = o3.length; j4--; ) b(o3[j4]);
+        } else u4.__e = t3.__e;
+        null == u4.__k && (u4.__k = t3.__k || []), n3.then || B(u4), l.__e(n3, u4, t3);
+      }
+    } else null == o3 && u4.__v == t3.__v ? (u4.__k = t3.__k, u4.__e = t3.__e) : f4 = u4.__e = G(t3.__e, u4, t3, i3, r4, o3, e3, c3, a3);
+    return (s3 = l.diffed) && s3(u4), 128 & u4.__u ? void 0 : f4;
+  }
+  function B(n2) {
+    n2 && (n2.__c && (n2.__c.__e = true), n2.__k && n2.__k.some(B));
+  }
+  function D(n2, u4, t3) {
+    for (var i3 = 0; i3 < t3.length; i3++) J(t3[i3], t3[++i3], t3[++i3]);
+    l.__c && l.__c(u4, n2), n2.some(function(u5) {
+      try {
+        n2 = u5.__h, u5.__h = [], n2.some(function(n3) {
+          n3.call(u5);
+        });
+      } catch (n3) {
+        l.__e(n3, u5.__v);
+      }
+    });
+  }
+  function E(n2) {
+    return "object" != typeof n2 || null == n2 || n2.__b > 0 ? n2 : g(n2) ? n2.map(E) : void 0 !== n2.constructor ? null : m({}, n2);
+  }
+  function G(u4, t3, i3, r4, o3, e3, f4, c3, a3) {
+    var s3, h3, p3, v3, y3, w3, _3, m3 = i3.props || d, k3 = t3.props, x3 = t3.type;
+    if ("svg" == x3 ? o3 = "http://www.w3.org/2000/svg" : "math" == x3 ? o3 = "http://www.w3.org/1998/Math/MathML" : o3 || (o3 = "http://www.w3.org/1999/xhtml"), null != e3) {
+      for (s3 = 0; s3 < e3.length; s3++) if ((y3 = e3[s3]) && "setAttribute" in y3 == !!x3 && (x3 ? y3.localName == x3 : 3 == y3.nodeType)) {
+        u4 = y3, e3[s3] = null;
+        break;
+      }
+    }
+    if (null == u4) {
+      if (null == x3) return document.createTextNode(k3);
+      u4 = document.createElementNS(o3, x3, k3.is && k3), c3 && (l.__m && l.__m(t3, e3), c3 = false), e3 = null;
+    }
+    if (null == x3) m3 === k3 || c3 && u4.data == k3 || (u4.data = k3);
+    else {
+      if (e3 = "textarea" == x3 && null != k3.defaultValue ? null : e3 && n.call(u4.childNodes), !c3 && null != e3) for (m3 = {}, s3 = 0; s3 < u4.attributes.length; s3++) m3[(y3 = u4.attributes[s3]).name] = y3.value;
+      for (s3 in m3) y3 = m3[s3], "dangerouslySetInnerHTML" == s3 ? p3 = y3 : "children" == s3 || s3 in k3 || "value" == s3 && "defaultValue" in k3 || "checked" == s3 && "defaultChecked" in k3 || N(u4, s3, null, y3, o3);
+      for (s3 in k3) y3 = k3[s3], "children" == s3 ? v3 = y3 : "dangerouslySetInnerHTML" == s3 ? h3 = y3 : "value" == s3 ? w3 = y3 : "checked" == s3 ? _3 = y3 : c3 && "function" != typeof y3 || m3[s3] === y3 || N(u4, s3, y3, m3[s3], o3);
+      if (h3) c3 || p3 && (h3.__html == p3.__html || h3.__html == u4.innerHTML) || (u4.innerHTML = h3.__html), t3.__k = [];
+      else if (p3 && (u4.innerHTML = ""), L("template" == t3.type ? u4.content : u4, g(v3) ? v3 : [v3], t3, i3, r4, "foreignObject" == x3 ? "http://www.w3.org/1999/xhtml" : o3, e3, f4, e3 ? e3[0] : i3.__k && $(i3, 0), c3, a3), null != e3) for (s3 = e3.length; s3--; ) b(e3[s3]);
+      c3 && "textarea" != x3 || (s3 = "value", "progress" == x3 && null == w3 ? u4.removeAttribute("value") : null != w3 && (w3 !== u4[s3] || "progress" == x3 && !w3 || "option" == x3 && w3 != m3[s3]) && N(u4, s3, w3, m3[s3], o3), s3 = "checked", null != _3 && _3 != u4[s3] && N(u4, s3, _3, m3[s3], o3));
+    }
+    return u4;
+  }
+  function J(n2, u4, t3) {
+    try {
+      if ("function" == typeof n2) {
+        var i3 = "function" == typeof n2.__u;
+        i3 && n2.__u(), i3 && null == u4 || (n2.__u = n2(u4));
+      } else n2.current = u4;
+    } catch (n3) {
+      l.__e(n3, t3);
+    }
+  }
+  function K(n2, u4, t3) {
+    var i3, r4;
+    if (l.unmount && l.unmount(n2), (i3 = n2.ref) && (i3.current && i3.current != n2.__e || J(i3, null, u4)), null != (i3 = n2.__c)) {
+      if (i3.componentWillUnmount) try {
+        i3.componentWillUnmount();
+      } catch (n3) {
+        l.__e(n3, u4);
+      }
+      i3.base = i3.__P = i3.__n = null;
+    }
+    if (i3 = n2.__k) for (r4 = 0; r4 < i3.length; r4++) i3[r4] && K(i3[r4], u4, t3 || "function" != typeof n2.type);
+    t3 || b(n2.__e), n2.__c = n2.__ = n2.__e = void 0;
+  }
+  function Q(n2, l3, u4) {
+    return this.constructor(n2, u4);
+  }
+  function R(u4, t3, i3) {
+    var r4, o3, e3, f4;
+    t3 == document && (t3 = document.documentElement), l.__ && l.__(u4, t3), o3 = (r4 = "function" == typeof i3) ? null : i3 && i3.__k || t3.__k, e3 = [], f4 = [], q(t3, u4 = (!r4 && i3 || t3).__k = k(S, null, [u4]), o3 || d, d, t3.namespaceURI, !r4 && i3 ? [i3] : o3 ? null : t3.firstChild ? n.call(t3.childNodes) : null, e3, !r4 && i3 ? i3 : o3 ? o3.__e : t3.firstChild, r4, f4), D(e3, u4, f4), u4.props.children = null;
+  }
+  n = w.slice, l = { __e: function(n2, l3, u4, t3) {
+    for (var i3, r4, o3; l3 = l3.__; ) if ((i3 = l3.__c) && !i3.__) try {
+      if ((r4 = i3.constructor) && null != r4.getDerivedStateFromError && (i3.setState(r4.getDerivedStateFromError(n2)), o3 = i3.__d), null != i3.componentDidCatch && (i3.componentDidCatch(n2, t3 || {}), o3 = i3.__d), o3) return i3.__E = i3;
+    } catch (l4) {
+      n2 = l4;
+    }
+    throw n2;
+  } }, u = 0, t = function(n2) {
+    return null != n2 && void 0 === n2.constructor;
+  }, C.prototype.setState = function(n2, l3) {
+    var u4;
+    u4 = null != this.__s && this.__s != this.state ? this.__s : this.__s = m({}, this.state), "function" == typeof n2 && (n2 = n2(m({}, u4), this.props)), n2 && m(u4, n2), null != n2 && this.__v && (l3 && this._sb.push(l3), A(this));
+  }, C.prototype.forceUpdate = function(n2) {
+    this.__v && (this.__e = true, n2 && this.__h.push(n2), A(this));
+  }, C.prototype.render = S, i = [], o = "function" == typeof Promise ? Promise.prototype.then.bind(Promise.resolve()) : setTimeout, e = function(n2, l3) {
+    return n2.__v.__b - l3.__v.__b;
+  }, H.__r = 0, f = Math.random().toString(8), c = "__d" + f, a = "__a" + f, s = /(PointerCapture)$|Capture$/i, h = 0, p = V(false), v = V(true), y = 0;
+
+  // src/ui/templates.js
+  var TOOLTIPS = { ANIM: "<b>Toggle UI transitions and cosmetic effects</b><br><i>Disable to prioritize performance on slower devices.</i>", RATES: "<b>Display growth rate and efficiency metrics</b><br><i>Turn off for a minimalist view focused strictly on totals.</i>", DRUG_TRACKER: "<b>Choose the primary training drug that appears on the ledger.</b><br><i>People on SSL path may want to track LSD instead of Xanax usage.</i>", LOC: "<b>Choose where the Gym Log icon appears in your Torn UI</b><br><i>Select Sidebar if the Footer Tab is hidden or if you are using Chat 2.0.</i>", DAY_START: "<b>Anchor logs to UTC or your system clock</b><br><i>Syncs your ongoing training sessions with your real-world schedule.</i>", WEEK_START: "<b>Change your preferred starting day for the week</b><br><i>Adjusts the calendar layout and weekly performance metrics.</i>", BEST_GYM: "<b>Always train at your best unlocked gym</b><br><i>Pressing train switches you to the highest-tier gym for that stat.</i>", BEST_GYM_SPEC: "<b>Allow switching to specialist gyms</b><br><i>When off, auto-switch only considers standard gyms.</i>", BEST_GYM_UNPURCHASED: "<b>Allow switching to unpurchased gyms</b><br><i>When off, auto-switch only considers gyms you have already bought.</i>", API: "Custom API key required.<br><br><i>This script strictly requests 'battlestats' and 'log' data. Click the Create API Key button below to securely generate a key for this script. For maximum safety, you can edit this newly created key in your Torn API Settings to restrict its log access specifically to the 'Gym' category.<br><br>Your key is stored locally on your device only and is sent exclusively to api.torn.com.</i>", PASTE_CLIPBOARD: "Paste from Clipboard", AGREE_GATE: "Check the box to confirm you've read the disclosure", LOCKED: "Locked", LEDGER_VIEW: "Ledger", GRAPH_VIEW: "Graph", STICKERBOOK: "Stickerbook", ACHIEVEMENTS: "Achievements", COPY_SESSION: "Copy Session Data", ALL_TIME_SUMMARY: "All-Time Summary", YEARLY_SUMMARY: "Yearly Summary", MONTHLY_SUMMARY: "Monthly Summary", DEMO_EXIT: "Exit Demo Mode", DEMO_EXIT_HTML: "Exit Demo Mode<i>Stats shown here are for previewing the functions of the script only \u2014 they do not reflect realistic Torn growth.</i>", REFRESH_COOLDOWN: (remaining) => `Please wait ${remaining}s before refreshing the log again`, BACKFILL_RESUME_COOLDOWN: (t3) => `Torn's daily row cap has been reached. Resume available in ${t3}.`, BACKFILL_COMPLETE_ORIGIN: "Your full training history was reconstructed back to the very beginning.", BACKFILL_COMPLETE_EXHAUSTED: "Scan reached the end of the logs Torn still retains. Any older history is no longer available from Torn's servers.", CELL_DATE: (ds) => `Date: ${ds}` };
+  function buildEmptyLevelTrackSVG() {
+    const W3 = 500, H3 = 100;
+    const padX = 8, padY = 18;
+    const slotW = W3 - 2 * padX;
+    const slotH = H3 - 2 * padY;
+    const defs = `<defs><linearGradient id="lvl-housing" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#202020"/><stop offset=".4" stop-color="#363636"/><stop offset=".5" stop-color="#404040"/><stop offset=".6" stop-color="#363636"/><stop offset="1" stop-color="#181818"/></linearGradient><linearGradient id="lvl-recess-shadow" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#000" stop-opacity=".6"/><stop offset=".5" stop-color="#000" stop-opacity=".1"/><stop offset="1" stop-color="#000" stop-opacity="0"/></linearGradient><linearGradient id="lvl-recess-shine" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fff" stop-opacity="0"/><stop offset=".7" stop-color="#fff" stop-opacity="0"/><stop offset="1" stop-color="#fff" stop-opacity=".35"/></linearGradient></defs>`;
+    const f4 = (v3) => v3.toFixed(2);
+    let out = `<rect width="${W3}" height="${H3}" fill="url(#lvl-housing)"/>`;
+    const bx = padX, by = padY;
+    out += `<rect x="${f4(bx)}" y="${by}" width="${f4(slotW)}" height="${slotH}" fill="#000" fill-opacity=".5"/>`;
+    out += `<rect x="${f4(bx)}" y="${by}" width="${f4(slotW)}" height="${slotH}" fill="url(#lvl-recess-shadow)"/>`;
+    out += `<rect x="${f4(bx)}" y="${by}" width="${f4(slotW)}" height="3" fill="#000" fill-opacity=".6"/>`;
+    out += `<rect x="${f4(bx)}" y="${f4(by + slotH - 1.5)}" width="${f4(slotW)}" height="1.5" fill="#fff" fill-opacity=".15"/>`;
+    return `<svg class="bbgl-level-svg" viewBox="0 0 ${W3} ${H3}" preserveAspectRatio="none" xmlns="http://www.w3.org/2000/svg" style="position:absolute;top:0;left:0;width:100%;height:100%;z-index:1;display:block;">${defs}${out}</svg>`;
+  }
+  app.TOOLTIPS = TOOLTIPS;
+  app.buildEmptyLevelTrackSVG = buildEmptyLevelTrackSVG;
+
+  // node_modules/preact/jsx-runtime/dist/jsxRuntime.module.js
+  var f2 = 0;
+  function u2(e3, t3, n2, o3, i3, u4) {
+    t3 || (t3 = {});
+    var a3, c3, p3 = t3;
+    if ("ref" in p3) for (c3 in p3 = {}, t3) "ref" == c3 ? a3 = t3[c3] : p3[c3] = t3[c3];
+    var l3 = { type: e3, props: p3, key: n2, ref: a3, __k: null, __: null, __b: 0, __e: null, __c: null, constructor: void 0, __v: --f2, __i: -1, __u: 0, __source: i3, __self: u4 };
+    if ("function" == typeof e3 && (a3 = e3.defaultProps)) for (c3 in a3) void 0 === p3[c3] && (p3[c3] = a3[c3]);
+    return l.vnode && l.vnode(l3), l3;
+  }
+
+  // src/torn/widgets/BestGym.tsx
+  function BestGymPill() {
+    return /* @__PURE__ */ u2(S, { children: [
+      /* @__PURE__ */ u2("label", { class: "bbgl-switch bbgl-switch-purple", children: [
+        /* @__PURE__ */ u2(
+          "input",
+          {
+            type: "checkbox",
+            id: "bbgl-bestgym-input",
+            checked: !!userConfig.bestGym,
+            onChange: (e3) => app.setBestGym(e3.target.checked)
+          }
+        ),
+        /* @__PURE__ */ u2("span", { class: "slider" })
+      ] }),
+      /* @__PURE__ */ u2("svg", { class: "bbgl-bestgym-logo", xmlns: "http://www.w3.org/2000/svg", viewBox: "60 20 280 215", children: /* @__PURE__ */ u2("g", { transform: "scale(1, 1.15)", children: /* @__PURE__ */ u2("path", { fill: "currentColor", d: ICONS.LOGO_PATH }) }) }),
+      /* @__PURE__ */ u2("span", { class: "bbgl-bestgym-label", "data-tooltip-html": TOOLTIPS.BEST_GYM, children: "BB Best Gym" })
+    ] });
+  }
+  function mountBestGym(pill) {
+    pill.className = "bbgl-bestgym";
+    R(/* @__PURE__ */ u2(BestGymPill, {}), pill);
+  }
+
+  // src/torn/best-gym.js
   var BestGymController = { _suppressed: {}, _reactItem(btn) {
     try {
       const key = Object.keys(btn).find((k3) => k3.startsWith("__reactFiber$") || k3.startsWith("__reactInternalInstance$"));
@@ -5862,21 +5627,7 @@ Please enter a new key to continue.`);
     return html;
   }
   function updateSummaryCharts() {
-    const mBtn = document.getElementById("month-stats-btn");
-    const yBtn = document.getElementById("year-stats-btn");
-    if (!mBtn || !yBtn) return;
-    const y3 = calendarState.year, m3 = calendarState.month;
-    mBtn.innerHTML = buildChartSVG(app.DataController.getSlice("MONTH", CONSTANTS.MONTHS[m3], y3));
-    yBtn.innerHTML = buildChartSVG(app.DataController.getSlice("YEAR", String(y3)));
-    const aBtn = document.getElementById("all-time-btn");
-    if (aBtn) aBtn.innerHTML = buildChartSVG(app.DataController.getSlice("ALL", "All-Time"));
-    mBtn.setAttribute("data-tooltip-html", app.generateRichTooltip(app.DataController.getSlice("MONTH", CONSTANTS.MONTHS[m3], y3)));
-    yBtn.setAttribute("data-tooltip-html", app.generateRichTooltip(app.DataController.getSlice("YEAR", String(y3))));
-    if (aBtn) aBtn.setAttribute("data-tooltip-html", app.generateRichTooltip(app.DataController.getSlice("ALL", "All-Time")));
-    const activeL = viewState.activeViewLabel;
-    mBtn.classList.toggle("active", activeL === CONSTANTS.MONTHS[m3]);
-    yBtn.classList.toggle("active", activeL === String(y3));
-    if (aBtn) aBtn.classList.toggle("active", activeL === "All-Time");
+    if (typeof app.notifyUi === "function") app.notifyUi();
   }
   function injectBestGymToggle() {
     const existing = document.getElementById("bbgl-bestgym");
@@ -5889,12 +5640,8 @@ Please enter a new key to continue.`);
     if (!host) return;
     const pill = document.createElement("div");
     pill.id = "bbgl-bestgym";
-    pill.className = "bbgl-bestgym";
-    pill.innerHTML = `<label class="bbgl-switch bbgl-switch-purple"><input type="checkbox" id="bbgl-bestgym-input"><span class="slider"></span></label><svg class="bbgl-bestgym-logo" xmlns="http://www.w3.org/2000/svg" viewBox="60 20 280 215"><g transform="scale(1, 1.15)"><path fill="currentColor" d="${ICONS.LOGO_PATH}"></path></g></svg><span class="bbgl-bestgym-label" data-tooltip-html="${app.TOOLTIPS.BEST_GYM}">BB Best Gym</span>`;
-    const cb = pill.querySelector("#bbgl-bestgym-input");
-    cb.checked = !!userConfig.bestGym;
-    cb.onchange = () => setBestGym(cb.checked);
     host.appendChild(pill);
+    mountBestGym(pill);
     dom.bestGym = pill;
   }
   function setBestGym(v3) {
@@ -5938,61 +5685,8 @@ Please enter a new key to continue.`);
   function renderPanelContent() {
     const s3 = app.getActiveHistory(), dm = app.DataController.getDateMap(), tk = Formatter.dateLogical();
     if ((s3.today.startTotal > 0 || s3.today.date) && !dm[tk]) dm[tk] = s3.today;
-    const c3 = dom.calContainer;
-    if (!c3) return;
     Perf.start("renderPanel");
-    c3.innerHTML = "";
-    const y3 = calendarState.year, m3 = calendarState.month, yt = dom.yearTrigger;
-    dom.monthTrigger.textContent = CONSTANTS.MONTHS[m3];
-    yt.textContent = y3;
-    yt.classList.remove("disabled");
-    let f4 = new Date(y3, m3, 1), start = f4.getDay();
-    if (start === -1) start = 6;
-    if (userConfig.weekStartMode === "mon") start = start === 0 ? 6 : start - 1;
-    const dim = new Date(y3, m3 + 1, 0).getDate(), dipm = new Date(y3, m3, 0).getDate();
-    let pm = m3 - 1, py = y3;
-    if (pm < 0) {
-      pm = 11;
-      py--;
-    }
-    let cells = [];
-    for (let i3 = 0; i3 < start; i3++) cells.push({ y: py, m: pm, d: dipm - start + i3 + 1, g: true });
-    for (let d3 = 1; d3 <= dim; d3++) cells.push({ y: y3, m: m3, d: d3, g: false });
-    let rem = 7 - cells.length % 7;
-    if (rem < 7 && rem > 0) {
-      let nm = m3 + 1, ny = y3;
-      if (nm > 11) {
-        nm = 0;
-        ny++;
-      }
-      for (let i3 = 1; i3 <= rem; i3++) cells.push({ y: ny, m: nm, d: i3, g: true });
-    }
-    calendarState.visibleCells = cells.map((z3) => Formatter.dateISO(z3.y, z3.m, z3.d));
-    c3.style.setProperty("--total-rows", 6);
-    c3.style.setProperty("--bg-url", `url(${app.CAL_IMG_BASE}cal-grid-futr.jpg)`);
-    const todayStr = Formatter.dateLogical();
-    const frag = document.createDocumentFragment();
-    let batch = [], ridx = 0;
-    cells.forEach(function tickCalendarCell(z3) {
-      const ds = Formatter.dateISO(z3.y, z3.m, z3.d), d3 = dm[ds] || null;
-      batch.push({ ...z3, p: d3 });
-      if (batch.length === 7) {
-        const rd = document.createElement("div"), last = batch[6], weekEndStr = Formatter.dateISO(last.y, last.m, last.d), isArch = weekEndStr < todayStr;
-        rd.className = "bbgl-row-slice" + (isArch ? " bbgl-row-archived" : "");
-        rd.style.setProperty("--row-idx", ridx);
-        if (isArch) rd.style.setProperty("--bg-url", `url(${app.CAL_IMG_BASE}cal-grid-past.jpg)`);
-        let wdb = [];
-        batch.forEach(function tickWeekCell(i3, cIdx) {
-          app.renderCell(rd, i3.y, i3.m, i3.d, i3.g, ridx, cIdx);
-          wdb.push({ date: Formatter.dateISO(i3.y, i3.m, i3.d), data: i3.p });
-        });
-        frag.appendChild(rd);
-        app.injectWeeklyBar(frag, wdb);
-        batch = [];
-        ridx++;
-      }
-    });
-    c3.appendChild(frag);
+    if (typeof app.notifyUi === "function") app.notifyUi();
     if (runtime._pendingHistoryRestore) {
       const { sl, label } = runtime._pendingHistoryRestore;
       runtime._pendingHistoryRestore = null;
@@ -6008,7 +5702,6 @@ Please enter a new key to continue.`);
     else app.renderStats(calendarState.selectedData, calendarState.selectedLabel);
     Perf.end("renderPanel");
     updateLevelBar();
-    app.updateSummaryCharts();
   }
   function updateLevelBar() {
     const totalExp = app.getLiveLevelExp();
@@ -6337,59 +6030,38 @@ Please enter a new key to continue.`);
   app.calcAllTimeStats = calcAllTimeStats;
   app.calcPeriodStats = calcPeriodStats;
 
-  // src/ui/torn-inject.js
-  function injectWeeklyBar(cont, batch) {
-    const sl = app.DataController.getSlice("CUSTOM", batch.map((w3) => w3.data).filter((d3) => d3));
-    sl.label = `Week ${getISOWeek(batch[0].date)}`;
-    sl._weekStart = batch[0].date;
-    sl._weekEnd = batch[batch.length - 1].date;
-    if (sl._dailyList.length === 0) return;
-    const { hjDaySet } = app.DataController.getHappyJumpData();
-    const _wk = getWeekKey(sl._dailyList[0].date);
-    const anchor = document.createElement("div");
-    anchor.className = "bbgl-weekly-anchor";
-    const tr = document.createElement("div");
-    tr.className = "bbgl-weekly-track";
-    tr.dataset.label = sl.label;
-    tr.onclick = (e3) => {
-      e3.stopPropagation();
-      app.openHistory(sl, sl.label);
-    };
-    if (calendarState.selectedLabel === sl.label) tr.classList.add("is-viewing");
-    const installWeekKey = runtime.demoMode ? null : app.getInstallWeekKey();
-    const addCenterTab = (slice) => {
-      const tab = document.createElement("div");
-      tab.className = "bbgl-bar-handle";
-      tab.dataset.pos = "start";
-      const tooltipHtml = app.generateRichTooltip(slice);
-      tab.setAttribute("data-tooltip-html", tooltipHtml);
-      tab.setAttribute("data-tooltip-anchor", ".bbgl-bar-handle");
-      tr.setAttribute("data-tooltip-html", tooltipHtml);
-      tr.setAttribute("data-tooltip-anchor", ".bbgl-bar-handle");
-      tab.onclick = (e3) => {
-        e3.stopPropagation();
-        app.openHistory(slice, slice.label);
-      };
-      tab.addEventListener("mouseenter", () => tr.classList.add("is-scrub-hovered"));
-      tab.addEventListener("mouseleave", () => tr.classList.remove("is-scrub-hovered"));
-      tab.innerHTML = app.buildChartSVG(slice);
-      anchor.appendChild(tab);
-    };
-    if (installWeekKey && _wk < installWeekKey) {
-      tr.innerHTML = app.buildCapsuleBar(["silver", "silver", "silver", "silver", "silver"], false, false);
-      anchor.appendChild(tr);
-      addCenterTab(sl);
-      cont.appendChild(anchor);
-      if (viewState.activeViewLabel === sl.label && calendarState.selectedLabel !== sl.label) runtime._pendingHistoryRestore = { sl, label: sl.label };
-      return;
-    }
-    const { capsules, isCompleted } = computeWeekCompletion(sl._dailyList, hjDaySet);
-    if (isCompleted) tr.classList.add("track-polished");
-    tr.innerHTML = app.buildCapsuleBar(capsules, isCompleted, isCompleted && userConfig.animations);
-    anchor.appendChild(tr);
-    addCenterTab(sl);
-    cont.appendChild(anchor);
-    if (viewState.activeViewLabel === sl.label && calendarState.selectedLabel !== sl.label) runtime._pendingHistoryRestore = { sl, label: sl.label };
+  // src/ui/preact/html.tsx
+  function Raw({ html }) {
+    return /* @__PURE__ */ u2("span", { style: { display: "contents" }, dangerouslySetInnerHTML: { __html: html } });
+  }
+
+  // src/torn/widgets/FooterTab.tsx
+  function FooterTabIcon() {
+    return /* @__PURE__ */ u2(Raw, { html: ICONS.LOGO });
+  }
+  function mountFooterTab(button) {
+    const btn = button;
+    btn.type = "button";
+    btn.setAttribute("data-tooltip", "Big Black Gym Log");
+    R(/* @__PURE__ */ u2(FooterTabIcon, {}), btn);
+  }
+
+  // src/torn/widgets/GymLevelBar.tsx
+  function GymLevelBar() {
+    return /* @__PURE__ */ u2(S, { children: [
+      /* @__PURE__ */ u2("div", { id: "bbgl-gym-level-num" }),
+      /* @__PURE__ */ u2("div", { id: "bbgl-gym-level-track", children: [
+        /* @__PURE__ */ u2("div", { dangerouslySetInnerHTML: { __html: buildEmptyLevelTrackSVG() } }),
+        /* @__PURE__ */ u2("div", { id: "bbgl-gym-level-fill" })
+      ] })
+    ] });
+  }
+  function mountGymLevelBar(container) {
+    R(/* @__PURE__ */ u2(GymLevelBar, {}), container);
+  }
+
+  // src/torn/inject.js
+  function injectWeeklyBar() {
   }
   function getLiveLevelExp() {
     let totalExp = app.DataController.getCareerLevelExp();
@@ -6763,29 +6435,20 @@ Please enter a new key to continue.`);
     }
     const container = document.createElement("div");
     container.id = "bbgl-gym-level-container";
-    const num = document.createElement("div");
-    num.id = "bbgl-gym-level-num";
-    const track = document.createElement("div");
-    track.id = "bbgl-gym-level-track";
-    const fill = document.createElement("div");
-    fill.id = "bbgl-gym-level-fill";
-    track.innerHTML = app.buildEmptyLevelTrackSVG();
-    track.appendChild(fill);
-    container.appendChild(num);
-    container.appendChild(track);
     gymRoot.prepend(container);
+    mountGymLevelBar(container);
     app.DataController.buildProgressionCache();
-    renderLevelBar({ num, fill, container }, getLiveLevelExp());
+    const num = document.getElementById("bbgl-gym-level-num");
+    const fill = document.getElementById("bbgl-gym-level-fill");
+    if (num && fill) renderLevelBar({ num, fill, container }, getLiveLevelExp());
   }
   function injectFooterButton(notesBtnEl) {
     if (!notesBtnEl || !notesBtnEl.parentNode) return;
     if (document.getElementById("bbgl-gym-tab")) return;
     const b2 = document.createElement("button");
     b2.id = "bbgl-gym-tab";
-    b2.innerHTML = ICONS.LOGO;
-    b2.type = "button";
-    b2.setAttribute("data-tooltip", "Big Black Gym Log");
     notesBtnEl.parentNode.insertBefore(b2, notesBtnEl);
+    mountFooterTab(b2);
     dom.gymTab = b2;
     app.updateFooterTooltip();
   }
@@ -6886,31 +6549,6 @@ Please enter a new key to continue.`);
     });
     app.syncSidebarState();
   }
-  function generateDayStartSelect(id, selectedVal = "utc") {
-    return `<select id="${id}" class="bbgl-native-select"><option value="utc"${selectedVal === "utc" ? " selected" : ""}>Torn Time (UTC)</option><option value="local"${selectedVal === "local" ? " selected" : ""}>Local Time</option></select>`;
-  }
-  function buildSection(title, bodyHTML, bodyStyle = "", titleExtraHTML = "") {
-    const style = bodyStyle ? ` style="${bodyStyle}"` : "";
-    return `<div class="bbgl-prefs-tab-title"><span>${title}</span>${titleExtraHTML}</div><div class="bbgl-settings-body"${style}>${bodyHTML}</div>`;
-  }
-  function buildRow(labelHTML, controlHTML, extraClass = "") {
-    return `<div class="bbgl-setting-row${extraClass ? " " + extraClass : ""}">${labelHTML}${controlHTML}</div>`;
-  }
-  function buildToggle(id, labelHTML, extraClass = "") {
-    return buildRow(labelHTML, `<label class="bbgl-switch"><input type="checkbox" id="${id}"><span class="slider"></span></label>`, extraClass);
-  }
-  function buildButton(id, label, modifier = "", extraStyle = "") {
-    const cls = ["bbgl-btn", modifier ? `bbgl-btn-${modifier}` : ""].filter(Boolean).join(" ");
-    const style = extraStyle ? ` style="${extraStyle}"` : "";
-    return `<button id="${id}" class="${cls}"${style}>${label}</button>`;
-  }
-  function stackBtnStyle(pos) {
-    return { top: "border-bottom-left-radius:0; border-bottom-right-radius:0; border-bottom:none;", mid: "border-radius:0; border-bottom:none;", bottom: "border-top-left-radius:0; border-top-right-radius:0;" }[pos];
-  }
-  function buildApiEntryField(prefix, extraStyle = "") {
-    const style = extraStyle ? ` style="${extraStyle}"` : "";
-    return `<div class="bbgl-api-container"${style}><div id="${prefix}-api-paste" class="bbgl-paste-icon" data-tooltip="${app.TOOLTIPS.PASTE_CLIPBOARD}">${ICONS.PASTE}</div><input id="${prefix}-api-key" type="text" name="bbgl_api_key" autocomplete="off" class="bbgl-native-input" placeholder="Enter Full or Custom API Key..."></div>`;
-  }
   function onChangeLoc(val) {
     userConfig.buttonLocation = val;
     saveConfig();
@@ -6946,11 +6584,6 @@ Please enter a new key to continue.`);
     saveConfig();
     app.DataController.invalidate();
     resetSelectionState();
-    const wr = dom.panel && dom.panel.querySelector(".bbgl-week-row");
-    if (wr) {
-      const wd = userConfig.weekStartMode === "mon" ? ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"] : ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
-      wr.innerHTML = wd.map((d3) => `<span>${d3}</span>`).join("");
-    }
     app.renderPanelContent();
     const tp = dom.topPanel;
     if (tp && tp.classList.contains("viewing-graph")) app.GraphController.draw();
@@ -7014,13 +6647,6 @@ Please enter a new key to continue.`);
   app.injectGymLevelBar = injectGymLevelBar;
   app.injectFooterButton = injectFooterButton;
   app.injectSidebarButton = injectSidebarButton;
-  app.generateDayStartSelect = generateDayStartSelect;
-  app.buildSection = buildSection;
-  app.buildRow = buildRow;
-  app.buildToggle = buildToggle;
-  app.buildButton = buildButton;
-  app.stackBtnStyle = stackBtnStyle;
-  app.buildApiEntryField = buildApiEntryField;
   app.onChangeLoc = onChangeLoc;
   app.resetSelectionState = resetSelectionState;
   app.onChangeDayStart = onChangeDayStart;
@@ -7030,219 +6656,438 @@ Please enter a new key to continue.`);
   app.refreshInitLock = refreshInitLock;
   app.handleGymClick = handleGymClick;
 
-  // src/ui/templates.js
-  var TOOLTIPS = { ANIM: "<b>Toggle UI transitions and cosmetic effects</b><br><i>Disable to prioritize performance on slower devices.</i>", RATES: "<b>Display growth rate and efficiency metrics</b><br><i>Turn off for a minimalist view focused strictly on totals.</i>", DRUG_TRACKER: "<b>Choose the primary training drug that appears on the ledger.</b><br><i>People on SSL path may want to track LSD instead of Xanax usage.</i>", LOC: "<b>Choose where the Gym Log icon appears in your Torn UI</b><br><i>Select Sidebar if the Footer Tab is hidden or if you are using Chat 2.0.</i>", DAY_START: "<b>Anchor logs to UTC or your system clock</b><br><i>Syncs your ongoing training sessions with your real-world schedule.</i>", WEEK_START: "<b>Change your preferred starting day for the week</b><br><i>Adjusts the calendar layout and weekly performance metrics.</i>", BEST_GYM: "<b>Always train at your best unlocked gym</b><br><i>Pressing train switches you to the highest-tier gym for that stat.</i>", BEST_GYM_SPEC: "<b>Allow switching to specialist gyms</b><br><i>When off, auto-switch only considers standard gyms.</i>", BEST_GYM_UNPURCHASED: "<b>Allow switching to unpurchased gyms</b><br><i>When off, auto-switch only considers gyms you have already bought.</i>", API: "Custom API key required.<br><br><i>This script strictly requests 'battlestats' and 'log' data. Click the Create API Key button below to securely generate a key for this script. For maximum safety, you can edit this newly created key in your Torn API Settings to restrict its log access specifically to the 'Gym' category.<br><br>Your key is stored locally on your device only and is sent exclusively to api.torn.com.</i>", PASTE_CLIPBOARD: "Paste from Clipboard", AGREE_GATE: "Check the box to confirm you've read the disclosure", LOCKED: "Locked", LEDGER_VIEW: "Ledger", GRAPH_VIEW: "Graph", STICKERBOOK: "Stickerbook", ACHIEVEMENTS: "Achievements", COPY_SESSION: "Copy Session Data", ALL_TIME_SUMMARY: "All-Time Summary", YEARLY_SUMMARY: "Yearly Summary", MONTHLY_SUMMARY: "Monthly Summary", DEMO_EXIT: "Exit Demo Mode", DEMO_EXIT_HTML: "Exit Demo Mode<i>Stats shown here are for previewing the functions of the script only \u2014 they do not reflect realistic Torn growth.</i>", REFRESH_COOLDOWN: (remaining) => `Please wait ${remaining}s before refreshing the log again`, BACKFILL_RESUME_COOLDOWN: (t3) => `Torn's daily row cap has been reached. Resume available in ${t3}.`, BACKFILL_COMPLETE_ORIGIN: "Your full training history was reconstructed back to the very beginning.", BACKFILL_COMPLETE_EXHAUSTED: "Scan reached the end of the logs Torn still retains. Any older history is no longer available from Torn's servers.", CELL_DATE: (ds) => `Date: ${ds}` };
-  async function populateWelcomeContent(wv) {
-    let introHTML = app.DOC_ERROR_HTML, returningHTML = app.DOC_ERROR_HTML;
-    try {
-      const raw = await app.fetchDoc("welcome");
-      const parts = raw.split("<!--RETURNING-->");
-      introHTML = parts[0] || app.DOC_ERROR_HTML;
-      returningHTML = parts[1] || app.DOC_ERROR_HTML;
-    } catch (e3) {
-    }
-    const introEl = wv.querySelector("#bbgl-welcome-intro-text");
-    const returningEl = wv.querySelector("#bbgl-welcome-returning-text");
-    if (introEl) introEl.innerHTML = introHTML;
-    if (returningEl) returningEl.innerHTML = returningHTML;
+  // node_modules/preact/hooks/dist/hooks.module.js
+  var t2;
+  var r3;
+  var u3;
+  var i2;
+  var o2 = 0;
+  var f3 = [];
+  var c2 = l;
+  var e2 = c2.__b;
+  var a2 = c2.__r;
+  var v2 = c2.diffed;
+  var l2 = c2.__c;
+  var m2 = c2.unmount;
+  var p2 = c2.__;
+  function s2(n2, t3) {
+    c2.__h && c2.__h(r3, n2, o2 || t3), o2 = 0;
+    var u4 = r3.__H || (r3.__H = { __: [], __h: [] });
+    return n2 >= u4.__.length && u4.__.push({}), u4.__[n2];
   }
-  function getWelcomeHTML() {
-    const isInit = !!localStorage.getItem("bbgl_initialized") || runtime.demoMode;
-    const closeBtn = isInit ? `<div class="close-settings-btn bbgl-close-x" title="Close">${ICONS.CLOSE}</div>` : "";
-    return `${closeBtn}<div class="bbgl-settings-scroll-area">${app.buildWelcomeIntroSection()}${app.buildWelcomeInitSection()}${app.buildWelcomeReturningSection()}</div>`;
+  function d2(n2) {
+    return o2 = 1, y2(D2, n2);
   }
-  function getSettingsHTML() {
-    return `<div class="close-settings-btn" title="Close Settings">${ICONS.CHECK}</div><div class="bbgl-settings-scroll-area">${app.buildSettingsFeaturesSection()}${app.buildSettingsLogFormatSection()}${app.buildSettingsDataSection()}${app.buildSettingsApiSection()}${app.buildSettingsInfoSection()}</div>`;
-  }
-  function buildEmptyLevelTrackSVG() {
-    const W3 = 500, H3 = 100;
-    const padX = 8, padY = 18;
-    const slotW = W3 - 2 * padX;
-    const slotH = H3 - 2 * padY;
-    const defs = `<defs><linearGradient id="lvl-housing" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#202020"/><stop offset=".4" stop-color="#363636"/><stop offset=".5" stop-color="#404040"/><stop offset=".6" stop-color="#363636"/><stop offset="1" stop-color="#181818"/></linearGradient><linearGradient id="lvl-recess-shadow" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#000" stop-opacity=".6"/><stop offset=".5" stop-color="#000" stop-opacity=".1"/><stop offset="1" stop-color="#000" stop-opacity="0"/></linearGradient><linearGradient id="lvl-recess-shine" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fff" stop-opacity="0"/><stop offset=".7" stop-color="#fff" stop-opacity="0"/><stop offset="1" stop-color="#fff" stop-opacity=".35"/></linearGradient></defs>`;
-    const f4 = (v3) => v3.toFixed(2);
-    let out = `<rect width="${W3}" height="${H3}" fill="url(#lvl-housing)"/>`;
-    const bx = padX, by = padY;
-    out += `<rect x="${f4(bx)}" y="${by}" width="${f4(slotW)}" height="${slotH}" fill="#000" fill-opacity=".5"/>`;
-    out += `<rect x="${f4(bx)}" y="${by}" width="${f4(slotW)}" height="${slotH}" fill="url(#lvl-recess-shadow)"/>`;
-    out += `<rect x="${f4(bx)}" y="${by}" width="${f4(slotW)}" height="3" fill="#000" fill-opacity=".6"/>`;
-    out += `<rect x="${f4(bx)}" y="${f4(by + slotH - 1.5)}" width="${f4(slotW)}" height="1.5" fill="#fff" fill-opacity=".15"/>`;
-    return `<svg class="bbgl-level-svg" viewBox="0 0 ${W3} ${H3}" preserveAspectRatio="none" xmlns="http://www.w3.org/2000/svg" style="position:absolute;top:0;left:0;width:100%;height:100%;z-index:1;display:block;">${defs}${out}</svg>`;
-  }
-  function getDashboardHTML() {
-    const weekDays = userConfig.weekStartMode === "mon" ? ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"] : ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
-    const weekRowHTML = weekDays.map((d3) => `<span>${d3}</span>`).join("");
-    return `<div class="bbgl-header" id="bbgl-header-bar"><div class="bbgl-header-left">${ICONS.LOGO}<span class="bbgl-header-text"><span class="bbgl-short-title">Big Black Log</span><span class="bbgl-long-title">Big Black Gym Log</span></span></div><div class="bbgl-header-right"><span id="bbgl-demo-exit-btn" class="close-settings-btn bbgl-close-purple" style="display:${runtime.demoMode ? "flex" : "none"};" data-tooltip-html="${TOOLTIPS.DEMO_EXIT_HTML}"><span class="bbgl-demo-x-label">Demo</span>${ICONS.CLOSE}</span><span id="bbgl-settings-btn" class="bbgl-custom-icon">\u2699</span><span id="bbgl-close-btn" class="bbgl-native-icon">${ICONS.MINIMIZE}</span><span id="bbgl-pop-btn" class="bbgl-native-icon">${viewState.expanded ? ICONS.COMPRESS : ICONS.POPOUT}</span></div></div><div id="bbgl-content-wrapper"><div id="bbgl-top-panel"><div id="bbgl-tall-toggle">${viewState.isTall ? "\u2013" : "+"}</div><div id="bbgl-ledger-toggle" data-tooltip="${TOOLTIPS.LEDGER_VIEW}">${ICONS.LEDGER}</div><div id="bbgl-graph-toggle" data-tooltip="${TOOLTIPS.GRAPH_VIEW}">${ICONS.GRAPH}</div><div id="bbgl-achievements-toggle" data-tooltip="${TOOLTIPS.ACHIEVEMENTS}">${ICONS.ACHIEVEMENTS}</div><div id="bbgl-sticker-toggle" data-tooltip="${TOOLTIPS.STICKERBOOK}">${ICONS.STICKERBOOK}</div><div id="bbgl-item-counters"></div><div id="bbgl-copy-btn" class="copy-hist-btn" data-tooltip="${TOOLTIPS.COPY_SESSION}">${ICONS.CLIPBOARD}</div><div id="bbgl-sticker-title"></div><div class="ui-floating-label" id="bbgl-date-label">LOADING...</div><div class="ui-floating-summary" id="bbgl-summary-label"></div><div id="bbgl-ledger-view" class="ledger-content"></div><div id="bbgl-graph-container"><div class="g-hud"><div class="g-toggles"><div class="g-pill active" data-type="mode" data-val="values">Gains</div><div class="g-pill" data-type="mode" data-val="rates">Rates</div></div><div class="g-toggles"><div class="g-pill p-str active" data-type="stat" data-val="str">STR</div><div class="g-pill p-def" data-type="stat" data-val="def">DEF</div><div class="g-pill p-spd active" data-type="stat" data-val="spd">SPD</div><div class="g-pill p-dex" data-type="stat" data-val="dex">DEX</div><div class="g-pill p-tot" data-type="stat" data-val="total">TOT</div></div></div><svg id="bbgl-graph-svg"></svg></div><div id="bbgl-achievements-container" class="ledger-content"><div class="bbgl-ach-scroll"><div id="bbgl-ach-pages"></div></div></div><div id="bbgl-ach-footer" class="bbgl-ach-footer"><div class="bbgl-ach-footer-side bbgl-ach-footer-left"><button type="button" class="bbgl-ach-nav bbgl-ach-prev" aria-label="Previous achievements page">\u276E</button></div><div id="bbgl-ach-pageindicator"></div><div class="bbgl-ach-footer-side bbgl-ach-footer-right"><button type="button" class="bbgl-ach-nav bbgl-ach-next" aria-label="Next achievements page">\u276F</button></div></div><div id="bbgl-sticker-bg"></div><div id="bbgl-sticker-container"><div id="sticker-sponsor-btn" class="sticker-nav-btn disabled">\u276E</div><div id="sticker-prev-btn" class="sticker-nav-btn">\u276E</div><div id="sticker-next-btn" class="sticker-nav-btn">\u276F</div><div id="bbgl-sticker-grid"></div><div id="bbgl-sticker-pagination"></div></div><div class="glass-overlay"></div></div><div id="bbgl-bottom-panel"><div id="bbgl-demo-exit" style="display: ${runtime.demoMode ? "flex" : "none"};" data-tooltip="${TOOLTIPS.DEMO_EXIT}" data-tooltip-html="${TOOLTIPS.DEMO_EXIT_HTML}">DEMO MODE</div><div class="bbgl-header-wrapper"><div class="bbgl-month-header"><div class="title-group"><div class="title-stack"><div class="header-row header-row--alltime"><div class="stats-btn" id="all-time-btn">${ICONS.CHART}</div><div class="header-trigger" id="all-time-trigger">\u221E</div></div><div class="header-row header-row--year"><div class="stats-btn" id="year-stats-btn">${ICONS.CHART}</div><div class="header-trigger" id="year-trigger"></div><div id="bbgl-year-dropdown" class="bbgl-dropdown-menu"></div></div><div class="header-row header-row--month"><div class="stats-btn" id="month-stats-btn">${ICONS.CHART}</div><div class="header-trigger" id="month-trigger"></div><div id="bbgl-month-dropdown" class="bbgl-dropdown-menu"></div></div></div></div><button class="arrow-btn" id="prev-month-btn">\u276E</button><button class="arrow-btn" id="next-month-btn">\u276F</button></div><div id="bbgl-level-bg">${buildEmptyLevelTrackSVG()}</div><div id="bbgl-level-container"><div id="bbgl-level-flag-clip"><span id="bbgl-level-num">Lv 1</span></div><div id="bbgl-level-track"><div id="bbgl-level-fill"></div></div></div></div><div class="bbgl-grid-container"><div class="bbgl-week-row">${weekRowHTML}</div><div class="calendar-wrapper" id="swipe-area"><div id="bbgl-cal-container" class="bbgl-cal-container"></div></div></div></div><div id="bbgl-item-viewer"><div class="viewer-window"><div class="viewer-stage"><div class="viewer-pedestal" id="vi-pedestal-wrapper"><div class="viewer-obj" id="vi-obj-target"><div class="layer-front"></div><div class="layer-back"></div></div></div></div></div><div class="viewer-info-overlay"><div class="vi-name" id="vi-name-target">Item Name</div></div></div><div id="bbgl-settings-view">${getSettingsHTML()}</div><div id="bbgl-welcome-view"></div></div>`;
-  }
-  app.TOOLTIPS = TOOLTIPS;
-  app.populateWelcomeContent = populateWelcomeContent;
-  app.getWelcomeHTML = getWelcomeHTML;
-  app.getSettingsHTML = getSettingsHTML;
-  app.buildEmptyLevelTrackSVG = buildEmptyLevelTrackSVG;
-  app.getDashboardHTML = getDashboardHTML;
-
-  // src/ui/docs.js
-  function fetchDoc(name) {
-    if (app.docCache[name]) return Promise.resolve(app.docCache[name]);
-    return new Promise((resolve, reject) => {
-      GM_xmlhttpRequest({ method: "GET", url: BASE_DOCS_URL + name + ".html?_=" + Date.now(), onload(res) {
-        if (res.status >= 200 && res.status < 300) {
-          app.docCache[name] = res.responseText;
-          resolve(res.responseText);
-        } else {
-          reject(new Error(`Doc fetch failed: ${res.status}`));
+  function y2(n2, u4, i3) {
+    var o3 = s2(t2++, 2);
+    if (o3.t = n2, !o3.__c && (o3.__ = [i3 ? i3(u4) : D2(void 0, u4), function(n3) {
+      var t3 = o3.__N ? o3.__N[0] : o3.__[0], r4 = o3.t(t3, n3);
+      t3 !== r4 && (o3.__N = [r4, o3.__[1]], o3.__c.setState({}));
+    }], o3.__c = r3, !r3.__f)) {
+      var f4 = function(n3, t3, r4) {
+        if (!o3.__c.__H) return true;
+        var u5 = false, i4 = o3.__c.props !== n3;
+        if (o3.__c.__H.__.some(function(n4) {
+          if (n4.__N) {
+            u5 = true;
+            var t4 = n4.__[0];
+            n4.__ = n4.__N, n4.__N = void 0, t4 !== n4.__[0] && (i4 = true);
+          }
+        }), c3) {
+          var f5 = c3.call(this, n3, t3, r4);
+          return u5 ? f5 || i4 : f5;
         }
-      }, onerror() {
-        reject(new Error("Doc fetch network error"));
-      } });
+        return !u5 || i4;
+      };
+      r3.__f = true;
+      var c3 = r3.shouldComponentUpdate, e3 = r3.componentWillUpdate;
+      r3.componentWillUpdate = function(n3, t3, r4) {
+        if (this.__e) {
+          var u5 = c3;
+          c3 = void 0, f4(n3, t3, r4), c3 = u5;
+        }
+        e3 && e3.call(this, n3, t3, r4);
+      }, r3.shouldComponentUpdate = f4;
+    }
+    return o3.__N || o3.__;
+  }
+  function h2(n2, u4) {
+    var i3 = s2(t2++, 3);
+    !c2.__s && C2(i3.__H, u4) && (i3.__ = n2, i3.u = u4, r3.__H.__h.push(i3));
+  }
+  function A2(n2) {
+    return o2 = 5, T2(function() {
+      return { current: n2 };
+    }, []);
+  }
+  function T2(n2, r4) {
+    var u4 = s2(t2++, 7);
+    return C2(u4.__H, r4) && (u4.__ = n2(), u4.__H = r4, u4.__h = n2), u4.__;
+  }
+  function j2() {
+    for (var n2; n2 = f3.shift(); ) {
+      var t3 = n2.__H;
+      if (n2.__P && t3) try {
+        t3.__h.some(z2), t3.__h.some(B2), t3.__h = [];
+      } catch (r4) {
+        t3.__h = [], c2.__e(r4, n2.__v);
+      }
+    }
+  }
+  c2.__b = function(n2) {
+    r3 = null, e2 && e2(n2);
+  }, c2.__ = function(n2, t3) {
+    n2 && t3.__k && t3.__k.__m && (n2.__m = t3.__k.__m), p2 && p2(n2, t3);
+  }, c2.__r = function(n2) {
+    a2 && a2(n2), t2 = 0;
+    var i3 = (r3 = n2.__c).__H;
+    i3 && (u3 === r3 ? (i3.__h = [], r3.__h = [], i3.__.some(function(n3) {
+      n3.__N && (n3.__ = n3.__N), n3.u = n3.__N = void 0;
+    })) : (i3.__h.some(z2), i3.__h.some(B2), i3.__h = [], t2 = 0)), u3 = r3;
+  }, c2.diffed = function(n2) {
+    v2 && v2(n2);
+    var t3 = n2.__c;
+    t3 && t3.__H && (t3.__H.__h.length && (1 !== f3.push(t3) && i2 === c2.requestAnimationFrame || ((i2 = c2.requestAnimationFrame) || w2)(j2)), t3.__H.__.some(function(n3) {
+      n3.u && (n3.__H = n3.u, n3.u = void 0);
+    })), u3 = r3 = null;
+  }, c2.__c = function(n2, t3) {
+    t3.some(function(n3) {
+      try {
+        n3.__h.some(z2), n3.__h = n3.__h.filter(function(n4) {
+          return !n4.__ || B2(n4);
+        });
+      } catch (r4) {
+        t3.some(function(n4) {
+          n4.__h && (n4.__h = []);
+        }), t3 = [], c2.__e(r4, n3.__v);
+      }
+    }), l2 && l2(n2, t3);
+  }, c2.unmount = function(n2) {
+    m2 && m2(n2);
+    var t3, r4 = n2.__c;
+    r4 && r4.__H && (r4.__H.__.some(function(n3) {
+      try {
+        z2(n3);
+      } catch (n4) {
+        t3 = n4;
+      }
+    }), r4.__H = void 0, t3 && c2.__e(t3, r4.__v));
+  };
+  var k2 = "function" == typeof requestAnimationFrame;
+  function w2(n2) {
+    var t3, r4 = function() {
+      clearTimeout(u4), k2 && cancelAnimationFrame(t3), setTimeout(n2);
+    }, u4 = setTimeout(r4, 35);
+    k2 && (t3 = requestAnimationFrame(r4));
+  }
+  function z2(n2) {
+    var t3 = r3, u4 = n2.__c;
+    "function" == typeof u4 && (n2.__c = void 0, u4()), r3 = t3;
+  }
+  function B2(n2) {
+    var t3 = r3;
+    n2.__c = n2.__(), r3 = t3;
+  }
+  function C2(n2, t3) {
+    return !n2 || n2.length !== t3.length || t3.some(function(t4, r4) {
+      return t4 !== n2[r4];
     });
   }
-  var DOC_LOADING_HTML = `<div style="padding:20px; text-align:center; color:#888;">Loading...</div>`;
-  var DOC_ERROR_HTML = `<div style="padding:20px; text-align:center; color:#888;">Could not load document. Check your connection.</div>`;
-  var PRIVACY_TEXT = { AGREE_LABEL: "I have read and agree to this disclosure." };
-  function buildPrivacyModalHTML(reviewMode) {
-    const scrollbox = `<div class="bbgl-modal-scrollbox" style="max-height:calc(68vh - 80px); min-height:300px;"><div id="bbgl-privacy-disc">${DOC_LOADING_HTML}</div></div>`;
-    const ctrl = reviewMode ? `<span class="bbgl-ack-check bbgl-ack-agreed">${ICONS.CHECK}</span>` : `<input type="checkbox" id="bbgl-privacy-ack">`;
-    const label = reviewMode ? `<span class="bbgl-ack-agreed-label">${PRIVACY_TEXT.AGREE_LABEL}</span>` : `<label for="bbgl-privacy-ack">${PRIVACY_TEXT.AGREE_LABEL}</label>`;
-    const ackRow = `<div class="bbgl-ack-row" style="margin:0 10px 8px 10px;">${ctrl}${label}</div>`;
-    const footer = reviewMode ? "" : `<div style="display:flex; margin:0 10px 4px 10px;">${app.buildButton("bbgl-privacy-demo-btn", "DEMO", "purple", "flex:2; border-radius:4px 0 0 4px; margin:0;")}<span class="bbgl-agree-wrap" style="flex:1; display:flex;" data-tooltip="${app.TOOLTIPS.AGREE_GATE}">${app.buildButton("bbgl-privacy-agree-btn", "AGREE", "green", "flex:1; border-radius:0 4px 4px 0; margin:0;")}</span></div>`;
-    const discSection = app.buildSection("Big Black Dicslosure", `${scrollbox}${ackRow}`, "margin-bottom:8px;");
-    return `<div class="bbgl-modal-overlay" id="bbgl-privacy-modal"><div class="bbgl-modal-window"><div class="close-settings-btn bbgl-close-x" id="bbgl-privacy-close" title="Close">${ICONS.CLOSE}</div>${discSection}${footer}</div></div>`;
+  function D2(n2, t3) {
+    return "function" == typeof t3 ? t3(n2) : t3;
   }
-  function closePrivacyModal() {
-    const m3 = document.getElementById("bbgl-privacy-modal");
-    if (m3 && m3.parentNode) m3.parentNode.removeChild(m3);
+
+  // src/ui/preact/form.tsx
+  function Section(props) {
+    return /* @__PURE__ */ u2(S, { children: [
+      /* @__PURE__ */ u2("div", { class: "bbgl-prefs-tab-title", style: props.titleStyle, children: [
+        /* @__PURE__ */ u2("span", { children: props.title }),
+        props.extra
+      ] }),
+      /* @__PURE__ */ u2("div", { class: "bbgl-settings-body", style: props.bodyStyle, children: props.children })
+    ] });
   }
-  function buildChangelogModalHTML() {
-    const changelogSection = app.buildSection("BBGL Test Phase Changelog", `<div class="bbgl-modal-scrollbox" style="max-height:calc(68vh - 80px); min-height:300px;"><div id="bbgl-changelog-content" style="font-family:Arial,sans-serif; font-size:12px; color:#ccc; line-height:1.7;">${DOC_LOADING_HTML}</div></div>`, "margin-bottom:8px;");
-    return `<div class="bbgl-modal-overlay" id="bbgl-changelog-modal"><div class="bbgl-modal-window"><div class="close-settings-btn bbgl-close-x" id="bbgl-changelog-close" title="Close">${ICONS.CLOSE}</div>${changelogSection}</div></div>`;
+  function Row(props) {
+    return /* @__PURE__ */ u2("div", { class: `bbgl-setting-row${props.extraClass ? ` ${props.extraClass}` : ""}`, children: [
+      props.label,
+      props.children
+    ] });
   }
-  function closeChangelogModal() {
-    const m3 = document.getElementById("bbgl-changelog-modal");
-    if (m3 && m3.parentNode) m3.parentNode.removeChild(m3);
+  function Toggle(props) {
+    return /* @__PURE__ */ u2(
+      Row,
+      {
+        extraClass: props.extraClass,
+        label: /* @__PURE__ */ u2("span", { "data-tooltip-html": props.tip, children: props.label }),
+        children: /* @__PURE__ */ u2("label", { class: "bbgl-switch", children: [
+          /* @__PURE__ */ u2(
+            "input",
+            {
+              id: props.id,
+              type: "checkbox",
+              checked: props.checked,
+              disabled: props.disabled,
+              onChange: (e3) => props.onChange(e3.target.checked)
+            }
+          ),
+          /* @__PURE__ */ u2("span", { class: "slider" })
+        ] })
+      }
+    );
   }
-  async function openChangelogModal() {
-    closeChangelogModal();
-    document.body.insertAdjacentHTML("beforeend", buildChangelogModalHTML());
-    const modal = document.getElementById("bbgl-changelog-modal");
-    if (!modal) return;
-    localStorage.setItem(KEYS.CHANGELOG_VER, SCRIPT_VERSION);
-    localStorage.removeItem(KEYS.CHANGELOG_NOTIF);
-    app.syncChangelogNotif(false);
-    modal.querySelector("#bbgl-changelog-close").onclick = () => closeChangelogModal();
-    modal.onclick = (e3) => {
-      if (e3.target === modal) closeChangelogModal();
-    };
-    try {
-      const changelogHTML = await fetchDoc("changelog");
-      const inner = modal.querySelector("#bbgl-changelog-content");
-      if (inner) inner.innerHTML = changelogHTML;
-    } catch (e3) {
-      const inner = modal.querySelector("#bbgl-changelog-content");
-      if (inner) inner.innerHTML = DOC_ERROR_HTML;
-    }
+  function Btn(props) {
+    const cls = ["bbgl-btn", props.modifier ? `bbgl-btn-${props.modifier}` : ""].filter(Boolean).join(" ");
+    return /* @__PURE__ */ u2(
+      "button",
+      {
+        id: props.id,
+        type: "button",
+        class: cls,
+        style: props.style,
+        disabled: props.disabled,
+        onClick: props.onClick,
+        children: props.children
+      }
+    );
   }
-  function buildFeatureGuideModalHTML() {
-    const guideSection = app.buildSection("Feature Guide", `<div class="bbgl-modal-scrollbox" style="max-height:calc(68vh - 80px); min-height:300px;"><div style="padding:20px; text-align:center; color:#888;">Cumming Soon...</div></div>`, "margin-bottom:8px;");
-    return `<div class="bbgl-modal-overlay" id="bbgl-feature-guide-modal"><div class="bbgl-modal-window"><div class="close-settings-btn bbgl-close-x" id="bbgl-feature-guide-close" title="Close">${ICONS.CLOSE}</div>${guideSection}</div></div>`;
-  }
-  function closeFeatureGuideModal() {
-    const m3 = document.getElementById("bbgl-feature-guide-modal");
-    if (m3 && m3.parentNode) m3.parentNode.removeChild(m3);
-  }
-  function openFeatureGuideModal() {
-    closeFeatureGuideModal();
-    document.body.insertAdjacentHTML("beforeend", buildFeatureGuideModalHTML());
-    const modal = document.getElementById("bbgl-feature-guide-modal");
-    if (!modal) return;
-    modal.querySelector("#bbgl-feature-guide-close").onclick = () => closeFeatureGuideModal();
-    modal.onclick = (e3) => {
-      if (e3.target === modal) closeFeatureGuideModal();
-    };
-  }
-  async function openPrivacyModal() {
-    closePrivacyModal();
-    const reviewMode = !!userConfig.privacyAgreed, host = document.body;
-    host.insertAdjacentHTML("beforeend", buildPrivacyModalHTML(reviewMode));
-    const modal = document.getElementById("bbgl-privacy-modal");
-    if (!modal) return;
-    modal.querySelector("#bbgl-privacy-close").onclick = () => closePrivacyModal();
-    modal.onclick = (e3) => {
-      if (e3.target === modal) closePrivacyModal();
-    };
-    if (!reviewMode) {
-      const agreeBtn = modal.querySelector("#bbgl-privacy-agree-btn"), agreeWrap = modal.querySelector(".bbgl-agree-wrap"), ackBox = modal.querySelector("#bbgl-privacy-ack");
-      agreeBtn.classList.add("bbgl-btn-disabled");
-      const refreshAgreeState = () => {
-        if (ackBox.checked) {
-          agreeBtn.classList.remove("bbgl-btn-disabled");
-          if (agreeWrap) agreeWrap.removeAttribute("data-tooltip");
-        } else {
-          agreeBtn.classList.add("bbgl-btn-disabled");
-          if (agreeWrap) agreeWrap.setAttribute("data-tooltip", app.TOOLTIPS.AGREE_GATE);
+  function ApiField(props) {
+    return /* @__PURE__ */ u2("div", { class: "bbgl-api-container", style: props.style, children: [
+      /* @__PURE__ */ u2(
+        "div",
+        {
+          id: `${props.prefix}-api-paste`,
+          class: "bbgl-paste-icon",
+          "data-tooltip": TOOLTIPS.PASTE_CLIPBOARD,
+          onClick: async () => {
+            try {
+              const t3 = await navigator.clipboard.readText();
+              if (t3 && props.inputRef.current) props.inputRef.current.value = t3.trim();
+            } catch {
+              bbglError(MSG_CLIPBOARD_DENIED);
+            }
+          },
+          children: /* @__PURE__ */ u2(Raw, { html: ICONS.PASTE })
         }
-      };
-      ackBox.onchange = refreshAgreeState;
-      refreshAgreeState();
-      modal.querySelector("#bbgl-privacy-demo-btn").onclick = function() {
-        this.blur();
-        app.enterDemo("privacy");
-        closePrivacyModal();
-      };
-      agreeBtn.onclick = function() {
-        if (agreeBtn.classList.contains("bbgl-btn-disabled")) return;
-        this.blur();
-        userConfig.privacyAgreed = (/* @__PURE__ */ new Date()).toISOString();
-        saveConfig();
-        if (!runtime.wasVersionWiped) {
-          localStorage.setItem(KEYS.CHANGELOG_VER, SCRIPT_VERSION);
+      ),
+      /* @__PURE__ */ u2(
+        "input",
+        {
+          id: `${props.prefix}-api-key`,
+          ref: (el) => {
+            props.inputRef.current = el;
+          },
+          type: "text",
+          name: "bbgl_api_key",
+          autocomplete: "off",
+          class: "bbgl-native-input",
+          placeholder: "Enter Full or Custom API Key...",
+          defaultValue: props.defaultValue || ""
         }
-        closePrivacyModal();
-        app.refreshInitLock();
-        const wv = dom.welcomeView;
-        if (wv && wv.classList.contains("active-view")) app.refreshInitMask(wv);
+      )
+    ] });
+  }
+  var STACK = {
+    top: { borderBottomLeftRadius: 0, borderBottomRightRadius: 0, borderBottom: "none" },
+    mid: { borderRadius: 0, borderBottom: "none" },
+    bottom: { borderTopLeftRadius: 0, borderTopRightRadius: 0 }
+  };
+  var CREATE_API_URL = "https://www.torn.com/preferences.php#tab=api?step=addNewKey&user=basic,battlestats,log&faction=rankedwars&logIds=54,50,23,6,52,56,3&title=BigBlackGymLog";
+
+  // src/ui/preact/Modals.tsx
+  var LOADING = '<div style="padding:20px; text-align:center; color:#888;">Loading...</div>';
+  var ERROR = '<div style="padding:20px; text-align:center; color:#888;">Could not load document. Check your connection.</div>';
+  function ModalShell(props) {
+    return /* @__PURE__ */ u2("div", { class: "bbgl-modal-overlay", id: props.id, onClick: (e3) => {
+      if (e3.target === e3.currentTarget) props.onClose();
+    }, children: /* @__PURE__ */ u2("div", { class: "bbgl-modal-window", children: [
+      /* @__PURE__ */ u2("div", { class: "close-settings-btn bbgl-close-x", title: "Close", onClick: props.onClose, children: /* @__PURE__ */ u2(Raw, { html: ICONS.CLOSE }) }),
+      /* @__PURE__ */ u2(Section, { title: props.title, bodyStyle: { marginBottom: 8 }, children: props.children }),
+      props.footer
+    ] }) });
+  }
+  function DocBox(props) {
+    const [html, setHtml] = d2(LOADING);
+    h2(() => {
+      let cancelled = false;
+      (async () => {
+        try {
+          const raw = await app.fetchDoc(props.name);
+          if (!cancelled) setHtml(raw);
+        } catch {
+          if (!cancelled) setHtml(ERROR);
+        }
+      })();
+      return () => {
+        cancelled = true;
       };
-    }
-    const disc = modal.querySelector("#bbgl-privacy-disc");
-    const wireDocSwap = (container) => {
-      if (!container) return;
-      container.querySelectorAll("[data-bbgl-doc]").forEach((link) => {
+    }, [props.name]);
+    h2(() => {
+      const el = document.getElementById(props.id);
+      if (!el) return;
+      el.querySelectorAll("[data-bbgl-doc]").forEach((link) => {
         link.style.cursor = "pointer";
         link.onclick = async (e3) => {
           e3.preventDefault();
           const name = link.getAttribute("data-bbgl-doc");
           if (!name) return;
-          container.innerHTML = DOC_LOADING_HTML;
+          setHtml(LOADING);
           try {
-            container.innerHTML = await fetchDoc(name);
-          } catch (err) {
-            container.innerHTML = DOC_ERROR_HTML;
+            setHtml(await app.fetchDoc(name));
+          } catch {
+            setHtml(ERROR);
           }
-          wireDocSwap(container);
         };
       });
-    };
-    try {
-      const disclosureHTML = await fetchDoc("privacy");
-      if (disc) {
-        disc.innerHTML = disclosureHTML;
-        wireDocSwap(disc);
-      }
-    } catch (e3) {
-      if (disc) disc.innerHTML = DOC_ERROR_HTML;
-    }
+    }, [html, props.id]);
+    return /* @__PURE__ */ u2("div", { class: "bbgl-modal-scrollbox", style: { maxHeight: "calc(68vh - 80px)", minHeight: 300 }, children: /* @__PURE__ */ u2("div", { id: props.id, dangerouslySetInnerHTML: { __html: html } }) });
   }
+  function PrivacyModal(props) {
+    const reviewMode = !!userConfig.privacyAgreed;
+    const [acked, setAcked] = d2(false);
+    return /* @__PURE__ */ u2(ModalShell, { id: "bbgl-privacy-modal", title: "Big Black Dicslosure", onClose: props.onClose, footer: reviewMode ? null : /* @__PURE__ */ u2("div", { style: { display: "flex", margin: "0 10px 4px 10px" }, children: [
+      /* @__PURE__ */ u2(Btn, { id: "bbgl-privacy-demo-btn", modifier: "purple", style: { flex: 2, borderRadius: "4px 0 0 4px", margin: 0 }, onClick: (e3) => {
+        e3.currentTarget.blur();
+        app.enterDemo("privacy");
+        props.onClose();
+      }, children: "DEMO" }),
+      /* @__PURE__ */ u2("span", { class: "bbgl-agree-wrap", style: { flex: 1, display: "flex" }, "data-tooltip": acked ? void 0 : TOOLTIPS.AGREE_GATE, children: /* @__PURE__ */ u2(
+        Btn,
+        {
+          id: "bbgl-privacy-agree-btn",
+          modifier: "green",
+          disabled: !acked,
+          style: { flex: 1, borderRadius: "0 4px 4px 0", margin: 0 },
+          onClick: (e3) => {
+            if (!acked) return;
+            e3.currentTarget.blur();
+            userConfig.privacyAgreed = (/* @__PURE__ */ new Date()).toISOString();
+            saveConfig();
+            if (!runtime.wasVersionWiped) localStorage.setItem(KEYS.CHANGELOG_VER, SCRIPT_VERSION);
+            props.onClose();
+            app.refreshInitLock();
+            const wv = dom.welcomeView;
+            if (wv && wv.classList.contains("active-view")) app.refreshInitMask(wv);
+          },
+          children: "AGREE"
+        }
+      ) })
+    ] }), children: [
+      /* @__PURE__ */ u2(DocBox, { name: "privacy", id: "bbgl-privacy-disc" }),
+      /* @__PURE__ */ u2("div", { class: "bbgl-ack-row", style: { margin: "0 10px 8px 10px" }, children: reviewMode ? /* @__PURE__ */ u2(S, { children: [
+        /* @__PURE__ */ u2("span", { class: "bbgl-ack-check bbgl-ack-agreed", children: /* @__PURE__ */ u2(Raw, { html: ICONS.CHECK }) }),
+        /* @__PURE__ */ u2("span", { class: "bbgl-ack-agreed-label", children: "I have read and agree to this disclosure." })
+      ] }) : /* @__PURE__ */ u2(S, { children: [
+        /* @__PURE__ */ u2("input", { id: "bbgl-privacy-ack", type: "checkbox", checked: acked, onChange: (e3) => setAcked(e3.target.checked) }),
+        /* @__PURE__ */ u2("label", { for: "bbgl-privacy-ack", children: "I have read and agree to this disclosure." })
+      ] }) })
+    ] });
+  }
+  function ChangelogModal(props) {
+    return /* @__PURE__ */ u2(ModalShell, { id: "bbgl-changelog-modal", title: "BBGL Test Phase Changelog", onClose: props.onClose, children: /* @__PURE__ */ u2("div", { class: "bbgl-modal-scrollbox", style: { maxHeight: "calc(68vh - 80px)", minHeight: 300 }, children: /* @__PURE__ */ u2("div", { id: "bbgl-changelog-content", style: { fontFamily: "Arial, sans-serif", fontSize: 12, color: "#ccc", lineHeight: 1.7 }, children: /* @__PURE__ */ u2(DocBox, { name: "changelog", id: "bbgl-changelog-inner" }) }) }) });
+  }
+  function FeatureGuideModal(props) {
+    return /* @__PURE__ */ u2(ModalShell, { id: "bbgl-feature-guide-modal", title: "Feature Guide", onClose: props.onClose, children: /* @__PURE__ */ u2("div", { class: "bbgl-modal-scrollbox", style: { maxHeight: "calc(68vh - 80px)", minHeight: 300 }, children: /* @__PURE__ */ u2("div", { style: { padding: 20, textAlign: "center", color: "#888" }, children: "Cumming Soon..." }) }) });
+  }
+  function mount(node, id) {
+    closeById(id);
+    const host = document.createElement("div");
+    host.id = `${id}-host`;
+    document.body.appendChild(host);
+    R(node, host);
+  }
+  function closeById(id) {
+    const host = document.getElementById(`${id}-host`);
+    if (host) {
+      R(null, host);
+      host.remove();
+    }
+    const legacy = document.getElementById(id);
+    if (legacy && legacy.parentNode) legacy.parentNode.removeChild(legacy);
+  }
+  function openPrivacyModal() {
+    mount(/* @__PURE__ */ u2(PrivacyModal, { onClose: () => closeById("bbgl-privacy-modal") }), "bbgl-privacy-modal");
+  }
+  function closePrivacyModal() {
+    closeById("bbgl-privacy-modal");
+  }
+  function openChangelogModal() {
+    localStorage.setItem(KEYS.CHANGELOG_VER, SCRIPT_VERSION);
+    localStorage.removeItem(KEYS.CHANGELOG_NOTIF);
+    if (typeof app.syncChangelogNotif === "function") app.syncChangelogNotif(false);
+    mount(/* @__PURE__ */ u2(ChangelogModal, { onClose: () => closeById("bbgl-changelog-modal") }), "bbgl-changelog-modal");
+  }
+  function closeChangelogModal() {
+    closeById("bbgl-changelog-modal");
+  }
+  function openFeatureGuideModal() {
+    mount(/* @__PURE__ */ u2(FeatureGuideModal, { onClose: () => closeById("bbgl-feature-guide-modal") }), "bbgl-feature-guide-modal");
+  }
+  function closeFeatureGuideModal() {
+    closeById("bbgl-feature-guide-modal");
+  }
+  function BackfillChoiceModal(props) {
+    const close = () => {
+      props.onClose();
+      app.switchView("ledger");
+    };
+    return /* @__PURE__ */ u2(ModalShell, { id: "bbgl-choice-modal", title: "Start Tracking", onClose: close, children: [
+      /* @__PURE__ */ u2("div", { style: { padding: "6px 4px 14px", color: "#ccc", fontSize: 12, lineHeight: 1.6, textAlign: "center" }, children: "Start tracking now with no log history, or use Big Black Backfill to reconstruct your training history from Torn's logs. You can always get Big Black Backfilled later from the Settings." }),
+      /* @__PURE__ */ u2("div", { style: { display: "flex", gap: 0, margin: "0 6px 2px" }, children: [
+        /* @__PURE__ */ u2(Btn, { id: "bbgl-choice-fresh-btn", style: { flex: 1, borderRadius: "4px 0 0 4px", margin: 0 }, onClick: (e3) => {
+          e3.currentTarget.blur();
+          close();
+        }, children: "START EMPTY LOG" }),
+        /* @__PURE__ */ u2(Btn, { id: "bbgl-choice-backfill-btn", modifier: "purple", style: { flex: 1, borderRadius: "0 4px 4px 0", margin: 0 }, onClick: (e3) => {
+          e3.currentTarget.blur();
+          close();
+          app.backfillLogs(document.getElementById("backfill-btn"));
+        }, children: "BIG BLACK BACKFILL" })
+      ] })
+    ] });
+  }
+  app.openBackfillChoiceModal = openBackfillChoiceModal2;
+  app.closeBackfillChoiceModal = closeBackfillChoiceModal2;
+  function openBackfillChoiceModal2() {
+    if (runtime.demoMode) return;
+    mount(/* @__PURE__ */ u2(BackfillChoiceModal, { onClose: () => closeById("bbgl-choice-modal") }), "bbgl-choice-modal");
+  }
+  function closeBackfillChoiceModal2() {
+    closeById("bbgl-choice-modal");
+  }
+
+  // src/ui/docs.js
+  if (!app.docCache) app.docCache = {};
+  function fetchDoc(name) {
+    if (app.docCache[name]) return Promise.resolve(app.docCache[name]);
+    return new Promise((resolve, reject) => {
+      GM_xmlhttpRequest({
+        method: "GET",
+        url: BASE_DOCS_URL + name + ".html?_=" + Date.now(),
+        onload(res) {
+          if (res.status >= 200 && res.status < 300) {
+            app.docCache[name] = res.responseText;
+            resolve(res.responseText);
+          } else {
+            reject(new Error(`Doc fetch failed: ${res.status}`));
+          }
+        },
+        onerror() {
+          reject(new Error("Doc fetch network error"));
+        }
+      });
+    });
+  }
+  var DOC_LOADING_HTML = `<div style="padding:20px; text-align:center; color:#888;">Loading...</div>`;
+  var DOC_ERROR_HTML = `<div style="padding:20px; text-align:center; color:#888;">Could not load document. Check your connection.</div>`;
+  var PRIVACY_TEXT = { AGREE_LABEL: "I have read and agree to this disclosure." };
   app.fetchDoc = fetchDoc;
   app.DOC_LOADING_HTML = DOC_LOADING_HTML;
   app.DOC_ERROR_HTML = DOC_ERROR_HTML;
   app.PRIVACY_TEXT = PRIVACY_TEXT;
-  app.buildPrivacyModalHTML = buildPrivacyModalHTML;
   app.closePrivacyModal = closePrivacyModal;
-  app.buildChangelogModalHTML = buildChangelogModalHTML;
   app.closeChangelogModal = closeChangelogModal;
-  app.openChangelogModal = openChangelogModal;
-  app.buildFeatureGuideModalHTML = buildFeatureGuideModalHTML;
   app.closeFeatureGuideModal = closeFeatureGuideModal;
+  app.openChangelogModal = openChangelogModal;
   app.openFeatureGuideModal = openFeatureGuideModal;
   app.openPrivacyModal = openPrivacyModal;
 
@@ -8343,42 +8188,13 @@ Please enter a new key to continue.`);
     window.addEventListener("touchend", oe);
     c3.addEventListener("mouseleave", ch);
   }, setupControls() {
-    document.querySelectorAll(".g-pill").forEach((b2) => {
-      b2.onclick = (e3) => {
-        e3.stopPropagation();
-        const t3 = b2.getAttribute("data-type"), v3 = b2.getAttribute("data-val");
-        if (t3 === "mode") {
-          document.querySelectorAll('.g-pill[data-type="mode"]').forEach((x3) => x3.classList.remove("active"));
-          b2.classList.add("active");
-          graphState.mode = v3;
-          viewState.graphMode = v3;
-        } else if (t3 === "stat") {
-          if (graphState.activeStats.includes(v3)) {
-            graphState.activeStats = graphState.activeStats.filter((s3) => s3 !== v3);
-            b2.classList.remove("active");
-          } else {
-            graphState.activeStats.push(v3);
-            b2.classList.add("active");
-          }
-          viewState.graphStats = graphState.activeStats;
-        }
-        saveViewState();
-        GraphController.draw();
-      };
-    });
+    if (runtime.resizeObserver) runtime.resizeObserver.disconnect();
     runtime.resizeObserver = new ResizeObserver(() => {
-      if (dom.topPanel && dom.topPanel.classList.contains("viewing-graph")) window.requestAnimationFrame(GraphController.draw);
+      if (dom.topPanel && (dom.topPanel.classList.contains("viewing-graph") || viewState.subView === "graph")) window.requestAnimationFrame(GraphController.draw);
     });
-    runtime.resizeObserver.observe(dom.graphContainer);
+    if (dom.graphContainer) runtime.resizeObserver.observe(dom.graphContainer);
   }, restoreUi() {
-    document.querySelectorAll('.g-pill[data-type="mode"]').forEach((b2) => {
-      if (b2.getAttribute("data-val") === graphState.mode) b2.classList.add("active");
-      else b2.classList.remove("active");
-    });
-    document.querySelectorAll('.g-pill[data-type="stat"]').forEach((b2) => {
-      if (graphState.activeStats.includes(b2.getAttribute("data-val"))) b2.classList.add("active");
-      else b2.classList.remove("active");
-    });
+    if (typeof app.notifyUi === "function") app.notifyUi();
   }, applyDefaultsIfNeeded() {
     if (viewState.graphStats) return;
     if (historyCache) {
@@ -8420,95 +8236,8 @@ Please enter a new key to continue.`);
     runtime.stickerData = it;
   }
   function renderStickers() {
-    Perf.start("renderStickers");
     if (!runtime.stickerData.length) loadStickerData();
-    if (runtime.currentStickerPage === -1) {
-      renderSponsorshipPage();
-      Perf.end("renderStickers");
-      return;
-    }
-    const sg = document.getElementById("bbgl-sponsor-grid");
-    if (sg) sg.style.display = "none";
-    if (dom.stickerGrid) dom.stickerGrid.style.display = "";
-    const dc = dom.stickerPagination, te = dom.stickerTitle;
-    if (te) te.innerText = PAGE_TITLES[runtime.currentStickerPage] || "";
-    const tp = Math.ceil(runtime.stickerData.length / 10), pb = dom.stickerPrev, nb = dom.stickerNext, sb = dom.stickerSponsor;
-    if (pb) {
-      if (runtime.currentStickerPage <= 0) pb.classList.add("disabled");
-      else pb.classList.remove("disabled");
-    }
-    if (sb) {
-      if (runtime.currentStickerPage === 0) sb.classList.remove("disabled");
-      else sb.classList.add("disabled");
-    }
-    if (nb) {
-      if (runtime.currentStickerPage >= tp - 1) nb.classList.add("disabled");
-      else nb.classList.remove("disabled");
-    }
-    if (dc) {
-      dc.innerHTML = "";
-      const sd = document.createElement("div");
-      sd.className = "pg-dot";
-      sd.onclick = () => {
-        runtime.currentStickerPage = -1;
-        viewState.currentStickerPage = -1;
-        saveViewState();
-        renderStickers();
-      };
-      dc.appendChild(sd);
-      for (let i3 = 0; i3 < tp; i3++) {
-        const d3 = document.createElement("div");
-        d3.className = `pg-dot ${i3 === runtime.currentStickerPage ? "active" : ""}`;
-        d3.onclick = () => {
-          runtime.currentStickerPage = i3;
-          renderStickers();
-        };
-        dc.appendChild(d3);
-      }
-    }
-    const start = runtime.currentStickerPage * 10, pi = runtime.stickerData.slice(start, start + 10);
-    if (runtime.stickerSlots.length === 0) {
-      Perf.end("renderStickers");
-      return;
-    }
-    let comingSoonDiv = document.getElementById("bbgl-coming-soon");
-    if (runtime.currentStickerPage >= 2) {
-      for (let i3 = 0; i3 < 10; i3++) runtime.stickerSlots[i3].style.display = "none";
-      if (!comingSoonDiv) {
-        const g4 = document.getElementById("bbgl-sticker-container") || dom.stickerContainer;
-        if (g4) {
-          const cs = document.createElement("div");
-          cs.id = "bbgl-coming-soon";
-          cs.className = "bbgl-coming-soon";
-          cs.innerHTML = "Cumming<br>Soon...";
-          g4.appendChild(cs);
-        }
-      } else comingSoonDiv.style.display = "block";
-    } else {
-      if (comingSoonDiv) comingSoonDiv.style.display = "none";
-      for (let i3 = 0; i3 < 10; i3++) {
-        const sl = runtime.stickerSlots[i3], img = sl.querySelector(".sticker-img"), it = pi[i3];
-        sl.style.display = "";
-        if (it) {
-          sl.className = "sticker-slot active-slot";
-          if (it.unlocked) {
-            sl.classList.add("has-item");
-            sl.classList.remove("locked");
-            sl.setAttribute("data-tooltip", `${it.name}`);
-            sl.onclick = () => openItemViewer(it);
-          } else {
-            sl.classList.add("has-item", "locked");
-            sl.setAttribute("data-tooltip", app.app.TOOLTIPS.LOCKED);
-            sl.onclick = null;
-          }
-          if (img.src !== it.url) img.src = it.url;
-        } else {
-          sl.className = "sticker-slot";
-          sl.onclick = null;
-        }
-      }
-    }
-    Perf.end("renderStickers");
+    if (typeof app.notifyUi === "function") app.notifyUi();
   }
   function animateViewer(ts) {
     if (document.hidden || runtime.currentOpenedItemId === null || viewState.subView !== "stickers" && viewState.subView !== "viewer" && runtime.currentOpenedItemId === null) {
@@ -8520,12 +8249,15 @@ Please enter a new key to continue.`);
     const el = ts - runtime.lastFrameTime;
     if (el > 17) {
       runtime.lastFrameTime = ts - el % 17;
-      const ped = dom.viPedestal, obj = dom.viObj;
+      const ped = dom.viPedestal || document.getElementById("vi-pedestal-wrapper");
+      const obj = dom.viObj || document.getElementById("vi-obj-target");
       if (ped && obj) {
         runtime.viewerRotation += runtime.viewerSpeed;
         ped.style.transform = `rotateY(${runtime.viewerRotation}deg) translateZ(0)`;
         if (obj.classList.contains("is-image")) {
-          const rad = runtime.viewerRotation * Math.PI / 180, br = (0.7 + Math.sin(rad) * 0.3).toFixed(2), isF = Math.cos(rad) > -0.2 ? 1 : 0;
+          const rad = runtime.viewerRotation * Math.PI / 180;
+          const br = (0.7 + Math.sin(rad) * 0.3).toFixed(2);
+          const isF = Math.cos(rad) > -0.2 ? 1 : 0;
           obj.style.setProperty("--sheen-pos", runtime.viewerRotation * 2.5 + "% 0%");
           obj.style.setProperty("--back-brightness", br);
           obj.style.setProperty("--sheen-opacity", isF);
@@ -8540,28 +8272,13 @@ Please enter a new key to continue.`);
       animateViewer();
     }
   });
-  function openItemViewer(it, sv = true) {
-    if (runtime.currentOpenedItemId === it.id) return;
-    if (sv) {
-      viewState.activeItemId = it.id;
-      saveViewState();
-    }
-    app.TooltipController.hide();
-    const v3 = dom.itemViewer, bp = dom.bottomPanel, nm = dom.viName, ob = dom.viObj, lf = ob.querySelector(".layer-front"), lb = ob.querySelector(".layer-back"), st = document.querySelector(".viewer-stage");
-    runtime.currentOpenedItemId = it.id;
-    bp.style.setProperty("display", "none", "important");
-    v3.classList.add("active");
-    v3.style.setProperty("display", "flex", "important");
-    let ped = dom.viPedestal;
-    if (!ped) {
-      ped = document.createElement("div");
-      ped.id = "vi-pedestal-wrapper";
-      ped.className = "viewer-pedestal";
-      st.appendChild(ped);
-      ped.appendChild(ob);
-      dom.viPedestal = ped;
-    }
-    nm.innerText = it.name;
+  function applyViewerArt(it) {
+    const ob = document.getElementById("vi-obj-target");
+    const nm = document.getElementById("vi-name-target");
+    if (nm) nm.innerText = it.name;
+    if (!ob) return;
+    const lf = ob.querySelector(".layer-front");
+    const lb = ob.querySelector(".layer-back");
     if (it.type === "image") {
       ob.classList.add("is-image");
       ob.style.setProperty("--bg-mask", `url('${it.url}')`);
@@ -8571,13 +8288,14 @@ Please enter a new key to continue.`);
         lb.style.maskImage = `url('${it.url}')`;
       }
     }
-    runtime.viewerRotation = 0;
-    runtime.viewerSpeed = 0.3;
-    if (runtime.viewerLoopId) cancelAnimationFrame(runtime.viewerLoopId);
-    requestAnimationFrame(animateViewer);
+  }
+  function bindViewerSpeed() {
+    const st = document.querySelector(".viewer-stage");
+    if (!st) return;
     const spdUp = () => {
       runtime.viewerSpeed = 3;
-    }, spdDn = () => {
+    };
+    const spdDn = () => {
       runtime.viewerSpeed = 0.3;
     };
     st.onmousedown = spdUp;
@@ -8586,6 +8304,33 @@ Please enter a new key to continue.`);
     st.onmouseleave = spdDn;
     st.ontouchend = spdDn;
     st.ontouchcancel = spdDn;
+  }
+  function openItemViewer(it, sv = true) {
+    if (runtime.currentOpenedItemId === it.id) return;
+    if (sv) {
+      viewState.activeItemId = it.id;
+      saveViewState();
+    }
+    if (app.TooltipController) app.TooltipController.hide();
+    runtime.currentOpenedItemId = it.id;
+    const v3 = document.getElementById("bbgl-item-viewer");
+    const bp = dom.bottomPanel;
+    if (bp) bp.style.setProperty("display", "none", "important");
+    if (v3) {
+      v3.classList.add("active");
+      v3.style.setProperty("display", "flex", "important");
+    }
+    const ped = document.getElementById("vi-pedestal-wrapper");
+    if (ped) dom.viPedestal = ped;
+    const ob = document.getElementById("vi-obj-target");
+    if (ob) dom.viObj = ob;
+    applyViewerArt(it);
+    runtime.viewerRotation = 0;
+    runtime.viewerSpeed = 0.3;
+    if (runtime.viewerLoopId) cancelAnimationFrame(runtime.viewerLoopId);
+    requestAnimationFrame(animateViewer);
+    bindViewerSpeed();
+    if (typeof app.notifyUi === "function") app.notifyUi();
   }
   function closeItemViewer(sv = true) {
     if (sv) {
@@ -8597,7 +8342,8 @@ Please enter a new key to continue.`);
       cancelAnimationFrame(runtime.viewerLoopId);
       runtime.viewerLoopId = null;
     }
-    const v3 = dom.itemViewer, bp = dom.bottomPanel;
+    const v3 = document.getElementById("bbgl-item-viewer");
+    const bp = dom.bottomPanel;
     if (v3) {
       v3.classList.remove("active");
       v3.style.setProperty("display", "none", "important");
@@ -8606,38 +8352,7 @@ Please enter a new key to continue.`);
       bp.style.removeProperty("display");
       if (getComputedStyle(bp).display === "none") bp.style.display = "flex";
     }
-  }
-  function setupStickerGrid() {
-    const g4 = dom.stickerGrid;
-    if (!g4) return;
-    runtime.stickerSlots = [];
-    g4.innerHTML = "";
-    for (let i3 = 0; i3 < 10; i3++) {
-      const s3 = document.createElement("div"), m3 = document.createElement("img");
-      s3.className = "sticker-slot";
-      m3.className = "sticker-img";
-      s3.appendChild(m3);
-      g4.appendChild(s3);
-      runtime.stickerSlots.push(s3);
-    }
-    const container = dom.stickerContainer;
-    if (container && !document.getElementById("bbgl-sponsor-grid")) {
-      const sg = document.createElement("div");
-      sg.id = "bbgl-sponsor-grid";
-      sg.style.display = "none";
-      const pts = getSponsorBurstPoints();
-      for (let i3 = 0; i3 < 3; i3++) {
-        const slot = document.createElement("div");
-        slot.className = "sticker-slot sticker-slot-sponsor active-slot locked";
-        const labelText = i3 === 0 ? "Corleone Faction<br>Sticker Here ;)" : "Your Faction<br>Sticker Here";
-        slot.innerHTML = `<svg class="sponsor-sticker-svg" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg"><polygon points="${pts}" fill="#ffffff"/></svg><span class="sponsor-sticker-label">${labelText}</span>`;
-        sg.appendChild(slot);
-      }
-      const pag = dom.stickerPagination;
-      if (pag && pag.parentElement === container) container.insertBefore(sg, pag);
-      else container.appendChild(sg);
-    }
-    renderStickers();
+    if (typeof app.notifyUi === "function") app.notifyUi();
   }
   var _sponsorBurstPoints = null;
   function getSponsorBurstPoints() {
@@ -8653,51 +8368,19 @@ Please enter a new key to continue.`);
     _sponsorBurstPoints = pts.join(" ");
     return _sponsorBurstPoints;
   }
-  function renderSponsorshipPage() {
-    if (dom.stickerTitle) dom.stickerTitle.innerText = "Sponsorship";
-    if (dom.stickerGrid) dom.stickerGrid.style.display = "none";
-    const comingSoon = document.getElementById("bbgl-coming-soon");
-    if (comingSoon) comingSoon.style.display = "none";
-    const sg = document.getElementById("bbgl-sponsor-grid");
-    if (sg) sg.style.display = "grid";
-    if (dom.stickerPrev) dom.stickerPrev.classList.add("disabled");
-    if (dom.stickerSponsor) dom.stickerSponsor.classList.add("disabled");
-    if (dom.stickerNext) dom.stickerNext.classList.remove("disabled");
-    const dc = dom.stickerPagination;
-    if (dc) {
-      dc.innerHTML = "";
-      const tp = Math.ceil(runtime.stickerData.length / 10);
-      const sd = document.createElement("div");
-      sd.className = "pg-dot pg-dot-sponsor active";
-      sd.onclick = () => {
-        runtime.currentStickerPage = -1;
-        viewState.currentStickerPage = -1;
-        saveViewState();
-        renderStickers();
-      };
-      dc.appendChild(sd);
-      for (let i3 = 0; i3 < tp; i3++) {
-        const d3 = document.createElement("div");
-        d3.className = "pg-dot";
-        d3.onclick = () => {
-          runtime.currentStickerPage = i3;
-          viewState.currentStickerPage = i3;
-          saveViewState();
-          renderStickers();
-        };
-        dc.appendChild(d3);
-      }
-    }
-  }
   function changeStickerPage(d3) {
-    if (!userConfig.animations) {
+    const apply = () => {
       viewState.currentStickerPage += d3;
       runtime.currentStickerPage = viewState.currentStickerPage;
       saveViewState();
       renderStickers();
+    };
+    if (!userConfig.animations) {
+      apply();
       return;
     }
-    const oldActive = runtime.currentStickerPage === -1 ? document.getElementById("bbgl-sponsor-grid") : dom.stickerGrid, bg = dom.stickerGridBg;
+    const oldActive = runtime.currentStickerPage === -1 ? document.getElementById("bbgl-sponsor-grid") : document.getElementById("bbgl-sticker-grid");
+    const bg = document.getElementById("bbgl-sticker-bg");
     if (oldActive) {
       const ghost = oldActive.cloneNode(true);
       ghost.style.pointerEvents = "none";
@@ -8730,18 +8413,19 @@ Please enter a new key to continue.`);
       const bgGhostTimer = setTimeout(removeBgGhost, 400);
       bgGhost.addEventListener("animationend", () => clearTimeout(bgGhostTimer), { once: true });
     }
-    viewState.currentStickerPage += d3;
-    runtime.currentStickerPage = viewState.currentStickerPage;
-    saveViewState();
-    renderStickers();
-    const newActive = runtime.currentStickerPage === -1 ? document.getElementById("bbgl-sponsor-grid") : dom.stickerGrid;
+    apply();
+    const newActive = runtime.currentStickerPage === -1 ? document.getElementById("bbgl-sponsor-grid") : document.getElementById("bbgl-sticker-grid");
     if (newActive) {
       newActive.style.animation = d3 > 0 ? "bbgl-slide-in-r 0.3s ease forwards" : "bbgl-slide-in-l 0.3s ease forwards";
-      newActive.addEventListener("animationend", () => newActive.style.animation = "", { once: true });
+      newActive.addEventListener("animationend", () => {
+        newActive.style.animation = "";
+      }, { once: true });
     }
     if (bg) {
       bg.style.animation = d3 > 0 ? "bbgl-slide-in-r 0.3s ease forwards" : "bbgl-slide-in-l 0.3s ease forwards";
-      bg.addEventListener("animationend", () => bg.style.animation = "", { once: true });
+      bg.addEventListener("animationend", () => {
+        bg.style.animation = "";
+      }, { once: true });
     }
   }
   function closeDropdown(d3) {
@@ -8762,61 +8446,18 @@ Please enter a new key to continue.`);
     d3.style.top = r4.bottom - origin.top + 2 + "px";
     d3.style.left = r4.left - origin.left + "px";
   }
-  function toggleMonthDropdown() {
-    const d3 = dom.monthDropdown;
-    closeDropdown(dom.yearDropdown);
-    d3.innerHTML = "";
-    CONSTANTS.MONTHS_SHORT.forEach((m3, i3) => {
-      const x3 = document.createElement("div");
-      x3.className = `drop-item ${i3 === calendarState.month ? "active" : ""}`;
-      x3.textContent = m3;
-      x3.onclick = () => {
-        calendarState.month = i3;
-        d3.querySelectorAll(".drop-item").forEach((el) => el.classList.remove("active"));
-        x3.classList.add("active");
-        closeDropdown(d3);
-        app.renderPanelContent();
-      };
-      d3.appendChild(x3);
-    });
-    if (d3.classList.contains("show")) closeDropdown(d3);
-    else openDropdown(d3, dom.monthTrigger);
-  }
-  function toggleYearDropdown() {
-    const d3 = dom.yearDropdown;
-    closeDropdown(dom.monthDropdown);
-    d3.innerHTML = "";
-    const s3 = app.getActiveHistory(), ys = /* @__PURE__ */ new Set();
-    s3.history.forEach((z3) => ys.add(parseInt(z3.date.split("-")[0])));
-    if (s3.today.date) ys.add(parseInt(s3.today.date.split("-")[0]));
-    Array.from(ys).sort().reverse().forEach((y3) => {
-      const x3 = document.createElement("div");
-      x3.className = `drop-item ${y3 === calendarState.year ? "active" : ""}`;
-      x3.textContent = y3;
-      x3.onclick = () => {
-        calendarState.year = y3;
-        d3.querySelectorAll(".drop-item").forEach((el) => el.classList.remove("active"));
-        x3.classList.add("active");
-        closeDropdown(d3);
-        app.renderPanelContent();
-      };
-      d3.appendChild(x3);
-    });
-    if (d3.classList.contains("show")) closeDropdown(d3);
-    else openDropdown(d3, dom.yearTrigger);
-  }
   function toggleStickerView() {
     const mp = dom.panel, tb = dom.tallToggle;
-    if (!viewState.isTall && !mp.classList.contains("bbgl-mode-page")) {
+    if (!viewState.isTall && mp && !mp.classList.contains("bbgl-mode-page")) {
       viewState.isTall = true;
-      if (mp) mp.classList.add("bbgl-tall");
+      mp.classList.add("bbgl-tall");
       if (tb) tb.innerText = "\u2013";
     }
     viewState.activeItemId = 1;
     app.switchView("stickers");
     setTimeout(() => {
       if (!runtime.stickerData.length) loadStickerData();
-      const i3 = runtime.stickerData.find((x3) => x3.id === (viewState.activeItemId || 1));
+      const i3 = runtime.stickerData.find((x3) => x3 && x3.id === (viewState.activeItemId || 1));
       if (i3) openItemViewer(i3, true);
     }, 400);
     saveViewState();
@@ -8826,15 +8467,10 @@ Please enter a new key to continue.`);
   app.animateViewer = animateViewer;
   app.openItemViewer = openItemViewer;
   app.closeItemViewer = closeItemViewer;
-  app.setupStickerGrid = setupStickerGrid;
-  app._sponsorBurstPoints = _sponsorBurstPoints;
   app.getSponsorBurstPoints = getSponsorBurstPoints;
-  app.renderSponsorshipPage = renderSponsorshipPage;
   app.changeStickerPage = changeStickerPage;
   app.closeDropdown = closeDropdown;
   app.openDropdown = openDropdown;
-  app.toggleMonthDropdown = toggleMonthDropdown;
-  app.toggleYearDropdown = toggleYearDropdown;
   app.toggleStickerView = toggleStickerView;
 
   // src/ui/styles.css
@@ -10322,6 +9958,42 @@ Please enter a new key to continue.`);
     root.appendChild(style);
   }
 
+  // src/torn/widgets/PageHeader.tsx
+  function PageHeader() {
+    return /* @__PURE__ */ u2("div", { class: "bbgl-native-header", children: [
+      /* @__PURE__ */ u2("div", { class: "bbgl-native-title", children: /* @__PURE__ */ u2("span", { style: { marginLeft: 8 }, children: "Big Black Gym Log" }) }),
+      /* @__PURE__ */ u2("div", { class: "bbgl-native-links", children: [
+        /* @__PURE__ */ u2(
+          "div",
+          {
+            id: "bbgl-page-demo-exit",
+            class: "bbgl-native-link",
+            style: { display: runtime.demoMode ? "flex" : "none" },
+            onClick: (e3) => {
+              e3.stopPropagation();
+              const demoBar = document.getElementById("bbgl-demo-exit");
+              if (demoBar) demoBar.click();
+            },
+            children: [
+              /* @__PURE__ */ u2("span", { class: "bbgl-demo-x-label", children: "Demo" }),
+              /* @__PURE__ */ u2(Raw, { html: ICONS.CLOSE })
+            ]
+          }
+        ),
+        /* @__PURE__ */ u2("div", { id: "bbgl-page-settings", class: "bbgl-native-link", onClick: (e3) => app.toggleSettingsView(e3), children: [
+          /* @__PURE__ */ u2("svg", { xmlns: "http://www.w3.org/2000/svg", viewBox: "0 0 24 24", children: /* @__PURE__ */ u2("path", { d: "M19.14 12.94c.04-.3.06-.61.06-.94 0-.32-.02-.64-.07-.94l2.03-1.58c.18-.14.23-.41.12-.61l-1.92-3.32c-.12-.22-.37-.29-.59-.22l-2.39.96c-.5-.38-1.03-.7-1.62-.94l-.36-2.54c-.04-.24-.24-.41-.48-.41h-3.84c-.24 0-.43.17-.47.41l-.36 2.54c-.59.24-1.13.57-1.62.94l-2.39-.96c-.22-.08-.47 0-.59.22L3.16 8.87c-.12.21-.08.47.12.61l2.03 1.58c-.05.3-.09.63-.09.94s.02.64.07.94l-2.03 1.58c-.18.14-.23.41-.12.61l1.92 3.32c.12.22.37.29.59.22l2.39-.96c.5.38 1.03.7 1.62.94l.36 2.54c.05.24.24.41.48.41h3.84c.24 0 .44-.17.47-.41l.36-2.54c.59-.24 1.13-.58 1.62-.94l2.39.96c.22.08.47 0 .59-.22l1.92-3.32c.12-.22.08-.47-.12-.61l-2.01-1.58zM12 15.6c-1.98 0-3.6-1.62-3.6-3.6s1.62-3.6 3.6-3.6 3.6 1.62 3.6 3.6-1.62 3.6-3.6 3.6z" }) }),
+          "Settings"
+        ] })
+      ] })
+    ] });
+  }
+  function mountPageHeader(host) {
+    const mount2 = document.createElement("div");
+    mount2.id = "bbgl-page-header-host";
+    host.insertBefore(mount2, host.firstChild);
+    R(/* @__PURE__ */ u2(PageHeader, {}), mount2);
+  }
+
   // src/boot/init.js
   function checkViewRouting() {
     const pm = window.location.hash.includes("gymlog");
@@ -10359,7 +10031,7 @@ Please enter a new key to continue.`);
     app.updateFooterTooltip();
   }
   function renderPageMode() {
-    const H3 = `<div class="bbgl-native-header"><div class="bbgl-native-title"><span style="margin-left:8px;">Big Black Gym Log</span></div><div class="bbgl-native-links"><div id="bbgl-page-demo-exit" class="bbgl-native-link" style="display:${runtime.demoMode ? "flex" : "none"};"><span class="bbgl-demo-x-label">Demo</span>${ICONS.CLOSE}</div><div id="bbgl-page-settings" class="bbgl-native-link"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19.14 12.94c.04-.3.06-.61.06-.94 0-.32-.02-.64-.07-.94l2.03-1.58c.18-.14.23-.41.12-.61l-1.92-3.32c-.12-.22-.37-.29-.59-.22l-2.39.96c-.5-.38-1.03-.7-1.62-.94l-.36-2.54c-.04-.24-.24-.41-.48-.41h-3.84c-.24 0-.43.17-.47.41l-.36 2.54c-.59.24-1.13.57-1.62.94l-2.39-.96c-.22-.08-.47 0-.59.22L3.16 8.87c-.12.21-.08.47.12.61l2.03 1.58c-.05.3-.09.63-.09.94s.02.64.07.94l-2.03 1.58c-.18.14-.23.41-.12.61l1.92 3.32c.12.22.37.29.59.22l2.39-.96c.5.38 1.03.7 1.62.94l.36 2.54c.05.24.24.41.48.41h3.84c.24 0 .44-.17.47-.41l.36-2.54c.59-.24 1.13-.58 1.62-.94l2.39.96c.22.08.47 0 .59-.22l1.92-3.32c.12-.22.08-.47-.12-.61l-2.01-1.58zM12 15.6c-1.98 0-3.6-1.62-3.6-3.6s1.62-3.6 3.6-3.6 3.6 1.62 3.6 3.6-1.62 3.6-3.6 3.6z"/></svg>Settings</div></div></div>`, cw = document.querySelector(".content-wrapper");
+    const cw = document.querySelector(".content-wrapper");
     if (!cw) return;
     window.scrollTo(0, 0);
     const pp = dom.panel;
@@ -10371,24 +10043,16 @@ Please enter a new key to continue.`);
     cw.innerHTML = "";
     const pc = document.createElement("div");
     pc.id = "bbgl-page-container";
-    pc.innerHTML = H3;
-    const sb = pc.querySelector("#bbgl-page-settings");
-    if (sb) sb.onclick = app.toggleSettingsView;
+    cw.appendChild(pc);
+    mountPageHeader(pc);
     const p3 = document.createElement("div");
     p3.id = "bbgl-panel";
     p3.className = "bbgl-mode-page";
     pc.appendChild(p3);
-    cw.appendChild(pc);
     app.mountDashboard(p3);
-    const pdeb = pc.querySelector("#bbgl-page-demo-exit");
-    const demoBar = p3.querySelector("#bbgl-demo-exit");
-    if (pdeb) pdeb.onclick = (e3) => {
-      e3.stopPropagation();
-      if (demoBar) demoBar.click();
-    };
     app.restoreInternalState();
     app.renderPanelContent();
-    if (dom.topPanel.classList.contains("viewing-graph")) setTimeout(app.GraphController.draw, 100);
+    if (dom.topPanel && dom.topPanel.classList.contains("viewing-graph")) setTimeout(app.GraphController.draw, 100);
   }
   function handleStorageEvent(e3) {
     if (e3.key === KEYS.STATE) {
@@ -10854,913 +10518,1001 @@ Please enter a new key to continue.`);
   app.installDomHooks = installDomHooks;
 
   // src/ui/scan-overlay.js
-  var SCAN_PAUSE_SVG = `<svg viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="5" width="4" height="14" rx="1"/><rect x="14" y="5" width="4" height="14" rx="1"/></svg>`;
-  var SCAN_PLAY_SVG = `<svg viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>`;
-  var _scanOverlayTimer = null;
-  var _scanOverlayKey = null;
-  var _scanCancelConfirm = false;
   function updateScanOverlayCount(n2) {
     const el = document.querySelector("#bbgl-scan-count");
     if (el) el.textContent = String(n2);
   }
-  function currentScanState() {
-    if (runtime.demoMode) return { key: null, ds: null };
-    const s3 = app.getActiveHistory();
-    const ds = s3 && s3.meta && s3.meta.backfill;
-    if (!ds) return { key: null, ds: null };
-    const lockFresh = ds.lock && Date.now() - ds.lock < BACKFILL.LOCK_STALE_MS;
-    let key = null;
-    if (runtime.backfilling) key = _scanCancelConfirm ? "confirm" : "scanning";
-    else if (lockFresh && ds.lockOwner !== TAB_ID) key = "passenger";
-    else if (ds.acknowledged === false) {
-      if (ds.lastResult === "complete") key = "complete";
-      else if (ds.stopReason === "cap") key = "cap";
-      else if (ds.stopReason === "paused") key = "paused";
-      else if (ds.stopReason === "interrupted") key = "interrupted";
-      else key = "error";
-    }
-    return { key, ds };
-  }
-  function buildScanOverlayInner(key, ds) {
-    const cancelX = `<div id="bbgl-scan-cancel">Cancel</div>`;
-    switch (key) {
-      case "settings":
-        return `<div class="bbgl-scan-title">Scan in Progress</div><div class="bbgl-scan-sub">Settings are locked while Big Black Backfill runs. Head back to the log to pause or check progress.</div>`;
-      case "scanning":
-        return `${cancelX}<div class="bbgl-scan-title-row"><div class="bbgl-scan-title">Scanning&hellip;</div><div id="bbgl-scan-pause" class="bbgl-scan-iconbtn bbgl-scan-play bbgl-scan-title-icon" title="Pause">${SCAN_PAUSE_SVG}</div></div><div class="bbgl-scan-count-row"><span class="bbgl-scan-pulse"></span>Rows recovered so far: <span id="bbgl-scan-count" class="bbgl-scan-count">${ds && ds.rowsUsed || 0}</span></div><div class="bbgl-scan-sub">This only takes up to a few minutes. Please stay on this page until the scan completes.</div><div class="bbgl-scan-note">If you're on PC, you may continue playing in another tab, but do not close this one.</div>`;
-      case "confirm":
-        return `<div class="bbgl-scan-title">Cancel this scan?</div><div class="bbgl-scan-sub">Canceling discards everything recovered during this scan. Your log since installation remains untouched.</div><div class="bbgl-scan-actions"><div id="bbgl-scan-confirm-yes" class="bbgl-scan-iconbtn bbgl-scan-yes" title="Yes, cancel">${ICONS.CHECK}</div><div id="bbgl-scan-confirm-no" class="bbgl-scan-iconbtn bbgl-scan-no" title="No, keep scanning">${ICONS.CLOSE}</div></div>`;
-      case "passenger":
-        return `<div class="bbgl-scan-title">Scan Running in Another Tab</div><div class="bbgl-scan-sub">Big Black Backfill is currently active in another tab. Use that tab to pause or cancel the scan.</div>`;
-      case "paused":
-        return `<div class="bbgl-scan-title-row"><div class="bbgl-scan-title">Paused</div><div id="bbgl-scan-resume" class="bbgl-scan-iconbtn bbgl-scan-play bbgl-scan-title-icon" title="Resume">${SCAN_PLAY_SVG}</div></div><div class="bbgl-scan-sub">You can resume now, or continue with what's been recovered so far.</div><div class="bbgl-scan-actions"><div id="bbgl-scan-proceed" class="bbgl-scan-textbtn bbgl-scan-primary">Continue with what's been recovered</div></div>`;
-      case "error":
-        return `<div class="bbgl-scan-title-row"><div class="bbgl-scan-title">Scan Error</div><div id="bbgl-scan-resume" class="bbgl-scan-iconbtn bbgl-scan-play bbgl-scan-title-icon" title="Resume">${SCAN_PLAY_SVG}</div></div><div class="bbgl-scan-sub">A network or API error occurred. No progress was lost. Resume to keep going, or continue with what's been recovered so far.</div><div class="bbgl-scan-actions"><div id="bbgl-scan-proceed" class="bbgl-scan-textbtn bbgl-scan-primary">Continue with what's been recovered</div></div>`;
-      case "interrupted":
-        return `<div class="bbgl-scan-title-row"><div class="bbgl-scan-title">Interrupted</div><div id="bbgl-scan-resume" class="bbgl-scan-iconbtn bbgl-scan-play bbgl-scan-title-icon" title="Resume">${SCAN_PLAY_SVG}</div></div><div class="bbgl-scan-sub">The tab or browser was closed before the scan finished. Your progress up to that point was saved. Resume to keep going, or continue with what's been recovered so far.</div><div class="bbgl-scan-actions"><div id="bbgl-scan-proceed" class="bbgl-scan-textbtn bbgl-scan-primary">Continue with what's been recovered</div></div>`;
-      case "cap":
-        return `<div class="bbgl-scan-title">Daily Limit Reached</div><div class="bbgl-scan-sub">Torn's daily row cap has been reached. Resume from the Settings menu in 24h. Everything recovered so far is fully constructed, none of it is partial.</div><div class="bbgl-scan-actions"><div id="bbgl-scan-proceed" class="bbgl-scan-textbtn bbgl-scan-primary">Continue to Logs</div></div>`;
-      case "complete":
-        return `<div class="bbgl-scan-title">Fully Backfilled!</div><div class="bbgl-scan-sub">Your training history has been fully reconstructed.</div><div class="bbgl-scan-note">Rewards and stickers only start counting from the day you began tracking, not from backfilled history.</div><div class="bbgl-scan-actions"><div id="bbgl-scan-ack" class="bbgl-scan-textbtn bbgl-scan-primary">Enter Logs</div></div>`;
-      default:
-        return "";
-    }
-  }
-  function wireScanOverlay(el, key, ds) {
-    const cancel = el.querySelector("#bbgl-scan-cancel");
-    if (cancel) cancel.onclick = () => {
-      _scanCancelConfirm = true;
-      _scanOverlayKey = null;
-      renderScanOverlay();
-    };
-    const pause = el.querySelector("#bbgl-scan-pause");
-    if (pause) pause.onclick = () => {
-      runtime.backfillAbort = "pause";
-      const t3 = el.querySelector(".bbgl-scan-title");
-      if (t3) t3.textContent = "Pausing\u2026";
-    };
-    const yes = el.querySelector("#bbgl-scan-confirm-yes");
-    if (yes) yes.onclick = () => {
-      runtime.backfillAbort = "cancel";
-      _scanCancelConfirm = false;
-      const t3 = el.querySelector(".bbgl-scan-title");
-      if (t3) t3.textContent = "Discarding\u2026";
-    };
-    const no = el.querySelector("#bbgl-scan-confirm-no");
-    if (no) no.onclick = () => {
-      _scanCancelConfirm = false;
-      _scanOverlayKey = null;
-      renderScanOverlay();
-    };
-    const resume = el.querySelector("#bbgl-scan-resume");
-    if (resume) resume.onclick = () => {
-      app.backfillLogs(document.getElementById("backfill-btn"));
-    };
-    const proceed = el.querySelector("#bbgl-scan-proceed");
-    if (proceed) proceed.onclick = () => {
-      app.proceedPartialBackfill();
-    };
-    const ack = el.querySelector("#bbgl-scan-ack");
-    if (ack) ack.onclick = () => {
-      app.acknowledgeBackfill();
-    };
-  }
   function renderScanOverlay() {
-    const existing = document.getElementById("bbgl-scan-overlay");
-    const { key, ds } = currentScanState();
-    if (!key) {
-      _scanCancelConfirm = false;
-      _scanOverlayKey = null;
-      if (_scanOverlayTimer) {
-        clearInterval(_scanOverlayTimer);
-        _scanOverlayTimer = null;
-      }
-      if (existing) existing.remove();
-      return;
-    }
-    if (key !== "scanning" && key !== "confirm") _scanCancelConfirm = false;
-    const host = document.querySelector("#bbgl-content-wrapper");
-    if (!host) return;
-    const inSettings = dom.settingsView && dom.settingsView.classList.contains("active-view");
-    const renderKey = inSettings ? "settings" : key;
-    if (existing && _scanOverlayKey === renderKey) return;
-    _scanOverlayKey = renderKey;
-    if (_scanOverlayTimer) {
-      clearInterval(_scanOverlayTimer);
-      _scanOverlayTimer = null;
-    }
-    const el = existing || document.createElement("div");
-    el.id = "bbgl-scan-overlay";
-    el.innerHTML = buildScanOverlayInner(renderKey, ds);
-    if (!existing) host.appendChild(el);
-    wireScanOverlay(el, renderKey, ds);
-    if (renderKey === "passenger") {
-      _scanOverlayTimer = setInterval(() => renderScanOverlay(), 3e3);
-    }
+    if (typeof app.notifyUi === "function") app.notifyUi();
   }
-  app.SCAN_PAUSE_SVG = SCAN_PAUSE_SVG;
-  app.SCAN_PLAY_SVG = SCAN_PLAY_SVG;
-  app._scanOverlayTimer = _scanOverlayTimer;
-  app._scanOverlayKey = _scanOverlayKey;
-  app._scanCancelConfirm = _scanCancelConfirm;
   app.updateScanOverlayCount = updateScanOverlayCount;
-  app.currentScanState = currentScanState;
-  app.buildScanOverlayInner = buildScanOverlayInner;
-  app.wireScanOverlay = wireScanOverlay;
   app.renderScanOverlay = renderScanOverlay;
 
-  // src/boot/events.js
-  function setupEventListeners(root) {
-    app.cacheDOM(root);
-    const get = (id) => root.querySelector("#" + id);
-    const atBtn = get("all-time-btn");
-    if (atBtn) atBtn.onclick = (e3) => {
-      e3.stopPropagation();
-      app.calcAllTimeStats();
+  // src/ui/preact/store.ts
+  var listeners = /* @__PURE__ */ new Set();
+  function notifyUi() {
+    listeners.forEach((fn2) => fn2());
+  }
+  function subscribeUi(fn2) {
+    listeners.add(fn2);
+    return () => {
+      listeners.delete(fn2);
     };
-    const csb = root.querySelector("#bbgl-settings-view .close-settings-btn");
-    if (csb) csb.onclick = app.toggleSettingsView;
-    if (dom.ledgerView) {
-      dom.ledgerView.addEventListener("click", (e3) => {
-        const label = e3.target.closest(".bbgl-copy-label");
-        if (!label) return;
-        const col = label.closest(".stat-column");
-        if (!col) return;
-        const k3 = col.getAttribute("data-copy-stat");
-        if (!k3) return;
-        const cs = runtime.currentStats;
-        if (!cs) return;
-        const { sl, s: s3 } = cs;
-        if (!s3[k3]) return;
-        const txt = app.buildSessionText(sl, s3, [k3]);
-        navigator.clipboard.writeText(txt).then(() => app.flashCopied(col));
-      });
-    }
-    const sp = get("sticker-prev-btn"), sn = get("sticker-next-btn"), ssp = get("sticker-sponsor-btn");
-    if (sp) sp.onclick = (e3) => {
-      e3.stopPropagation();
-      if (runtime.currentStickerPage > 0) app.changeStickerPage(-1);
-    };
-    if (sn) sn.onclick = (e3) => {
-      e3.stopPropagation();
-      if (runtime.currentStickerPage < Math.ceil((runtime.stickerData.length || 0) / 10) - 1) app.changeStickerPage(1);
-    };
-    if (ssp) ssp.onclick = (e3) => {
-      e3.stopPropagation();
-      if (ssp.classList.contains("disabled")) return;
-      if (runtime.currentStickerPage === 0) app.changeStickerPage(-1);
-    };
-    const pm = get("prev-month-btn");
-    if (pm) pm.onclick = () => app.changeMonth(-1);
-    const nm = get("next-month-btn");
-    if (nm) nm.onclick = () => app.changeMonth(1);
-    const mt = get("month-trigger");
-    if (mt) mt.onclick = (e3) => {
-      e3.stopPropagation();
-      app.toggleMonthDropdown();
-    };
-    const yt = get("year-trigger");
-    if (yt) yt.onclick = (e3) => {
-      e3.stopPropagation();
-      app.toggleYearDropdown();
-    };
-    const ms = get("month-stats-btn");
-    if (ms) ms.onclick = (e3) => {
-      e3.stopPropagation();
-      app.calcPeriodStats("month");
-    };
-    const ys = get("year-stats-btn");
-    if (ys) ys.onclick = (e3) => {
-      e3.stopPropagation();
-      app.calcPeriodStats("year");
-    };
-    const at = get("set-anim-toggle");
-    if (at) {
-      at.checked = userConfig.animations;
-      at.onchange = () => {
-        userConfig.animations = at.checked;
-        saveConfig();
-        if (dom.panel) dom.panel.classList.toggle("bbgl-no-animations", !userConfig.animations);
-        app.renderPanelContent();
-      };
-    }
-    const rt = get("set-rate-toggle");
-    if (rt) {
-      rt.checked = userConfig.ratesEnabled;
-      rt.onchange = () => {
-        userConfig.ratesEnabled = rt.checked;
-        saveConfig();
-        if (dom.panel) dom.panel.classList.toggle("bbgl-no-rates", !userConfig.ratesEnabled);
-        if (!userConfig.ratesEnabled && graphState.mode === "rates") {
-          graphState.mode = "values";
-          viewState.graphMode = "values";
-          saveViewState();
+  }
+  function useUiTick() {
+    const [tick, setTick] = d2(0);
+    h2(() => subscribeUi(() => setTick((n2) => n2 + 1)), []);
+    return tick;
+  }
+  setUiNotifier(notifyUi);
+  app.notifyUi = notifyUi;
+
+  // src/ui/preact/BackfillBtn.tsx
+  var IDLE = "Big Black Backfill";
+  var RESUME = '<span class="view-std">Resume BB Backfill</span><span class="view-exp">Resume Big Black Backfill</span>';
+  var CONFIRM = "Tap Again to Confirm";
+  function formatCountdown2(ms) {
+    const total = Math.max(0, Math.ceil(ms / 1e3));
+    const h3 = Math.floor(total / 3600);
+    const m3 = Math.floor(total % 3600 / 60);
+    const s3 = total % 60;
+    const pad = (n2) => String(n2).padStart(2, "0");
+    return `${pad(h3)}:${pad(m3)}:${pad(s3)}`;
+  }
+  function BackfillBtn() {
+    useUiTick();
+    const [confirm2, setConfirm] = d2(false);
+    const [now, setNow] = d2(Date.now());
+    const s3 = typeof app.getActiveHistory === "function" ? app.getActiveHistory() : null;
+    const ds = s3 && s3.meta && s3.meta.backfill;
+    const cooling = !!(ds && ds.lastResult === "partial" && ds.cooldownUntil && Date.now() < ds.cooldownUntil);
+    h2(() => {
+      if (!cooling) return;
+      const id = setInterval(() => {
+        if (Date.now() >= ds.cooldownUntil) {
+          clearInterval(id);
+          if (app.notifyUi) app.notifyUi();
+          return;
         }
-        const tp = dom.topPanel;
-        if (tp && tp.classList.contains("viewing-graph")) {
-          app.GraphController.restoreUi();
-          app.GraphController.draw();
-        } else {
-          const sd = calendarState.selectedData;
-          app.renderStats(sd || app.getActiveHistory().today, calendarState.selectedLabel || Formatter.dateLogical());
-        }
-      };
+        setNow(Date.now());
+      }, 1e3);
+      return () => clearInterval(id);
+    }, [cooling, ds && ds.cooldownUntil]);
+    h2(() => {
+      if (!confirm2) return;
+      const t3 = setTimeout(() => setConfirm(false), 4e3);
+      return () => clearTimeout(t3);
+    }, [confirm2]);
+    if (runtime.demoMode) {
+      return /* @__PURE__ */ u2(Btn, { id: "backfill-btn", modifier: "purple", style: { margin: "8px 10px", width: "calc(100% - 20px)", display: "block" }, children: IDLE });
     }
-    const dtk = get("set-drug-tracker");
-    if (dtk) {
-      dtk.value = userConfig.drugTracker || "xanax";
-      dtk.onchange = () => {
-        userConfig.drugTracker = dtk.value;
-        saveConfig();
-        const tp = dom.topPanel;
-        if (!tp || !tp.classList.contains("viewing-graph")) {
-          const sd = calendarState.selectedData;
-          app.renderStats(sd || app.getActiveHistory().today, calendarState.selectedLabel || Formatter.dateLogical());
-        }
-      };
-    }
-    const agt = get("set-bestgym-toggle");
-    if (agt) {
-      agt.checked = userConfig.bestGym;
-      agt.onchange = () => app.setBestGym(agt.checked);
-    }
-    const ags = get("set-bestgym-spec-toggle");
-    if (ags) {
-      ags.checked = userConfig.bestGymSpecialist;
-      const agsRow = ags.closest(".bbgl-setting-row");
-      if (agsRow) agsRow.classList.toggle("bbgl-row-disabled", !userConfig.bestGym);
-      ags.onchange = () => {
-        userConfig.bestGymSpecialist = ags.checked;
-        saveConfig();
-      };
-    }
-    const agu = get("set-bestgym-unpurch-toggle");
-    if (agu) {
-      agu.checked = userConfig.bestGymUnpurchased;
-      const aguRow = agu.closest(".bbgl-setting-row");
-      if (aguRow) aguRow.classList.toggle("bbgl-row-disabled", !userConfig.bestGym);
-      agu.onchange = () => {
-        userConfig.bestGymUnpurchased = agu.checked;
-        saveConfig();
-      };
-    }
-    const ls = get("set-loc-select");
-    if (ls) {
-      ls.value = userConfig.buttonLocation;
-      ls.onchange = () => app.onChangeLoc(ls.value);
-    }
-    const ds = get("set-day-start");
-    if (ds) {
-      ds.value = userConfig.dayStartMode;
-      ds.onchange = () => app.onChangeDayStart(ds.value);
-    }
-    const ws = get("set-week-start");
-    if (ws) {
-      ws.value = userConfig.weekStartMode;
-      ws.onchange = () => app.onChangeWeekStart(ws.value);
-    }
-    const ai = get("set-api-key"), ap = get("set-api-paste");
-    if (ap && ai) ap.onclick = async () => {
-      try {
-        const t3 = await navigator.clipboard.readText();
-        if (t3) ai.value = t3.trim();
-      } catch (e3) {
-        bbglError(MSG_CLIPBOARD_DENIED);
+    const busy = runtime.backfilling || ds && ds.acknowledged === false;
+    const complete = ds && ds.lastResult === "complete";
+    const partial = ds && ds.lastResult === "partial";
+    const label = confirm2 ? CONFIRM : complete ? "Fully Backfilled!" : partial ? RESUME : IDLE;
+    const disabled = !!(busy || cooling);
+    let tip;
+    if (cooling) tip = TOOLTIPS.BACKFILL_RESUME_COOLDOWN(formatCountdown2(Math.max(0, ds.cooldownUntil - now)));
+    else if (complete) tip = ds.completion === "exhausted" ? TOOLTIPS.BACKFILL_COMPLETE_EXHAUSTED : TOOLTIPS.BACKFILL_COMPLETE_ORIGIN;
+    return /* @__PURE__ */ u2(
+      Btn,
+      {
+        id: "backfill-btn",
+        modifier: "purple",
+        disabled,
+        style: {
+          margin: "8px 10px",
+          width: "calc(100% - 20px)",
+          display: "block",
+          opacity: disabled ? 0.6 : void 0,
+          pointerEvents: disabled ? "none" : void 0,
+          color: complete ? "#69f0ae" : void 0
+        },
+        onClick: (e3) => {
+          e3.currentTarget.blur();
+          if (disabled) return;
+          if (!confirm2) {
+            setConfirm(true);
+            return;
+          }
+          setConfirm(false);
+          app.startBackfillFromSettings();
+        },
+        children: /* @__PURE__ */ u2("span", { "data-tooltip": tip, children: label.includes("<") ? /* @__PURE__ */ u2(Raw, { html: label }) : label })
       }
-    };
-    const ub = get("updt-settings-btn");
-    if (ub && ai) ub.onclick = async function() {
-      this.blur();
-      const v3 = ai.value.trim();
+    );
+  }
+
+  // src/ui/preact/Settings.tsx
+  function Settings() {
+    const apiRef = A2(null);
+    const importRef = A2(null);
+    const [verifyLabel, setVerifyLabel] = d2("REGISTER API KEY");
+    const [clearLabel, setClearLabel] = d2("CLEAR API KEY");
+    const [resync, setResync] = d2("idle");
+    h2(() => {
+      if (apiRef.current) apiRef.current.value = userConfig.apiKey || "";
+      if (typeof app.refreshDemoMasks === "function") app.refreshDemoMasks();
+      if (typeof app.refreshInitLock === "function") app.refreshInitLock();
+    });
+    function onAnim(checked) {
+      userConfig.animations = checked;
+      saveConfig();
+      if (dom.panel) dom.panel.classList.toggle("bbgl-no-animations", !userConfig.animations);
+      app.renderPanelContent();
+    }
+    function onRates(checked) {
+      userConfig.ratesEnabled = checked;
+      saveConfig();
+      if (dom.panel) dom.panel.classList.toggle("bbgl-no-rates", !userConfig.ratesEnabled);
+      if (!userConfig.ratesEnabled && graphState.mode === "rates") {
+        graphState.mode = "values";
+        viewState.graphMode = "values";
+        saveViewState();
+      }
+      const tp = dom.topPanel;
+      if (tp && tp.classList.contains("viewing-graph")) {
+        app.GraphController.restoreUi();
+        app.GraphController.draw();
+      } else {
+        const sd = calendarState.selectedData;
+        app.renderStats(sd || app.getActiveHistory().today, calendarState.selectedLabel || Formatter.dateLogical());
+      }
+    }
+    function onDrug(value) {
+      userConfig.drugTracker = value;
+      saveConfig();
+      const tp = dom.topPanel;
+      if (!tp || !tp.classList.contains("viewing-graph")) {
+        const sd = calendarState.selectedData;
+        app.renderStats(sd || app.getActiveHistory().today, calendarState.selectedLabel || Formatter.dateLogical());
+      }
+    }
+    async function onRegister() {
+      const el = apiRef.current;
+      if (!el) return;
+      const v3 = el.value.trim();
       if (!/^[a-zA-Z0-9]{16}$/.test(v3)) {
         bbglError(MSG_KEY_FORMAT_INVALID);
         return;
       }
-      const ot = ub.innerText;
-      ub.innerText = "VERIFYING...";
+      const ot = verifyLabel;
+      setVerifyLabel("VERIFYING...");
       try {
-        const res = await fetch(`https://api.torn.com/user/?selections=battlestats,log&log=5300&key=${v3}`), data = await res.json();
+        const res = await fetch(`https://api.torn.com/user/?selections=battlestats,log&log=5300&key=${v3}`);
+        const data = await res.json();
         if (data.error) {
           bbglError(`Key Verification Failed: ${tornKeyErrorText(data)}`);
-          ub.innerText = ot;
+          setVerifyLabel(ot);
           return;
         }
         userConfig.apiKey = v3;
         saveConfig();
-        ub.style.transition = "all 0.2s";
-        ub.style.color = "#69f0ae";
-        ub.style.borderColor = "#69f0ae";
-        ub.innerText = "KEY SAVED";
-        if (ub.dataset.timer) clearTimeout(ub.dataset.timer);
-        ub.dataset.timer = setTimeout(
-          () => {
-            ub.style.color = "";
-            ub.style.borderColor = "";
-            ub.innerText = ot;
-          },
-          2e3
-        );
-      } catch (e3) {
+        setVerifyLabel("KEY SAVED");
+        setTimeout(() => setVerifyLabel(ot), 2e3);
+      } catch {
         bbglError(MSG_KEY_NETWORK_ERROR);
-        ub.innerText = ot;
+        setVerifyLabel(ot);
       }
-    };
-    const cab = get("clear-api-btn");
-    if (cab && ai) cab.onclick = function() {
-      this.blur();
+    }
+    function onClearKey() {
       userConfig.apiKey = "";
       saveConfig();
-      ai.value = "";
+      if (apiRef.current) apiRef.current.value = "";
       localStorage.removeItem(KEYS.LAST_SYNC);
       sessionStorage.removeItem(KEYS.SESSION_CACHE);
       sessionStorage.removeItem(KEYS.SESSION);
-      const ot = cab.innerText;
-      cab.innerText = "WIPED";
-      setTimeout(() => {
-        cab.innerText = ot;
-      }, 2e3);
-    };
-    const crb = get("create-api-btn");
-    if (crb) crb.onclick = function() {
-      this.blur();
-      window.open("https://www.torn.com/preferences.php#tab=api?step=addNewKey&user=basic,battlestats,log&faction=rankedwars&logIds=54,50,23,6,52,56,3&title=BigBlackGymLog", "_blank");
-    };
-    const rb = get("refresh-log-btn");
-    if (rb) rb.onclick = function() {
-      this.blur();
-      if (app.checkRefreshCooldown(this)) return;
-      app.syncWithFeedback("FULL_SYNC");
-    };
-    const rsb = get("resync-btn");
-    if (rsb) rsb.onclick = async function() {
-      this.blur();
-      app.setResyncBtnState(rsb, "syncing");
+      setClearLabel("WIPED");
+      setTimeout(() => setClearLabel("CLEAR API KEY"), 2e3);
+    }
+    async function onResync(e3) {
+      const btn = e3.currentTarget;
+      btn.blur();
+      setResync("syncing");
       await app.syncWithFeedback("FULL_SYNC");
-      app.setResyncBtnState(rsb, "done");
-      if (rsb.dataset.timerId) clearTimeout(rsb.dataset.timerId);
-      rsb.dataset.timerId = setTimeout(() => app.setResyncBtnState(rsb, "idle"), 2e3);
-    };
-    const eb = get("export-btn");
-    if (eb) eb.onclick = function() {
-      this.blur();
-      app.exportData();
-    };
-    const ib = get("import-btn");
-    if (ib) ib.onclick = function() {
-      this.blur();
-      get("import-file").click();
-    };
-    const iF = get("import-file");
-    if (iF) iF.onchange = (e3) => app.importData(e3.target.files[0]);
-    app.renderBackfillButton();
-    app.renderScanOverlay();
-    const clb = get("clear-btn");
-    if (clb) clb.onclick = function() {
-      this.blur();
-      app.clearData();
-    };
-    const pdb = get("settings-privacy-btn");
-    if (pdb) pdb.onclick = function() {
-      this.blur();
-      app.openPrivacyModal();
-    };
-    const cl = get("settings-changelog-btn");
-    if (cl) cl.onclick = function() {
-      this.blur();
-      app.openChangelogModal();
-    };
-    const sdemo = get("settings-demo-btn");
-    if (sdemo) sdemo.onclick = function() {
-      this.blur();
-      if (runtime.demoMode) {
-        const deb = document.getElementById("bbgl-demo-exit");
-        if (deb) deb.click();
-      } else {
-        app.enterDemoFromSettings();
-      }
-    };
-    const fgb = get("feature-guide-btn");
-    if (fgb) fgb.onclick = function() {
-      this.blur();
-      app.openFeatureGuideModal();
-    };
-    const sa = get("swipe-area");
-    if (sa) {
-      let _sX = 0, _sY = 0;
-      sa.addEventListener("touchstart", (e3) => {
-        _sX = e3.touches[0].clientX;
-        _sY = e3.touches[0].clientY;
-      }, { passive: true });
-      sa.addEventListener("touchend", (e3) => {
-        if (window._bbglScrubbing) return;
-        const dx = e3.changedTouches[0].clientX - _sX, dy = e3.changedTouches[0].clientY - _sY;
-        if (Math.abs(dx) > 50 && Math.abs(dx) > Math.abs(dy) * 1.5) app.changeMonth(dx < 0 ? 1 : -1);
-      }, { passive: true });
+      setResync("done");
+      setTimeout(() => setResync("idle"), 2e3);
     }
-    const sgSwipe = get("bbgl-sticker-container");
-    if (sgSwipe) {
-      let _sgX = 0, _sgY = 0;
-      sgSwipe.addEventListener("touchstart", (e3) => {
-        _sgX = e3.touches[0].clientX;
-        _sgY = e3.touches[0].clientY;
-      }, { passive: true });
-      sgSwipe.addEventListener("touchend", (e3) => {
-        if (window._bbglScrubbing) return;
-        const dx = e3.changedTouches[0].clientX - _sgX, dy = e3.changedTouches[0].clientY - _sgY;
-        if (Math.abs(dx) > 40 && Math.abs(dx) > Math.abs(dy) * 1.5) {
-          const dir = dx < 0 ? 1 : -1, maxP = Math.ceil((runtime.stickerData.length || 0) / 10) - 1;
-          if (dir < 0 && runtime.currentStickerPage > -1 || dir > 0 && runtime.currentStickerPage < maxP) app.changeStickerPage(dir);
-        }
-      }, { passive: true });
-    }
-    app.GraphController.setupControls();
-    app.setupStickerGrid();
-    app.refreshInitLock();
-    const achPrev = get("bbgl-achievements-container") ? root.querySelector(".bbgl-ach-prev") : null;
-    const achNext = get("bbgl-achievements-container") ? root.querySelector(".bbgl-ach-next") : null;
-    if (achPrev) achPrev.onclick = (e3) => {
-      e3.stopPropagation();
-      app.gotoAchievementsPage(-1);
-    };
-    if (achNext) achNext.onclick = (e3) => {
-      e3.stopPropagation();
-      app.gotoAchievementsPage(1);
-    };
-    const achContainer = get("bbgl-achievements-container");
-    if (achContainer) {
-      let _achX = 0, _achY = 0;
-      achContainer.addEventListener("touchstart", (e3) => {
-        _achX = e3.touches[0].clientX;
-        _achY = e3.touches[0].clientY;
-      }, { passive: true });
-      achContainer.addEventListener("touchend", (e3) => {
-        if (window._bbglScrubbing) return;
-        const dx = e3.changedTouches[0].clientX - _achX, dy = e3.changedTouches[0].clientY - _achY;
-        if (Math.abs(dx) > 40 && Math.abs(dx) > Math.abs(dy) * 1.5) {
-          app.gotoAchievementsPage(dx < 0 ? 1 : -1);
-        }
-      }, { passive: true });
-      achContainer.addEventListener("click", (e3) => {
-        const swOpt = e3.target.closest(".bbgl-enh-sw-opt");
-        if (swOpt) {
-          const toSelected = swOpt.dataset.mode === "selected";
-          if (toSelected !== !!viewState.achEnhPeriodMode) {
-            viewState.achEnhPeriodMode = toSelected;
-            saveViewState();
-            app.achRefreshPageDom();
+    return /* @__PURE__ */ u2(S, { children: [
+      /* @__PURE__ */ u2("div", { class: "close-settings-btn", title: "Close Settings", onClick: (e3) => app.toggleSettingsView(e3), children: /* @__PURE__ */ u2(Raw, { html: ICONS.CHECK }) }),
+      /* @__PURE__ */ u2("div", { class: "bbgl-settings-scroll-area", children: [
+        /* @__PURE__ */ u2(
+          Section,
+          {
+            title: "Big Black Features",
+            extra: /* @__PURE__ */ u2("button", { id: "resync-btn", type: "button", class: "bbgl-tab-title-btn", onClick: onResync, children: [
+              /* @__PURE__ */ u2("span", { class: "bbgl-rs-idle", style: { display: resync === "idle" ? "" : "none" }, children: [
+                /* @__PURE__ */ u2("span", { class: "view-std", children: "RESYNC" }),
+                /* @__PURE__ */ u2("span", { class: "view-exp", children: "RESYNC LOG" })
+              ] }),
+              /* @__PURE__ */ u2("span", { class: "bbgl-rs-sync", style: { display: resync === "syncing" ? "" : "none" }, children: [
+                /* @__PURE__ */ u2("span", { class: "view-std", children: "..." }),
+                /* @__PURE__ */ u2("span", { class: "view-exp", children: "Syncing..." })
+              ] }),
+              /* @__PURE__ */ u2("span", { class: "bbgl-rs-done", style: { display: resync === "done" ? "" : "none" }, children: "Resynced!" })
+            ] }),
+            children: [
+              /* @__PURE__ */ u2(Toggle, { id: "set-bestgym-toggle", checked: !!userConfig.bestGym, label: "BB Best Gym", tip: TOOLTIPS.BEST_GYM, extraClass: "bbgl-bestgym-lead", onChange: (v3) => app.setBestGym(v3) }),
+              /* @__PURE__ */ u2(Toggle, { id: "set-bestgym-spec-toggle", checked: !!userConfig.bestGymSpecialist, label: "Specialty Gyms", tip: TOOLTIPS.BEST_GYM_SPEC, extraClass: `bbgl-subgroup-row${!userConfig.bestGym ? " bbgl-row-disabled" : ""}`, onChange: (v3) => {
+                userConfig.bestGymSpecialist = v3;
+                saveConfig();
+              } }),
+              /* @__PURE__ */ u2(Toggle, { id: "set-bestgym-unpurch-toggle", checked: !!userConfig.bestGymUnpurchased, label: "Unpurchased Gyms", tip: TOOLTIPS.BEST_GYM_UNPURCHASED, extraClass: `bbgl-subgroup-row bbgl-subgroup-row-last${!userConfig.bestGym ? " bbgl-row-disabled" : ""}`, onChange: (v3) => {
+                userConfig.bestGymUnpurchased = v3;
+                saveConfig();
+              } }),
+              /* @__PURE__ */ u2(Toggle, { id: "set-rate-toggle", checked: !!userConfig.ratesEnabled, label: "Rate Displays", tip: TOOLTIPS.RATES, onChange: onRates }),
+              /* @__PURE__ */ u2(Toggle, { id: "set-anim-toggle", checked: !!userConfig.animations, label: "Animations", tip: TOOLTIPS.ANIM, onChange: onAnim }),
+              /* @__PURE__ */ u2(Row, { label: /* @__PURE__ */ u2("span", { "data-tooltip-html": TOOLTIPS.DRUG_TRACKER, children: "Drug Use Tracker" }), children: /* @__PURE__ */ u2("select", { id: "set-drug-tracker", class: "bbgl-native-select", value: userConfig.drugTracker || "xanax", onChange: (e3) => onDrug(e3.target.value), children: [
+                /* @__PURE__ */ u2("option", { value: "xanax", children: "Xanax" }),
+                /* @__PURE__ */ u2("option", { value: "lsd", children: "LSD" })
+              ] }) }),
+              /* @__PURE__ */ u2("div", { class: "bbgl-mask-host bbgl-demo-maskable", "data-mask-text": "Not available in demo mode", children: /* @__PURE__ */ u2(BackfillBtn, {}) })
+            ]
           }
-          return;
-        }
-        const colHeader = e3.target.closest(".bbgl-ach-col-copy");
-        if (colHeader) {
-          app.handleAchCopy(colHeader);
-          return;
-        }
-        const statCell = e3.target.closest(".bbgl-ach-stat-cell");
-        if (statCell) {
-          app.handleAchCopy(statCell);
-          return;
-        }
-        const group = e3.target.closest(".bbgl-ach-hh-group");
-        if (group) {
-          app.handleAchCopy(group);
-          return;
-        }
-        const row = e3.target.closest(".bbgl-ach-section-title, .bbgl-ach-subsection-title, .bbgl-ach-row");
-        if (row) app.handleAchCopy(row);
-      });
-    }
+        ),
+        /* @__PURE__ */ u2(Section, { title: "Log Format", children: [
+          /* @__PURE__ */ u2(Row, { label: /* @__PURE__ */ u2("span", { "data-tooltip-html": TOOLTIPS.LOC, children: "Log Access" }), children: /* @__PURE__ */ u2("select", { id: "set-loc-select", class: "bbgl-native-select", value: userConfig.buttonLocation, onChange: (e3) => app.onChangeLoc(e3.target.value), children: [
+            /* @__PURE__ */ u2("option", { value: "notes", children: "Footer Tab" }),
+            /* @__PURE__ */ u2("option", { value: "sidebar", children: "Sidebar" }),
+            /* @__PURE__ */ u2("option", { value: "both", children: "Both" })
+          ] }) }),
+          /* @__PURE__ */ u2(Row, { label: /* @__PURE__ */ u2("span", { "data-tooltip-html": TOOLTIPS.DAY_START, children: "Log Timezone" }), children: /* @__PURE__ */ u2("select", { id: "set-day-start", class: "bbgl-native-select", value: userConfig.dayStartMode, onChange: (e3) => app.onChangeDayStart(e3.target.value), children: [
+            /* @__PURE__ */ u2("option", { value: "utc", children: "Torn Time (UTC)" }),
+            /* @__PURE__ */ u2("option", { value: "local", children: "Local Time" })
+          ] }) }),
+          /* @__PURE__ */ u2(Row, { label: /* @__PURE__ */ u2("span", { "data-tooltip-html": TOOLTIPS.WEEK_START, children: "Week Start" }), children: /* @__PURE__ */ u2("select", { id: "set-week-start", class: "bbgl-native-select", value: userConfig.weekStartMode, onChange: (e3) => app.onChangeWeekStart(e3.target.value), children: [
+            /* @__PURE__ */ u2("option", { value: "sun", children: "Sun \u2013 Sat" }),
+            /* @__PURE__ */ u2("option", { value: "mon", children: "Mon \u2013 Sun" })
+          ] }) })
+        ] }),
+        /* @__PURE__ */ u2(Section, { title: "Data Management", children: /* @__PURE__ */ u2("div", { class: "bbgl-mask-host bbgl-demo-maskable", "data-mask-text": "Not available in demo mode", children: [
+          /* @__PURE__ */ u2(Btn, { id: "refresh-log-btn", style: { display: "none" }, onClick: (e3) => {
+            const btn = e3.currentTarget;
+            btn.blur();
+            if (app.checkRefreshCooldown(btn)) return;
+            app.syncWithFeedback("FULL_SYNC");
+          }, children: "REFRESH LOG" }),
+          /* @__PURE__ */ u2("div", { class: "bbgl-btn-grid", style: { margin: "8px 10px 0 10px" }, children: [
+            /* @__PURE__ */ u2(Btn, { id: "export-btn", style: { borderRadius: "5px 0 0 0", borderBottom: "none" }, onClick: (e3) => {
+              e3.currentTarget.blur();
+              app.exportData();
+            }, children: "EXPORT LOG" }),
+            /* @__PURE__ */ u2(Btn, { id: "import-btn", style: { borderRadius: "0 5px 0 0", borderBottom: "none" }, onClick: (e3) => {
+              e3.currentTarget.blur();
+              importRef.current?.click();
+            }, children: "IMPORT LOG" }),
+            /* @__PURE__ */ u2("input", { id: "import-file", ref: (el) => {
+              importRef.current = el;
+            }, type: "file", accept: ".json,application/json", style: { display: "none" }, onChange: (e3) => app.importData(e3.target.files?.[0]) })
+          ] }),
+          /* @__PURE__ */ u2(Btn, { id: "clear-btn", modifier: "red", style: { margin: "0 10px 8px 10px", width: "calc(100% - 20px)", display: "block", borderTopLeftRadius: 0, borderTopRightRadius: 0 }, onClick: (e3) => {
+            e3.currentTarget.blur();
+            app.clearData();
+          }, children: "CLEAR LOG" })
+        ] }) }),
+        /* @__PURE__ */ u2(Section, { title: "API Access", bodyStyle: { marginBottom: 5 }, children: /* @__PURE__ */ u2("div", { class: "bbgl-mask-host bbgl-demo-maskable", "data-mask-text": "Not available in demo mode", children: [
+          /* @__PURE__ */ u2(ApiField, { prefix: "set", inputRef: apiRef, defaultValue: userConfig.apiKey || "" }),
+          /* @__PURE__ */ u2(Btn, { id: "create-api-btn", style: { margin: "0 10px", width: "calc(100% - 20px)", display: "block", ...STACK.top }, onClick: (e3) => {
+            e3.currentTarget.blur();
+            window.open(CREATE_API_URL, "_blank");
+          }, children: "CREATE API KEY" }),
+          /* @__PURE__ */ u2("div", { class: "bbgl-btn-grid", style: { margin: "0 10px 10px 10px" }, children: [
+            /* @__PURE__ */ u2(Btn, { id: "clear-api-btn", modifier: "red", style: { borderRadius: "0 0 0 5px" }, onClick: (e3) => {
+              e3.currentTarget.blur();
+              onClearKey();
+            }, children: clearLabel }),
+            /* @__PURE__ */ u2(Btn, { id: "updt-settings-btn", modifier: "green", style: { borderRadius: "0 0 5px 0" }, onClick: (e3) => {
+              e3.currentTarget.blur();
+              onRegister();
+            }, children: verifyLabel })
+          ] })
+        ] }) }),
+        /* @__PURE__ */ u2(Section, { title: "Information", children: [
+          /* @__PURE__ */ u2("div", { class: "bbgl-settings-author-credit", children: [
+            "By ",
+            /* @__PURE__ */ u2("a", { class: "bbgl-author-link", href: "https://www.torn.com/profiles.php?XID=3550896", target: "_blank", rel: "noopener noreferrer", children: "BigBlackHawk" })
+          ] }),
+          /* @__PURE__ */ u2(Btn, { id: "feature-guide-btn", style: { margin: "8px 10px 0 10px", width: "calc(100% - 20px)", display: "block", ...STACK.top }, onClick: (e3) => {
+            e3.currentTarget.blur();
+            app.openFeatureGuideModal();
+          }, children: "FEATURE GUIDE" }),
+          /* @__PURE__ */ u2("div", { class: "bbgl-mask-host bbgl-demo-maskable", "data-mask-text": "Not available in demo mode", style: { margin: "0 10px", display: "flex", flexDirection: "column" }, children: [
+            /* @__PURE__ */ u2(Btn, { id: "settings-changelog-btn", style: { width: "100%", ...STACK.mid }, onClick: (e3) => {
+              e3.currentTarget.blur();
+              app.openChangelogModal();
+            }, children: "CHANGELOG" }),
+            /* @__PURE__ */ u2(Btn, { id: "settings-privacy-btn", style: { width: "100%", ...STACK.mid }, onClick: (e3) => {
+              e3.currentTarget.blur();
+              app.openPrivacyModal();
+            }, children: "PRIVACY DISCLOSURE" })
+          ] }),
+          /* @__PURE__ */ u2(
+            Btn,
+            {
+              id: "settings-demo-btn",
+              modifier: "purple",
+              style: { margin: "0 10px 8px 10px", width: "calc(100% - 20px)", display: "block", ...STACK.bottom },
+              onClick: (e3) => {
+                e3.currentTarget.blur();
+                if (runtime.demoMode) {
+                  const deb = document.getElementById("bbgl-demo-exit");
+                  if (deb) deb.click();
+                } else app.enterDemoFromSettings();
+              },
+              children: runtime.demoMode ? "EXIT DEMO" : "DEMO MODE"
+            }
+          )
+        ] })
+      ] })
+    ] });
   }
-  app.setupEventListeners = setupEventListeners;
 
-  // node_modules/preact/dist/preact.module.js
-  var n;
-  var l;
-  var u;
-  var t;
-  var i;
-  var r;
-  var o;
-  var e;
-  var f;
-  var c;
-  var a;
-  var s;
-  var h;
-  var p;
-  var v;
-  var y;
-  var d = {};
-  var w = [];
-  var _ = /acit|ex(?:s|g|n|p|$)|rph|grid|ows|mnc|ntw|ine[ch]|zoo|^ord|itera/i;
-  var g = Array.isArray;
-  function m(n2, l3) {
-    for (var u4 in l3) n2[u4] = l3[u4];
-    return n2;
-  }
-  function b(n2) {
-    n2 && n2.parentNode && n2.parentNode.removeChild(n2);
-  }
-  function k(l3, u4, t3) {
-    var i3, r4, o3, e3 = {};
-    for (o3 in u4) "key" == o3 ? i3 = u4[o3] : "ref" == o3 ? r4 = u4[o3] : e3[o3] = u4[o3];
-    if (arguments.length > 2 && (e3.children = arguments.length > 3 ? n.call(arguments, 2) : t3), "function" == typeof l3 && null != l3.defaultProps) for (o3 in l3.defaultProps) void 0 === e3[o3] && (e3[o3] = l3.defaultProps[o3]);
-    return x(l3, e3, i3, r4, null);
-  }
-  function x(n2, t3, i3, r4, o3) {
-    var e3 = { type: n2, props: t3, key: i3, ref: r4, __k: null, __: null, __b: 0, __e: null, __c: null, constructor: void 0, __v: null == o3 ? ++u : o3, __i: -1, __u: 0 };
-    return null == o3 && null != l.vnode && l.vnode(e3), e3;
-  }
-  function S(n2) {
-    return n2.children;
-  }
-  function C(n2, l3) {
-    this.props = n2, this.context = l3;
-  }
-  function $(n2, l3) {
-    if (null == l3) return n2.__ ? $(n2.__, n2.__i + 1) : null;
-    for (var u4; l3 < n2.__k.length; l3++) if (null != (u4 = n2.__k[l3]) && null != u4.__e) return u4.__e;
-    return "function" == typeof n2.type ? $(n2) : null;
-  }
-  function I(n2) {
-    if (n2.__P && n2.__d) {
-      var u4 = n2.__v, t3 = u4.__e, i3 = [], r4 = [], o3 = m({}, u4);
-      o3.__v = u4.__v + 1, l.vnode && l.vnode(o3), q(n2.__P, o3, u4, n2.__n, n2.__P.namespaceURI, 32 & u4.__u ? [t3] : null, i3, null == t3 ? $(u4) : t3, !!(32 & u4.__u), r4), o3.__v = u4.__v, o3.__.__k[o3.__i] = o3, D(i3, o3, r4), u4.__e = u4.__ = null, o3.__e != t3 && P(o3);
-    }
-  }
-  function P(n2) {
-    if (null != (n2 = n2.__) && null != n2.__c) return n2.__e = n2.__c.base = null, n2.__k.some(function(l3) {
-      if (null != l3 && null != l3.__e) return n2.__e = n2.__c.base = l3.__e;
-    }), P(n2);
-  }
-  function A(n2) {
-    (!n2.__d && (n2.__d = true) && i.push(n2) && !H.__r++ || r != l.debounceRendering) && ((r = l.debounceRendering) || o)(H);
-  }
-  function H() {
-    try {
-      for (var n2, l3 = 1; i.length; ) i.length > l3 && i.sort(e), n2 = i.shift(), l3 = i.length, I(n2);
-    } finally {
-      i.length = H.__r = 0;
-    }
-  }
-  function L(n2, l3, u4, t3, i3, r4, o3, e3, f4, c3, a3) {
-    var s3, h3, p3, v3, y3, _3, g4 = t3 && t3.__k || w, m3 = l3.length;
-    for (f4 = T(u4, l3, g4, f4, m3), s3 = 0; s3 < m3; s3++) null != (p3 = u4.__k[s3]) && (h3 = -1 != p3.__i && g4[p3.__i] || d, p3.__i = s3, _3 = q(n2, p3, h3, i3, r4, o3, e3, f4, c3, a3), v3 = p3.__e, p3.ref && h3.ref != p3.ref && (h3.ref && J(h3.ref, null, p3), a3.push(p3.ref, p3.__c || v3, p3)), null == y3 && null != v3 && (y3 = v3), 4 & p3.__u ? (f4 = j(p3, f4, n2), h3.__e && (h3.__e = null)) : "function" == typeof p3.type && void 0 !== _3 ? f4 = _3 : v3 && (f4 = v3.nextSibling), p3.__u &= -7);
-    return u4.__e = y3, f4;
-  }
-  function T(n2, l3, u4, t3, i3) {
-    var r4, o3, e3, f4, c3, a3 = u4.length, s3 = a3, h3 = 0;
-    for (n2.__k = new Array(i3), r4 = 0; r4 < i3; r4++) null != (o3 = l3[r4]) && "boolean" != typeof o3 && "function" != typeof o3 ? ("string" == typeof o3 || "number" == typeof o3 || "bigint" == typeof o3 || o3.constructor == String ? o3 = n2.__k[r4] = x(null, o3, null, null, null) : g(o3) ? o3 = n2.__k[r4] = x(S, { children: o3 }, null, null, null) : void 0 === o3.constructor && o3.__b > 0 ? o3 = n2.__k[r4] = x(o3.type, o3.props, o3.key, o3.ref ? o3.ref : null, o3.__v) : n2.__k[r4] = o3, f4 = r4 + h3, o3.__ = n2, o3.__b = n2.__b + 1, e3 = null, -1 != (c3 = o3.__i = O(o3, u4, f4, s3)) && (s3--, (e3 = u4[c3]) && (e3.__u |= 2)), null == e3 || null == e3.__v ? (-1 == c3 && (i3 > a3 ? h3-- : i3 < a3 && h3++), "function" != typeof o3.type && (o3.__u |= 4)) : c3 != f4 && (c3 == f4 - 1 ? h3-- : c3 == f4 + 1 ? h3++ : (c3 > f4 ? h3-- : h3++, o3.__u |= 4))) : n2.__k[r4] = null;
-    if (s3) for (r4 = 0; r4 < a3; r4++) null != (e3 = u4[r4]) && 0 == (2 & e3.__u) && (e3.__e == t3 && (t3 = $(e3)), K(e3, e3));
-    return t3;
-  }
-  function j(n2, l3, u4) {
-    var t3, i3;
-    if ("function" == typeof n2.type) {
-      for (t3 = n2.__k, i3 = 0; t3 && i3 < t3.length; i3++) t3[i3] && (t3[i3].__ = n2, l3 = j(t3[i3], l3, u4));
-      return l3;
-    }
-    n2.__e != l3 && (l3 && n2.type && !l3.parentNode && (l3 = $(n2)), l3 = u4.insertBefore(n2.__e, l3 || null));
-    do {
-      l3 = l3 && l3.nextSibling;
-    } while (null != l3 && 8 == l3.nodeType);
-    return l3;
-  }
-  function F(n2, l3) {
-    return l3 = l3 || [], null == n2 || "boolean" == typeof n2 || (g(n2) ? n2.some(function(n3) {
-      F(n3, l3);
-    }) : l3.push(n2)), l3;
-  }
-  function O(n2, l3, u4, t3) {
-    var i3, r4, o3, e3 = n2.key, f4 = n2.type, c3 = l3[u4], a3 = null != c3 && 0 == (2 & c3.__u);
-    if (null === c3 && null == e3 || a3 && e3 == c3.key && f4 == c3.type) return u4;
-    if (t3 > (a3 ? 1 : 0)) {
-      for (i3 = u4 - 1, r4 = u4 + 1; i3 >= 0 || r4 < l3.length; ) if (null != (c3 = l3[o3 = i3 >= 0 ? i3-- : r4++]) && 0 == (2 & c3.__u) && e3 == c3.key && f4 == c3.type) return o3;
-    }
-    return -1;
-  }
-  function z(n2, l3, u4) {
-    "-" == l3[0] ? n2.setProperty(l3, null == u4 ? "" : u4) : n2[l3] = null == u4 ? "" : "number" != typeof u4 || _.test(l3) ? u4 : u4 + "px";
-  }
-  function N(n2, l3, u4, t3, i3) {
-    var r4, o3;
-    n: if ("style" == l3) if ("string" == typeof u4) n2.style.cssText = u4;
-    else {
-      if ("string" == typeof t3 && (n2.style.cssText = t3 = ""), t3) for (l3 in t3) u4 && l3 in u4 || z(n2.style, l3, "");
-      if (u4) for (l3 in u4) t3 && u4[l3] == t3[l3] || z(n2.style, l3, u4[l3]);
-    }
-    else if ("o" == l3[0] && "n" == l3[1]) r4 = l3 != (l3 = l3.replace(s, "$1")), o3 = l3.toLowerCase(), l3 = o3 in n2 || "onFocusOut" == l3 || "onFocusIn" == l3 ? o3.slice(2) : l3.slice(2), n2.l || (n2.l = {}), n2.l[l3 + r4] = u4, u4 ? t3 ? u4[a] = t3[a] : (u4[a] = h, n2.addEventListener(l3, r4 ? v : p, r4)) : n2.removeEventListener(l3, r4 ? v : p, r4);
-    else {
-      if ("http://www.w3.org/2000/svg" == i3) l3 = l3.replace(/xlink(H|:h)/, "h").replace(/sName$/, "s");
-      else if ("width" != l3 && "height" != l3 && "href" != l3 && "list" != l3 && "form" != l3 && "tabIndex" != l3 && "download" != l3 && "rowSpan" != l3 && "colSpan" != l3 && "role" != l3 && "popover" != l3 && l3 in n2) try {
-        n2[l3] = null == u4 ? "" : u4;
-        break n;
-      } catch (n3) {
-      }
-      "function" == typeof u4 || (null == u4 || false === u4 && "-" != l3[4] ? n2.removeAttribute(l3) : n2.setAttribute(l3, "popover" == l3 && 1 == u4 ? "" : u4));
-    }
-  }
-  function V(n2) {
-    return function(u4) {
-      if (this.l) {
-        var t3 = this.l[u4.type + n2];
-        if (null == u4[c]) u4[c] = h++;
-        else if (u4[c] < t3[a]) return;
-        return t3(l.event ? l.event(u4) : u4);
-      }
-    };
-  }
-  function q(n2, u4, t3, i3, r4, o3, e3, f4, c3, a3) {
-    var s3, h3, p3, v3, y3, d3, _3, k3, x3, M3, I2, P4, A4, H3, T4, j4, F3 = u4.type;
-    if (void 0 !== u4.constructor) return null;
-    128 & t3.__u && (c3 = !!(32 & t3.__u), o3 = [f4 = u4.__e = t3.__e]), (s3 = l.__b) && s3(u4);
-    n: if ("function" == typeof F3) {
-      h3 = e3.length;
-      try {
-        if (x3 = u4.props, M3 = F3.prototype && F3.prototype.render, I2 = (s3 = F3.contextType) && i3[s3.__c], P4 = s3 ? I2 ? I2.props.value : s3.__ : i3, t3.__c ? k3 = (p3 = u4.__c = t3.__c).__ = p3.__E : (M3 ? u4.__c = p3 = new F3(x3, P4) : (u4.__c = p3 = new C(x3, P4), p3.constructor = F3, p3.render = Q), I2 && I2.sub(p3), p3.state || (p3.state = {}), p3.__n = i3, v3 = p3.__d = true, p3.__h = [], p3._sb = []), M3 && null == p3.__s && (p3.__s = p3.state), M3 && null != F3.getDerivedStateFromProps && (p3.__s == p3.state && (p3.__s = m({}, p3.__s)), m(p3.__s, F3.getDerivedStateFromProps(x3, p3.__s))), y3 = p3.props, d3 = p3.state, p3.__v = u4, v3) M3 && null == F3.getDerivedStateFromProps && null != p3.componentWillMount && p3.componentWillMount(), M3 && null != p3.componentDidMount && p3.__h.push(p3.componentDidMount);
-        else {
-          if (M3 && null == F3.getDerivedStateFromProps && x3 !== y3 && null != p3.componentWillReceiveProps && p3.componentWillReceiveProps(x3, P4), u4.__v == t3.__v || !p3.__e && null != p3.shouldComponentUpdate && false === p3.shouldComponentUpdate(x3, p3.__s, P4)) {
-            u4.__v != t3.__v && (p3.props = x3, p3.state = p3.__s, p3.__d = false), u4.__e = t3.__e, u4.__k = t3.__k, u4.__k.some(function(n3) {
-              n3 && (n3.__ = u4);
-            }), w.push.apply(p3.__h, p3._sb), p3._sb = [], p3.__h.length && e3.push(p3), f4 = $(t3);
-            break n;
+  // src/ui/preact/Welcome.tsx
+  function Welcome() {
+    const apiRef = A2(null);
+    const importRef = A2(null);
+    const hostRef = A2(null);
+    const [introHtml, setIntroHtml] = d2(app.DOC_LOADING_HTML || "");
+    const [returningHtml, setReturningHtml] = d2(app.DOC_LOADING_HTML || "");
+    const [startLabel, setStartLabel] = d2("START TRACKING");
+    const [startBusy, setStartBusy] = d2(false);
+    const canClose = !!localStorage.getItem("bbgl_initialized") || runtime.demoMode;
+    h2(() => {
+      let cancelled = false;
+      (async () => {
+        try {
+          const raw = await app.fetchDoc("welcome");
+          const parts = String(raw).split("<!--RETURNING-->");
+          if (cancelled) return;
+          setIntroHtml(parts[0] || app.DOC_ERROR_HTML);
+          setReturningHtml(parts[1] || app.DOC_ERROR_HTML);
+        } catch {
+          if (!cancelled) {
+            setIntroHtml(app.DOC_ERROR_HTML);
+            setReturningHtml(app.DOC_ERROR_HTML);
           }
-          null != p3.componentWillUpdate && p3.componentWillUpdate(x3, p3.__s, P4), M3 && null != p3.componentDidUpdate && p3.__h.push(function() {
-            p3.componentDidUpdate(y3, d3, _3);
-          });
         }
-        if (p3.context = P4, p3.props = x3, p3.__P = n2, p3.__e = false, A4 = l.__r, H3 = 0, M3) p3.state = p3.__s, p3.__d = false, A4 && A4(u4), s3 = p3.render(p3.props, p3.state, p3.context), w.push.apply(p3.__h, p3._sb), p3._sb = [];
-        else do {
-          p3.__d = false, A4 && A4(u4), s3 = p3.render(p3.props, p3.state, p3.context), p3.state = p3.__s;
-        } while (p3.__d && ++H3 < 25);
-        p3.state = p3.__s, null != p3.getChildContext && (i3 = m(m({}, i3), p3.getChildContext())), M3 && !v3 && null != p3.getSnapshotBeforeUpdate && (_3 = p3.getSnapshotBeforeUpdate(y3, d3)), T4 = null != s3 && s3.type === S && null == s3.key ? E(s3.props.children) : s3, f4 = L(n2, g(T4) ? T4 : [T4], u4, t3, i3, r4, o3, e3, f4, c3, a3), p3.base = u4.__e, u4.__u &= -161, p3.__h.length && e3.push(p3), k3 && (p3.__E = p3.__ = null);
-      } catch (n3) {
-        if (e3.length = h3, u4.__v = null, c3 || null != o3) {
-          if (n3.then) {
-            for (u4.__u |= c3 ? 160 : 128; f4 && 8 == f4.nodeType && f4.nextSibling; ) f4 = f4.nextSibling;
-            null != o3 && (o3[o3.indexOf(f4)] = null), u4.__e = f4;
-          } else if (null != o3) for (j4 = o3.length; j4--; ) b(o3[j4]);
-        } else u4.__e = t3.__e;
-        null == u4.__k && (u4.__k = t3.__k || []), n3.then || B(u4), l.__e(n3, u4, t3);
-      }
-    } else null == o3 && u4.__v == t3.__v ? (u4.__k = t3.__k, u4.__e = t3.__e) : f4 = u4.__e = G(t3.__e, u4, t3, i3, r4, o3, e3, c3, a3);
-    return (s3 = l.diffed) && s3(u4), 128 & u4.__u ? void 0 : f4;
-  }
-  function B(n2) {
-    n2 && (n2.__c && (n2.__c.__e = true), n2.__k && n2.__k.some(B));
-  }
-  function D(n2, u4, t3) {
-    for (var i3 = 0; i3 < t3.length; i3++) J(t3[i3], t3[++i3], t3[++i3]);
-    l.__c && l.__c(u4, n2), n2.some(function(u5) {
-      try {
-        n2 = u5.__h, u5.__h = [], n2.some(function(n3) {
-          n3.call(u5);
-        });
-      } catch (n3) {
-        l.__e(n3, u5.__v);
-      }
-    });
-  }
-  function E(n2) {
-    return "object" != typeof n2 || null == n2 || n2.__b > 0 ? n2 : g(n2) ? n2.map(E) : void 0 !== n2.constructor ? null : m({}, n2);
-  }
-  function G(u4, t3, i3, r4, o3, e3, f4, c3, a3) {
-    var s3, h3, p3, v3, y3, w3, _3, m3 = i3.props || d, k3 = t3.props, x3 = t3.type;
-    if ("svg" == x3 ? o3 = "http://www.w3.org/2000/svg" : "math" == x3 ? o3 = "http://www.w3.org/1998/Math/MathML" : o3 || (o3 = "http://www.w3.org/1999/xhtml"), null != e3) {
-      for (s3 = 0; s3 < e3.length; s3++) if ((y3 = e3[s3]) && "setAttribute" in y3 == !!x3 && (x3 ? y3.localName == x3 : 3 == y3.nodeType)) {
-        u4 = y3, e3[s3] = null;
-        break;
-      }
-    }
-    if (null == u4) {
-      if (null == x3) return document.createTextNode(k3);
-      u4 = document.createElementNS(o3, x3, k3.is && k3), c3 && (l.__m && l.__m(t3, e3), c3 = false), e3 = null;
-    }
-    if (null == x3) m3 === k3 || c3 && u4.data == k3 || (u4.data = k3);
-    else {
-      if (e3 = "textarea" == x3 && null != k3.defaultValue ? null : e3 && n.call(u4.childNodes), !c3 && null != e3) for (m3 = {}, s3 = 0; s3 < u4.attributes.length; s3++) m3[(y3 = u4.attributes[s3]).name] = y3.value;
-      for (s3 in m3) y3 = m3[s3], "dangerouslySetInnerHTML" == s3 ? p3 = y3 : "children" == s3 || s3 in k3 || "value" == s3 && "defaultValue" in k3 || "checked" == s3 && "defaultChecked" in k3 || N(u4, s3, null, y3, o3);
-      for (s3 in k3) y3 = k3[s3], "children" == s3 ? v3 = y3 : "dangerouslySetInnerHTML" == s3 ? h3 = y3 : "value" == s3 ? w3 = y3 : "checked" == s3 ? _3 = y3 : c3 && "function" != typeof y3 || m3[s3] === y3 || N(u4, s3, y3, m3[s3], o3);
-      if (h3) c3 || p3 && (h3.__html == p3.__html || h3.__html == u4.innerHTML) || (u4.innerHTML = h3.__html), t3.__k = [];
-      else if (p3 && (u4.innerHTML = ""), L("template" == t3.type ? u4.content : u4, g(v3) ? v3 : [v3], t3, i3, r4, "foreignObject" == x3 ? "http://www.w3.org/1999/xhtml" : o3, e3, f4, e3 ? e3[0] : i3.__k && $(i3, 0), c3, a3), null != e3) for (s3 = e3.length; s3--; ) b(e3[s3]);
-      c3 && "textarea" != x3 || (s3 = "value", "progress" == x3 && null == w3 ? u4.removeAttribute("value") : null != w3 && (w3 !== u4[s3] || "progress" == x3 && !w3 || "option" == x3 && w3 != m3[s3]) && N(u4, s3, w3, m3[s3], o3), s3 = "checked", null != _3 && _3 != u4[s3] && N(u4, s3, _3, m3[s3], o3));
-    }
-    return u4;
-  }
-  function J(n2, u4, t3) {
-    try {
-      if ("function" == typeof n2) {
-        var i3 = "function" == typeof n2.__u;
-        i3 && n2.__u(), i3 && null == u4 || (n2.__u = n2(u4));
-      } else n2.current = u4;
-    } catch (n3) {
-      l.__e(n3, t3);
-    }
-  }
-  function K(n2, u4, t3) {
-    var i3, r4;
-    if (l.unmount && l.unmount(n2), (i3 = n2.ref) && (i3.current && i3.current != n2.__e || J(i3, null, u4)), null != (i3 = n2.__c)) {
-      if (i3.componentWillUnmount) try {
-        i3.componentWillUnmount();
-      } catch (n3) {
-        l.__e(n3, u4);
-      }
-      i3.base = i3.__P = i3.__n = null;
-    }
-    if (i3 = n2.__k) for (r4 = 0; r4 < i3.length; r4++) i3[r4] && K(i3[r4], u4, t3 || "function" != typeof n2.type);
-    t3 || b(n2.__e), n2.__c = n2.__ = n2.__e = void 0;
-  }
-  function Q(n2, l3, u4) {
-    return this.constructor(n2, u4);
-  }
-  function R(u4, t3, i3) {
-    var r4, o3, e3, f4;
-    t3 == document && (t3 = document.documentElement), l.__ && l.__(u4, t3), o3 = (r4 = "function" == typeof i3) ? null : i3 && i3.__k || t3.__k, e3 = [], f4 = [], q(t3, u4 = (!r4 && i3 || t3).__k = k(S, null, [u4]), o3 || d, d, t3.namespaceURI, !r4 && i3 ? [i3] : o3 ? null : t3.firstChild ? n.call(t3.childNodes) : null, e3, !r4 && i3 ? i3 : o3 ? o3.__e : t3.firstChild, r4, f4), D(e3, u4, f4), u4.props.children = null;
-  }
-  n = w.slice, l = { __e: function(n2, l3, u4, t3) {
-    for (var i3, r4, o3; l3 = l3.__; ) if ((i3 = l3.__c) && !i3.__) try {
-      if ((r4 = i3.constructor) && null != r4.getDerivedStateFromError && (i3.setState(r4.getDerivedStateFromError(n2)), o3 = i3.__d), null != i3.componentDidCatch && (i3.componentDidCatch(n2, t3 || {}), o3 = i3.__d), o3) return i3.__E = i3;
-    } catch (l4) {
-      n2 = l4;
-    }
-    throw n2;
-  } }, u = 0, t = function(n2) {
-    return null != n2 && void 0 === n2.constructor;
-  }, C.prototype.setState = function(n2, l3) {
-    var u4;
-    u4 = null != this.__s && this.__s != this.state ? this.__s : this.__s = m({}, this.state), "function" == typeof n2 && (n2 = n2(m({}, u4), this.props)), n2 && m(u4, n2), null != n2 && this.__v && (l3 && this._sb.push(l3), A(this));
-  }, C.prototype.forceUpdate = function(n2) {
-    this.__v && (this.__e = true, n2 && this.__h.push(n2), A(this));
-  }, C.prototype.render = S, i = [], o = "function" == typeof Promise ? Promise.prototype.then.bind(Promise.resolve()) : setTimeout, e = function(n2, l3) {
-    return n2.__v.__b - l3.__v.__b;
-  }, H.__r = 0, f = Math.random().toString(8), c = "__d" + f, a = "__a" + f, s = /(PointerCapture)$|Capture$/i, h = 0, p = V(false), v = V(true), y = 0;
-
-  // node_modules/preact/jsx-runtime/dist/jsxRuntime.module.js
-  var f2 = 0;
-  function u2(e3, t3, n2, o3, i3, u4) {
-    t3 || (t3 = {});
-    var a3, c3, p3 = t3;
-    if ("ref" in p3) for (c3 in p3 = {}, t3) "ref" == c3 ? a3 = t3[c3] : p3[c3] = t3[c3];
-    var l3 = { type: e3, props: p3, key: n2, ref: a3, __k: null, __: null, __b: 0, __e: null, __c: null, constructor: void 0, __v: --f2, __i: -1, __u: 0, __source: i3, __self: u4 };
-    if ("function" == typeof e3 && (a3 = e3.defaultProps)) for (c3 in a3) void 0 === p3[c3] && (p3[c3] = a3[c3]);
-    return l.vnode && l.vnode(l3), l3;
-  }
-
-  // src/ui/preact/html.tsx
-  function Raw({ html }) {
-    return /* @__PURE__ */ u2("span", { style: { display: "contents" }, dangerouslySetInnerHTML: { __html: html } });
-  }
-
-  // node_modules/preact/hooks/dist/hooks.module.js
-  var t2;
-  var r3;
-  var u3;
-  var i2;
-  var o2 = 0;
-  var f3 = [];
-  var c2 = l;
-  var e2 = c2.__b;
-  var a2 = c2.__r;
-  var v2 = c2.diffed;
-  var l2 = c2.__c;
-  var m2 = c2.unmount;
-  var p2 = c2.__;
-  function s2(n2, t3) {
-    c2.__h && c2.__h(r3, n2, o2 || t3), o2 = 0;
-    var u4 = r3.__H || (r3.__H = { __: [], __h: [] });
-    return n2 >= u4.__.length && u4.__.push({}), u4.__[n2];
-  }
-  function d2(n2) {
-    return o2 = 1, y2(D2, n2);
-  }
-  function y2(n2, u4, i3) {
-    var o3 = s2(t2++, 2);
-    if (o3.t = n2, !o3.__c && (o3.__ = [i3 ? i3(u4) : D2(void 0, u4), function(n3) {
-      var t3 = o3.__N ? o3.__N[0] : o3.__[0], r4 = o3.t(t3, n3);
-      t3 !== r4 && (o3.__N = [r4, o3.__[1]], o3.__c.setState({}));
-    }], o3.__c = r3, !r3.__f)) {
-      var f4 = function(n3, t3, r4) {
-        if (!o3.__c.__H) return true;
-        var u5 = false, i4 = o3.__c.props !== n3;
-        if (o3.__c.__H.__.some(function(n4) {
-          if (n4.__N) {
-            u5 = true;
-            var t4 = n4.__[0];
-            n4.__ = n4.__N, n4.__N = void 0, t4 !== n4.__[0] && (i4 = true);
-          }
-        }), c3) {
-          var f5 = c3.call(this, n3, t3, r4);
-          return u5 ? f5 || i4 : f5;
-        }
-        return !u5 || i4;
+      })();
+      return () => {
+        cancelled = true;
       };
-      r3.__f = true;
-      var c3 = r3.shouldComponentUpdate, e3 = r3.componentWillUpdate;
-      r3.componentWillUpdate = function(n3, t3, r4) {
-        if (this.__e) {
-          var u5 = c3;
-          c3 = void 0, f4(n3, t3, r4), c3 = u5;
+    }, []);
+    h2(() => {
+      if (hostRef.current && typeof app.refreshInitMask === "function") app.refreshInitMask(hostRef.current);
+    });
+    async function onStart(e3) {
+      const btn = e3.currentTarget;
+      btn.blur();
+      const v3 = (apiRef.current?.value || "").trim();
+      if (!/^[a-zA-Z0-9]{16}$/.test(v3)) {
+        bbglError(MSG_KEY_FORMAT_INVALID);
+        return;
+      }
+      setStartBusy(true);
+      setStartLabel("VERIFYING...");
+      try {
+        const res = await fetch(`https://api.torn.com/user/?selections=battlestats,log&log=5300&key=${v3}`);
+        const data = await res.json();
+        if (data.error) {
+          bbglError(`Key Verification Failed: ${tornKeyErrorText(data)}`);
+          setStartBusy(false);
+          setStartLabel("START TRACKING");
+          return;
         }
-        e3 && e3.call(this, n3, t3, r4);
-      }, r3.shouldComponentUpdate = f4;
-    }
-    return o3.__N || o3.__;
-  }
-  function h2(n2, u4) {
-    var i3 = s2(t2++, 3);
-    !c2.__s && C2(i3.__H, u4) && (i3.__ = n2, i3.u = u4, r3.__H.__h.push(i3));
-  }
-  function j2() {
-    for (var n2; n2 = f3.shift(); ) {
-      var t3 = n2.__H;
-      if (n2.__P && t3) try {
-        t3.__h.some(z2), t3.__h.some(B2), t3.__h = [];
-      } catch (r4) {
-        t3.__h = [], c2.__e(r4, n2.__v);
+        userConfig.apiKey = v3;
+        saveConfig();
+        localStorage.setItem("bbgl_initialized", "1");
+        app.refreshInitLock();
+        calendarState.selectedData = null;
+        calendarState.selectedLabel = Formatter.dateLogical();
+        viewState.activeViewLabel = null;
+        app.syncWithFeedback("FULL_SYNC");
+        app.openBackfillChoiceModal();
+      } catch {
+        bbglError(MSG_KEY_NETWORK_ERROR);
+        setStartBusy(false);
+        setStartLabel("START TRACKING");
       }
     }
+    return /* @__PURE__ */ u2("div", { ref: hostRef, children: [
+      canClose ? /* @__PURE__ */ u2("div", { class: "close-settings-btn bbgl-close-x", title: "Close", onClick: (e3) => {
+        e3.stopPropagation();
+        app.switchView("ledger");
+      }, children: /* @__PURE__ */ u2(Raw, { html: ICONS.CLOSE }) }) : null,
+      /* @__PURE__ */ u2("div", { class: "bbgl-settings-scroll-area", children: [
+        /* @__PURE__ */ u2("div", { class: "bbgl-prefs-tab-title", style: { borderRadius: "5px 5px 0 0", marginTop: 0 }, children: /* @__PURE__ */ u2("span", { children: "Welcome to Big Black Gym Log" }) }),
+        /* @__PURE__ */ u2("div", { class: "bbgl-settings-body", style: { marginBottom: 5 }, children: [
+          /* @__PURE__ */ u2("div", { id: "bbgl-welcome-intro-text", dangerouslySetInnerHTML: { __html: introHtml } }),
+          /* @__PURE__ */ u2(Btn, { id: "init-privacy-btn", style: { margin: "0 10px 8px 10px", width: "calc(100% - 20px)", display: "block" }, onClick: (e3) => {
+            e3.currentTarget.blur();
+            app.openPrivacyModal();
+          }, children: "PRIVACY DISCLOSURE" })
+        ] }),
+        /* @__PURE__ */ u2(Section, { title: "Initialization Settings", bodyStyle: { marginBottom: 5 }, children: /* @__PURE__ */ u2("div", { id: "init-section-masked-body", class: "bbgl-mask-host", "data-mask-text": "Please agree to the privacy disclosure first.", children: [
+          /* @__PURE__ */ u2(ApiField, { prefix: "init", inputRef: apiRef, defaultValue: userConfig.apiKey || "", style: { margin: "8px 10px" } }),
+          /* @__PURE__ */ u2(Btn, { id: "init-create-api-btn", style: { margin: "0 10px 8px 10px", width: "calc(100% - 20px)", display: "block" }, onClick: (e3) => {
+            e3.currentTarget.blur();
+            window.open(CREATE_API_URL, "_blank");
+          }, children: "CREATE API KEY" }),
+          /* @__PURE__ */ u2(Row, { label: /* @__PURE__ */ u2("span", { "data-tooltip-html": TOOLTIPS.DAY_START, children: "Log Timezone" }), children: /* @__PURE__ */ u2("select", { id: "init-day-start", class: "bbgl-native-select", value: userConfig.dayStartMode, onChange: (e3) => app.onChangeDayStart(e3.target.value), children: [
+            /* @__PURE__ */ u2("option", { value: "utc", children: "Torn Time (UTC)" }),
+            /* @__PURE__ */ u2("option", { value: "local", children: "Local Time" })
+          ] }) }),
+          /* @__PURE__ */ u2(Row, { label: /* @__PURE__ */ u2("span", { "data-tooltip-html": TOOLTIPS.WEEK_START, children: "Week Start" }), children: /* @__PURE__ */ u2("select", { id: "init-week-start", class: "bbgl-native-select", value: userConfig.weekStartMode, onChange: (e3) => app.onChangeWeekStart(e3.target.value), children: [
+            /* @__PURE__ */ u2("option", { value: "sun", children: "Sun \u2013 Sat" }),
+            /* @__PURE__ */ u2("option", { value: "mon", children: "Mon \u2013 Sun" })
+          ] }) }),
+          /* @__PURE__ */ u2(Btn, { id: "init-start-btn", modifier: "green", disabled: startBusy, style: { margin: "8px 10px", width: "calc(100% - 20px)", display: "block", color: startBusy ? "#69f0ae" : void 0 }, onClick: onStart, children: startLabel })
+        ] }) }),
+        /* @__PURE__ */ u2(Section, { title: "Returning User", bodyStyle: { marginBottom: 5 }, children: [
+          /* @__PURE__ */ u2("div", { id: "bbgl-welcome-returning-text", dangerouslySetInnerHTML: { __html: returningHtml } }),
+          /* @__PURE__ */ u2(Btn, { id: "init-returning-import-btn", style: { margin: "0 10px 8px 10px", width: "calc(100% - 20px)", display: "block" }, onClick: (e3) => {
+            e3.currentTarget.blur();
+            importRef.current?.click();
+          }, children: "IMPORT LOG" }),
+          /* @__PURE__ */ u2("input", { id: "init-import-file", ref: (el) => {
+            importRef.current = el;
+          }, type: "file", accept: ".json,application/json", style: { display: "none" }, onChange: (e3) => {
+            const f4 = e3.target.files?.[0];
+            if (f4) app.importDataFromWelcome(f4);
+          } })
+        ] })
+      ] })
+    ] });
   }
-  c2.__b = function(n2) {
-    r3 = null, e2 && e2(n2);
-  }, c2.__ = function(n2, t3) {
-    n2 && t3.__k && t3.__k.__m && (n2.__m = t3.__k.__m), p2 && p2(n2, t3);
-  }, c2.__r = function(n2) {
-    a2 && a2(n2), t2 = 0;
-    var i3 = (r3 = n2.__c).__H;
-    i3 && (u3 === r3 ? (i3.__h = [], r3.__h = [], i3.__.some(function(n3) {
-      n3.__N && (n3.__ = n3.__N), n3.u = n3.__N = void 0;
-    })) : (i3.__h.some(z2), i3.__h.some(B2), i3.__h = [], t2 = 0)), u3 = r3;
-  }, c2.diffed = function(n2) {
-    v2 && v2(n2);
-    var t3 = n2.__c;
-    t3 && t3.__H && (t3.__H.__h.length && (1 !== f3.push(t3) && i2 === c2.requestAnimationFrame || ((i2 = c2.requestAnimationFrame) || w2)(j2)), t3.__H.__.some(function(n3) {
-      n3.u && (n3.__H = n3.u, n3.u = void 0);
-    })), u3 = r3 = null;
-  }, c2.__c = function(n2, t3) {
-    t3.some(function(n3) {
-      try {
-        n3.__h.some(z2), n3.__h = n3.__h.filter(function(n4) {
-          return !n4.__ || B2(n4);
-        });
-      } catch (r4) {
-        t3.some(function(n4) {
-          n4.__h && (n4.__h = []);
-        }), t3 = [], c2.__e(r4, n3.__v);
-      }
-    }), l2 && l2(n2, t3);
-  }, c2.unmount = function(n2) {
-    m2 && m2(n2);
-    var t3, r4 = n2.__c;
-    r4 && r4.__H && (r4.__H.__.some(function(n3) {
-      try {
-        z2(n3);
-      } catch (n4) {
-        t3 = n4;
-      }
-    }), r4.__H = void 0, t3 && c2.__e(t3, r4.__v));
-  };
-  var k2 = "function" == typeof requestAnimationFrame;
-  function w2(n2) {
-    var t3, r4 = function() {
-      clearTimeout(u4), k2 && cancelAnimationFrame(t3), setTimeout(n2);
-    }, u4 = setTimeout(r4, 35);
-    k2 && (t3 = requestAnimationFrame(r4));
+
+  // src/ui/preact/chrome.ts
+  function onHeaderClick(e3) {
+    const t3 = e3.target;
+    if (!t3) return;
+    if (t3.closest(".bbgl-custom-icon") || t3.closest("#bbgl-demo-exit-btn") || t3.closest("#bbgl-pop-btn") || t3.closest("#bbgl-demo-exit")) return;
+    app.closePanel();
   }
-  function z2(n2) {
-    var t3 = r3, u4 = n2.__c;
-    "function" == typeof u4 && (n2.__c = void 0, u4()), r3 = t3;
+  function onPopoutClick(e3) {
+    e3.stopPropagation();
+    if (!dom.panel || dom.panel.classList.contains("bbgl-mode-page")) return;
+    const p3 = dom.panel;
+    const animate = userConfig.animations && !p3.classList.contains("bbgl-no-animations");
+    if (animate) app.markPanelResizing(p3);
+    viewState.expanded = !viewState.expanded;
+    if (viewState.expanded) {
+      p3.classList.add("bbgl-expanded");
+      p3.classList.remove("bbgl-compact");
+    } else {
+      p3.classList.remove("bbgl-expanded");
+      p3.classList.add("bbgl-compact");
+    }
+    saveViewState();
+    app.handleLayout();
+    app.renderPanelContent();
+    if (dom.topPanel && dom.topPanel.classList.contains("viewing-graph")) {
+      app.GraphController.draw();
+      setTimeout(app.GraphController.draw, 320);
+    }
+    if (dom.topPanel && dom.topPanel.classList.contains("viewing-achievements")) {
+      setTimeout(app.resizeAchLockedPage, 320);
+    }
   }
-  function B2(n2) {
-    var t3 = r3;
-    n2.__c = n2.__(), r3 = t3;
-  }
-  function C2(n2, t3) {
-    return !n2 || n2.length !== t3.length || t3.some(function(t4, r4) {
-      return t4 !== n2[r4];
+  function onCopySession(e3) {
+    e3.stopPropagation();
+    const cs = runtime.currentStats;
+    if (!cs) return;
+    const { sl, s: s3 } = cs;
+    const txt = app.buildSessionText(sl, s3, ["str", "def", "spd", "dex"]);
+    const cpb = dom.panel?.querySelector("#bbgl-copy-btn") || dom.copyBtn;
+    navigator.clipboard.writeText(txt).then(() => {
+      const cols = dom.ledgerView ? Array.from(dom.ledgerView.querySelectorAll(".stat-column")) : [];
+      if (cols.length) app.flashCopied(cols);
+      if (!cpb) return;
+      const oH = cpb.innerHTML, oC = cpb.style.color;
+      cpb.innerHTML = ICONS.CHECK;
+      cpb.style.color = "#69f0ae";
+      cpb.style.opacity = "1";
+      setTimeout(() => {
+        cpb.innerHTML = oH;
+        cpb.style.color = oC;
+        cpb.style.opacity = "";
+      }, 1e3);
     });
   }
-  function D2(n2, t3) {
-    return "function" == typeof t3 ? t3(n2) : t3;
+  function onDemoExit(e3) {
+    e3.stopPropagation();
+    localStorage.removeItem(KEYS.DEMO);
+    runtime.demoMode = false;
+    runtime.demoHistory = null;
+    runtime.stickerData = [];
+    setHistoryCache(null);
+    app.DataController.invalidate();
+    app.DBManager.loadHistory().then((loaded) => {
+      app.DataController.hydrate(loaded);
+      if (userConfig.apiKey) app.startBackgroundSync();
+    }).catch(() => {
+      if (userConfig.apiKey) app.startBackgroundSync();
+    }).finally(() => app.snapLevelBar());
+    calendarState.selectedData = null;
+    calendarState.selectedLabel = Formatter.dateLogical();
+    viewState.activeViewLabel = null;
+    const tip = window.TooltipController;
+    if (tip) tip.hide();
+    app.refreshInitLock();
+    app.refreshDemoMasks();
+    if (typeof runtime.realReturnView === "string") {
+      runtime.returnView = runtime.realReturnView;
+      runtime.realReturnView = null;
+    }
+    const pdeb = document.getElementById("bbgl-page-demo-exit");
+    if (pdeb) pdeb.style.display = "none";
+    const isInit = !!localStorage.getItem("bbgl_initialized");
+    if (isInit) app.switchView("settings");
+    else {
+      app.switchView("welcome", true);
+      app.openPrivacyModal();
+    }
+    saveConfig();
+  }
+
+  // src/ui/preact/views/Calendar.tsx
+  function buildCells(y3, m3) {
+    const f4 = new Date(y3, m3, 1);
+    let start = f4.getDay();
+    if (userConfig.weekStartMode === "mon") start = start === 0 ? 6 : start - 1;
+    const dim = new Date(y3, m3 + 1, 0).getDate();
+    const dipm = new Date(y3, m3, 0).getDate();
+    let pm = m3 - 1, py = y3;
+    if (pm < 0) {
+      pm = 11;
+      py--;
+    }
+    const cells = [];
+    for (let i3 = 0; i3 < start; i3++) cells.push({ y: py, m: pm, d: dipm - start + i3 + 1, g: true });
+    for (let d3 = 1; d3 <= dim; d3++) cells.push({ y: y3, m: m3, d: d3, g: false });
+    const rem = 7 - cells.length % 7;
+    if (rem < 7 && rem > 0) {
+      let nm = m3 + 1, ny = y3;
+      if (nm > 11) {
+        nm = 0;
+        ny++;
+      }
+      for (let i3 = 1; i3 <= rem; i3++) cells.push({ y: ny, m: nm, d: i3, g: true });
+    }
+    return cells;
+  }
+  function jewelUrls(tier) {
+    let tType = "green";
+    let url = `${app.CAL_IMG_BASE}}rwrd-grn.png`;
+    if (tier === 2) {
+      tType = "gold";
+      url = `${app.CAL_IMG_BASE}}rwrd-gold.png`;
+    } else if (tier === 3) {
+      tType = "diamond";
+      url = `${app.CAL_IMG_BASE}}rwrd-dmnd.png`;
+    }
+    return { type: tType, url };
+  }
+  function DayCell(props) {
+    const { z: z3, rIdx, cIdx, archived } = props;
+    const ds = Formatter.dateISO(z3.y, z3.m, z3.d);
+    const sl = app.DataController.getSlice("DAY", ds);
+    const cellRef = A2(null);
+    const [shineOn, setShineOn] = d2(false);
+    const isToday = ds === Formatter.dateLogical();
+    const isViewing = calendarState.selectedLabel === ds || !calendarState.selectedLabel && isToday;
+    const h3 = app.getActiveHistory();
+    const tl = app.DataController.getTimeline();
+    const firstDate = tl.length > 0 ? tl[0].date : h3 ? h3.today.date : null;
+    const isInteractive = !sl.meta.isGap || firstDate && ds >= firstDate && ds <= Formatter.dateLogical();
+    const sticker = archived && sl.meta.tier > 0 ? app.DataController.getStickerMap().get(ds) : null;
+    const featured = !!(sticker && app.DataController._cache.featuredDays && app.DataController._cache.featuredDays.has(ds) && !app.DataController.isStickerCleared(sticker.id));
+    function buildShine(el) {
+      if (!el) return;
+      if (archived && sticker) {
+        if (el.querySelector(".sticker-shine")) return;
+        const sw = el.querySelector(".sticker-wrapper");
+        if (!sw) return;
+        const ss = document.createElement("div");
+        ss.className = "sticker-shine";
+        ss.style.webkitMaskImage = `url("${sticker.url}")`;
+        ss.style.maskImage = `url("${sticker.url}")`;
+        let grad = `linear-gradient(115deg,rgba(0,200,150,0.55) 0%,rgba(0,255,180,0.65) 20%,rgba(0,255,255,0.7) 35%,rgba(255,255,240,0.75) 50%,rgba(255,0,255,0.85) 65%,rgba(0,150,255,0.9) 80%,rgba(0,200,150,0.85) 100%)`;
+        if (sl.meta.tier === 2) grad = `linear-gradient(115deg,rgba(184,134,11,0.7) 0%,rgba(212,175,55,0.85) 11%,rgba(255,255,240,1.0) 13%,rgba(212,175,55,0.8) 15%,rgba(0,255,255,0.7) 35%,rgba(255,0,255,0.85) 65%,rgba(0,150,255,0.9) 80%,rgba(184,134,11,0.85) 100%)`;
+        else if (sl.meta.tier === 3) grad = `linear-gradient(115deg,rgba(0,255,255,0.85) 0%,rgba(200,100,255,0.85) 5%,rgba(255,0,255,0.85) 10%,rgba(0,150,255,0.85) 15%,rgba(0,255,255,0.75) 35%,rgba(255,0,255,0.85) 65%,rgba(0,150,255,0.9) 80%,rgba(0,255,255,0.85) 85%,rgba(200,100,255,0.85) 90%,rgba(255,0,255,0.85) 95%,rgba(0,150,255,0.85) 100%)`;
+        ss.style.backgroundImage = grad;
+        ss.style.mixBlendMode = "overlay";
+        if (sl.meta.tier >= 2) ss.style.filter = "brightness(1.5)";
+        sw.appendChild(ss);
+        return;
+      }
+      if (!archived && sl.meta.tier > 0) {
+        const wrap = el.querySelector(".jewel-wrapper");
+        if (!wrap || wrap.querySelector(".jewel-shine")) return;
+        const { url } = jewelUrls(sl.meta.tier);
+        const img = wrap.querySelector(".jewel-asset");
+        const sh = document.createElement("div");
+        sh.className = "jewel-shine";
+        sh.style.maskImage = `url("${url}")`;
+        sh.style.webkitMaskImage = `url("${url}")`;
+        if (sl.meta.tier === 2) wrap.appendChild(sh);
+        else {
+          if (img) wrap.insertBefore(sh, img);
+          else wrap.appendChild(sh);
+          const so = document.createElement("div");
+          so.className = "jewel-shine-over";
+          so.style.setProperty("--jewel-mask", `url("${url}")`);
+          wrap.appendChild(so);
+        }
+      }
+    }
+    h2(() => {
+      const el = cellRef.current;
+      if (!el) return;
+      el._buildShine = () => buildShine(el);
+      if (isViewing || shineOn) buildShine(el);
+    });
+    const cls = [
+      "bbgl-day-cell",
+      archived ? "is-archived" : "",
+      z3.g ? "ghost-cell" : "",
+      !archived && sl.meta.tier > 0 ? "is-plate" : "",
+      isViewing ? "is-viewing" : "",
+      (isViewing || shineOn) && userConfig.animations ? "shimmer-active" : ""
+    ].filter(Boolean).join(" ");
+    const style = {};
+    if (archived && sl.meta.tier > 0) {
+      let url = `url(${app.CAL_IMG_BASE}}cal-grid-grn.jpg)`;
+      if (sl.meta.tier === 2) url = `url(${app.CAL_IMG_BASE}}cal-grid-gold.jpg)`;
+      else if (sl.meta.tier === 3) url = `url(${app.CAL_IMG_BASE}}cal-grid-dmnd.jpg)`;
+      style.backgroundImage = url;
+      style.backgroundSize = "700% 600%";
+      style.backgroundPosition = `${(cIdx * (100 / 6)).toFixed(4)}% ${(rIdx * (100 / 5)).toFixed(4)}%`;
+    }
+    const eventImgs = [];
+    if (archived) {
+      const wm = app.getWarMarkers()[ds];
+      if ((sl.lsdODs || 0) > 0) eventImgs.push(app.CAL_IMG_BASE + "lsd-od.png");
+      if ((sl.xanaxODs || 0) > 0) eventImgs.push(app.CAL_IMG_BASE + "xan-od.png");
+      if ((sl.exODs || 0) > 0) eventImgs.push("PLACEHOLDER_EX_OD_URL");
+      if (wm && wm.warStart) eventImgs.push(app.CAL_IMG_BASE + "war-strt.png");
+      if (wm && wm.warWon) eventImgs.push(app.CAL_IMG_BASE + "war-win.png");
+      if (wm && wm.warLost) eventImgs.push(app.CAL_IMG_BASE + "war-lost.png");
+    }
+    const uid = Math.floor(new Date(Date.UTC(z3.y, z3.m, z3.d)).getTime() / 864e5);
+    const tipHtml = isInteractive ? app.generateRichTooltip(sl) : void 0;
+    const tipPlain = isInteractive ? void 0 : TOOLTIPS.CELL_DATE(ds);
+    if (isInteractive && viewState.activeViewLabel === ds && calendarState.selectedLabel !== ds) {
+      runtime._pendingHistoryRestore = { sl, label: ds };
+    }
+    return /* @__PURE__ */ u2(
+      "div",
+      {
+        ref: cellRef,
+        id: isToday ? "active-date-today" : void 0,
+        class: cls,
+        "data-date": ds,
+        style,
+        "data-tooltip-html": tipHtml,
+        "data-tooltip": tipPlain,
+        onMouseEnter: () => {
+          if (userConfig.animations) {
+            setShineOn(true);
+            buildShine(cellRef.current);
+          }
+        },
+        onMouseLeave: () => {
+          if (!isViewing) setShineOn(false);
+        },
+        onClick: () => {
+          if (isToday) app.closeHistory();
+          else if (isInteractive) app.openHistory(sl, ds);
+        },
+        children: [
+          !archived && sl.meta.tier > 0 && (() => {
+            const j4 = jewelUrls(sl.meta.tier);
+            return /* @__PURE__ */ u2("div", { class: `jewel-wrapper jewel-type-${j4.type}`, children: /* @__PURE__ */ u2("img", { class: "jewel-asset", src: j4.url }) });
+          })(),
+          /* @__PURE__ */ u2("span", { class: "day-num", children: z3.d }),
+          eventImgs.map((url, i3) => /* @__PURE__ */ u2(
+            "div",
+            {
+              class: "bbgl-event-post-it" + (eventImgs.length > 1 && i3 === eventImgs.length - 1 ? " bbgl-event-post-it-top" : ""),
+              style: { backgroundImage: `url('${url}')`, ["--ei"]: i3, ["--stack-total"]: eventImgs.length }
+            },
+            url + i3
+          )),
+          sticker && /* @__PURE__ */ u2(
+            "div",
+            {
+              class: "sticker-wrapper" + (sl.meta.tier === 3 ? " sticker-tier-diamond" : ""),
+              style: { ["--rot"]: `${uid * 17 % 21 - 10}deg` },
+              children: /* @__PURE__ */ u2("img", { src: sticker.url, class: "cell-sticker-deco" })
+            }
+          ),
+          featured && sticker && /* @__PURE__ */ u2(
+            "div",
+            {
+              class: "new-sticker-post-it",
+              onClick: (e3) => {
+                e3.stopPropagation();
+                const cell = cellRef.current;
+                const pi = e3.currentTarget;
+                if (cell) {
+                  cell.style.setProperty("overflow", "visible", "important");
+                  cell.style.setProperty("z-index", "100", "important");
+                }
+                pi.classList.add("post-it-rip");
+                app.DataController.markStickerCleared(sticker.id);
+                setTimeout(() => {
+                  if (pi.parentNode) pi.remove();
+                  if (cell) {
+                    cell.style.removeProperty("overflow");
+                    cell.style.removeProperty("z-index");
+                    cell.click();
+                  }
+                }, 600);
+              }
+            }
+          )
+        ]
+      }
+    );
+  }
+  function WeeklyBar(props) {
+    const sl = app.DataController.getSlice("CUSTOM", props.batch.map((w3) => w3.data).filter(Boolean));
+    sl.label = `Week ${getISOWeek(props.batch[0].date)}`;
+    sl._weekStart = props.batch[0].date;
+    sl._weekEnd = props.batch[props.batch.length - 1].date;
+    if (!sl._dailyList || sl._dailyList.length === 0) return null;
+    const { hjDaySet } = app.DataController.getHappyJumpData();
+    const _wk = getWeekKey(sl._dailyList[0].date);
+    const installWeekKey = runtime.demoMode ? null : app.getInstallWeekKey();
+    const viewing = calendarState.selectedLabel === sl.label;
+    if (viewState.activeViewLabel === sl.label && calendarState.selectedLabel !== sl.label) {
+      runtime._pendingHistoryRestore = { sl, label: sl.label };
+    }
+    const preInstall = !!(installWeekKey && _wk < installWeekKey);
+    const { capsules, isCompleted } = preInstall ? { capsules: ["silver", "silver", "silver", "silver", "silver"], isCompleted: false } : computeWeekCompletion(sl._dailyList, hjDaySet);
+    const barHtml = app.buildCapsuleBar(capsules, preInstall ? false : isCompleted, !preInstall && isCompleted && userConfig.animations);
+    const tip = app.generateRichTooltip(sl);
+    return /* @__PURE__ */ u2("div", { class: "bbgl-weekly-anchor", children: [
+      /* @__PURE__ */ u2(
+        "div",
+        {
+          class: "bbgl-weekly-track" + (isCompleted && !preInstall ? " track-polished" : "") + (viewing ? " is-viewing" : ""),
+          "data-label": sl.label,
+          "data-tooltip-html": tip,
+          "data-tooltip-anchor": ".bbgl-bar-handle",
+          onClick: (e3) => {
+            e3.stopPropagation();
+            app.openHistory(sl, sl.label);
+          },
+          dangerouslySetInnerHTML: { __html: barHtml }
+        }
+      ),
+      /* @__PURE__ */ u2(
+        "div",
+        {
+          class: "bbgl-bar-handle",
+          "data-pos": "start",
+          "data-tooltip-html": tip,
+          "data-tooltip-anchor": ".bbgl-bar-handle",
+          onClick: (e3) => {
+            e3.stopPropagation();
+            app.openHistory(sl, sl.label);
+          },
+          onMouseEnter: (e3) => e3.currentTarget.parentElement?.querySelector(".bbgl-weekly-track")?.classList.add("is-scrub-hovered"),
+          onMouseLeave: (e3) => e3.currentTarget.parentElement?.querySelector(".bbgl-weekly-track")?.classList.remove("is-scrub-hovered"),
+          children: /* @__PURE__ */ u2(Raw, { html: app.buildChartSVG(sl) })
+        }
+      )
+    ] });
+  }
+  function MonthHeader() {
+    useUiTick();
+    const [open, setOpen] = d2(null);
+    const monthDrop = A2(null);
+    const yearDrop = A2(null);
+    const monthTrig = A2(null);
+    const yearTrig = A2(null);
+    const y3 = calendarState.year;
+    const m3 = calendarState.month;
+    const monthSlice = app.DataController.getSlice("MONTH", CONSTANTS.MONTHS[m3], y3);
+    const yearSlice = app.DataController.getSlice("YEAR", String(y3));
+    const allSlice = app.DataController.getSlice("ALL", "All-Time");
+    const activeL = viewState.activeViewLabel;
+    h2(() => {
+      if (!open) return;
+      const d3 = open === "month" ? monthDrop.current : yearDrop.current;
+      const t3 = open === "month" ? monthTrig.current : yearTrig.current;
+      if (d3 && t3 && typeof app.openDropdown === "function") app.openDropdown(d3, t3);
+      const onDoc = (e3) => {
+        const target = e3.target;
+        if (d3 && d3.contains(target)) return;
+        if (t3 && t3.contains(target)) return;
+        setOpen(null);
+      };
+      document.addEventListener("click", onDoc);
+      return () => document.removeEventListener("click", onDoc);
+    }, [open]);
+    const years = (() => {
+      const s3 = app.getActiveHistory();
+      const ys = /* @__PURE__ */ new Set();
+      (s3.history || []).forEach((z3) => ys.add(parseInt(z3.date.split("-")[0], 10)));
+      if (s3.today && s3.today.date) ys.add(parseInt(s3.today.date.split("-")[0], 10));
+      return Array.from(ys).sort((a3, b2) => b2 - a3);
+    })();
+    return /* @__PURE__ */ u2("div", { class: "bbgl-header-wrapper", children: /* @__PURE__ */ u2("div", { class: "bbgl-month-header", children: [
+      /* @__PURE__ */ u2("div", { class: "title-group", children: /* @__PURE__ */ u2("div", { class: "title-stack", children: [
+        /* @__PURE__ */ u2("div", { class: "header-row header-row--alltime", children: [
+          /* @__PURE__ */ u2(
+            "div",
+            {
+              class: "stats-btn" + (activeL === "All-Time" ? " active" : ""),
+              id: "all-time-btn",
+              "data-tooltip-html": app.generateRichTooltip(allSlice),
+              onClick: (e3) => {
+                e3.stopPropagation();
+                app.calcAllTimeStats();
+              },
+              children: /* @__PURE__ */ u2(Raw, { html: app.buildChartSVG(allSlice) })
+            }
+          ),
+          /* @__PURE__ */ u2("div", { class: "header-trigger", id: "all-time-trigger", children: "\u221E" })
+        ] }),
+        /* @__PURE__ */ u2("div", { class: "header-row header-row--year", children: [
+          /* @__PURE__ */ u2(
+            "div",
+            {
+              class: "stats-btn" + (activeL === String(y3) ? " active" : ""),
+              id: "year-stats-btn",
+              "data-tooltip-html": app.generateRichTooltip(yearSlice),
+              onClick: (e3) => {
+                e3.stopPropagation();
+                app.calcPeriodStats("year");
+              },
+              children: /* @__PURE__ */ u2(Raw, { html: app.buildChartSVG(yearSlice) })
+            }
+          ),
+          /* @__PURE__ */ u2(
+            "div",
+            {
+              ref: yearTrig,
+              class: "header-trigger",
+              id: "year-trigger",
+              onClick: (e3) => {
+                e3.stopPropagation();
+                setOpen(open === "year" ? null : "year");
+              },
+              children: y3
+            }
+          ),
+          /* @__PURE__ */ u2("div", { ref: yearDrop, id: "bbgl-year-dropdown", class: "bbgl-dropdown-menu" + (open === "year" ? " show" : ""), children: years.map((yr) => /* @__PURE__ */ u2(
+            "div",
+            {
+              class: "drop-item" + (yr === y3 ? " active" : ""),
+              onClick: () => {
+                calendarState.year = yr;
+                setOpen(null);
+                app.renderPanelContent();
+              },
+              children: yr
+            },
+            yr
+          )) })
+        ] }),
+        /* @__PURE__ */ u2("div", { class: "header-row header-row--month", children: [
+          /* @__PURE__ */ u2(
+            "div",
+            {
+              class: "stats-btn" + (activeL === CONSTANTS.MONTHS[m3] ? " active" : ""),
+              id: "month-stats-btn",
+              "data-tooltip-html": app.generateRichTooltip(monthSlice),
+              onClick: (e3) => {
+                e3.stopPropagation();
+                app.calcPeriodStats("month");
+              },
+              children: /* @__PURE__ */ u2(Raw, { html: app.buildChartSVG(monthSlice) })
+            }
+          ),
+          /* @__PURE__ */ u2(
+            "div",
+            {
+              ref: monthTrig,
+              class: "header-trigger",
+              id: "month-trigger",
+              onClick: (e3) => {
+                e3.stopPropagation();
+                setOpen(open === "month" ? null : "month");
+              },
+              children: CONSTANTS.MONTHS[m3]
+            }
+          ),
+          /* @__PURE__ */ u2("div", { ref: monthDrop, id: "bbgl-month-dropdown", class: "bbgl-dropdown-menu" + (open === "month" ? " show" : ""), children: CONSTANTS.MONTHS_SHORT.map((label, i3) => /* @__PURE__ */ u2(
+            "div",
+            {
+              class: "drop-item" + (i3 === m3 ? " active" : ""),
+              onClick: () => {
+                calendarState.month = i3;
+                setOpen(null);
+                app.renderPanelContent();
+              },
+              children: label
+            },
+            label
+          )) })
+        ] })
+      ] }) }),
+      /* @__PURE__ */ u2("button", { type: "button", class: "arrow-btn", id: "prev-month-btn", onClick: () => app.changeMonth(-1), children: "\u276E" }),
+      /* @__PURE__ */ u2("button", { type: "button", class: "arrow-btn", id: "next-month-btn", onClick: () => app.changeMonth(1), children: "\u276F" })
+    ] }) });
+  }
+  function CalendarGrid() {
+    useUiTick();
+    const y3 = calendarState.year;
+    const m3 = calendarState.month;
+    const cells = buildCells(y3, m3);
+    calendarState.visibleCells = cells.map((z3) => Formatter.dateISO(z3.y, z3.m, z3.d));
+    const todayStr = Formatter.dateLogical();
+    const rows = [];
+    for (let i3 = 0; i3 < cells.length; i3 += 7) rows.push(cells.slice(i3, i3 + 7));
+    h2(() => {
+      const c3 = document.getElementById("bbgl-cal-container");
+      if (!c3) return;
+      c3.style.setProperty("--total-rows", "6");
+      c3.style.setProperty("--bg-url", `url(${app.CAL_IMG_BASE}cal-grid-futr.jpg)`);
+    }, [y3, m3]);
+    return /* @__PURE__ */ u2(
+      "div",
+      {
+        id: "bbgl-cal-container",
+        class: "bbgl-cal-container",
+        style: { ["--total-rows"]: 6, ["--bg-url"]: `url(${app.CAL_IMG_BASE}cal-grid-futr.jpg)` },
+        children: rows.map((batch, ridx) => {
+          const last = batch[6];
+          const weekEndStr = Formatter.dateISO(last.y, last.m, last.d);
+          const isArch = weekEndStr < todayStr;
+          const wdb = batch.map((i3) => ({ date: Formatter.dateISO(i3.y, i3.m, i3.d), data: app.DataController.getDateMap()[Formatter.dateISO(i3.y, i3.m, i3.d)] || null }));
+          return /* @__PURE__ */ u2("div", { children: [
+            /* @__PURE__ */ u2(
+              "div",
+              {
+                class: "bbgl-row-slice" + (isArch ? " bbgl-row-archived" : ""),
+                style: {
+                  ["--row-idx"]: ridx,
+                  ...isArch ? { ["--bg-url"]: `url(${app.CAL_IMG_BASE}cal-grid-past.jpg)` } : {}
+                },
+                children: batch.map((z3, cIdx) => /* @__PURE__ */ u2(DayCell, { z: z3, rIdx: ridx, cIdx, archived: isArch }, Formatter.dateISO(z3.y, z3.m, z3.d)))
+              }
+            ),
+            /* @__PURE__ */ u2(WeeklyBar, { batch: wdb })
+          ] }, ridx);
+        })
+      }
+    );
+  }
+  function WeekRow() {
+    useUiTick();
+    const weekDays = userConfig.weekStartMode === "mon" ? ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"] : ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+    return /* @__PURE__ */ u2("div", { class: "bbgl-week-row", children: weekDays.map((d3) => /* @__PURE__ */ u2("span", { children: d3 }, d3)) });
+  }
+  function CalendarSwipe(props) {
+    const start = A2({ x: 0, y: 0 });
+    return /* @__PURE__ */ u2(
+      "div",
+      {
+        class: "calendar-wrapper",
+        id: "swipe-area",
+        onTouchStart: (e3) => {
+          start.current = { x: e3.touches[0].clientX, y: e3.touches[0].clientY };
+        },
+        onTouchEnd: (e3) => {
+          if (window._bbglScrubbing) return;
+          const dx = e3.changedTouches[0].clientX - start.current.x;
+          const dy = e3.changedTouches[0].clientY - start.current.y;
+          if (Math.abs(dx) > 50 && Math.abs(dx) > Math.abs(dy) * 1.5) app.changeMonth(dx < 0 ? 1 : -1);
+        },
+        children: props.children
+      }
+    );
   }
 
   // node_modules/preact/compat/dist/compat.module.js
@@ -11954,118 +11706,1056 @@ Please enter a new key to continue.`);
   }
   var Island = N2(IslandInner, () => true);
 
-  // src/ui/preact/store.ts
-  var listeners = /* @__PURE__ */ new Set();
-  function notifyUi() {
-    listeners.forEach((fn2) => fn2());
-  }
-  function subscribeUi(fn2) {
-    listeners.add(fn2);
-    return () => {
-      listeners.delete(fn2);
-    };
-  }
-  function useUiTick() {
-    const [tick, setTick] = d2(0);
-    h2(() => subscribeUi(() => setTick((n2) => n2 + 1)), []);
-    return tick;
-  }
-  setUiNotifier(notifyUi);
-  app.notifyUi = notifyUi;
-
-  // src/ui/preact/chrome.ts
-  function onHeaderClick(e3) {
-    const t3 = e3.target;
-    if (!t3) return;
-    if (t3.closest(".bbgl-custom-icon") || t3.closest("#bbgl-demo-exit-btn") || t3.closest("#bbgl-pop-btn") || t3.closest("#bbgl-demo-exit")) return;
-    app.closePanel();
-  }
-  function onPopoutClick(e3) {
-    e3.stopPropagation();
-    if (!dom.panel || dom.panel.classList.contains("bbgl-mode-page")) return;
-    const p3 = dom.panel;
-    const animate = userConfig.animations && !p3.classList.contains("bbgl-no-animations");
-    if (animate) app.markPanelResizing(p3);
-    viewState.expanded = !viewState.expanded;
-    if (viewState.expanded) {
-      p3.classList.add("bbgl-expanded");
-      p3.classList.remove("bbgl-compact");
-    } else {
-      p3.classList.remove("bbgl-expanded");
-      p3.classList.add("bbgl-compact");
-    }
+  // src/ui/preact/views/Graph.tsx
+  function onMode(v3) {
+    graphState.mode = v3;
+    viewState.graphMode = v3;
     saveViewState();
-    app.handleLayout();
-    app.renderPanelContent();
-    if (dom.topPanel && dom.topPanel.classList.contains("viewing-graph")) {
-      app.GraphController.draw();
-      setTimeout(app.GraphController.draw, 320);
-    }
-    if (dom.topPanel && dom.topPanel.classList.contains("viewing-achievements")) {
-      setTimeout(app.resizeAchLockedPage, 320);
-    }
+    app.GraphController.draw();
   }
-  function onCopySession(e3) {
-    e3.stopPropagation();
-    const cs = runtime.currentStats;
-    if (!cs) return;
-    const { sl, s: s3 } = cs;
-    const txt = app.buildSessionText(sl, s3, ["str", "def", "spd", "dex"]);
-    const cpb = dom.panel?.querySelector("#bbgl-copy-btn") || dom.copyBtn;
-    navigator.clipboard.writeText(txt).then(() => {
-      const cols = dom.ledgerView ? Array.from(dom.ledgerView.querySelectorAll(".stat-column")) : [];
-      if (cols.length) app.flashCopied(cols);
-      if (!cpb) return;
-      const oH = cpb.innerHTML, oC = cpb.style.color;
-      cpb.innerHTML = ICONS.CHECK;
-      cpb.style.color = "#69f0ae";
-      cpb.style.opacity = "1";
-      setTimeout(() => {
-        cpb.innerHTML = oH;
-        cpb.style.color = oC;
-        cpb.style.opacity = "";
-      }, 1e3);
+  function onStat(v3) {
+    if (graphState.activeStats.includes(v3)) {
+      graphState.activeStats = graphState.activeStats.filter((s3) => s3 !== v3);
+    } else {
+      graphState.activeStats.push(v3);
+    }
+    viewState.graphStats = graphState.activeStats;
+    saveViewState();
+    app.GraphController.draw();
+  }
+  function GraphHud() {
+    useUiTick();
+    const mode = graphState.mode;
+    const stats = graphState.activeStats || [];
+    return /* @__PURE__ */ u2("div", { class: "g-hud", children: [
+      /* @__PURE__ */ u2("div", { class: "g-toggles", children: [
+        /* @__PURE__ */ u2("div", { class: "g-pill" + (mode === "values" ? " active" : ""), "data-type": "mode", "data-val": "values", onClick: (e3) => {
+          e3.stopPropagation();
+          onMode("values");
+        }, children: "Gains" }),
+        /* @__PURE__ */ u2("div", { class: "g-pill" + (mode === "rates" ? " active" : ""), "data-type": "mode", "data-val": "rates", onClick: (e3) => {
+          e3.stopPropagation();
+          onMode("rates");
+        }, children: "Rates" })
+      ] }),
+      /* @__PURE__ */ u2("div", { class: "g-toggles", children: [
+        /* @__PURE__ */ u2("div", { class: "g-pill p-str" + (stats.includes("str") ? " active" : ""), "data-type": "stat", "data-val": "str", onClick: (e3) => {
+          e3.stopPropagation();
+          onStat("str");
+        }, children: "STR" }),
+        /* @__PURE__ */ u2("div", { class: "g-pill p-def" + (stats.includes("def") ? " active" : ""), "data-type": "stat", "data-val": "def", onClick: (e3) => {
+          e3.stopPropagation();
+          onStat("def");
+        }, children: "DEF" }),
+        /* @__PURE__ */ u2("div", { class: "g-pill p-spd" + (stats.includes("spd") ? " active" : ""), "data-type": "stat", "data-val": "spd", onClick: (e3) => {
+          e3.stopPropagation();
+          onStat("spd");
+        }, children: "SPD" }),
+        /* @__PURE__ */ u2("div", { class: "g-pill p-dex" + (stats.includes("dex") ? " active" : ""), "data-type": "stat", "data-val": "dex", onClick: (e3) => {
+          e3.stopPropagation();
+          onStat("dex");
+        }, children: "DEX" }),
+        /* @__PURE__ */ u2("div", { class: "g-pill p-tot" + (stats.includes("total") ? " active" : ""), "data-type": "stat", "data-val": "total", onClick: (e3) => {
+          e3.stopPropagation();
+          onStat("total");
+        }, children: "TOT" })
+      ] })
+    ] });
+  }
+  function GraphView() {
+    useUiTick();
+    h2(() => {
+      dom.graphContainer = document.getElementById("bbgl-graph-container");
+      if (app.GraphController && typeof app.GraphController.setupControls === "function") {
+        app.GraphController.setupControls();
+      }
+    }, []);
+    h2(() => {
+      dom.graphContainer = document.getElementById("bbgl-graph-container");
+      dom.graphSvg = document.getElementById("bbgl-graph-svg");
+      if (viewState.subView === "graph" && app.GraphController) {
+        app.GraphController.draw();
+      }
+    });
+    return /* @__PURE__ */ u2("div", { id: "bbgl-graph-container", children: [
+      /* @__PURE__ */ u2(GraphHud, {}),
+      /* @__PURE__ */ u2(Island, { children: /* @__PURE__ */ u2("svg", { id: "bbgl-graph-svg" }) })
+    ] });
+  }
+
+  // src/ui/preact/views/Ledger.tsx
+  var LABELS = {
+    STR: "Strength",
+    DEF: "Defense",
+    SPD: "Speed",
+    DEX: "Dexterity",
+    TOT: "Total"
+  };
+  function fmtR(n2) {
+    if (!n2 && n2 !== 0) return "0";
+    const a3 = Math.abs(n2);
+    if (a3 >= 1e15) return (n2 / 1e15).toFixed(4) + "q";
+    if (a3 >= 1e12) return (n2 / 1e12).toFixed(4) + "t";
+    if (a3 >= 1e9) return (n2 / 1e9).toFixed(4) + "b";
+    if (a3 >= 100) return Math.round(n2).toLocaleString("en-US");
+    return n2.toFixed(1);
+  }
+  function mkTip(r1, r22, pct, sg) {
+    return `<div style='text-align:center;line-height:1.6'><div style='margin-bottom:0px'>Growth Rate</div><div style='font-size:0.85em;opacity:0.35;margin-bottom:3px'>(Gains/150E)</div><div>${fmtR(r1)} \u2192 ${fmtR(r22)}</div><div style='font-size:0.85em;color:#aaa'>${sg}${Math.round(pct)}%</div></div>`;
+  }
+  function nameOf(c3) {
+    if (c3 === 2290) return "Xanax";
+    if (c3 === 2230) return "LSD";
+    if (c3 === 2040) return "Cans";
+    if (c3 === 2190) return "FHC";
+    if (c3 === 8981) return "Eggs";
+    return ITEM_LOG_META[c3] && ITEM_LOG_META[c3].short || `#${c3}`;
+  }
+  function shortOf(code) {
+    return ITEM_LOG_META[code] && ITEM_LOG_META[code].short || `#${code}`;
+  }
+  function ItemCounters(props) {
+    const sl = props.sl;
+    const items = sl.items || {};
+    const isDay = sl.resolution === "DAY";
+    const isAll = sl.resolution === "ALL";
+    const cnt = (code) => items[code] || 0;
+    const drugCode = userConfig.drugTracker === "lsd" ? 2230 : XANAX_LOG;
+    const secondaryCode = userConfig.drugTracker === "lsd" ? XANAX_LOG : 2230;
+    let drugSub = "";
+    if (!isDay) {
+      const days = app.DataController.periodCalendarDays(sl);
+      const drugAvg = days > 0 ? cnt(drugCode) / days : 0;
+      drugSub = sl.resolution === "ALL" ? "" : `<span class="bbgl-ic-sub">(${drugAvg.toFixed(2)})</span>`;
+    }
+    const drugTip = `<div style="text-align:center">${nameOf(drugCode)} Taken` + (!isDay && !isAll ? `<br><span class="tt-sub">(Avg/Day)</span>` : ``) + `</div>`;
+    const parts = [];
+    parts.push(`<span class="bbgl-ic" data-tooltip-html='${drugTip}'>${shortOf(drugCode)}: ${cnt(drugCode)}${drugSub}</span>`);
+    [ECAN_LOG, 2190, secondaryCode, 8981].forEach((code) => {
+      const c3 = cnt(code);
+      if (c3 <= 0) return;
+      const sub = code === ECAN_LOG && sl.resolution !== "ALL" ? `<span class="bbgl-ic-sub">(+${Math.round(sl.ecanEnergy || 0)})</span>` : "";
+      const dynTip = code === ECAN_LOG ? `<div style="text-align:center">Cans Used` + (!isAll ? `<br><span class="tt-sub">(Energy Gained)</span>` : ``) + `</div>` : `<div style="text-align:center">${nameOf(code)} Used</div>`;
+      parts.push(`<span class="bbgl-ic bbgl-ic-dyn" data-tooltip-html='${dynTip}'>${shortOf(code)}: ${c3}${sub}</span>`);
+    });
+    const refills = cnt(4900);
+    const refillVal = isDay ? refills > 0 ? `<span class="bbgl-ic-yes">\u2713</span>` : `<span class="bbgl-ic-no">\u2717</span>` : `${refills}`;
+    parts.push(`<span class="bbgl-ic" data-tooltip-html='<div style="text-align:center">Refills Used</div>'>Refill: ${refillVal}</span>`);
+    return /* @__PURE__ */ u2("div", { id: "bbgl-item-counters", dangerouslySetInnerHTML: { __html: parts.join("") } });
+  }
+  function DateLabel(props) {
+    const sl = props.sl;
+    const isExp = !!(dom.panel && (dom.panel.classList.contains("bbgl-expanded") || dom.panel.classList.contains("bbgl-mode-page")));
+    let l3 = "";
+    if (sl.resolution === "WEEK") {
+      const start = sl._weekStart || (sl._dailyList && sl._dailyList.length > 0 ? sl._dailyList[0].date : null) || sl.date;
+      const end = sl._weekEnd || (sl._dailyList && sl._dailyList.length > 0 ? sl._dailyList[sl._dailyList.length - 1].date : null) || sl.date;
+      l3 = `Week of ${Formatter.dateMonthDay(start)}<span class="view-exp"> - ${Formatter.dateMonthDay(end)}</span>`;
+    } else {
+      l3 = isExp ? Formatter.dateFull(sl.label) : Formatter.datePretty(sl.label);
+      if (!l3) l3 = sl.label;
+      if (sl.resolution === "MONTH") {
+        l3 = sl.label + " " + calendarState.year;
+      } else if (sl.resolution !== "DAY" && sl._dailyList && sl._dailyList.length > 0 && sl.resolution !== "ALL") {
+        const endLabel = Formatter.dateMonthDay(sl._dailyList[sl._dailyList.length - 1].date);
+        l3 += `<span class="view-exp"> (${Formatter.dateMonthDay(sl._dailyList[0].date)} - ${endLabel})</span>`;
+      }
+    }
+    return /* @__PURE__ */ u2("div", { class: "ui-floating-label", id: "bbgl-date-label", dangerouslySetInnerHTML: { __html: l3 } });
+  }
+  function StatColumn(props) {
+    const { lc, k: k3, cl, sl, s: s3, isP, isCurrentPeriod } = props;
+    const d3 = s3[k3];
+    const ft = LABELS[lc] || lc;
+    let rh = "";
+    let rt = "";
+    if (isP && k3 !== "total") {
+      let th = `<span style="opacity:0.3">--</span>`;
+      if (userConfig.ratesEnabled && sl._dailyList && sl._dailyList.length > 0) {
+        const _fpd = /* @__PURE__ */ new Date(sl._dailyList[0].date + "T00:00:00Z");
+        _fpd.setUTCDate(_fpd.getUTCDate() - 1);
+        const r1 = app.DataController.getHistoricalRate(_fpd.toISOString().slice(0, 10), k3);
+        const r22 = app.DataController._hydrate(sl._dailyList[sl._dailyList.length - 1], [], "", "DAY").stats[k3].rate;
+        const del = r22 - r1;
+        const sg = del >= 0 ? "+" : "";
+        const pct = r1 > 0 ? (r22 - r1) / r1 * 100 : 0;
+        th = `<div class="rates-group" style="display:flex;flex-direction:column;align-items:center;line-height:1.1"><span>${sg}${Formatter.achAbbr(del, ACH_FMT.compact)}</span><span class="view-exp rate-pct" style="font-size:0.8em;opacity:0.7;margin-top:2px;margin-bottom:-2px;">(${sg}${Formatter.ratePct(pct)}%)</span></div>`;
+        rt = mkTip(r1, r22, pct, sg);
+      }
+      rh = userConfig.ratesEnabled ? th : "";
+    } else if (userConfig.ratesEnabled && k3 !== "total") {
+      const _pd = /* @__PURE__ */ new Date(sl.date + "T00:00:00Z");
+      _pd.setUTCDate(_pd.getUTCDate() - 1);
+      const r1 = app.DataController.getHistoricalRate(_pd.toISOString().slice(0, 10), k3);
+      const r22 = d3.rate;
+      const del = r22 - r1;
+      const sg = del >= 0 ? "+" : "";
+      const pct = r1 > 0 ? del / r1 * 100 : 0;
+      rh = Formatter.dual(d3.rate, true);
+      rt = mkTip(r1, r22, pct, sg);
+    } else {
+      rh = userConfig.ratesEnabled ? Formatter.dual(d3.rate, true) : "";
+      rt = "Growth Rate (Gains / 150E)";
+    }
+    function onCopy(e3) {
+      const col = e3.currentTarget.closest(".stat-column");
+      if (!col || !s3[k3]) return;
+      const txt = app.buildSessionText(sl, s3, [k3]);
+      navigator.clipboard.writeText(txt).then(() => app.flashCopied(col));
+    }
+    return /* @__PURE__ */ u2("div", { class: "stat-column", "data-copy-stat": k3, children: [
+      /* @__PURE__ */ u2("div", { class: "col-header cell-stack", children: [
+        /* @__PURE__ */ u2("div", { class: `l-top c-label ${cl} bbgl-copy-label`, "data-tooltip": `Click to copy ${ft} data`, style: { cursor: "pointer" }, onClick: onCopy, children: [
+          /* @__PURE__ */ u2("span", { class: "view-std", children: lc }),
+          /* @__PURE__ */ u2("span", { class: "view-exp", children: ft })
+        ] }),
+        /* @__PURE__ */ u2("div", { class: "l-bot", "data-tooltip": isP ? `Energy Used on ${ft}` : "Energy Used", children: [
+          Formatter.dual(d3.cost),
+          " E"
+        ] })
+      ] }),
+      /* @__PURE__ */ u2("div", { class: "bbgl-spacer" }),
+      /* @__PURE__ */ u2("div", { class: "col-data-block cell-stack c-gain", children: [
+        /* @__PURE__ */ u2("div", { class: "l-top", "data-tooltip": `${ft} Gained`, children: [
+          "+",
+          Formatter.dual(d3.gain)
+        ] }),
+        /* @__PURE__ */ u2("div", { class: "l-bot", "data-tooltip": rt, children: typeof rh === "string" && rh.includes("<") ? /* @__PURE__ */ u2(Raw, { html: rh }) : rh })
+      ] }),
+      /* @__PURE__ */ u2("div", { class: "bbgl-spacer" }),
+      /* @__PURE__ */ u2("div", { class: "col-data-block cell-stack c-total", children: [
+        /* @__PURE__ */ u2("div", { class: "l-top", "data-tooltip": `${isCurrentPeriod ? "Current" : "Ending"} ${ft}`, children: Formatter.dual(d3.end) }),
+        /* @__PURE__ */ u2("div", { class: "l-bot", "data-tooltip": `Starting ${ft}`, children: Formatter.dual(d3.start) })
+      ] })
+    ] });
+  }
+  function LedgerChrome() {
+    useUiTick();
+    const current = runtime.currentStats;
+    let sl = current && current.sl;
+    if (!sl) {
+      sl = calendarState.selectedData || (typeof app.getActiveHistory === "function" ? app.getActiveHistory().today : null);
+    }
+    if (sl && !sl.stats && typeof app.DataController?._hydrate === "function") {
+      sl = app.DataController._hydrate(sl, [], sl.label || calendarState.selectedLabel, "DAY");
+    }
+    if (!sl || !sl.stats) {
+      return /* @__PURE__ */ u2(S, { children: [
+        /* @__PURE__ */ u2("div", { id: "bbgl-item-counters" }),
+        /* @__PURE__ */ u2("div", { class: "ui-floating-label", id: "bbgl-date-label", children: "LOADING..." }),
+        /* @__PURE__ */ u2("div", { class: "ui-floating-summary", id: "bbgl-summary-label" }),
+        /* @__PURE__ */ u2("div", { id: "bbgl-ledger-view", class: "ledger-content" })
+      ] });
+    }
+    const s3 = sl.stats;
+    runtime.currentStats = { sl, s: s3 };
+    const isP = sl.resolution !== "DAY";
+    const todayStr = Formatter.dateLogical();
+    const slLastDate = sl._dailyList && sl._dailyList.length > 0 ? sl._dailyList[sl._dailyList.length - 1].date : sl.date;
+    const isCurrentPeriod = sl.resolution === "ALL" || slLastDate >= todayStr;
+    return /* @__PURE__ */ u2(S, { children: [
+      /* @__PURE__ */ u2(ItemCounters, { sl }),
+      /* @__PURE__ */ u2(DateLabel, { sl }),
+      /* @__PURE__ */ u2("div", { class: "ui-floating-summary", id: "bbgl-summary-label", children: [
+        "Total E: ",
+        Formatter.dual(s3.total.cost),
+        " ",
+        /* @__PURE__ */ u2("span", { style: { opacity: 0.3, margin: "0 6px" }, children: "|" }),
+        " Total Gains: ",
+        Formatter.dual(s3.total.gain)
+      ] }),
+      /* @__PURE__ */ u2("div", { id: "bbgl-ledger-view", class: "ledger-content", children: [
+        /* @__PURE__ */ u2(StatColumn, { lc: "STR", k: "str", cl: "t-str", sl, s: s3, isP, isCurrentPeriod }),
+        /* @__PURE__ */ u2(StatColumn, { lc: "DEF", k: "def", cl: "t-def", sl, s: s3, isP, isCurrentPeriod }),
+        /* @__PURE__ */ u2(StatColumn, { lc: "SPD", k: "spd", cl: "t-spd", sl, s: s3, isP, isCurrentPeriod }),
+        /* @__PURE__ */ u2(StatColumn, { lc: "DEX", k: "dex", cl: "t-dex", sl, s: s3, isP, isCurrentPeriod })
+      ] })
+    ] });
+  }
+
+  // src/ui/preact/views/Achievements.tsx
+  var STATS = ["str", "def", "spd", "dex"];
+  var STAT_LABEL = { str: "Strength", def: "Defense", spd: "Speed", dex: "Dexterity" };
+  var COPY_TIP = "Click any stat or row to copy its data, or click this title to copy the entire section to your clipboard.";
+  function ensureAchievements() {
+    if (!runtime._achCache && typeof app.computeAchievements === "function") {
+      runtime._achCache = app.computeAchievements(app.getActiveHistory());
+      runtime._achPage = viewState.achPage || 0;
+    }
+    return runtime._achCache;
+  }
+  function NullVal() {
+    return /* @__PURE__ */ u2("span", { class: "ach-null", children: "\u2014" });
+  }
+  function AchRow(r4) {
+    const isFx = !!(r4.statClass && r4.statClass.startsWith("ach-fx-"));
+    const valCls = isFx && r4.statClass ? " " + r4.statClass : "";
+    const subCls = !isFx && r4.statClass ? " " + r4.statClass : "";
+    const val = r4.dualHtml ? /* @__PURE__ */ u2(Raw, { html: r4.dualHtml }) : r4.display === "\u2014" || r4.display === "\u2014" ? /* @__PURE__ */ u2(NullVal, {}) : r4.display;
+    return /* @__PURE__ */ u2(
+      "div",
+      {
+        class: "bbgl-ach-row",
+        "data-tooltip": r4.tip || void 0,
+        "data-ach-key": r4.key || "",
+        "data-clip": `${r4.label}: ${r4.rawVal}`,
+        "data-clip-date": r4.clipDate || "",
+        children: /* @__PURE__ */ u2("div", { class: "ach-row-main", children: [
+          /* @__PURE__ */ u2("div", { class: "ach-k-stack", children: [
+            /* @__PURE__ */ u2("span", { class: "ach-k", children: [
+              r4.label,
+              ":"
+            ] }),
+            r4.clipDate ? /* @__PURE__ */ u2("div", { class: "ach-date", children: r4.clipDate }) : null
+          ] }),
+          /* @__PURE__ */ u2("div", { class: "ach-v-wrap", children: [
+            r4.sub ? /* @__PURE__ */ u2("span", { class: "ach-sub" + subCls, children: r4.sub }) : null,
+            /* @__PURE__ */ u2("span", { class: "ach-value" + valCls, children: val })
+          ] })
+        ] })
+      }
+    );
+  }
+  function splitCols(rows, colCount) {
+    const rpc = rows.length ? Math.ceil(rows.length / colCount) : 0;
+    return Array.from({ length: colCount }, (_3, ci) => {
+      const chunk = [];
+      for (let r4 = 0; r4 < rpc; r4++) {
+        const i3 = ci * rpc + r4;
+        if (i3 < rows.length) chunk.push(rows[i3]);
+      }
+      return chunk;
     });
   }
-  function onDemoExit(e3) {
-    e3.stopPropagation();
-    localStorage.removeItem(KEYS.DEMO);
-    runtime.demoMode = false;
-    runtime.demoHistory = null;
-    runtime.stickerData = [];
-    setHistoryCache(null);
-    app.DataController.invalidate();
-    app.DBManager.loadHistory().then((loaded) => {
-      app.DataController.hydrate(loaded);
-      if (userConfig.apiKey) app.startBackgroundSync();
-    }).catch(() => {
-      if (userConfig.apiKey) app.startBackgroundSync();
-    }).finally(() => app.snapLevelBar());
-    calendarState.selectedData = null;
-    calendarState.selectedLabel = Formatter.dateLogical();
-    viewState.activeViewLabel = null;
-    const tip = window.TooltipController;
-    if (tip) tip.hide();
-    app.refreshInitLock();
-    app.refreshDemoMasks();
-    if (typeof runtime.realReturnView === "string") {
-      runtime.returnView = runtime.realReturnView;
-      runtime.realReturnView = null;
+  function AchSection(props) {
+    const cols = splitCols(props.rows, props.colCount || 4);
+    const clipAll = props.clipAll || props.rows.map((r4) => r4.clipDate ? `${r4.label}: ${r4.rawVal} (${r4.clipDate})` : `${r4.label}: ${r4.rawVal}`).join("\n");
+    const colCount = props.colCount || 4;
+    return /* @__PURE__ */ u2("div", { class: "bbgl-ach-section", children: [
+      /* @__PURE__ */ u2("div", { class: "bbgl-ach-title-row", children: /* @__PURE__ */ u2(
+        "span",
+        {
+          class: "bbgl-ach-section-title",
+          "data-ach-section": props.sectionKey,
+          "data-clip-section": clipAll,
+          "data-clip-title": props.title,
+          "data-tooltip": COPY_TIP,
+          children: props.title
+        }
+      ) }),
+      /* @__PURE__ */ u2("div", { class: "bbgl-ach-cols", style: colCount !== 4 ? { gridTemplateColumns: `repeat(${colCount},minmax(0,1fr))` } : void 0, children: cols.map((chunk, i3) => /* @__PURE__ */ u2("div", { class: "bbgl-ach-col", children: chunk.map((r4) => /* @__PURE__ */ u2(AchRow, { ...r4 }, r4.key || r4.label)) }, i3)) })
+    ] });
+  }
+  function Page0(d3) {
+    const ps = d3.perStatBest || { bestTrain: {}, bestDay: {}, bestWeek: {}, bestMonth: {} };
+    const rows = [
+      { key: "best-train", short: "Single Train", long: "Highest Single Train", tip: "Highest gains achieved from a single click, per individual stat.", recs: ps.bestTrain, getDate: (r4) => app.achFmtDate(r4.date), getTime: (r4) => r4.ts ? app.achFmtTimeHMS(r4.ts) : "" },
+      { key: "best-day", short: "Best Day", long: "Best Training Day", tip: "Highest gains achieved in a single calendar day, per individual stat.", recs: ps.bestDay, getDate: (r4) => app.achFmtDate(r4.date) },
+      { key: "best-week", short: "Best Week", long: "Best Training Week", tip: "Highest gains achieved in a single calendar week, per individual stat.", recs: ps.bestWeek, getDate: (r4) => app.achFmtWeekShort(r4.weekOf) },
+      { key: "best-month", short: "Best Month", long: "Best Month", tip: "Highest gains achieved in a single calendar month, per individual stat.", recs: ps.bestMonth, getDate: (r4) => app.achFmtMonthLong(r4.rawMonth) }
+    ];
+    return /* @__PURE__ */ u2("div", { class: "bbgl-ach-section bbgl-ach-section-page0", children: [
+      /* @__PURE__ */ u2("div", { class: "bbgl-ach-grid-header", children: [
+        /* @__PURE__ */ u2("div", { class: "ach-grid-label-area", children: /* @__PURE__ */ u2("span", { class: "bbgl-ach-section-title", "data-ach-section": "greatest-gains", "data-clip-title": "Greatest Gains", "data-tooltip": COPY_TIP, children: "Greatest Gains" }) }),
+        STATS.map((sk) => /* @__PURE__ */ u2("div", { class: `ach-stat-header ach-stat-${sk} bbgl-ach-col-copy`, "data-stat": sk, "data-tooltip": `Click to copy ${STAT_LABEL[sk]} column`, style: { cursor: "pointer" }, children: STAT_LABEL[sk] }, sk))
+      ] }),
+      rows.map((r4) => /* @__PURE__ */ u2("div", { class: "bbgl-ach-row bbgl-ach-row-multi", "data-ach-key": r4.key, "data-tooltip": r4.tip, children: [
+        /* @__PURE__ */ u2("div", { class: "ach-grid-label-area", children: /* @__PURE__ */ u2("div", { class: "ach-k", children: [
+          /* @__PURE__ */ u2("span", { class: "ach-title-short", children: r4.short }),
+          /* @__PURE__ */ u2("span", { class: "ach-title-long", children: r4.long })
+        ] }) }),
+        STATS.map((sk) => {
+          const rec = r4.recs ? r4.recs[sk] : null;
+          return /* @__PURE__ */ u2("div", { class: "bbgl-ach-stat-cell", "data-ach-key": r4.key, "data-stat": sk, children: [
+            /* @__PURE__ */ u2("span", { class: "ach-value", children: rec ? /* @__PURE__ */ u2(Raw, { html: "+" + Formatter.dual(rec.value) }) : /* @__PURE__ */ u2(NullVal, {}) }),
+            rec ? /* @__PURE__ */ u2("div", { class: "ach-date", children: r4.getDate(rec) }) : null,
+            rec && r4.getTime ? /* @__PURE__ */ u2("div", { class: "ach-time", children: r4.getTime(rec) }) : null
+          ] }, sk);
+        })
+      ] }, r4.key))
+    ] });
+  }
+  function Page1(d3) {
+    const rows = [
+      { key: "training-streak", short: "Best Streak", long: "Best Training Streak", tip: "Total stats gained during your longest consecutive training streak.", len: d3.longestStreak, start: d3.longestStreakStart, end: d3.longestStreakEnd, gains: d3.longestStreakGains },
+      { key: "green-streak", short: "Best Green", long: "Best Green Streak", tip: "Total stats gained during your longest streak of achieving at least Green (1,000E+).", len: d3.longestGoalStreak, start: d3.longestGoalStreakStart, end: d3.longestGoalStreakEnd, gains: d3.longestGoalStreakGains },
+      { key: "gold-streak", short: "Best Gold", long: "Best Gold Streak", tip: "Total stats gained during your longest streak of achieving at least Gold (1,500E+).", len: d3.longestGoldStreak, start: d3.longestGoldStreakStart, end: d3.longestGoldStreakEnd, gains: d3.longestGoldStreakGains },
+      { key: "diamond-streak", short: "Best Diamond", long: "Best Diamond Streak", tip: "Total stats gained during your longest streak of achieving Diamond (2,000E+).", len: d3.longestDiamondStreak, start: d3.longestDiamondStreakStart, end: d3.longestDiamondStreakEnd, gains: d3.longestDiamondStreakGains }
+    ];
+    const consVal = d3.trainingRestRatio || "\u2014";
+    const consDaysLong = "(" + (d3.trainingDays || 0) + "/" + (d3.calDays || 0) + " Days)";
+    return /* @__PURE__ */ u2("div", { class: "bbgl-ach-section bbgl-ach-section-page0 bbgl-ach-section-page1", children: [
+      /* @__PURE__ */ u2("div", { class: "bbgl-ach-grid-header", children: [
+        /* @__PURE__ */ u2("div", { class: "ach-grid-label-area", children: /* @__PURE__ */ u2("span", { class: "bbgl-ach-section-title", "data-ach-section": "sexiest-streaks", "data-clip-title": "Sexiest Streaks", "data-tooltip": COPY_TIP, children: "SEXIEST STREAKS" }) }),
+        STATS.map((sk) => /* @__PURE__ */ u2("div", { class: `ach-stat-header ach-stat-${sk}`, children: STAT_LABEL[sk] }, sk)),
+        /* @__PURE__ */ u2("div", { class: "ach-stat-header ach-stat-tot", children: "Total" })
+      ] }),
+      rows.map((r4) => {
+        const present = r4.gains ? STATS.filter((sk) => (r4.gains[sk] || 0) > 0) : [];
+        const total = present.reduce((a3, sk) => a3 + (r4.gains[sk] || 0), 0);
+        const dateText = r4.start && r4.end ? app.achFmtStreakRange(r4.start, r4.end) : "\u2014";
+        return /* @__PURE__ */ u2("div", { class: "bbgl-ach-row bbgl-ach-row-multi", "data-ach-key": r4.key, "data-tooltip": r4.tip, children: [
+          /* @__PURE__ */ u2("div", { class: "ach-grid-label-area", children: /* @__PURE__ */ u2("div", { class: "ach-k", children: [
+            /* @__PURE__ */ u2("span", { class: "ach-title-short", children: r4.short }),
+            /* @__PURE__ */ u2("span", { class: "ach-title-long", children: r4.long }),
+            r4.len ? /* @__PURE__ */ u2("span", { class: "ach-streak-days ach-streak-days-inline", children: [
+              " \xB7 ",
+              r4.len,
+              "d"
+            ] }) : null,
+            r4.start && r4.end ? /* @__PURE__ */ u2("span", { class: "bbgl-ach-streak-date-inline", children: [
+              "\xA0\xA0",
+              dateText
+            ] }) : null
+          ] }) }),
+          STATS.map((sk) => {
+            const v3 = r4.gains && r4.gains[sk] || 0;
+            return /* @__PURE__ */ u2("div", { class: "bbgl-ach-stat-cell", "data-ach-key": r4.key, "data-stat": sk, children: /* @__PURE__ */ u2("span", { class: "ach-value", children: v3 > 0 ? "+" + app.achFmtGain(v3) : /* @__PURE__ */ u2(NullVal, {}) }) }, sk);
+          }),
+          /* @__PURE__ */ u2("div", { class: "bbgl-ach-stat-cell bbgl-ach-stat-cell-total", "data-ach-key": r4.key, "data-stat": "total", children: /* @__PURE__ */ u2("span", { class: "ach-value ach-stat-tot", children: total > 0 ? "+" + app.achFmtGain(total) : /* @__PURE__ */ u2(NullVal, {}) }) }),
+          /* @__PURE__ */ u2("div", { class: "ach-date ach-streak-date", children: [
+            /* @__PURE__ */ u2("span", { class: "ach-streak-days", children: r4.len ? r4.len + "d" : "\u2014" }),
+            /* @__PURE__ */ u2("span", { class: "ach-streak-sep", children: "\u2022" }),
+            /* @__PURE__ */ u2("span", { class: "ach-streak-daterange", children: dateText })
+          ] })
+        ] }, r4.key);
+      }),
+      /* @__PURE__ */ u2("div", { class: "bbgl-ach-row bbgl-ach-row-multi bbgl-ach-consistency-row", "data-ach-key": "consistency", "data-tooltip": "Your lifetime ratio of active training days versus total calendar days.", children: /* @__PURE__ */ u2("div", { class: "bbgl-ach-consistency-text", children: [
+        "Training Consistency: ",
+        /* @__PURE__ */ u2("span", { class: "ach-cons-val", children: consVal }),
+        " ",
+        /* @__PURE__ */ u2("span", { class: "ach-cons-days", children: consDaysLong })
+      ] }) })
+    ] });
+  }
+  function PageOverview(d3) {
+    const enh = d3.statEnhByStat || {};
+    const enrg = d3.energyItemTotals || {};
+    const od = d3.odItemTotals || {};
+    const STAT_ABBR = { str: "Str", def: "Def", spd: "Spd", dex: "Dex" };
+    const isExpanded = typeof app.achIsExpandedMode === "function" ? app.achIsExpandedMode() : false;
+    const STAT_ENH_MAP = { 2150: "str", 2130: "spd", 2140: "def", 2120: "dex" };
+    const LEFT_COL = [2150, 2130, 2290, 2040, 4900];
+    const RIGHT_COL = [2140, 2120, 2230, 2190, 8981];
+    const OD_AFTER = { 2290: XANAX_OD_LOG, 2230: LSD_OD_LOG };
+    const isPeriod = !!viewState.achEnhPeriodMode;
+    function EnhRow({ id }) {
+      const meta = ITEM_LOG_META[id];
+      const label = meta.achLabel || meta.label;
+      const tipLabel = meta.achTipLabel || label;
+      const sk = STAT_ENH_MAP[id];
+      let countNode, gainedNode, clipVal, tip;
+      if (sk) {
+        const rec = enh[sk] || { count: 0, gain: 0 };
+        countNode = rec.count > 0 ? Formatter.number(rec.count) : /* @__PURE__ */ u2(NullVal, {});
+        const gainNum = rec.gain > 0 ? "+" + Formatter.achAbbr(rec.gain, ACH_FMT.enhancers) : null;
+        gainedNode = /* @__PURE__ */ u2(S, { children: [
+          gainNum || /* @__PURE__ */ u2(NullVal, {}),
+          " ",
+          /* @__PURE__ */ u2("span", { class: `ach-stat-${sk}`, children: STAT_ABBR[sk] })
+        ] });
+        clipVal = `${label}: ${rec.count} (+${Formatter.achAbbr(rec.gain, ACH_FMT.enhancers)} ${STAT_ABBR[sk]})`;
+        tip = isExpanded ? `Amount of ${tipLabel} \xB7 ${app.achStatFull(sk)} Gained` : `Amount of ${tipLabel}`;
+      } else {
+        const rec = enrg[id] || { count: 0, energy: 0 };
+        countNode = rec.count > 0 ? Formatter.number(rec.count) : /* @__PURE__ */ u2(NullVal, {});
+        const gainNum = rec.energy > 0 ? "+" + Formatter.achAbbr(rec.energy, ACH_FMT.enhancers) : null;
+        gainedNode = /* @__PURE__ */ u2(S, { children: [
+          gainNum || /* @__PURE__ */ u2(NullVal, {}),
+          " ",
+          /* @__PURE__ */ u2("span", { class: "ach-enh-e-label", children: "E" })
+        ] });
+        clipVal = `${label}: ${rec.count} (+${Formatter.achAbbr(rec.energy, ACH_FMT.enhancers)} Energy)`;
+        tip = isExpanded ? `Amount of ${tipLabel} \xB7 Energy Gained` : `Amount of ${tipLabel}`;
+      }
+      const odId = OD_AFTER[id];
+      const odRec = odId ? od[odId] : null;
+      return /* @__PURE__ */ u2(S, { children: [
+        /* @__PURE__ */ u2("div", { class: "bbgl-ach-row bbgl-ach-enh-row", "data-tooltip": tip, "data-ach-key": `enh-${id}`, "data-clip": clipVal, children: /* @__PURE__ */ u2("div", { class: "ach-row-main", children: [
+          /* @__PURE__ */ u2("div", { class: "ach-k-stack", children: /* @__PURE__ */ u2("span", { class: "ach-k", children: [
+            /* @__PURE__ */ u2("span", { class: "ach-title-long", children: [
+              label,
+              ":"
+            ] }),
+            /* @__PURE__ */ u2("span", { class: "ach-title-short", children: [
+              label,
+              ":"
+            ] })
+          ] }) }),
+          /* @__PURE__ */ u2("div", { class: "ach-v-wrap", children: [
+            /* @__PURE__ */ u2("span", { class: "ach-value", children: countNode }),
+            /* @__PURE__ */ u2("span", { class: "ach-value ach-enh-gained", children: gainedNode })
+          ] })
+        ] }) }),
+        odId && odRec && odRec.count > 0 ? /* @__PURE__ */ u2(OdSubRow, { odId, rec: odRec, isExpanded }) : null
+      ] });
     }
-    const pdeb = document.getElementById("bbgl-page-demo-exit");
-    if (pdeb) pdeb.style.display = "none";
-    const isInit = !!localStorage.getItem("bbgl_initialized");
-    if (isInit) app.switchView("settings");
-    else {
-      app.switchView("welcome", true);
-      app.openPrivacyModal();
+    const clipAll = [...LEFT_COL, ...RIGHT_COL].map((id) => {
+      const meta = ITEM_LOG_META[id];
+      const label = meta.achLabel || meta.label;
+      const sk = STAT_ENH_MAP[id];
+      if (sk) {
+        const rec2 = enh[sk] || { count: 0, gain: 0 };
+        return `${label}: ${rec2.count} (+${Formatter.achAbbr(rec2.gain, ACH_FMT.enhancers)} ${STAT_ABBR[sk]})`;
+      }
+      const rec = enrg[id] || { count: 0, energy: 0 };
+      return `${label}: ${rec.count} (+${Formatter.achAbbr(rec.energy, ACH_FMT.enhancers)} Energy)`;
+    }).join("\n");
+    return /* @__PURE__ */ u2("div", { class: "bbgl-ach-section bbgl-ach-section-energy", children: [
+      /* @__PURE__ */ u2("div", { class: "bbgl-ach-title-row", children: [
+        /* @__PURE__ */ u2("span", { class: "bbgl-ach-section-title", "data-ach-section": "endocrine-enhancers", "data-clip-section": clipAll, "data-clip-title": "Endocrine Enhancers", "data-tooltip": "Click any row to copy its data, or click this title to copy the entire section to your clipboard.", children: "ENDOCRINE ENHANCERS" }),
+        /* @__PURE__ */ u2(
+          "div",
+          {
+            class: "bbgl-enh-mode-switch",
+            "data-tooltip-html": "<b>Changes the data scope displayed on this page.</b><br><i><b>All-Time</b> shows totals across your entire log history. <b>Selected</b> shows data for the selected period on the calendar.</i>",
+            "data-tooltip-side": "left",
+            children: [
+              /* @__PURE__ */ u2("span", { class: "bbgl-enh-sw-opt" + (isPeriod ? "" : " active"), "data-mode": "alltime", children: "All-Time" }),
+              /* @__PURE__ */ u2("span", { class: "bbgl-enh-sw-opt" + (isPeriod ? " active" : ""), "data-mode": "selected", children: "Selected" })
+            ]
+          }
+        )
+      ] }),
+      /* @__PURE__ */ u2("div", { class: "bbgl-ach-cols", style: { gridTemplateColumns: "repeat(2,minmax(0,1fr))" }, children: [
+        /* @__PURE__ */ u2("div", { class: "bbgl-ach-col", children: LEFT_COL.map((id) => /* @__PURE__ */ u2(EnhRow, { id }, id)) }),
+        /* @__PURE__ */ u2("div", { class: "bbgl-ach-col", children: RIGHT_COL.map((rid) => /* @__PURE__ */ u2(EnhRow, { id: rid }, rid)) })
+      ] })
+    ] });
+  }
+  function OdSubRow(props) {
+    const meta = ITEM_LOG_META[props.odId];
+    const rec = props.rec || { count: 0, energyLost: 0 };
+    const countNode = rec.count > 0 ? Formatter.number(rec.count) : /* @__PURE__ */ u2(NullVal, {});
+    const lostNum = rec.energyLost > 0 ? "-" + Formatter.number(rec.energyLost) : null;
+    const odLabel = app.achOdLabel(meta.label);
+    const tip = props.isExpanded ? `Amount of ${odLabel} \xB7 Energy Lost` : `Amount of ${odLabel}`;
+    const clipVal = `${meta.label}: ${rec.count} (-${Formatter.number(rec.energyLost)} Energy Lost)`;
+    return /* @__PURE__ */ u2("div", { class: "bbgl-ach-row bbgl-ach-enh-row bbgl-ach-od-row bbgl-subgroup-row bbgl-subgroup-row-last", "data-tooltip": tip, "data-ach-key": `enh-${props.odId}`, "data-clip": clipVal, children: /* @__PURE__ */ u2("div", { class: "ach-row-main", children: [
+      /* @__PURE__ */ u2("div", { class: "ach-k-stack", children: /* @__PURE__ */ u2("span", { class: "ach-k", children: [
+        /* @__PURE__ */ u2("span", { class: "ach-title-long", children: "ODs:" }),
+        /* @__PURE__ */ u2("span", { class: "ach-title-short", children: "ODs:" })
+      ] }) }),
+      /* @__PURE__ */ u2("div", { class: "ach-v-wrap", children: [
+        /* @__PURE__ */ u2("span", { class: "ach-value", children: countNode }),
+        /* @__PURE__ */ u2("span", { class: "ach-value ach-enh-gained ach-enh-od", children: [
+          lostNum || /* @__PURE__ */ u2(NullVal, {}),
+          " ",
+          /* @__PURE__ */ u2("span", { class: "ach-enh-e-label", children: "E" })
+        ] })
+      ] })
+    ] }) });
+  }
+  function PageHappy(d3) {
+    const STAT_ABBR = { str: "STR", def: "DEF", spd: "SPD", dex: "DEX" };
+    const STAT_FULL = { str: "Strength", def: "Defense", spd: "Speed", dex: "Dexterity" };
+    const isExpanded = typeof app.achIsExpandedMode === "function" ? app.achIsExpandedMode() : false;
+    const rec = d3.bestHappyJump && d3.bestHappyJump.total;
+    const hjCount = d3.happyJumps || 0;
+    const trained = rec && rec.stats ? STATS.filter((sk) => (rec.stats[sk] || 0) > 0) : [];
+    const clipParts = trained.map((sk) => STAT_ABBR[sk] + ": +" + app.achFmtGain(rec.stats[sk]));
+    if (rec) clipParts.push("Total: +" + app.achFmtGain(rec.value));
+    const dateStr = rec ? app.achFmtDate(rec.date) : "";
+    const timeStr = rec ? app.achFmtTimeHM(rec.ts) + " \u2013 " + app.achFmtTimeHM(rec.tsEnd || rec.ts) + " " + app.achTimeZoneSuffix() : "";
+    const timeStrClip = rec ? app.achFmtTimeHMClip(rec.ts) + " \u2013 " + app.achFmtTimeHMClip(rec.tsEnd || rec.ts) + " TCT" : "";
+    const bestClip = rec && rec.stats ? `Best Happy Jump (${dateStr}, ${timeStrClip}): ${clipParts.join(" | ")}` : "";
+    const hhOrder = { 2180: 1, 2210: 2, 2020: 3, 8983: 4 };
+    const helpers = HAPPY_LOGS.map((id) => {
+      const recH = d3.happyItemTotals && d3.happyItemTotals[id] || { count: 0, happy: 0 };
+      const meta = ITEM_LOG_META[id];
+      return { id, label: meta.achLabel || meta.label, short: meta.short || meta.label, count: recH.count, happy: recH.happy };
+    }).filter((h3) => h3.count > 0).sort((a3, b2) => (hhOrder[a3.id] || 99) - (hhOrder[b2.id] || 99));
+    const clipHelpers = helpers.map((h3) => `${h3.label}: ${h3.count} (${Formatter.number(h3.happy)} Happy)`).join("\n");
+    let clipAll = `Happy Jumps Performed: ${hjCount}
+Best Happy Jump: ${rec && rec.stats ? clipParts.join(" | ") : "\u2014"}`;
+    if (helpers.length) clipAll += "\n\n\u2014 Happy Helpers \u2014\n" + clipHelpers;
+    const helperCols = splitCols(helpers, 2);
+    return /* @__PURE__ */ u2("div", { class: "bbgl-ach-section bbgl-ach-section-hh", children: [
+      /* @__PURE__ */ u2("div", { class: "bbgl-ach-title-row", children: /* @__PURE__ */ u2("span", { class: "bbgl-ach-section-title", "data-ach-section": "happy-hopping", "data-clip-section": clipAll, "data-clip-title": "Happy Hopping", "data-tooltip": COPY_TIP, children: "HAPPY HOPPING" }) }),
+      /* @__PURE__ */ u2("div", { class: "bbgl-ach-hh-group", "data-ach-key": "happy-jumps-group", children: [
+        /* @__PURE__ */ u2(
+          "div",
+          {
+            class: "bbgl-ach-row",
+            "data-tooltip-html": "Total number of Happy Jumps performed.<br><i>HJ = 1000E+ spent within 15m of using Ecstasy</i>",
+            "data-ach-key": "hj-count",
+            "data-clip": `Happy Jumps Performed: ${hjCount}`,
+            children: /* @__PURE__ */ u2("div", { class: "ach-row-main", children: [
+              /* @__PURE__ */ u2("div", { class: "ach-k-stack", children: /* @__PURE__ */ u2("span", { class: "ach-k", children: [
+                /* @__PURE__ */ u2("span", { class: "ach-title-long", children: "Happy Jumps Performed" }),
+                /* @__PURE__ */ u2("span", { class: "ach-title-short", children: "Happy Jumps" }),
+                ":"
+              ] }) }),
+              /* @__PURE__ */ u2("div", { class: "ach-v-wrap", children: /* @__PURE__ */ u2("span", { class: "ach-value", children: String(hjCount) }) })
+            ] })
+          }
+        ),
+        rec && rec.stats ? /* @__PURE__ */ u2("div", { class: "bbgl-ach-hh-best-row", "data-tooltip": "The single Happy Jump that yielded the highest combined stat gain.", "data-ach-key": "best-hj", "data-clip": bestClip, "data-clip-date": `${dateStr}  ${timeStrClip}`, children: [
+          /* @__PURE__ */ u2("div", { class: "bbgl-ach-hh-label", children: [
+            /* @__PURE__ */ u2("span", { class: "ach-k", children: [
+              /* @__PURE__ */ u2("span", { class: "ach-title-long", children: "Best Happy Jump" }),
+              /* @__PURE__ */ u2("span", { class: "ach-title-short", children: "Best Jump" })
+            ] }),
+            /* @__PURE__ */ u2("div", { class: "bbgl-ach-hh-date-line", children: [
+              dateStr,
+              /* @__PURE__ */ u2("span", { class: "bbgl-ach-hh-time", children: [
+                " \xA0 ",
+                timeStr
+              ] })
+            ] })
+          ] }),
+          /* @__PURE__ */ u2("div", { class: "bbgl-ach-hh-cells", children: [
+            trained.map((sk) => /* @__PURE__ */ u2("div", { class: "bbgl-ach-hh-cell bbgl-ach-hh-cell-stat bbgl-ach-stat-cell", "data-ach-key": "best-hj", "data-stat": sk, "data-tooltip": `Total ${STAT_FULL[sk]} gained during this jump.`, children: [
+              /* @__PURE__ */ u2("span", { class: "bbgl-ach-hh-val", children: [
+                "+",
+                app.achFmtGain(rec.stats[sk])
+              ] }),
+              /* @__PURE__ */ u2("span", { class: `bbgl-ach-hh-tag ach-stat-${sk}`, children: STAT_ABBR[sk] })
+            ] }, sk)),
+            /* @__PURE__ */ u2("div", { class: "bbgl-ach-hh-cell bbgl-ach-hh-cell-total bbgl-ach-stat-cell", "data-ach-key": "best-hj", "data-stat": "total", "data-tooltip": "Total overall stats gained during this jump.", children: [
+              /* @__PURE__ */ u2("span", { class: "bbgl-ach-hh-tag ach-stat-tot", children: "Total" }),
+              /* @__PURE__ */ u2("span", { class: "bbgl-ach-hh-val", children: [
+                "+",
+                app.achFmtGain(rec.value)
+              ] })
+            ] })
+          ] })
+        ] }) : /* @__PURE__ */ u2("div", { class: "bbgl-ach-hh-best-row", "data-tooltip": "The single Happy Jump that yielded the highest combined stat gain.", "data-ach-key": "best-hj", children: [
+          /* @__PURE__ */ u2("div", { class: "bbgl-ach-hh-label", children: [
+            /* @__PURE__ */ u2("span", { class: "ach-k", children: [
+              /* @__PURE__ */ u2("span", { class: "ach-title-long", children: "Best Happy Jump" }),
+              /* @__PURE__ */ u2("span", { class: "ach-title-short", children: "Best Jump" })
+            ] }),
+            /* @__PURE__ */ u2("div", { class: "bbgl-ach-hh-date-line", children: /* @__PURE__ */ u2("span", { class: "ach-null", children: "No jumps recorded yet" }) })
+          ] }),
+          /* @__PURE__ */ u2("div", { class: "bbgl-ach-hh-cells", children: /* @__PURE__ */ u2("div", { class: "bbgl-ach-hh-cell bbgl-ach-hh-cell-total", children: [
+            /* @__PURE__ */ u2("span", { class: "bbgl-ach-hh-tag ach-stat-tot", children: "Total" }),
+            /* @__PURE__ */ u2("span", { class: "bbgl-ach-hh-val", children: /* @__PURE__ */ u2(NullVal, {}) })
+          ] }) })
+        ] })
+      ] }),
+      helpers.length ? /* @__PURE__ */ u2("div", { class: "bbgl-ach-cols", style: { gridTemplateColumns: "repeat(2,minmax(0,1fr))", paddingTop: 1, paddingBottom: 0 }, children: helperCols.map((chunk, i3) => /* @__PURE__ */ u2("div", { class: "bbgl-ach-col", children: chunk.map((h3) => {
+        const tip = isExpanded ? `Amount of ${h3.label} \xB7 Happy Gained` : `Amount of ${h3.label}`;
+        const clipVal = `${h3.label}: ${h3.count} (${Formatter.number(h3.happy)} Happy)`;
+        const exRec = h3.id === 2210 && d3.odItemTotals && d3.odItemTotals[EX_OD_LOG] && d3.odItemTotals[EX_OD_LOG].count > 0 ? d3.odItemTotals[EX_OD_LOG] : null;
+        return /* @__PURE__ */ u2(S, { children: [
+          /* @__PURE__ */ u2("div", { class: "bbgl-ach-row", "data-tooltip": tip, "data-ach-key": `happy-helper-${h3.id}`, "data-clip": clipVal, children: /* @__PURE__ */ u2("div", { class: "ach-row-main", children: [
+            /* @__PURE__ */ u2("div", { class: "ach-k-stack", children: /* @__PURE__ */ u2("span", { class: "ach-k", children: [
+              /* @__PURE__ */ u2("span", { class: "ach-title-long", children: h3.label }),
+              /* @__PURE__ */ u2("span", { class: "ach-title-short", children: h3.short }),
+              ":"
+            ] }) }),
+            /* @__PURE__ */ u2("div", { class: "ach-v-wrap", children: [
+              /* @__PURE__ */ u2("span", { class: "ach-value", children: Formatter.number(h3.count) }),
+              /* @__PURE__ */ u2("span", { class: "ach-value ach-happy-col", children: [
+                "+",
+                app.achFmtGain(h3.happy),
+                " ",
+                /* @__PURE__ */ u2("span", { class: "ach-happy-word", children: "H" })
+              ] })
+            ] })
+          ] }) }),
+          exRec ? /* @__PURE__ */ u2(
+            "div",
+            {
+              class: "bbgl-ach-row bbgl-ach-od-row bbgl-subgroup-row bbgl-subgroup-row-last",
+              "data-tooltip": isExpanded ? `Amount of ${app.achOdLabel(ITEM_LOG_META[EX_OD_LOG].label)} \xB7 Happy / Energy Lost` : `Amount of ${app.achOdLabel(ITEM_LOG_META[EX_OD_LOG].label)}`,
+              "data-ach-key": `happy-od-${EX_OD_LOG}`,
+              "data-clip": `${ITEM_LOG_META[EX_OD_LOG].label}: ${exRec.count} (-${Formatter.number(exRec.happyLost)} H, -${Formatter.number(exRec.energyLost)} E)`,
+              children: /* @__PURE__ */ u2("div", { class: "ach-row-main", style: { alignItems: "flex-start" }, children: [
+                /* @__PURE__ */ u2("div", { class: "ach-k-stack", children: /* @__PURE__ */ u2("span", { class: "ach-k", children: [
+                  /* @__PURE__ */ u2("span", { class: "ach-title-long", children: "ODs:" }),
+                  /* @__PURE__ */ u2("span", { class: "ach-title-short", children: "ODs:" })
+                ] }) }),
+                /* @__PURE__ */ u2("div", { class: "ach-v-wrap", style: { alignItems: "flex-start" }, children: [
+                  /* @__PURE__ */ u2("span", { class: "ach-value", style: { paddingTop: 1 }, children: Formatter.number(exRec.count) }),
+                  /* @__PURE__ */ u2("span", { class: "ach-value ach-happy-col ach-enh-od", children: /* @__PURE__ */ u2("div", { style: { display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 4, lineHeight: 1.2 }, children: [
+                    /* @__PURE__ */ u2("div", { children: [
+                      exRec.happyLost > 0 ? "-" + Formatter.number(exRec.happyLost) : /* @__PURE__ */ u2(NullVal, {}),
+                      " ",
+                      /* @__PURE__ */ u2("span", { class: "ach-happy-word ach-od-happy-word", children: "H" })
+                    ] }),
+                    /* @__PURE__ */ u2("div", { children: [
+                      exRec.energyLost > 0 ? "-" + Formatter.number(exRec.energyLost) : /* @__PURE__ */ u2(NullVal, {}),
+                      " ",
+                      /* @__PURE__ */ u2("span", { class: "ach-enh-e-label", style: { color: "#c06060" }, children: "E" })
+                    ] })
+                  ] }) })
+                ] })
+              ] })
+            }
+          ) : null
+        ] });
+      }) }, i3)) }) : null
+    ] });
+  }
+  function PageRewards(d3) {
+    const rows = [
+      { label: "Green Days", key: "green-days", display: String(d3.greenDays || 0), rawVal: String(d3.greenDays || 0), statClass: "ach-fx-green", tip: "Total days where the minimum daily goal (Green: 1,000E+) was achieved." },
+      { label: "Gold Days", key: "gold-days", display: String(d3.goldDays || 0), rawVal: String(d3.goldDays || 0), statClass: "ach-fx-gold", tip: "Total days where the elite daily goal (Gold: 1,500E+) was achieved." },
+      { label: "Diamond Days", key: "diamond-days", display: String(d3.diamondDays || 0), rawVal: String(d3.diamondDays || 0), statClass: "ach-fx-diamond", tip: "Total days where the ultimate daily goal (Diamond: 2,000E+) was achieved." },
+      { label: "Stickers Unlocked", key: "stickers", display: (d3.stickersUnlocked || 0) + "/" + CUSTOM_STICKERS.length, rawVal: (d3.stickersUnlocked || 0) + "/" + CUSTOM_STICKERS.length, statClass: "ach-fx-holo", tip: "Total unique milestone stickers earned through consistent training." },
+      { label: "Green Weeks", key: "green-weeks", display: String(d3.greenWeeks || 0), rawVal: String(d3.greenWeeks || 0), statClass: "ach-fx-green", tip: "Total weeks where the minimum weekly training goal was met." },
+      { label: "Gold Weeks", key: "gold-weeks", display: String(d3.goldWeeks || 0), rawVal: String(d3.goldWeeks || 0), statClass: "ach-fx-gold", tip: "Total weeks where the elite weekly training goal was met." },
+      { label: "Diamond Weeks", key: "diamond-weeks", display: String(d3.diamondWeeks || 0), rawVal: String(d3.diamondWeeks || 0), statClass: "ach-fx-diamond", tip: "Total weeks where the ultimate weekly training goal was met." }
+    ];
+    return /* @__PURE__ */ u2(AchSection, { title: "Rewards Reaped", sectionKey: "rewards-reaped", rows, colCount: 2 });
+  }
+  function PageLocked() {
+    return /* @__PURE__ */ u2("div", { class: "bbgl-ach-locked", children: [
+      /* @__PURE__ */ u2("div", { class: "bbgl-ach-locked-icon", children: "\u{1F512}" }),
+      /* @__PURE__ */ u2("div", { class: "bbgl-ach-locked-text", children: "Reach Level 100 to unlock this page!" })
+    ] });
+  }
+  function AchPage(props) {
+    if (props.page === 0) return Page0(props.d);
+    if (props.page === 1) return Page1(props.d);
+    if (props.page === 2) {
+      const overviewD = viewState.achEnhPeriodMode ? app.computeEnhancersForPeriod(calendarState.selectedData || app.DataController.getSlice("DAY", Formatter.dateLogical())) : props.d;
+      return PageOverview(overviewD);
     }
-    saveConfig();
+    if (props.page === 3) return PageHappy(props.d);
+    if (props.page === 5) return /* @__PURE__ */ u2(PageLocked, {});
+    return PageRewards(props.d);
+  }
+  function onAchClick(e3) {
+    const t3 = e3.target;
+    const swOpt = t3.closest(".bbgl-enh-sw-opt");
+    if (swOpt) {
+      const toSelected = swOpt.dataset.mode === "selected";
+      if (toSelected !== !!viewState.achEnhPeriodMode) {
+        viewState.achEnhPeriodMode = toSelected;
+        saveViewState();
+        if (typeof app.achRefreshPageDom === "function") app.achRefreshPageDom();
+      }
+      return;
+    }
+    const colHeader = t3.closest(".bbgl-ach-col-copy");
+    if (colHeader) {
+      app.handleAchCopy(colHeader);
+      return;
+    }
+    const statCell = t3.closest(".bbgl-ach-stat-cell");
+    if (statCell) {
+      app.handleAchCopy(statCell);
+      return;
+    }
+    const group = t3.closest(".bbgl-ach-hh-group");
+    if (group) {
+      app.handleAchCopy(group);
+      return;
+    }
+    const row = t3.closest(".bbgl-ach-section-title, .bbgl-ach-subsection-title, .bbgl-ach-row");
+    if (row) app.handleAchCopy(row);
+  }
+  function AchievementsView() {
+    useUiTick();
+    const d3 = ensureAchievements();
+    const page = typeof runtime._achPage === "number" ? runtime._achPage : viewState.achPage || 0;
+    const swipe = A2({ x: 0, y: 0 });
+    const crt = runtime._achCrt || "";
+    h2(() => {
+      if (page === 5 && typeof app.resizeAchLockedPage === "function") app.resizeAchLockedPage();
+    });
+    if (!d3) {
+      return /* @__PURE__ */ u2(S, { children: [
+        /* @__PURE__ */ u2("div", { id: "bbgl-achievements-container", class: "ledger-content", children: /* @__PURE__ */ u2("div", { class: "bbgl-ach-scroll", children: /* @__PURE__ */ u2("div", { id: "bbgl-ach-pages" }) }) }),
+        /* @__PURE__ */ u2("div", { id: "bbgl-ach-footer", class: "bbgl-ach-footer" })
+      ] });
+    }
+    return /* @__PURE__ */ u2(S, { children: [
+      /* @__PURE__ */ u2(
+        "div",
+        {
+          id: "bbgl-achievements-container",
+          class: "ledger-content",
+          onClick: onAchClick,
+          onTouchStart: (e3) => {
+            swipe.current = { x: e3.touches[0].clientX, y: e3.touches[0].clientY };
+          },
+          onTouchEnd: (e3) => {
+            if (window._bbglScrubbing) return;
+            const dx = e3.changedTouches[0].clientX - swipe.current.x;
+            const dy = e3.changedTouches[0].clientY - swipe.current.y;
+            if (Math.abs(dx) > 40 && Math.abs(dx) > Math.abs(dy) * 1.5) app.gotoAchievementsPage(dx < 0 ? 1 : -1);
+          },
+          children: /* @__PURE__ */ u2("div", { class: "bbgl-ach-scroll", children: /* @__PURE__ */ u2("div", { id: "bbgl-ach-pages", class: crt || void 0, children: /* @__PURE__ */ u2(AchPage, { page, d: d3 }) }) })
+        }
+      ),
+      /* @__PURE__ */ u2("div", { id: "bbgl-ach-footer", class: "bbgl-ach-footer", children: [
+        /* @__PURE__ */ u2("div", { class: "bbgl-ach-footer-side bbgl-ach-footer-left", children: /* @__PURE__ */ u2("button", { type: "button", class: "bbgl-ach-nav bbgl-ach-prev", "aria-label": "Previous achievements page", onClick: (e3) => {
+          e3.stopPropagation();
+          app.gotoAchievementsPage(-1);
+        }, children: "\u276E" }) }),
+        /* @__PURE__ */ u2("div", { id: "bbgl-ach-pageindicator", children: Array.from({ length: 6 }, (_3, i3) => /* @__PURE__ */ u2("div", { class: "pg-dot" + (i3 === page ? " active" : ""), onClick: () => {
+          if (i3 !== page) app.gotoAchievementsPage(i3 - page);
+        } }, i3)) }),
+        /* @__PURE__ */ u2("div", { class: "bbgl-ach-footer-side bbgl-ach-footer-right", children: /* @__PURE__ */ u2("button", { type: "button", class: "bbgl-ach-nav bbgl-ach-next", "aria-label": "Next achievements page", onClick: (e3) => {
+          e3.stopPropagation();
+          app.gotoAchievementsPage(1);
+        }, children: "\u276F" }) })
+      ] })
+    ] });
+  }
+
+  // src/ui/preact/views/Stickers.tsx
+  function ensureStickers() {
+    if (!runtime.stickerData.length && typeof app.loadStickerData === "function") app.loadStickerData();
+  }
+  function pageCount() {
+    return Math.ceil((runtime.stickerData.length || 0) / 10);
+  }
+  function goPage(page) {
+    runtime.currentStickerPage = page;
+    viewState.currentStickerPage = page;
+    saveViewState();
+    if (typeof app.renderStickers === "function") app.renderStickers();
+  }
+  function onNav(dir) {
+    if (dir < 0 && runtime.currentStickerPage <= -1) return;
+    if (dir > 0 && runtime.currentStickerPage >= pageCount() - 1) return;
+    if (typeof app.changeStickerPage === "function") app.changeStickerPage(dir);
+  }
+  function StickerTitle() {
+    useUiTick();
+    ensureStickers();
+    const page = runtime.currentStickerPage;
+    const title = page === -1 ? "Sponsorship" : PAGE_TITLES[page] || "";
+    return /* @__PURE__ */ u2("div", { id: "bbgl-sticker-title", children: title });
+  }
+  function StickersView() {
+    useUiTick();
+    ensureStickers();
+    const page = runtime.currentStickerPage;
+    const pages = pageCount();
+    const start = Math.max(0, page) * 10;
+    const items = runtime.stickerData.slice(start, start + 10);
+    const comingSoon = page >= 2;
+    const sponsor = page === -1;
+    const swipe = A2({ x: 0, y: 0 });
+    const pts = typeof app.getSponsorBurstPoints === "function" ? app.getSponsorBurstPoints() : "";
+    return /* @__PURE__ */ u2(S, { children: [
+      /* @__PURE__ */ u2("div", { id: "bbgl-sticker-bg" }),
+      /* @__PURE__ */ u2(
+        "div",
+        {
+          id: "bbgl-sticker-container",
+          onTouchStart: (e3) => {
+            swipe.current = { x: e3.touches[0].clientX, y: e3.touches[0].clientY };
+          },
+          onTouchEnd: (e3) => {
+            if (window._bbglScrubbing) return;
+            const dx = e3.changedTouches[0].clientX - swipe.current.x;
+            const dy = e3.changedTouches[0].clientY - swipe.current.y;
+            if (Math.abs(dx) > 40 && Math.abs(dx) > Math.abs(dy) * 1.5) {
+              const dir = dx < 0 ? 1 : -1;
+              if (dir < 0 && page > -1 || dir > 0 && page < pages - 1) onNav(dir);
+            }
+          },
+          children: [
+            /* @__PURE__ */ u2(
+              "div",
+              {
+                id: "sticker-sponsor-btn",
+                class: "sticker-nav-btn" + (page === 0 ? "" : " disabled"),
+                onClick: (e3) => {
+                  e3.stopPropagation();
+                  if (page === 0) onNav(-1);
+                },
+                children: "\u276E"
+              }
+            ),
+            /* @__PURE__ */ u2(
+              "div",
+              {
+                id: "sticker-prev-btn",
+                class: "sticker-nav-btn" + (page <= 0 ? " disabled" : ""),
+                onClick: (e3) => {
+                  e3.stopPropagation();
+                  if (page > 0) onNav(-1);
+                },
+                children: "\u276E"
+              }
+            ),
+            /* @__PURE__ */ u2(
+              "div",
+              {
+                id: "sticker-next-btn",
+                class: "sticker-nav-btn" + (page >= pages - 1 ? " disabled" : ""),
+                onClick: (e3) => {
+                  e3.stopPropagation();
+                  if (page < pages - 1) onNav(1);
+                },
+                children: "\u276F"
+              }
+            ),
+            /* @__PURE__ */ u2("div", { id: "bbgl-sponsor-grid", style: { display: sponsor ? "grid" : "none" }, children: [0, 1, 2].map((i3) => /* @__PURE__ */ u2("div", { class: "sticker-slot sticker-slot-sponsor active-slot locked", children: [
+              /* @__PURE__ */ u2("svg", { class: "sponsor-sticker-svg", viewBox: "0 0 100 100", xmlns: "http://www.w3.org/2000/svg", children: /* @__PURE__ */ u2("polygon", { points: pts, fill: "#ffffff" }) }),
+              /* @__PURE__ */ u2("span", { class: "sponsor-sticker-label", children: /* @__PURE__ */ u2(Raw, { html: i3 === 0 ? "Corleone Faction<br>Sticker Here ;)" : "Your Faction<br>Sticker Here" }) })
+            ] }, i3)) }),
+            /* @__PURE__ */ u2("div", { id: "bbgl-sticker-grid", style: { display: sponsor ? "none" : "" }, children: [
+              comingSoon ? null : items.map((it, i3) => {
+                if (!it) return /* @__PURE__ */ u2("div", { class: "sticker-slot" }, i3);
+                const unlocked = !!it.unlocked;
+                return /* @__PURE__ */ u2(
+                  "div",
+                  {
+                    class: "sticker-slot active-slot has-item" + (unlocked ? "" : " locked"),
+                    "data-tooltip": unlocked ? it.name : TOOLTIPS.LOCKED,
+                    onClick: unlocked ? () => app.openItemViewer(it) : void 0,
+                    children: /* @__PURE__ */ u2("img", { class: "sticker-img", src: it.url, alt: "" })
+                  },
+                  it.id
+                );
+              }),
+              comingSoon ? /* @__PURE__ */ u2("div", { id: "bbgl-coming-soon", class: "bbgl-coming-soon", children: /* @__PURE__ */ u2(Raw, { html: "Cumming<br>Soon..." }) }) : null
+            ] }),
+            /* @__PURE__ */ u2("div", { id: "bbgl-sticker-pagination", children: [
+              /* @__PURE__ */ u2(
+                "div",
+                {
+                  class: "pg-dot pg-dot-sponsor" + (sponsor ? " active" : ""),
+                  onClick: () => goPage(-1)
+                }
+              ),
+              Array.from({ length: pages }, (_3, i3) => /* @__PURE__ */ u2(
+                "div",
+                {
+                  class: "pg-dot" + (i3 === page ? " active" : ""),
+                  onClick: () => goPage(i3)
+                },
+                i3
+              ))
+            ] })
+          ]
+        }
+      )
+    ] });
+  }
+  function ItemViewer() {
+    useUiTick();
+    const id = viewState.activeItemId || runtime.currentOpenedItemId;
+    const item = runtime.stickerData.find((x3) => x3 && x3.id === id) || null;
+    const open = !!(item && (viewState.subView === "stickers" || viewState.subView === "viewer" || runtime.currentOpenedItemId === item.id));
+    h2(() => {
+      const panel = document.getElementById("bbgl-panel");
+      if (panel && typeof app.cacheDOM === "function") app.cacheDOM(panel);
+    });
+    return /* @__PURE__ */ u2("div", { id: "bbgl-item-viewer", class: open ? "active" : void 0, children: [
+      /* @__PURE__ */ u2("div", { class: "viewer-window", children: /* @__PURE__ */ u2("div", { class: "viewer-stage", children: /* @__PURE__ */ u2(Island, { children: /* @__PURE__ */ u2("div", { class: "viewer-pedestal", id: "vi-pedestal-wrapper", children: /* @__PURE__ */ u2("div", { class: "viewer-obj", id: "vi-obj-target", children: [
+        /* @__PURE__ */ u2("div", { class: "layer-front" }),
+        /* @__PURE__ */ u2("div", { class: "layer-back" })
+      ] }) }) }) }) }),
+      /* @__PURE__ */ u2("div", { class: "viewer-info-overlay", children: /* @__PURE__ */ u2("div", { class: "vi-name", id: "vi-name-target", children: item ? item.name : "Item Name" }) })
+    ] });
+  }
+
+  // src/ui/preact/ScanOverlay.tsx
+  var SCAN_PAUSE_SVG = `<svg viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="5" width="4" height="14" rx="1"/><rect x="14" y="5" width="4" height="14" rx="1"/></svg>`;
+  var SCAN_PLAY_SVG = `<svg viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>`;
+  function currentScanState() {
+    if (runtime.demoMode) return { key: null, ds: null };
+    const s3 = typeof app.getActiveHistory === "function" ? app.getActiveHistory() : null;
+    const ds = s3 && s3.meta && s3.meta.backfill;
+    if (!ds) return { key: null, ds: null };
+    const lockFresh = ds.lock && Date.now() - ds.lock < BACKFILL.LOCK_STALE_MS;
+    let key = null;
+    if (runtime.backfilling) key = runtime._scanCancelConfirm ? "confirm" : "scanning";
+    else if (lockFresh && ds.lockOwner !== TAB_ID) key = "passenger";
+    else if (ds.acknowledged === false) {
+      if (ds.lastResult === "complete") key = "complete";
+      else if (ds.stopReason === "cap") key = "cap";
+      else if (ds.stopReason === "paused") key = "paused";
+      else if (ds.stopReason === "interrupted") key = "interrupted";
+      else key = "error";
+    }
+    return { key, ds };
+  }
+  function ScanOverlay() {
+    useUiTick();
+    const [, setTick] = d2(0);
+    const { key, ds } = currentScanState();
+    const inSettings = viewState.subView === "settings" || !!(dom.settingsView && dom.settingsView.classList.contains("active-view"));
+    const renderKey = !key ? null : inSettings ? "settings" : key;
+    h2(() => {
+      if (renderKey !== "passenger") return;
+      const id = setInterval(() => setTick((n2) => n2 + 1), 3e3);
+      return () => clearInterval(id);
+    }, [renderKey]);
+    if (!renderKey) return null;
+    return /* @__PURE__ */ u2("div", { id: "bbgl-scan-overlay", children: [
+      renderKey === "settings" && /* @__PURE__ */ u2(S, { children: [
+        /* @__PURE__ */ u2("div", { class: "bbgl-scan-title", children: "Scan in Progress" }),
+        /* @__PURE__ */ u2("div", { class: "bbgl-scan-sub", children: "Settings are locked while Big Black Backfill runs. Head back to the log to pause or check progress." })
+      ] }),
+      renderKey === "scanning" && /* @__PURE__ */ u2(S, { children: [
+        /* @__PURE__ */ u2("div", { id: "bbgl-scan-cancel", onClick: () => {
+          runtime._scanCancelConfirm = true;
+          if (app.notifyUi) app.notifyUi();
+        }, children: "Cancel" }),
+        /* @__PURE__ */ u2("div", { class: "bbgl-scan-title-row", children: [
+          /* @__PURE__ */ u2("div", { class: "bbgl-scan-title", children: "Scanning\u2026" }),
+          /* @__PURE__ */ u2("div", { id: "bbgl-scan-pause", class: "bbgl-scan-iconbtn bbgl-scan-play bbgl-scan-title-icon", title: "Pause", onClick: (e3) => {
+            runtime.backfillAbort = "pause";
+            const t3 = e3.currentTarget.parentElement?.querySelector(".bbgl-scan-title");
+            if (t3) t3.textContent = "Pausing\u2026";
+          }, children: /* @__PURE__ */ u2(Raw, { html: SCAN_PAUSE_SVG }) })
+        ] }),
+        /* @__PURE__ */ u2("div", { class: "bbgl-scan-count-row", children: [
+          /* @__PURE__ */ u2("span", { class: "bbgl-scan-pulse" }),
+          "Rows recovered so far: ",
+          /* @__PURE__ */ u2("span", { id: "bbgl-scan-count", class: "bbgl-scan-count", children: ds && ds.rowsUsed || 0 })
+        ] }),
+        /* @__PURE__ */ u2("div", { class: "bbgl-scan-sub", children: "This only takes up to a few minutes. Please stay on this page until the scan completes." }),
+        /* @__PURE__ */ u2("div", { class: "bbgl-scan-note", children: "If you're on PC, you may continue playing in another tab, but do not close this one." })
+      ] }),
+      renderKey === "confirm" && /* @__PURE__ */ u2(S, { children: [
+        /* @__PURE__ */ u2("div", { class: "bbgl-scan-title", children: "Cancel this scan?" }),
+        /* @__PURE__ */ u2("div", { class: "bbgl-scan-sub", children: "Canceling discards everything recovered during this scan. Your log since installation remains untouched." }),
+        /* @__PURE__ */ u2("div", { class: "bbgl-scan-actions", children: [
+          /* @__PURE__ */ u2("div", { id: "bbgl-scan-confirm-yes", class: "bbgl-scan-iconbtn bbgl-scan-yes", title: "Yes, cancel", onClick: (e3) => {
+            runtime.backfillAbort = "cancel";
+            runtime._scanCancelConfirm = false;
+            const t3 = e3.currentTarget.closest("#bbgl-scan-overlay")?.querySelector(".bbgl-scan-title");
+            if (t3) t3.textContent = "Discarding\u2026";
+          }, children: /* @__PURE__ */ u2(Raw, { html: ICONS.CHECK }) }),
+          /* @__PURE__ */ u2("div", { id: "bbgl-scan-confirm-no", class: "bbgl-scan-iconbtn bbgl-scan-no", title: "No, keep scanning", onClick: () => {
+            runtime._scanCancelConfirm = false;
+            if (app.notifyUi) app.notifyUi();
+          }, children: /* @__PURE__ */ u2(Raw, { html: ICONS.CLOSE }) })
+        ] })
+      ] }),
+      renderKey === "passenger" && /* @__PURE__ */ u2(S, { children: [
+        /* @__PURE__ */ u2("div", { class: "bbgl-scan-title", children: "Scan Running in Another Tab" }),
+        /* @__PURE__ */ u2("div", { class: "bbgl-scan-sub", children: "Big Black Backfill is currently active in another tab. Use that tab to pause or cancel the scan." })
+      ] }),
+      (renderKey === "paused" || renderKey === "error" || renderKey === "interrupted") && /* @__PURE__ */ u2(S, { children: [
+        /* @__PURE__ */ u2("div", { class: "bbgl-scan-title-row", children: [
+          /* @__PURE__ */ u2("div", { class: "bbgl-scan-title", children: renderKey === "paused" ? "Paused" : renderKey === "error" ? "Scan Error" : "Interrupted" }),
+          /* @__PURE__ */ u2("div", { id: "bbgl-scan-resume", class: "bbgl-scan-iconbtn bbgl-scan-play bbgl-scan-title-icon", title: "Resume", onClick: () => app.backfillLogs(document.getElementById("backfill-btn")), children: /* @__PURE__ */ u2(Raw, { html: SCAN_PLAY_SVG }) })
+        ] }),
+        /* @__PURE__ */ u2("div", { class: "bbgl-scan-sub", children: [
+          renderKey === "paused" && "You can resume now, or continue with what's been recovered so far.",
+          renderKey === "error" && "A network or API error occurred. No progress was lost. Resume to keep going, or continue with what's been recovered so far.",
+          renderKey === "interrupted" && "The tab or browser was closed before the scan finished. Your progress up to that point was saved. Resume to keep going, or continue with what's been recovered so far."
+        ] }),
+        /* @__PURE__ */ u2("div", { class: "bbgl-scan-actions", children: /* @__PURE__ */ u2("div", { id: "bbgl-scan-proceed", class: "bbgl-scan-textbtn bbgl-scan-primary", onClick: () => app.proceedPartialBackfill(), children: "Continue with what's been recovered" }) })
+      ] }),
+      renderKey === "cap" && /* @__PURE__ */ u2(S, { children: [
+        /* @__PURE__ */ u2("div", { class: "bbgl-scan-title", children: "Daily Limit Reached" }),
+        /* @__PURE__ */ u2("div", { class: "bbgl-scan-sub", children: "Torn's daily row cap has been reached. Resume from the Settings menu in 24h. Everything recovered so far is fully constructed, none of it is partial." }),
+        /* @__PURE__ */ u2("div", { class: "bbgl-scan-actions", children: /* @__PURE__ */ u2("div", { id: "bbgl-scan-proceed", class: "bbgl-scan-textbtn bbgl-scan-primary", onClick: () => app.proceedPartialBackfill(), children: "Continue to Logs" }) })
+      ] }),
+      renderKey === "complete" && /* @__PURE__ */ u2(S, { children: [
+        /* @__PURE__ */ u2("div", { class: "bbgl-scan-title", children: "Fully Backfilled!" }),
+        /* @__PURE__ */ u2("div", { class: "bbgl-scan-sub", children: "Your training history has been fully reconstructed." }),
+        /* @__PURE__ */ u2("div", { class: "bbgl-scan-note", children: "Rewards and stickers only start counting from the day you began tracking, not from backfilled history." }),
+        /* @__PURE__ */ u2("div", { class: "bbgl-scan-actions", children: /* @__PURE__ */ u2("div", { id: "bbgl-scan-ack", class: "bbgl-scan-textbtn bbgl-scan-primary", onClick: () => app.acknowledgeBackfill(), children: "Enter Logs" }) })
+      ] })
+    ] });
   }
 
   // src/ui/preact/Dashboard.tsx
-  var WEEK_MON = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
-  var WEEK_SUN = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
   function Header() {
     return /* @__PURE__ */ u2("div", { class: "bbgl-header", id: "bbgl-header-bar", onClick: onHeaderClick, children: [
       /* @__PURE__ */ u2("div", { class: "bbgl-header-left", children: [
@@ -12096,46 +12786,6 @@ Please enter a new key to continue.`);
       ] })
     ] });
   }
-  function GraphHud() {
-    return /* @__PURE__ */ u2("div", { id: "bbgl-graph-container", children: [
-      /* @__PURE__ */ u2("div", { class: "g-hud", children: [
-        /* @__PURE__ */ u2("div", { class: "g-toggles", children: [
-          /* @__PURE__ */ u2("div", { class: "g-pill active", "data-type": "mode", "data-val": "values", children: "Gains" }),
-          /* @__PURE__ */ u2("div", { class: "g-pill", "data-type": "mode", "data-val": "rates", children: "Rates" })
-        ] }),
-        /* @__PURE__ */ u2("div", { class: "g-toggles", children: [
-          /* @__PURE__ */ u2("div", { class: "g-pill p-str active", "data-type": "stat", "data-val": "str", children: "STR" }),
-          /* @__PURE__ */ u2("div", { class: "g-pill p-def", "data-type": "stat", "data-val": "def", children: "DEF" }),
-          /* @__PURE__ */ u2("div", { class: "g-pill p-spd active", "data-type": "stat", "data-val": "spd", children: "SPD" }),
-          /* @__PURE__ */ u2("div", { class: "g-pill p-dex", "data-type": "stat", "data-val": "dex", children: "DEX" }),
-          /* @__PURE__ */ u2("div", { class: "g-pill p-tot", "data-type": "stat", "data-val": "total", children: "TOT" })
-        ] })
-      ] }),
-      /* @__PURE__ */ u2("svg", { id: "bbgl-graph-svg" })
-    ] });
-  }
-  function AchievementsChrome() {
-    return /* @__PURE__ */ u2(S, { children: [
-      /* @__PURE__ */ u2("div", { id: "bbgl-achievements-container", class: "ledger-content", children: /* @__PURE__ */ u2("div", { class: "bbgl-ach-scroll", children: /* @__PURE__ */ u2("div", { id: "bbgl-ach-pages" }) }) }),
-      /* @__PURE__ */ u2("div", { id: "bbgl-ach-footer", class: "bbgl-ach-footer", children: [
-        /* @__PURE__ */ u2("div", { class: "bbgl-ach-footer-side bbgl-ach-footer-left", children: /* @__PURE__ */ u2("button", { type: "button", class: "bbgl-ach-nav bbgl-ach-prev", "aria-label": "Previous achievements page", children: "\u276E" }) }),
-        /* @__PURE__ */ u2("div", { id: "bbgl-ach-pageindicator" }),
-        /* @__PURE__ */ u2("div", { class: "bbgl-ach-footer-side bbgl-ach-footer-right", children: /* @__PURE__ */ u2("button", { type: "button", class: "bbgl-ach-nav bbgl-ach-next", "aria-label": "Next achievements page", children: "\u276F" }) })
-      ] })
-    ] });
-  }
-  function StickerChrome() {
-    return /* @__PURE__ */ u2(S, { children: [
-      /* @__PURE__ */ u2("div", { id: "bbgl-sticker-bg" }),
-      /* @__PURE__ */ u2("div", { id: "bbgl-sticker-container", children: [
-        /* @__PURE__ */ u2("div", { id: "sticker-sponsor-btn", class: "sticker-nav-btn disabled", children: "\u276E" }),
-        /* @__PURE__ */ u2("div", { id: "sticker-prev-btn", class: "sticker-nav-btn", children: "\u276E" }),
-        /* @__PURE__ */ u2("div", { id: "sticker-next-btn", class: "sticker-nav-btn", children: "\u276F" }),
-        /* @__PURE__ */ u2("div", { id: "bbgl-sticker-grid" }),
-        /* @__PURE__ */ u2("div", { id: "bbgl-sticker-pagination" })
-      ] })
-    ] });
-  }
   function TopPanel() {
     const sub = viewState.subView;
     const overlay = sub === "settings" || sub === "welcome";
@@ -12150,20 +12800,16 @@ Please enter a new key to continue.`);
       /* @__PURE__ */ u2("div", { id: "bbgl-graph-toggle", "data-tooltip": TOOLTIPS.GRAPH_VIEW, onClick: () => app.toggleGraphView(), children: /* @__PURE__ */ u2(Raw, { html: ICONS.GRAPH }) }),
       /* @__PURE__ */ u2("div", { id: "bbgl-achievements-toggle", "data-tooltip": TOOLTIPS.ACHIEVEMENTS, onClick: () => app.toggleAchievementsView(), children: /* @__PURE__ */ u2(Raw, { html: ICONS.ACHIEVEMENTS }) }),
       /* @__PURE__ */ u2("div", { id: "bbgl-sticker-toggle", "data-tooltip": TOOLTIPS.STICKERBOOK, onClick: () => app.toggleStickerView(), children: /* @__PURE__ */ u2(Raw, { html: ICONS.STICKERBOOK }) }),
-      /* @__PURE__ */ u2(Island, { id: "bbgl-item-counters" }),
       /* @__PURE__ */ u2("div", { id: "bbgl-copy-btn", class: "copy-hist-btn", "data-tooltip": TOOLTIPS.COPY_SESSION, onClick: onCopySession, children: /* @__PURE__ */ u2(Raw, { html: ICONS.CLIPBOARD }) }),
-      /* @__PURE__ */ u2(Island, { id: "bbgl-sticker-title" }),
-      /* @__PURE__ */ u2(Island, { id: "bbgl-date-label", class: "ui-floating-label", children: "LOADING..." }),
-      /* @__PURE__ */ u2(Island, { id: "bbgl-summary-label", class: "ui-floating-summary" }),
-      /* @__PURE__ */ u2(Island, { id: "bbgl-ledger-view", class: "ledger-content" }),
-      /* @__PURE__ */ u2(Island, { contents: true, children: /* @__PURE__ */ u2(GraphHud, {}) }),
-      /* @__PURE__ */ u2(Island, { contents: true, children: /* @__PURE__ */ u2(AchievementsChrome, {}) }),
-      /* @__PURE__ */ u2(Island, { contents: true, children: /* @__PURE__ */ u2(StickerChrome, {}) }),
+      /* @__PURE__ */ u2(StickerTitle, {}),
+      /* @__PURE__ */ u2(LedgerChrome, {}),
+      /* @__PURE__ */ u2(GraphView, {}),
+      /* @__PURE__ */ u2(AchievementsView, {}),
+      /* @__PURE__ */ u2(StickersView, {}),
       /* @__PURE__ */ u2("div", { class: "glass-overlay" })
     ] });
   }
   function BottomPanel() {
-    const weekDays = userConfig.weekStartMode === "mon" ? WEEK_MON : WEEK_SUN;
     const overlay = viewState.subView === "settings" || viewState.subView === "welcome";
     const hideForViewer = viewState.subView === "stickers" && viewState.activeItemId;
     return /* @__PURE__ */ u2(
@@ -12183,52 +12829,28 @@ Please enter a new key to continue.`);
               children: "DEMO MODE"
             }
           ),
-          /* @__PURE__ */ u2(Island, { contents: true, children: /* @__PURE__ */ u2("div", { class: "bbgl-header-wrapper", children: [
-            /* @__PURE__ */ u2("div", { class: "bbgl-month-header", children: [
-              /* @__PURE__ */ u2("div", { class: "title-group", children: /* @__PURE__ */ u2("div", { class: "title-stack", children: [
-                /* @__PURE__ */ u2("div", { class: "header-row header-row--alltime", children: [
-                  /* @__PURE__ */ u2("div", { class: "stats-btn", id: "all-time-btn", children: /* @__PURE__ */ u2(Raw, { html: ICONS.CHART }) }),
-                  /* @__PURE__ */ u2("div", { class: "header-trigger", id: "all-time-trigger", children: "\u221E" })
-                ] }),
-                /* @__PURE__ */ u2("div", { class: "header-row header-row--year", children: [
-                  /* @__PURE__ */ u2("div", { class: "stats-btn", id: "year-stats-btn", children: /* @__PURE__ */ u2(Raw, { html: ICONS.CHART }) }),
-                  /* @__PURE__ */ u2("div", { class: "header-trigger", id: "year-trigger" }),
-                  /* @__PURE__ */ u2("div", { id: "bbgl-year-dropdown", class: "bbgl-dropdown-menu" })
-                ] }),
-                /* @__PURE__ */ u2("div", { class: "header-row header-row--month", children: [
-                  /* @__PURE__ */ u2("div", { class: "stats-btn", id: "month-stats-btn", children: /* @__PURE__ */ u2(Raw, { html: ICONS.CHART }) }),
-                  /* @__PURE__ */ u2("div", { class: "header-trigger", id: "month-trigger" }),
-                  /* @__PURE__ */ u2("div", { id: "bbgl-month-dropdown", class: "bbgl-dropdown-menu" })
-                ] })
-              ] }) }),
-              /* @__PURE__ */ u2("button", { class: "arrow-btn", id: "prev-month-btn", children: "\u276E" }),
-              /* @__PURE__ */ u2("button", { class: "arrow-btn", id: "next-month-btn", children: "\u276F" })
-            ] }),
-            /* @__PURE__ */ u2("div", { id: "bbgl-level-bg", dangerouslySetInnerHTML: { __html: buildEmptyLevelTrackSVG() } }),
-            /* @__PURE__ */ u2("div", { id: "bbgl-level-container", children: [
-              /* @__PURE__ */ u2("div", { id: "bbgl-level-flag-clip", children: /* @__PURE__ */ u2("span", { id: "bbgl-level-num", children: "Lv 1" }) }),
-              /* @__PURE__ */ u2("div", { id: "bbgl-level-track", children: /* @__PURE__ */ u2("div", { id: "bbgl-level-fill" }) })
-            ] })
-          ] }) }),
+          /* @__PURE__ */ u2(MonthHeader, {}),
+          /* @__PURE__ */ u2("div", { id: "bbgl-level-bg", dangerouslySetInnerHTML: { __html: buildEmptyLevelTrackSVG() } }),
+          /* @__PURE__ */ u2("div", { id: "bbgl-level-container", children: [
+            /* @__PURE__ */ u2("div", { id: "bbgl-level-flag-clip", children: /* @__PURE__ */ u2("span", { id: "bbgl-level-num", children: "Lv 1" }) }),
+            /* @__PURE__ */ u2("div", { id: "bbgl-level-track", children: /* @__PURE__ */ u2("div", { id: "bbgl-level-fill" }) })
+          ] }),
           /* @__PURE__ */ u2("div", { class: "bbgl-grid-container", children: [
-            /* @__PURE__ */ u2("div", { class: "bbgl-week-row", children: weekDays.map((d3) => /* @__PURE__ */ u2("span", { children: d3 }, d3)) }),
-            /* @__PURE__ */ u2("div", { class: "calendar-wrapper", id: "swipe-area", children: /* @__PURE__ */ u2(Island, { id: "bbgl-cal-container", class: "bbgl-cal-container" }) })
+            /* @__PURE__ */ u2(WeekRow, {}),
+            /* @__PURE__ */ u2(CalendarSwipe, { children: /* @__PURE__ */ u2(CalendarGrid, {}) })
           ] })
         ]
       }
     );
   }
-  function ItemViewer() {
-    return /* @__PURE__ */ u2(Island, { contents: true, children: /* @__PURE__ */ u2("div", { id: "bbgl-item-viewer", children: [
-      /* @__PURE__ */ u2("div", { class: "viewer-window", children: /* @__PURE__ */ u2("div", { class: "viewer-stage", children: /* @__PURE__ */ u2("div", { class: "viewer-pedestal", id: "vi-pedestal-wrapper", children: /* @__PURE__ */ u2("div", { class: "viewer-obj", id: "vi-obj-target", children: [
-        /* @__PURE__ */ u2("div", { class: "layer-front" }),
-        /* @__PURE__ */ u2("div", { class: "layer-back" })
-      ] }) }) }) }),
-      /* @__PURE__ */ u2("div", { class: "viewer-info-overlay", children: /* @__PURE__ */ u2("div", { class: "vi-name", id: "vi-name-target", children: "Item Name" }) })
-    ] }) });
-  }
   function Dashboard() {
     useUiTick();
+    h2(() => {
+      const panel = document.getElementById("bbgl-panel");
+      if (panel && typeof app.cacheDOM === "function") app.cacheDOM(panel);
+      if (typeof app.refreshInitLock === "function") app.refreshInitLock();
+      if (typeof app.renderScanOverlay === "function") app.renderScanOverlay();
+    });
     const sub = viewState.subView;
     return /* @__PURE__ */ u2(S, { children: [
       /* @__PURE__ */ u2(Header, {}),
@@ -12236,8 +12858,9 @@ Please enter a new key to continue.`);
         /* @__PURE__ */ u2(TopPanel, {}),
         /* @__PURE__ */ u2(BottomPanel, {}),
         /* @__PURE__ */ u2(ItemViewer, {}),
-        /* @__PURE__ */ u2("div", { id: "bbgl-settings-view", class: sub === "settings" ? "active-view" : "", children: /* @__PURE__ */ u2(Island, { id: "bbgl-settings-inner", contents: true, html: getSettingsHTML() }) }),
-        /* @__PURE__ */ u2("div", { id: "bbgl-welcome-view", class: sub === "welcome" ? "active-view" : "", children: /* @__PURE__ */ u2(Island, { id: "bbgl-welcome-inner", contents: true }) })
+        /* @__PURE__ */ u2("div", { id: "bbgl-settings-view", class: sub === "settings" ? "active-view" : "", children: /* @__PURE__ */ u2(Settings, {}) }),
+        /* @__PURE__ */ u2("div", { id: "bbgl-welcome-view", class: sub === "welcome" ? "active-view" : "", children: /* @__PURE__ */ u2(Welcome, {}) }),
+        /* @__PURE__ */ u2(ScanOverlay, {})
       ] })
     ] });
   }
@@ -12245,7 +12868,7 @@ Please enter a new key to continue.`);
   // src/ui/preact/mount.tsx
   function mountDashboard(panel) {
     R(/* @__PURE__ */ u2(Dashboard, {}), panel);
-    if (typeof app.setupEventListeners === "function") app.setupEventListeners(panel);
+    if (typeof app.cacheDOM === "function") app.cacheDOM(panel);
   }
   function unmountDashboard(panel) {
     R(null, panel);

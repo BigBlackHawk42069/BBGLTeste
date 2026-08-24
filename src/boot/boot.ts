@@ -1,6 +1,6 @@
 import '../ui/panel.js';
 import '../ui/tooltip.js';
-import '../data/torn-api.js';
+import '../torn/api.js';
 import '../domain/history.js';
 import '../data/db.js';
 import '../data/sync.js';
@@ -11,16 +11,16 @@ import '../domain/demo.js';
 import '../ui/achievements-view.js';
 import '../ui/ledger.js';
 import '../data/import-export.js';
-import '../ui/best-gym.js';
+import '../torn/best-gym.js';
 import '../ui/calendar.js';
-import '../ui/torn-inject.js';
+import '../torn/inject.js';
 import '../ui/templates.js';
 import '../ui/docs.js';
+import '../ui/preact/Modals.tsx';
 import '../ui/graph.js';
 import '../ui/stickers.js';
 import '../boot/init.js';
 import '../ui/scan-overlay.js';
-import '../boot/events.js';
 import '../ui/preact/mount.tsx';
 import { app } from '../app-context.js';
 

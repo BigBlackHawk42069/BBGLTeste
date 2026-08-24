@@ -2,9 +2,11 @@
 
 Sources:
 
-- [`src/ui/torn-inject.js`](../../../src/ui/torn-inject.js) — sidebar, footer tab, layout shove, gym click, settings widgets
-- [`src/boot/init.js`](../../../src/boot/init.js) — `installDomHooks`
-- [`src/ui/best-gym.js`](../../../src/ui/best-gym.js) — `BestGymController`, capsule SVG constants
+- [`src/torn/inject.js`](../../../src/torn/inject.js) — sidebar, footer tab, layout shove, gym click
+- [`src/torn/widgets/`](../../../src/torn/widgets/) — Preact FooterTab, BestGym, GymLevelBar, PageHeader
+- [`src/boot/init.js`](../../../src/boot/init.js) — `installDomHooks`, `#gymlog` `PageHeader`
+- [`src/torn/best-gym.js`](../../../src/torn/best-gym.js) — `BestGymController` (fiber walk stays imperative), capsule SVG constants
+- [`src/torn/api.js`](../../../src/torn/api.js) — `universalFetch`
 
 This is the riskiest UI. It walks Torn's hashed class names (`area-mobile___sx8BQ`, `opened___`, …) and patches `Node.prototype` at `document-start`. Class hashes **will** change when Torn deploys; hooks must fail closed (try/catch, `maybeUninstall`).
 
@@ -62,9 +64,9 @@ Each has `{ target, container, link, row, id }`. Injected nodes use those Torn c
 
 The same file owns calendar capsule SVG geometry (`CAP_W`, `CAP_SLOT_*`, `CAP_BAR_DEFS`, `buildCapsuleBar`, `_capBarCache`) and `CAL_IMG_BASE` (CDN prefix for flipped day-cell textures). `updateSummaryCharts` / `buildChartSVG` are the tiny week-summary sparklines.
 
-## Settings widgets (also in this file)
+## Settings / welcome wiring (also in this file)
 
-`buildSection`, `buildRow`, `buildToggle`, `buildButton`, `stackBtnStyle`, `buildApiEntryField`, `generateDayStartSelect`, `onChangeLoc`, `onChangeDayStart`, `onChangeWeekStart`, `refreshInitMask`, `refreshInitLock`. Settings HTML in `sync.js` calls these via `app.build*`.
+`onChangeLoc`, `onChangeDayStart`, `onChangeWeekStart`, `refreshInitMask`, `refreshInitLock`. Settings and welcome controls are Preact (`Settings.tsx` / `Welcome.tsx`).
 
 Changing day/week start invalidates history caches and re-renders — timestamps stay unix, logical dates move.
 

@@ -27,17 +27,8 @@ function enterDemo(source) { if (source === 'settings' || source === 'privacy') 
 
 function enterDemoFromSettings() { enterDemo('settings'); }
 
-function buildWelcomeIntroSection() { const body = `<div id="bbgl-welcome-intro-text">${app.DOC_LOADING_HTML}</div>${app.buildButton('init-privacy-btn', 'PRIVACY DISCLOSURE', '', 'margin:0 10px 8px 10px; width: calc(100% - 20px); display:block;')}`; return `<div class="bbgl-prefs-tab-title" style="border-radius:5px 5px 0 0; margin-top:0;">Welcome to Big Black Gym Log</div><div class="bbgl-settings-body" style="margin-bottom:5px;">${body}</div>`; }
-
-function buildWelcomeInitSection() { const inputHTML = app.buildApiEntryField('init', 'margin:8px 10px;'); const createBtn = app.buildButton('init-create-api-btn', 'CREATE API KEY', '', 'margin:0 10px 8px 10px; width: calc(100% - 20px); display:block;'); const rows = app.buildRow(`<span data-tooltip-html="${app.TOOLTIPS.DAY_START}">Log Timezone</span>`, app.generateDayStartSelect('init-day-start', userConfig.dayStartMode)) + app.buildRow(`<span data-tooltip-html="${app.TOOLTIPS.WEEK_START}">Week Start</span>`, `<select id="init-week-start" class="bbgl-native-select"><option value="sun">Sun &ndash; Sat</option><option value="mon">Mon &ndash; Sun</option></select>`); const startBtn = app.buildButton('init-start-btn', 'START TRACKING', 'green', 'margin:8px 10px; width: calc(100% - 20px); display:block;'); const body = `<div id="init-section-masked-body" class="bbgl-mask-host" data-mask-text="Please agree to the privacy disclosure first.">${inputHTML}${createBtn}${rows}${startBtn}</div>`; return app.buildSection('Initialization Settings', body, 'margin-bottom:5px;'); }
-
-function buildWelcomeReturningSection() { const note = `<div id="bbgl-welcome-returning-text">${app.DOC_LOADING_HTML}</div>`; const importBtn = app.buildButton('init-returning-import-btn', 'IMPORT LOG', '', 'margin:0 10px 8px 10px; width: calc(100% - 20px); display:block;'); const hiddenFile = `<input type="file" id="init-import-file" accept=".json,application/json" style="display:none">`; return app.buildSection('Returning User', note + importBtn + hiddenFile, 'margin-bottom:5px;'); }
-
 app.generateDemoData = generateDemoData;
 app.refreshDemoMasks = refreshDemoMasks;
 app.enterDemo = enterDemo;
 app.enterDemoFromSettings = enterDemoFromSettings;
-app.buildWelcomeIntroSection = buildWelcomeIntroSection;
-app.buildWelcomeInitSection = buildWelcomeInitSection;
-app.buildWelcomeReturningSection = buildWelcomeReturningSection;
-export { generateDemoData, refreshDemoMasks, enterDemo, enterDemoFromSettings, buildWelcomeIntroSection, buildWelcomeInitSection, buildWelcomeReturningSection };
+export { generateDemoData, refreshDemoMasks, enterDemo, enterDemoFromSettings };

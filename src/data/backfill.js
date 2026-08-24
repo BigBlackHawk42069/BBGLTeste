@@ -662,12 +662,6 @@ async function recoverInterruptedBackfill() {
  */
 
 
-function buildBackfillChoiceModalHTML() { const intro = `<div style="padding:6px 4px 14px; color:#ccc; font-size:12px; line-height:1.6; text-align:center;">Start tracking now with no log history, or use Big Black Backfill to reconstruct your training history from Torn's logs. You can always get Big Black Backfilled later from the Settings.</div>`; const buttons = `<div style="display:flex; gap:0; margin:0 6px 2px;">${app.buildButton('bbgl-choice-fresh-btn', 'START EMPTY LOG', '', 'flex:1; border-radius:4px 0 0 4px; margin:0;')}${app.buildButton('bbgl-choice-backfill-btn', 'BIG BLACK BACKFILL', 'purple', 'flex:1; border-radius:0 4px 4px 0; margin:0;')}</div>`; return `<div class="bbgl-modal-overlay" id="bbgl-choice-modal"><div class="bbgl-modal-window"><div class="close-settings-btn bbgl-close-x" id="bbgl-choice-close" title="Close">${ICONS.CLOSE}</div>${app.buildSection('Start Tracking', intro + buttons, 'margin-bottom:8px;')}</div></div>`; }
-
-function closeBackfillChoiceModal() { const m = document.getElementById('bbgl-choice-modal'); if (m && m.parentNode) m.parentNode.removeChild(m); }
-
-function openBackfillChoiceModal() { if (runtime.demoMode) return; closeBackfillChoiceModal(); document.body.insertAdjacentHTML('beforeend', buildBackfillChoiceModalHTML()); const modal = document.getElementById('bbgl-choice-modal'); if (!modal) return; const close = () => { closeBackfillChoiceModal(); app.switchView('ledger'); }; modal.querySelector('#bbgl-choice-close').onclick = close; modal.onclick = e => { if (e.target === modal) close(); }; const fresh = modal.querySelector('#bbgl-choice-fresh-btn'); if (fresh) fresh.onclick = function () { this.blur(); close(); }; const bf = modal.querySelector('#bbgl-choice-backfill-btn'); if (bf) bf.onclick = function () { this.blur(); close(); backfillLogs(document.getElementById('backfill-btn')); }; }
-
 let _backfillCountdownId = null;
 
 function formatCountdown(ms) { const total = Math.max(0, Math.ceil(ms / 1000)); const h = Math.floor(total / 3600), m = Math.floor(total % 3600 / 60), s = total % 60; const pad = n => String(n).padStart(2, '0'); return `${pad(h)}:${pad(m)}:${pad(s)}`; }
@@ -684,7 +678,9 @@ let _backfillConfirmTimeout = null;
 
 function armBackfillConfirm(btn, onConfirm) { if (_backfillConfirmTimeout) clearTimeout(_backfillConfirmTimeout); btn.innerHTML = BACKFILL_CONFIRM_LABEL; btn.onclick = function () { this.blur(); if (_backfillConfirmTimeout) { clearTimeout(_backfillConfirmTimeout); _backfillConfirmTimeout = null; } onConfirm(); }; _backfillConfirmTimeout = setTimeout(() => { _backfillConfirmTimeout = null; renderBackfillButton(); }, 4000); }
 
-function renderBackfillButton() { const btn = document.getElementById('backfill-btn'); if (!btn) return; if (_backfillCountdownId) { clearInterval(_backfillCountdownId); _backfillCountdownId = null; } if (_backfillConfirmTimeout) { clearTimeout(_backfillConfirmTimeout); _backfillConfirmTimeout = null; } btn.disabled = false; btn.style.pointerEvents = ''; btn.style.opacity = ''; btn.style.color = ''; btn.removeAttribute('data-tooltip'); delete btn.dataset.originalText; btn.onclick = null; if (runtime.demoMode) return; const s = app.getActiveHistory(); const ds = s.meta && s.meta.backfill; if (runtime.backfilling || ds && ds.acknowledged === false) { btn.style.opacity = '0.6'; btn.style.pointerEvents = 'none'; btn.innerHTML = ds && ds.lastResult === 'partial' ? BACKFILL_RESUME_LABEL : BACKFILL_IDLE_LABEL; return; } if (ds && ds.lastResult === 'partial' && ds.cooldownUntil && Date.now() < ds.cooldownUntil) { btn.style.opacity = '0.6'; btn.disabled = true; btn.innerHTML = BACKFILL_RESUME_LABEL; const updateTooltip = () => { const remaining = ds.cooldownUntil - Date.now(); btn.setAttribute('data-tooltip', app.app.TOOLTIPS.BACKFILL_RESUME_COOLDOWN(formatCountdown(Math.max(0, remaining)))); }; updateTooltip(); _backfillCountdownId = setInterval(() => { if (Date.now() >= ds.cooldownUntil) { clearInterval(_backfillCountdownId); _backfillCountdownId = null; renderBackfillButton(); return; } updateTooltip(); }, 1000); return; } if (ds && ds.lastResult === 'partial') { btn.innerHTML = BACKFILL_RESUME_LABEL; btn.onclick = function () { this.blur(); armBackfillConfirm(btn, () => startBackfillFromSettings()); }; return; } if (ds && ds.lastResult === 'complete') { btn.style.color = '#69f0ae'; btn.innerHTML = 'Fully Backfilled!'; btn.setAttribute('data-tooltip', ds.completion === 'exhausted' ? app.app.TOOLTIPS.BACKFILL_COMPLETE_EXHAUSTED : app.app.TOOLTIPS.BACKFILL_COMPLETE_ORIGIN); btn.onclick = function () { this.blur(); armBackfillConfirm(btn, () => startBackfillFromSettings()); }; return; } btn.innerHTML = BACKFILL_IDLE_LABEL; btn.onclick = function () { this.blur(); armBackfillConfirm(btn, () => startBackfillFromSettings()); }; }
+function renderBackfillButton() {
+  if (typeof app.notifyUi === 'function') app.notifyUi();
+}
 
 app.backfillDayStart = backfillDayStart;
 app.ensureBackfillTargets = ensureBackfillTargets;
@@ -699,9 +695,6 @@ app.discardBackfillData = discardBackfillData;
 app.fetchBackfillPage = fetchBackfillPage;
 app.backfillLogs = backfillLogs;
 app.recoverInterruptedBackfill = recoverInterruptedBackfill;
-app.buildBackfillChoiceModalHTML = buildBackfillChoiceModalHTML;
-app.closeBackfillChoiceModal = closeBackfillChoiceModal;
-app.openBackfillChoiceModal = openBackfillChoiceModal;
 app._backfillCountdownId = _backfillCountdownId;
 app.formatCountdown = formatCountdown;
 app.startBackfillFromSettings = startBackfillFromSettings;
@@ -711,4 +704,4 @@ app.BACKFILL_CONFIRM_LABEL = BACKFILL_CONFIRM_LABEL;
 app._backfillConfirmTimeout = _backfillConfirmTimeout;
 app.armBackfillConfirm = armBackfillConfirm;
 app.renderBackfillButton = renderBackfillButton;
-export { backfillDayStart, ensureBackfillTargets, seriesEntryCode, computeBackfillFloor, persistBackfillState, _persistBackfillSeries, finalizeBackfill, acknowledgeBackfill, proceedPartialBackfill, discardBackfillData, fetchBackfillPage, backfillLogs, recoverInterruptedBackfill, buildBackfillChoiceModalHTML, closeBackfillChoiceModal, openBackfillChoiceModal, _backfillCountdownId, formatCountdown, startBackfillFromSettings, BACKFILL_IDLE_LABEL, BACKFILL_RESUME_LABEL, BACKFILL_CONFIRM_LABEL, _backfillConfirmTimeout, armBackfillConfirm, renderBackfillButton };
+export { backfillDayStart, ensureBackfillTargets, seriesEntryCode, computeBackfillFloor, persistBackfillState, _persistBackfillSeries, finalizeBackfill, acknowledgeBackfill, proceedPartialBackfill, discardBackfillData, fetchBackfillPage, backfillLogs, recoverInterruptedBackfill, _backfillCountdownId, formatCountdown, startBackfillFromSettings, BACKFILL_IDLE_LABEL, BACKFILL_RESUME_LABEL, BACKFILL_CONFIRM_LABEL, _backfillConfirmTimeout, armBackfillConfirm, renderBackfillButton };
