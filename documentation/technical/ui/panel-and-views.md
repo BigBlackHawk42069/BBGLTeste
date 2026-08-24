@@ -2,10 +2,15 @@
 
 Sources:
 
-- [`src/ui/templates.js`](../../../src/ui/templates.js) — `getDashboardHTML`, `getWelcomeHTML`, `getSettingsHTML`, `TOOLTIPS`
+- [`src/ui/preact/Dashboard.tsx`](../../../src/ui/preact/Dashboard.tsx) — header, toolbar, view classes, week labels
+- [`src/ui/preact/Island.tsx`](../../../src/ui/preact/Island.tsx) — frozen hosts vanilla may write into
+- [`src/ui/preact/chrome.ts`](../../../src/ui/preact/chrome.ts) — header / pop / copy / demo-exit handlers
+- [`src/ui/preact/store.ts`](../../../src/ui/preact/store.ts) — `notifyUi` / `useUiTick` (wired from `saveViewState` / `saveConfig`)
+- [`src/ui/preact/mount.tsx`](../../../src/ui/preact/mount.tsx) — `mountDashboard(panel)` then `setupEventListeners`
+- [`src/ui/templates.js`](../../../src/ui/templates.js) — `getSettingsHTML`, `getWelcomeHTML`, `TOOLTIPS`, `buildEmptyLevelTrackSVG`
 - [`src/ui/panel.js`](../../../src/ui/panel.js) — open/close, `switchView`, DOM cache
 - [`src/ui/tooltip.js`](../../../src/ui/tooltip.js) — `TooltipController`
-- [`src/boot/events.js`](../../../src/boot/events.js) — `setupEventListeners(root)`
+- [`src/boot/events.js`](../../../src/boot/events.js) — island listeners only (calendar, settings form, stickers, graph, achievements)
 
 ## Two shells, one mount
 
@@ -14,7 +19,7 @@ Sources:
 | Panel | Footer `#bbgl-gym-tab` or sidebar Gym Log | `#bbgl-panel` over Torn chrome |
 | Page | `#gymlog` hash (`/calendar.php#gymlog`) | `#bbgl-page-container` inside Torn `.content-wrapper` |
 
-Both inject `getDashboardHTML()` and call **the same** `setupEventListeners(root)`. Do not fork listeners per mode. Page mode adds `bbgl-mode-page` and a native-looking header (`renderPageMode`).
+Both call `mountDashboard(panel)` (Preact `Dashboard` into `#bbgl-panel`) then **the same** `setupEventListeners(root)`. Do not fork listeners per mode. Do not call `render()` again on the panel (that remounts and wipes islands). Chrome re-renders via `notifyUi` / `useUiTick`. Page mode adds `bbgl-mode-page` and a native-looking header (`renderPageMode`).
 
 `checkViewRouting` (hashchange / popstate) toggles `document.body.bbgl-page-mode-active` and `document.title = "Gym Log | TORN"`.
 
@@ -34,7 +39,9 @@ Both inject `getDashboardHTML()` and call **the same** `setupEventListeners(root
 
 ## Templates
 
-`getDashboardHTML()` is one HTML string: header, calendar chrome, weekly bars, level bar, toolbar toggles, ledger/graph/achievements/sticker hosts, settings + welcome hosts.
+`Dashboard` (Preact) owns header, toolbar toggles, tall/pop/demo/copy, `viewing-*` / `active-view` classes, overlay hide of top/bottom, and week-row labels. Vanilla **islands** (never reconcile after first paint) hold ledger, calendar cells, graph SVG/HUD, sticker grid, achievements pages, month/year chrome, level bar guts, item viewer, and settings/welcome inner HTML. Settings inner HTML still comes from `getSettingsHTML()`. Welcome inner is filled by `switchView`. `getDashboardHTML()` remains as the old string builder and is not used for mount.
+
+Wrapper islands use `contents` (`display: contents`) so they do not insert an extra flex box in front of `#bbgl-graph-container`, `#bbgl-item-viewer`, or the settings scroll area.
 
 Welcome and settings **compose sections from other files**:
 
@@ -52,21 +59,22 @@ Welcome and settings **compose sections from other files**:
 
 ## Event map (what to hook)
 
-`setupEventListeners` is the only place new toolbar/settings clicks should be bound. Already wired:
+Header / toolbar / demo / pop / tall / session-copy clicks are Preact (`chrome.ts` + `Dashboard`). `setupEventListeners` binds **island** controls only:
 
-- Header close / settings / popout / demo exit
 - All-time, month, year crown buttons
-- Ledger copy (session + per-stat column)
-- Graph / achievements / sticker toggles + sticker pagination
+- Ledger per-stat column copy (`#bbgl-ledger-view`)
+- Sticker pagination + swipe
 - Calendar month/year dropdowns + swipe
-- Settings: animations, rates, drug tracker, Best Gym, location, day/week start, API verify/clear/create, refresh/resync, export/import/clear, privacy/changelog/demo/feature-guide
+- Settings form (including `.close-settings-btn`)
 - Backfill button is (re)bound by `renderBackfillButton`
 - Achievements copy + enhancer period switch + swipe
+- `GraphController.setupControls()`, `setupStickerGrid()`, `refreshInitLock`
 
 API key verify from settings uses the same Torn `battlestats,log&log=5300` probe as welcome import.
 
 ## Implementing a change
 
-- New control: add markup in `getDashboardHTML` or a `buildSettings*` section, bind in `setupEventListeners`, persist through `userConfig` / `viewState`.
-- New view: add a host in the dashboard HTML, a `switchView` branch, and a `storage`-event case in `handleStorageEvent` (it already syncs `subView`, graph, stickers, calendar, tall/expanded).
+- New chrome control: add it in `Dashboard.tsx` and persist through `userConfig` / `viewState` (`saveViewState` re-renders Preact).
+- New island / settings control: add markup in `Dashboard` (inside `Island`) or a `buildSettings*` section, bind in `setupEventListeners`.
+- New view: add a host in `Dashboard` (island if vanilla fills it), a `switchView` branch, and a `storage`-event case in `handleStorageEvent` (it already syncs `subView`, graph, stickers, calendar, tall/expanded).
 - Keep `setupEventListeners(root)` as one function so page mode and panel mode cannot drift.

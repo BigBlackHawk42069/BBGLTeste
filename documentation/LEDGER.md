@@ -5,7 +5,7 @@ This document is the master registry for Big Black Gym Log (BBGL): a Tampermonke
 
 **Product:** Big Black Gym Log `0.9.91`  
 **Published artifact:** [`BigBlackGymLog.js`](../BigBlackGymLog.js) at repo root (single IIFE + userscript header).  
-**Source of truth:** [`src/`](../src/) — Node is the build environment only. There is no HTTP server, no Prisma/ZenStack, and no runtime npm packages.
+**Source of truth:** [`src/`](../src/) — Node is the build environment only. There is no HTTP server and no Prisma/ZenStack. The only runtime library is `preact`, bundled into the IIFE.
 
 **Scope:** Ledger entries document **shipped** code only. Product reviews and implementation plans live outside this tree (for example Cursor plan files) and must not be registered here.
 
@@ -114,14 +114,15 @@ When marking an item as **[X]**, **[P]**, or **[!]**, you must provide the link/
   - [x] `fetchWars`, `fetchFactionHistory`, `getWarMarkers`
   - [x] Calendar `renderCell` currently lives in `src/data/wars.js`
 
-### D. UI (Vanilla DOM)
+### D. UI (Preact shell + vanilla views)
 
 - **[X]** **Styles & Static Assets** - (/documentation/technical/ui/styles-and-assets.md)
   - [x] `injectStyles()` (`#bbgl-styles`, Google Fonts, CSS token substitution)
   - [x] `CUSTOM_STICKERS`, `ASSETS`, `ICONS`, `cdnize()`
 - **[X]** **Panel Shell, Templates & Events** - (/documentation/technical/ui/panel-and-views.md)
-  - [x] `getDashboardHTML` / welcome / settings templates
-  - [x] `togglePanel`, `switchView`, `setupEventListeners(root)`
+  - [x] Preact chrome (`Dashboard` + `useUiTick`) + frozen `Island` hosts for vanilla views
+  - [x] Settings HTML still from `getSettingsHTML`; welcome filled by `switchView`
+  - [x] `togglePanel`, `switchView`; header/toolbar clicks live on Preact, island clicks in `setupEventListeners`
   - [x] Panel mode vs `#gymlog` page mode
 - **[X]** **Calendar, Ledger & Graph** - (/documentation/technical/ui/calendar-ledger-graph.md)
   - [x] Month grid, weekly capsule bars, career level bar
@@ -143,5 +144,5 @@ When marking an item as **[X]**, **[P]**, or **[!]**, you must provide the link/
   - [x] Hash routing (`#gymlog`), storage-event view sync
 - **[X]** **Build, Tests & Tooling** - (/documentation/technical/development.md)
   - [x] Scripts: `npm run build`, `npm run dev`, `npm run typecheck`, `npm test`
-  - [x] esbuild IIFE + `userscript.meta.js` banner
+  - [x] esbuild IIFE + `userscript.meta.js` banner + Preact JSX (`jsxImportSource: preact`)
   - [x] `node:test` coverage (capsules, leveling, day, rebuild/reconcile)

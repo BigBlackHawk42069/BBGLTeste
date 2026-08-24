@@ -21,6 +21,7 @@ import '../ui/stickers.js';
 import '../boot/init.js';
 import '../ui/scan-overlay.js';
 import '../boot/events.js';
+import '../ui/preact/mount.tsx';
 import { app } from '../app-context.js';
 
 export function boot() {

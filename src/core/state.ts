@@ -101,6 +101,14 @@ export const userConfig: UserConfig = {
 
 export const ALLOWED_CONFIG_KEYS = Object.keys(userConfig) as Array<keyof UserConfig>;
 
+let uiNotifier: (() => void) | null = null;
+export function setUiNotifier(fn: () => void): void {
+  uiNotifier = fn;
+}
+function pingUi(): void {
+  if (uiNotifier) uiNotifier();
+}
+
 function browserStorage(kind: 'localStorage' | 'sessionStorage'): Storage | null {
   try {
     const store = (globalThis as unknown as Record<string, Storage | undefined>)[kind];
@@ -111,8 +119,10 @@ function browserStorage(kind: 'localStorage' | 'sessionStorage'): Storage | null
 }
 
 export function saveViewState(): void {
-  if (runtime.isSyncing) return;
-  browserStorage('localStorage')?.setItem(KEYS.STATE, JSON.stringify(viewState));
+  if (!runtime.isSyncing) {
+    browserStorage('localStorage')?.setItem(KEYS.STATE, JSON.stringify(viewState));
+  }
+  pingUi();
 }
 
 export function saveConfig(): void {
@@ -121,6 +131,7 @@ export function saveConfig(): void {
     if (userConfig[k] !== undefined) (c as Record<string, unknown>)[k] = userConfig[k];
   });
   browserStorage('localStorage')?.setItem(KEYS.CONFIG, JSON.stringify(c));
+  pingUi();
 }
 
 export function hydratePersistedState(): void {

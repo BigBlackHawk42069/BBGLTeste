@@ -69,7 +69,7 @@
   };
   var ITEM_GROUP_LABELS = { energy: "Energy Items", stat: "Stat Items", happy: "Happy Items", od: "OD Items" };
   var ITEM_LOGS = Object.keys(ITEM_LOG_META).map(Number);
-  var itemLogsByGroup = (g) => ITEM_LOGS.filter((id) => ITEM_LOG_META[id].group === g);
+  var itemLogsByGroup = (g4) => ITEM_LOGS.filter((id) => ITEM_LOG_META[id].group === g4);
   var TRAIN_LOGS = [5300, 5301, 5302, 5303];
   var ENERGY_LOGS = itemLogsByGroup("energy");
   var STAT_LOGS = itemLogsByGroup("stat");
@@ -82,14 +82,14 @@
   var BACKFILL_GROUPS = { trainEnergy: TRAIN_ENERGY_PARAM, statHappy: STAT_HAPPY_PARAM, statEnhancers: STAT_ENHANCER_PARAM };
   var BACKFILL_GROUP_KEYS = Object.keys(BACKFILL_GROUPS);
   var BACKFILL_GROUP_OF = {};
-  [...TRAIN_LOGS, ...ENERGY_LOGS].forEach((c) => {
-    BACKFILL_GROUP_OF[String(c)] = "trainEnergy";
+  [...TRAIN_LOGS, ...ENERGY_LOGS].forEach((c3) => {
+    BACKFILL_GROUP_OF[String(c3)] = "trainEnergy";
   });
-  [...HAPPY_LOGS, ...OD_LOGS].forEach((c) => {
-    BACKFILL_GROUP_OF[String(c)] = "statHappy";
+  [...HAPPY_LOGS, ...OD_LOGS].forEach((c3) => {
+    BACKFILL_GROUP_OF[String(c3)] = "statHappy";
   });
-  STAT_LOGS.forEach((c) => {
-    BACKFILL_GROUP_OF[String(c)] = "statEnhancers";
+  STAT_LOGS.forEach((c3) => {
+    BACKFILL_GROUP_OF[String(c3)] = "statEnhancers";
   });
   var XANAX_LOG = 2290;
   var XANAX_OD_LOG = 2291;
@@ -123,7 +123,7 @@
   var LAYOUT = { LIFT_HEIGHT: 43, BASE_RIGHT: 5 };
   var STAT_KEYS = ["str", "def", "spd", "dex"];
   var ZERO_BREAKDOWN = Object.freeze({ str: 0, def: 0, spd: 0, dex: 0 });
-  var r2 = (v) => Math.round(v * 100) / 100;
+  var r2 = (v3) => Math.round(v3 * 100) / 100;
   var ACH_FMT = {
     compact: [[1e6, 2], [1e4, 1]],
     gains: [[1e12, 4], [1e9, 3]],
@@ -146,13 +146,13 @@
     16: "This key doesn't have the access level BBGL needs. Make sure it's a Custom key with Basic, Battle Stats, Log, and Faction access \u2014 not Public or Minimal.",
     18: "This key has been paused by its owner in Torn's API settings. Re-enable it there, or generate a new one."
   };
-  function compareVersions(a, b) {
-    const pa = String(a).split(".").map(Number);
-    const pb = String(b).split(".").map(Number);
+  function compareVersions(a3, b2) {
+    const pa = String(a3).split(".").map(Number);
+    const pb = String(b2).split(".").map(Number);
     const len = Math.max(pa.length, pb.length);
-    for (let i = 0; i < len; i++) {
-      const na = pa[i] || 0;
-      const nb = pb[i] || 0;
+    for (let i3 = 0; i3 < len; i3++) {
+      const na = pa[i3] || 0;
+      const nb = pb[i3] || 0;
       if (na !== nb) return na < nb ? -1 : 1;
     }
     return 0;
@@ -170,8 +170,8 @@ ${BBGL_ERROR_CODE}`);
 
   // src/core/log.ts
   var _isDev = () => false;
-  function setDevChecker(fn) {
-    _isDev = fn;
+  function setDevChecker(fn2) {
+    _isDev = fn2;
   }
   var badge = ["%c BBGL %c", "background:#6a1b9a;color:#fff;font-weight:700;border-radius:3px 0 0 3px;padding:2px 6px;", "color:#999;"];
   var Log = {
@@ -181,65 +181,65 @@ ${BBGL_ERROR_CODE}`);
       this._bootShown = true;
       console.log(...badge, `v${SCRIPT_VERSION} booted`);
     },
-    info(...a) {
-      console.log(...badge, ...a);
+    info(...a3) {
+      console.log(...badge, ...a3);
     },
-    warn(...a) {
-      console.warn(...badge, ...a);
+    warn(...a3) {
+      console.warn(...badge, ...a3);
     },
-    error(...a) {
-      console.error(...badge, ...a);
+    error(...a3) {
+      console.error(...badge, ...a3);
     },
-    debug(...a) {
+    debug(...a3) {
       if (!_isDev()) return;
-      console.log(...badge, "[debug]", ...a);
+      console.log(...badge, "[debug]", ...a3);
     },
-    group(label, fn) {
+    group(label, fn2) {
       if (!_isDev()) {
-        fn();
+        fn2();
         return;
       }
       console.groupCollapsed(...badge, label);
       try {
-        fn();
+        fn2();
       } finally {
         console.groupEnd();
       }
     }
   };
   var Perf = {
-    mark(n) {
+    mark(n2) {
       if (!_isDev()) return;
       try {
-        performance.mark("bbgl:" + n);
+        performance.mark("bbgl:" + n2);
       } catch {
       }
     },
-    start(n) {
-      this.mark(n + ":start");
+    start(n2) {
+      this.mark(n2 + ":start");
     },
-    end(n) {
+    end(n2) {
       if (!_isDev()) return;
       try {
-        performance.mark("bbgl:" + n + ":end");
-        performance.measure("bbgl:" + n, "bbgl:" + n + ":start", "bbgl:" + n + ":end");
+        performance.mark("bbgl:" + n2 + ":end");
+        performance.measure("bbgl:" + n2, "bbgl:" + n2 + ":start", "bbgl:" + n2 + ":end");
       } catch {
       }
     },
-    async wrapAsync(n, fn) {
-      this.start(n);
+    async wrapAsync(n2, fn2) {
+      this.start(n2);
       try {
-        return await fn();
+        return await fn2();
       } finally {
-        this.end(n);
+        this.end(n2);
       }
     },
-    wrap(n, fn) {
-      this.start(n);
+    wrap(n2, fn2) {
+      this.start(n2);
       try {
-        return fn();
+        return fn2();
       } finally {
-        this.end(n);
+        this.end(n2);
       }
     }
   };
@@ -282,8 +282,8 @@ ${BBGL_ERROR_CODE}`);
   var refreshClickLog = [];
   var dom = {};
   var lastButtonLocation = null;
-  function setLastButtonLocation(v) {
-    lastButtonLocation = v;
+  function setLastButtonLocation(v3) {
+    lastButtonLocation = v3;
   }
   var topCeilingCache = null;
   var topCeilingTs = 0;
@@ -336,6 +336,13 @@ ${BBGL_ERROR_CODE}`);
     privacyAgreed: ""
   };
   var ALLOWED_CONFIG_KEYS = Object.keys(userConfig);
+  var uiNotifier = null;
+  function setUiNotifier(fn2) {
+    uiNotifier = fn2;
+  }
+  function pingUi() {
+    if (uiNotifier) uiNotifier();
+  }
   function browserStorage(kind) {
     try {
       const store = globalThis[kind];
@@ -345,15 +352,18 @@ ${BBGL_ERROR_CODE}`);
     }
   }
   function saveViewState() {
-    if (runtime.isSyncing) return;
-    browserStorage("localStorage")?.setItem(KEYS.STATE, JSON.stringify(viewState));
+    if (!runtime.isSyncing) {
+      browserStorage("localStorage")?.setItem(KEYS.STATE, JSON.stringify(viewState));
+    }
+    pingUi();
   }
   function saveConfig() {
-    const c = {};
-    ALLOWED_CONFIG_KEYS.forEach((k) => {
-      if (userConfig[k] !== void 0) c[k] = userConfig[k];
+    const c3 = {};
+    ALLOWED_CONFIG_KEYS.forEach((k3) => {
+      if (userConfig[k3] !== void 0) c3[k3] = userConfig[k3];
     });
-    browserStorage("localStorage")?.setItem(KEYS.CONFIG, JSON.stringify(c));
+    browserStorage("localStorage")?.setItem(KEYS.CONFIG, JSON.stringify(c3));
+    pingUi();
   }
   function hydratePersistedState() {
     const local = browserStorage("localStorage");
@@ -367,16 +377,16 @@ ${BBGL_ERROR_CODE}`);
         graphState.activeStats = viewState.graphStats || ["str", "spd"];
         if (viewState.calYear) calendarState.year = viewState.calYear;
         if (viewState.calMonth !== null && viewState.calMonth !== void 0) calendarState.month = viewState.calMonth;
-      } catch (e) {
-        Log.warn("State load error", e);
+      } catch (e3) {
+        Log.warn("State load error", e3);
       }
     }
     const rawConfig = local?.getItem(KEYS.CONFIG) ?? null;
     if (rawConfig) {
       try {
         const parsed = JSON.parse(rawConfig);
-        ALLOWED_CONFIG_KEYS.forEach((k) => {
-          if (parsed[k] !== void 0) userConfig[k] = parsed[k];
+        ALLOWED_CONFIG_KEYS.forEach((k3) => {
+          if (parsed[k3] !== void 0) userConfig[k3] = parsed[k3];
         });
       } catch {
       }
@@ -384,10 +394,10 @@ ${BBGL_ERROR_CODE}`);
     if (local?.getItem(KEYS.DEMO) === "1") runtime.demoMode = true;
     if (session?.getItem(KEYS.DEV_MODE) === "true") runtime.devMode = true;
     if (!viewState.calYear) {
-      const d = /* @__PURE__ */ new Date();
+      const d3 = /* @__PURE__ */ new Date();
       const local2 = userConfig.dayStartMode === "local";
-      calendarState.year = local2 ? d.getFullYear() : d.getUTCFullYear();
-      calendarState.month = local2 ? d.getMonth() : d.getUTCMonth();
+      calendarState.year = local2 ? d3.getFullYear() : d3.getUTCFullYear();
+      calendarState.month = local2 ? d3.getMonth() : d3.getUTCMonth();
     }
   }
   hydratePersistedState();
@@ -397,76 +407,76 @@ ${BBGL_ERROR_CODE}`);
     useLocal() {
       return userConfig.dayStartMode === "local";
     },
-    year(d) {
-      return this.useLocal() ? d.getFullYear() : d.getUTCFullYear();
+    year(d3) {
+      return this.useLocal() ? d3.getFullYear() : d3.getUTCFullYear();
     },
-    month(d) {
-      return this.useLocal() ? d.getMonth() : d.getUTCMonth();
+    month(d3) {
+      return this.useLocal() ? d3.getMonth() : d3.getUTCMonth();
     },
-    date(d) {
-      return this.useLocal() ? d.getDate() : d.getUTCDate();
+    date(d3) {
+      return this.useLocal() ? d3.getDate() : d3.getUTCDate();
     },
-    hours(d) {
-      return this.useLocal() ? d.getHours() : d.getUTCHours();
+    hours(d3) {
+      return this.useLocal() ? d3.getHours() : d3.getUTCHours();
     },
-    minutes(d) {
-      return this.useLocal() ? d.getMinutes() : d.getUTCMinutes();
+    minutes(d3) {
+      return this.useLocal() ? d3.getMinutes() : d3.getUTCMinutes();
     },
     now() {
-      const d = /* @__PURE__ */ new Date();
-      return { year: this.year(d), month: this.month(d), date: this.date(d) };
+      const d3 = /* @__PURE__ */ new Date();
+      return { year: this.year(d3), month: this.month(d3), date: this.date(d3) };
     },
     dayStartTs(dateStr) {
-      const [y, m, d] = dateStr.split("-");
-      return this.useLocal() ? new Date(+y, +m - 1, +d).getTime() : Formatter.parse(dateStr).getTime();
+      const [y3, m3, d3] = dateStr.split("-");
+      return this.useLocal() ? new Date(+y3, +m3 - 1, +d3).getTime() : Formatter.parse(dateStr).getTime();
     }
   };
   var Formatter = {
-    number(n, d = 0) {
-      return n === void 0 || n === null ? "0" : n.toLocaleString("en-US", { minimumFractionDigits: d, maximumFractionDigits: d });
+    number(n2, d3 = 0) {
+      return n2 === void 0 || n2 === null ? "0" : n2.toLocaleString("en-US", { minimumFractionDigits: d3, maximumFractionDigits: d3 });
     },
-    abbr(n, d = 1, strip = false) {
-      if (!n && n !== 0) return "0";
-      const abs = Math.abs(n);
-      if (abs < 1e3) return Math.trunc(n).toString();
+    abbr(n2, d3 = 1, strip = false) {
+      if (!n2 && n2 !== 0) return "0";
+      const abs = Math.abs(n2);
+      if (abs < 1e3) return Math.trunc(n2).toString();
       const tiers = [[1e15, "q"], [1e12, "t"], [1e9, "b"], [1e6, "m"], [1e3, "k"]];
       for (const [mag, suffix] of tiers) {
         if (abs >= mag) {
-          const dec = typeof d === "function" ? d(mag, abs) : d;
-          let s = (n / mag).toFixed(dec);
-          if (strip) s = parseFloat(s).toString();
-          return s + suffix;
+          const dec = typeof d3 === "function" ? d3(mag, abs) : d3;
+          let s3 = (n2 / mag).toFixed(dec);
+          if (strip) s3 = parseFloat(s3).toString();
+          return s3 + suffix;
         }
       }
-      return Math.floor(n).toString();
+      return Math.floor(n2).toString();
     },
-    rate(n, exp = false) {
-      if (!n && n !== 0) return "0";
-      if (n < 1e3) return this.number(n, exp ? 2 : 1);
-      if (exp) return this.number(Math.floor(n), 0);
-      return this.abbr(n, 1);
+    rate(n2, exp = false) {
+      if (!n2 && n2 !== 0) return "0";
+      if (n2 < 1e3) return this.number(n2, exp ? 2 : 1);
+      if (exp) return this.number(Math.floor(n2), 0);
+      return this.abbr(n2, 1);
     },
-    achAbbr(n, tiers) {
-      if (!tiers || !tiers.length) return this.number(n);
-      const abs = Math.abs(n);
+    achAbbr(n2, tiers) {
+      if (!tiers || !tiers.length) return this.number(n2);
+      const abs = Math.abs(n2);
       for (const [mag, dec] of tiers) {
-        if (abs >= mag) return this.abbr(n, dec);
+        if (abs >= mag) return this.abbr(n2, dec);
       }
-      return this.number(n);
+      return this.number(n2);
     },
     achDual(val, expandedTiers = ACH_FMT.compact) {
       const std = this.achAbbr(val, ACH_FMT.compact);
       const exp = this.achAbbr(val, expandedTiers);
       return `<span class="view-std">${std}</span><span class="view-exp">${exp}</span>`;
     },
-    ratePct(v) {
-      if (Math.abs(v) < 1e3) return this.number(v, 0);
-      return this.abbr(v, 2, true);
+    ratePct(v3) {
+      if (Math.abs(v3) < 1e3) return this.number(v3, 0);
+      return this.abbr(v3, 2, true);
     },
-    dual(val, r = false) {
+    dual(val, r4 = false) {
       let std;
       let exp;
-      if (r) {
+      if (r4) {
         std = this.rate(val, false);
         exp = this.rate(val, true);
       } else {
@@ -475,56 +485,56 @@ ${BBGL_ERROR_CODE}`);
       }
       return `<span class="view-std">${std}</span><span class="view-exp">${exp}</span>`;
     },
-    axis(n) {
-      if (n === 0) return "0";
-      if (Math.abs(n) < 1e3) return (Math.round(n * 10) / 10).toString();
-      return this.abbr(n, 1, false);
+    axis(n2) {
+      if (n2 === 0) return "0";
+      if (Math.abs(n2) < 1e3) return (Math.round(n2 * 10) / 10).toString();
+      return this.abbr(n2, 1, false);
     },
-    parse(s) {
-      if (!s) return /* @__PURE__ */ new Date();
-      return new Date(s.includes("T") ? s : s + "T00:00:00Z");
+    parse(s3) {
+      if (!s3) return /* @__PURE__ */ new Date();
+      return new Date(s3.includes("T") ? s3 : s3 + "T00:00:00Z");
     },
-    dateISO(y, m, d) {
-      return `${y}-${String(m + 1).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
+    dateISO(y3, m3, d3) {
+      return `${y3}-${String(m3 + 1).padStart(2, "0")}-${String(d3).padStart(2, "0")}`;
     },
     dateLogical(ts = null) {
-      const d = ts ? new Date(ts) : /* @__PURE__ */ new Date();
-      return this.dateISO(TimeManager.year(d), TimeManager.month(d), TimeManager.date(d));
+      const d3 = ts ? new Date(ts) : /* @__PURE__ */ new Date();
+      return this.dateISO(TimeManager.year(d3), TimeManager.month(d3), TimeManager.date(d3));
     },
-    datePretty(s) {
-      if (!s || s.includes("Summary")) return s;
-      const p = s.split("-");
-      if (p.length !== 3) return s;
-      const d = this.parse(s);
-      return `${CONSTANTS.MONTHS_SHORT[d.getUTCMonth()]} ${d.getUTCDate()}, ${d.getUTCFullYear()}`;
+    datePretty(s3) {
+      if (!s3 || s3.includes("Summary")) return s3;
+      const p3 = s3.split("-");
+      if (p3.length !== 3) return s3;
+      const d3 = this.parse(s3);
+      return `${CONSTANTS.MONTHS_SHORT[d3.getUTCMonth()]} ${d3.getUTCDate()}, ${d3.getUTCFullYear()}`;
     },
-    dateMonthDay(s) {
-      if (!s) return s;
-      const p = s.split("-");
-      if (p.length !== 3) return s;
-      const d = this.parse(s);
-      return `${CONSTANTS.MONTHS_SHORT[d.getUTCMonth()]} ${d.getUTCDate()}`;
+    dateMonthDay(s3) {
+      if (!s3) return s3;
+      const p3 = s3.split("-");
+      if (p3.length !== 3) return s3;
+      const d3 = this.parse(s3);
+      return `${CONSTANTS.MONTHS_SHORT[d3.getUTCMonth()]} ${d3.getUTCDate()}`;
     },
-    dateFull(s) {
-      if (!s || s.includes("Summary")) return s;
-      const p = s.split("-");
-      if (p.length !== 3) return s;
-      const d = this.parse(s);
-      return `${CONSTANTS.MONTHS[d.getUTCMonth()]} ${d.getUTCDate()}, ${d.getUTCFullYear()}`;
+    dateFull(s3) {
+      if (!s3 || s3.includes("Summary")) return s3;
+      const p3 = s3.split("-");
+      if (p3.length !== 3) return s3;
+      const d3 = this.parse(s3);
+      return `${CONSTANTS.MONTHS[d3.getUTCMonth()]} ${d3.getUTCDate()}, ${d3.getUTCFullYear()}`;
     }
   };
-  function getISOWeek(s) {
-    const d = Formatter.parse(s);
-    const date = new Date(d.valueOf());
+  function getISOWeek(s3) {
+    const d3 = Formatter.parse(s3);
+    const date = new Date(d3.valueOf());
     date.setUTCDate(date.getUTCDate() + 3 - (date.getUTCDay() + 6) % 7);
     const w1 = new Date(Date.UTC(date.getUTCFullYear(), 0, 4));
     return 1 + Math.round(((date.getTime() - w1.getTime()) / 864e5 - 3 + (w1.getUTCDay() + 6) % 7) / 7);
   }
   function getWeekKey(dateStr) {
-    const d = Formatter.parse(dateStr);
-    const dayIdx = d.getUTCDay();
+    const d3 = Formatter.parse(dateStr);
+    const dayIdx = d3.getUTCDay();
     const offset = userConfig.weekStartMode === "mon" ? dayIdx === 0 ? 6 : dayIdx - 1 : dayIdx;
-    const weekStart = new Date(d.getTime() - offset * 864e5);
+    const weekStart = new Date(d3.getTime() - offset * 864e5);
     return Formatter.dateISO(weekStart.getUTCFullYear(), weekStart.getUTCMonth(), weekStart.getUTCDate());
   }
 
@@ -573,36 +583,35 @@ ${BBGL_ERROR_CODE}`);
   }
   function togglePanel(click = false) {
     if (window.location.hash.includes("gymlog")) return;
-    let p = document.getElementById("bbgl-panel");
-    const b = dom.gymTab;
-    if (click && p && p.style.display !== "none") {
+    let p3 = document.getElementById("bbgl-panel");
+    const b2 = dom.gymTab;
+    if (click && p3 && p3.style.display !== "none") {
       closePanel();
       return;
     }
-    if (!p) {
-      p = document.createElement("div");
-      p.id = "bbgl-panel";
-      if (viewState.expanded) p.classList.add("bbgl-expanded");
-      else p.classList.add("bbgl-compact");
-      if (viewState.isTall) p.classList.add("bbgl-tall");
-      p.innerHTML = app.getDashboardHTML();
-      document.body.appendChild(p);
-      app.setupEventListeners(p);
+    if (!p3) {
+      p3 = document.createElement("div");
+      p3.id = "bbgl-panel";
+      if (viewState.expanded) p3.classList.add("bbgl-expanded");
+      else p3.classList.add("bbgl-compact");
+      if (viewState.isTall) p3.classList.add("bbgl-tall");
+      document.body.appendChild(p3);
+      app.mountDashboard(p3);
     }
-    if (p.style.display === "none" || !p.style.display) {
+    if (p3.style.display === "none" || !p3.style.display) {
       restoreInternalState();
-      p.style.opacity = "0";
-      p.style.display = "flex";
+      p3.style.opacity = "0";
+      p3.style.display = "flex";
       app.handleLayout();
-      void p.offsetWidth;
+      void p3.offsetWidth;
       updateTransformOrigin();
-      if (b) b.classList.add("bbgl-tab-active");
-      p.classList.remove("bbgl-animate-vanish", "bbgl-animate-pop");
+      if (b2) b2.classList.add("bbgl-tab-active");
+      p3.classList.remove("bbgl-animate-vanish", "bbgl-animate-pop");
       if (userConfig.animations) {
-        void p.offsetWidth;
-        p.classList.add("bbgl-animate-pop");
+        void p3.offsetWidth;
+        p3.classList.add("bbgl-animate-pop");
       }
-      p.style.opacity = "";
+      p3.style.opacity = "";
       if (click) {
         viewState.isOpen = true;
         saveViewState();
@@ -621,11 +630,11 @@ ${BBGL_ERROR_CODE}`);
     if (viewState.graphStats) graphState.activeStats = viewState.graphStats;
     app.GraphController.restoreUi();
     if (viewState.activeViewLabel) {
-      const s = app.getActiveHistory();
+      const s3 = app.getActiveHistory();
       let td = null;
       if (/^\d{4}-\d{2}-\d{2}$/.test(viewState.activeViewLabel)) {
-        td = s.history.find((d) => d.date === viewState.activeViewLabel);
-        if (!td && s.today.date === viewState.activeViewLabel) td = s.today;
+        td = s3.history.find((d3) => d3.date === viewState.activeViewLabel);
+        if (!td && s3.today.date === viewState.activeViewLabel) td = s3.today;
         if (td) {
           calendarState.selectedData = td;
           calendarState.selectedLabel = viewState.activeViewLabel;
@@ -642,8 +651,8 @@ ${BBGL_ERROR_CODE}`);
     const et = () => {
       if (mp && !mp.classList.contains("bbgl-mode-page") && !mp.classList.contains("bbgl-tall")) {
         mp.classList.add("bbgl-tall");
-        const t = dom.tallToggle;
-        if (t) t.innerText = "\u2013";
+        const t3 = dom.tallToggle;
+        if (t3) t3.innerText = "\u2013";
         viewState.isTall = true;
         saveViewState();
       }
@@ -665,11 +674,11 @@ ${BBGL_ERROR_CODE}`);
         saveViewState();
       }
       switchView("stickers", true);
-      const i = runtime.stickerData.find((x) => x.id === ti);
-      if (i) {
+      const i3 = runtime.stickerData.find((x3) => x3.id === ti);
+      if (i3) {
         const bp = dom.bottomPanel;
         if (bp) bp.style.setProperty("display", "none", "important");
-        setTimeout(() => app.openItemViewer(i, false), 50);
+        setTimeout(() => app.openItemViewer(i3, false), 50);
       }
     } else if (viewState.subView === "achievements") {
       et();
@@ -696,15 +705,15 @@ ${BBGL_ERROR_CODE}`);
       cancelAnimationFrame(runtime.viewerLoopId);
       runtime.viewerLoopId = null;
     }
-    const gel = (m) => {
-      if (m === "settings") return sp;
-      if (m === "welcome") return wv;
-      if (m === "graph") return dom.graphContainer;
-      if (m === "stickers") return dom.stickerContainer;
-      if (m === "achievements") return dom.achievementsContainer;
+    const gel = (m3) => {
+      if (m3 === "settings") return sp;
+      if (m3 === "welcome") return wv;
+      if (m3 === "graph") return dom.graphContainer;
+      if (m3 === "stickers") return dom.stickerContainer;
+      if (m3 === "achievements") return dom.achievementsContainer;
       return dom.ledgerView;
     }, cel = gel(cm), nel = gel(tgt);
-    const app2 = () => {
+    const applyView = () => {
       tp.classList.remove("viewing-graph", "viewing-stickers", "viewing-achievements");
       sp.classList.remove("active-view");
       if (wv) wv.classList.remove("active-view");
@@ -717,12 +726,13 @@ ${BBGL_ERROR_CODE}`);
       }
       if (tgt === "welcome") {
         if (wv) {
-          wv.innerHTML = app2.getWelcomeHTML();
-          app2.populateWelcomeContent(wv);
+          const welcomeHost = wv.querySelector("#bbgl-welcome-inner") || wv;
+          welcomeHost.innerHTML = app.getWelcomeHTML();
+          app.populateWelcomeContent(welcomeHost);
           wv.classList.add("active-view");
           const cwb = wv.querySelector(".close-settings-btn");
-          if (cwb) cwb.onclick = (e) => {
-            if (e) e.stopPropagation();
+          if (cwb) cwb.onclick = (e3) => {
+            if (e3) e3.stopPropagation();
             switchView("ledger");
           };
           const iak = wv.querySelector("#init-api-key");
@@ -730,37 +740,37 @@ ${BBGL_ERROR_CODE}`);
           const iwp = wv.querySelector("#init-api-paste");
           if (iwp && iak) iwp.onclick = async () => {
             try {
-              const t = await navigator.clipboard.readText();
-              if (t) iak.value = t.trim();
-            } catch (e) {
+              const t3 = await navigator.clipboard.readText();
+              if (t3) iak.value = t3.trim();
+            } catch (e3) {
               bbglError(MSG_CLIPBOARD_DENIED);
             }
           };
           const ilocSel = wv.querySelector("#init-loc-select");
           if (ilocSel) {
             ilocSel.value = userConfig.buttonLocation;
-            ilocSel.onchange = () => app2.onChangeLoc(ilocSel.value);
+            ilocSel.onchange = () => app.onChangeLoc(ilocSel.value);
           }
           const idaySel = wv.querySelector("#init-day-start");
           if (idaySel) {
             idaySel.value = userConfig.dayStartMode;
-            idaySel.onchange = () => app2.onChangeDayStart(idaySel.value);
+            idaySel.onchange = () => app.onChangeDayStart(idaySel.value);
           }
           const iweekSel = wv.querySelector("#init-week-start");
           if (iweekSel) {
             iweekSel.value = userConfig.weekStartMode;
-            iweekSel.onchange = () => app2.onChangeWeekStart(iweekSel.value);
+            iweekSel.onchange = () => app.onChangeWeekStart(iweekSel.value);
           }
           const ipb = wv.querySelector("#init-privacy-btn");
           if (ipb) ipb.onclick = function() {
             this.blur();
-            app2.openPrivacyModal();
+            app.openPrivacyModal();
           };
           const isb = wv.querySelector("#init-start-btn");
           if (isb && iak) isb.onclick = async function() {
             this.blur();
-            const v = iak.value.trim();
-            if (!/^[a-zA-Z0-9]{16}$/.test(v)) {
+            const v3 = iak.value.trim();
+            if (!/^[a-zA-Z0-9]{16}$/.test(v3)) {
               bbglError(MSG_KEY_FORMAT_INVALID);
               return;
             }
@@ -768,7 +778,7 @@ ${BBGL_ERROR_CODE}`);
             isb.innerText = "VERIFYING...";
             isb.disabled = true;
             try {
-              const res = await fetch(`https://api.torn.com/user/?selections=battlestats,log&log=5300&key=${v}`), data = await res.json();
+              const res = await fetch(`https://api.torn.com/user/?selections=battlestats,log&log=5300&key=${v3}`), data = await res.json();
               if (data.error) {
                 bbglError(`Key Verification Failed: ${tornKeyErrorText(data)}`);
                 isb.style.color = "";
@@ -776,16 +786,16 @@ ${BBGL_ERROR_CODE}`);
                 isb.disabled = false;
                 return;
               }
-              userConfig.apiKey = v;
+              userConfig.apiKey = v3;
               saveConfig();
               localStorage.setItem("bbgl_initialized", "1");
-              app2.refreshInitLock();
+              app.refreshInitLock();
               calendarState.selectedData = null;
               calendarState.selectedLabel = Formatter.dateLogical();
               viewState.activeViewLabel = null;
-              app2.syncWithFeedback("FULL_SYNC");
-              app2.openBackfillChoiceModal();
-            } catch (e) {
+              app.syncWithFeedback("FULL_SYNC");
+              app.openBackfillChoiceModal();
+            } catch (e3) {
               bbglError(MSG_KEY_NETWORK_ERROR);
               isb.style.color = "";
               isb.innerText = "START TRACKING";
@@ -802,11 +812,11 @@ ${BBGL_ERROR_CODE}`);
             this.blur();
             rif.click();
           };
-          if (rif) rif.onchange = (e) => {
-            const f = e.target.files[0];
-            if (f) app2.importDataFromWelcome(f);
+          if (rif) rif.onchange = (e3) => {
+            const f4 = e3.target.files[0];
+            if (f4) app.importDataFromWelcome(f4);
           };
-          app2.refreshInitMask(wv);
+          app.refreshInitMask(wv);
         }
         tp.style.display = "none";
         bp.style.display = "none";
@@ -822,17 +832,17 @@ ${BBGL_ERROR_CODE}`);
         if (rt) rt.checked = userConfig.ratesEnabled;
         const ls = document.getElementById("set-loc-select");
         if (ls) ls.value = userConfig.buttonLocation;
-        app2.refreshDemoMasks();
+        app.refreshDemoMasks();
       } else if (tgt === "graph") {
         tp.classList.add("viewing-graph");
-        app2.GraphController.restoreUi();
-        app2.GraphController.draw();
+        app.GraphController.restoreUi();
+        app.GraphController.draw();
         requestAnimationFrame(() => requestAnimationFrame(() => {
-          if (dom.topPanel && dom.topPanel.classList.contains("viewing-graph")) app2.GraphController.draw();
+          if (dom.topPanel && dom.topPanel.classList.contains("viewing-graph")) app.GraphController.draw();
         }));
       } else if (tgt === "stickers") {
         tp.classList.add("viewing-stickers");
-        app2.renderStickers();
+        app.renderStickers();
         if (cm !== "stickers" && dom.stickerSponsor && userConfig.animations) {
           dom.stickerSponsor.classList.remove("shimmer-once");
           void dom.stickerSponsor.offsetWidth;
@@ -840,12 +850,12 @@ ${BBGL_ERROR_CODE}`);
         }
       } else if (tgt === "achievements") {
         tp.classList.add("viewing-achievements");
-        app2.renderAchievements();
-      } else app2.renderPanelContent();
-      app2.renderScanOverlay();
+        app.renderAchievements();
+      } else app.renderPanelContent();
+      app.renderScanOverlay();
     };
     if (inst) {
-      app2();
+      applyView();
       return;
     }
     if (runtime.isViewAnimating) {
@@ -855,10 +865,10 @@ ${BBGL_ERROR_CODE}`);
     }
     runtime.isViewAnimating = true;
     if (!userConfig.animations) {
-      app2();
+      applyView();
       runtime.isViewAnimating = false;
     } else if (cm === "settings") {
-      app2();
+      applyView();
       nel.classList.add("bbgl-crt-in");
       setTimeout(() => {
         nel.classList.remove("bbgl-crt-in");
@@ -868,19 +878,19 @@ ${BBGL_ERROR_CODE}`);
       cel.classList.add("bbgl-crt-out");
       setTimeout(() => {
         cel.classList.remove("bbgl-crt-out");
-        app2();
+        applyView();
         runtime.isViewAnimating = false;
       }, 280);
     } else if (tgt === "stickers") {
       cel.classList.add("bbgl-crt-out");
       setTimeout(() => {
         cel.classList.remove("bbgl-crt-out");
-        app2();
+        applyView();
         runtime.isViewAnimating = false;
       }, 280);
     } else if (cm === "stickers") {
       nel.classList.add("bbgl-crt-in");
-      app2();
+      applyView();
       setTimeout(() => {
         nel.classList.remove("bbgl-crt-in");
         runtime.isViewAnimating = false;
@@ -890,7 +900,7 @@ ${BBGL_ERROR_CODE}`);
       setTimeout(() => {
         cel.classList.remove("bbgl-crt-out");
         nel.classList.add("bbgl-crt-in");
-        app2();
+        applyView();
         setTimeout(() => {
           nel.classList.remove("bbgl-crt-in");
           runtime.isViewAnimating = false;
@@ -898,11 +908,11 @@ ${BBGL_ERROR_CODE}`);
       }, 280);
     }
   }
-  function closePanel(e) {
-    if (e) e.stopPropagation();
+  function closePanel(e3) {
+    if (e3) e3.stopPropagation();
     if (runtime.isClosing) return;
-    const p = dom.panel, b = dom.gymTab;
-    if (!p) return;
+    const p3 = dom.panel, b2 = dom.gymTab;
+    if (!p3) return;
     runtime.isClosing = true;
     viewState.isOpen = false;
     viewState.isTall = false;
@@ -931,36 +941,36 @@ ${BBGL_ERROR_CODE}`);
     calendarState.selectedData = null;
     calendarState.selectedLabel = null;
     app.renderPanelContent();
-    if (b) b.classList.remove("bbgl-tab-active");
+    if (b2) b2.classList.remove("bbgl-tab-active");
     updateTransformOrigin();
-    p.classList.remove("bbgl-animate-pop");
-    p.classList.remove("bbgl-tall");
+    p3.classList.remove("bbgl-animate-pop");
+    p3.classList.remove("bbgl-tall");
     const tt = dom.tallToggle;
     if (tt) tt.innerText = "+";
     if (userConfig.animations) {
-      p.classList.add("bbgl-animate-vanish");
+      p3.classList.add("bbgl-animate-vanish");
       setTimeout(() => {
-        p.style.display = "none";
-        p.classList.remove("bbgl-animate-vanish");
+        p3.style.display = "none";
+        p3.classList.remove("bbgl-animate-vanish");
         runtime.isClosing = false;
         app.handleLayout();
       }, 300);
     } else {
-      p.style.display = "none";
+      p3.style.display = "none";
       runtime.isClosing = false;
       app.handleLayout();
     }
   }
   function toggleTall() {
-    const p = dom.panel, b = dom.tallToggle;
-    if (p.classList.contains("bbgl-mode-page")) return;
-    p.classList.toggle("bbgl-tall");
-    const t = p.classList.contains("bbgl-tall");
-    b.innerText = t ? "\u2013" : "+";
-    viewState.isTall = t;
+    const p3 = dom.panel, b2 = dom.tallToggle;
+    if (p3.classList.contains("bbgl-mode-page")) return;
+    p3.classList.toggle("bbgl-tall");
+    const t3 = p3.classList.contains("bbgl-tall");
+    b2.innerText = t3 ? "\u2013" : "+";
+    viewState.isTall = t3;
     saveViewState();
     const tp = dom.topPanel;
-    if (!t) {
+    if (!t3) {
       if (tp.classList.contains("viewing-graph") || tp.classList.contains("viewing-stickers") || tp.classList.contains("viewing-achievements")) switchView("ledger");
     } else {
       if (tp.classList.contains("viewing-graph")) {
@@ -977,22 +987,22 @@ ${BBGL_ERROR_CODE}`);
     switchView("graph");
     saveViewState();
   }
-  function toggleSettingsView(e) {
-    if (e) e.stopPropagation();
+  function toggleSettingsView(e3) {
+    if (e3) e3.stopPropagation();
     const sp = dom.settingsView, tp = dom.topPanel, vp = dom.itemViewer;
     if (sp.classList.contains("active-view")) {
-      let t = runtime.returnView || "ledger";
-      if (t === "viewer") {
+      let t3 = runtime.returnView || "ledger";
+      if (t3 === "viewer") {
         switchView("stickers");
         viewState.subView = "stickers";
         if (viewState.activeItemId) setTimeout(() => {
           if (!runtime.stickerData.length) app.loadStickerData();
-          const i = runtime.stickerData.find((x) => x.id === viewState.activeItemId);
-          if (i) app.openItemViewer(i, false);
+          const i3 = runtime.stickerData.find((x3) => x3.id === viewState.activeItemId);
+          if (i3) app.openItemViewer(i3, false);
         }, 50);
       } else {
-        switchView(t);
-        viewState.subView = t;
+        switchView(t3);
+        viewState.subView = t3;
       }
     } else {
       if (vp && vp.classList.contains("active")) runtime.returnView = "viewer";
@@ -1006,12 +1016,12 @@ ${BBGL_ERROR_CODE}`);
     saveViewState();
   }
   function updateTransformOrigin() {
-    const p = dom.panel, b = dom.gymTab;
-    if (!p || !b) {
+    const p3 = dom.panel, b2 = dom.gymTab;
+    if (!p3 || !b2) {
       runtime.transformOriginRetries = 0;
       return;
     }
-    const pr = p.getBoundingClientRect(), br = b.getBoundingClientRect();
+    const pr = p3.getBoundingClientRect(), br = b2.getBoundingClientRect();
     if (pr.width === 0 || pr.height === 0) {
       runtime.transformOriginRetries = (runtime.transformOriginRetries || 0) + 1;
       if (runtime.transformOriginRetries > 30) {
@@ -1023,7 +1033,7 @@ ${BBGL_ERROR_CODE}`);
     }
     runtime.transformOriginRetries = 0;
     const cx = br.left + br.width / 2, cy = br.top + br.height / 2;
-    p.style.transformOrigin = `${cx - pr.left}px ${cy - pr.top}px`;
+    p3.style.transformOrigin = `${cx - pr.left}px ${cy - pr.top}px`;
   }
   app.cacheDOM = cacheDOM;
   app.togglePanel = togglePanel;
@@ -1063,63 +1073,63 @@ ${BBGL_ERROR_CODE}`);
     else if (fitsTop) side = "top";
     else if (fitsBot) side = "bottom";
     else side = "left";
-    let x = 0, y = 0;
+    let x3 = 0, y3 = 0;
     if (side === "top") {
-      x = rect.left + rect.width / 2 - ttRect.width / 2;
-      y = rect.top - ttRect.height - pad;
+      x3 = rect.left + rect.width / 2 - ttRect.width / 2;
+      y3 = rect.top - ttRect.height - pad;
     } else if (side === "bottom") {
-      x = rect.left + rect.width / 2 - ttRect.width / 2;
-      y = rect.bottom + pad;
+      x3 = rect.left + rect.width / 2 - ttRect.width / 2;
+      y3 = rect.bottom + pad;
     } else {
-      x = rect.left - ttRect.width - pad;
-      y = rect.top + rect.height / 2 - ttRect.height / 2;
+      x3 = rect.left - ttRect.width - pad;
+      y3 = rect.top + rect.height / 2 - ttRect.height / 2;
     }
-    if (x < 5) x = 5;
-    if (x + ttRect.width > view.w - 5) x = view.w - ttRect.width - 5;
-    if (y < 5) y = 5;
-    if (y + ttRect.height > view.h - 5) y = view.h - ttRect.height - 5;
-    this.el.style.left = x + "px";
-    this.el.style.top = y + "px";
+    if (x3 < 5) x3 = 5;
+    if (x3 + ttRect.width > view.w - 5) x3 = view.w - ttRect.width - 5;
+    if (y3 < 5) y3 = 5;
+    if (y3 + ttRect.height > view.h - 5) y3 = view.h - ttRect.height - 5;
+    this.el.style.left = x3 + "px";
+    this.el.style.top = y3 + "px";
     this.el.classList.add("pos-" + side);
     this.arrow.style.marginLeft = "";
     this.arrow.style.marginTop = "";
   }, resolve(target) {
     return target.closest("[data-tooltip], [data-tooltip-html]");
-  }, handleHover(e) {
-    const t = this.resolve(e.target);
-    if (!t) {
+  }, handleHover(e3) {
+    const t3 = this.resolve(e3.target);
+    if (!t3) {
       if (this.currentTarget) this.hide();
       return;
     }
-    if (this.currentTarget === t) return;
-    this.currentTarget = t;
-    const h = t.getAttribute("data-tooltip-html"), txt = t.getAttribute("data-tooltip");
-    const side = t.getAttribute("data-tooltip-side") || void 0;
-    const anchorSel = t.getAttribute("data-tooltip-anchor");
+    if (this.currentTarget === t3) return;
+    this.currentTarget = t3;
+    const h3 = t3.getAttribute("data-tooltip-html"), txt = t3.getAttribute("data-tooltip");
+    const side = t3.getAttribute("data-tooltip-side") || void 0;
+    const anchorSel = t3.getAttribute("data-tooltip-anchor");
     let rect;
     if (anchorSel) {
-      const anchor = t.closest(".bbgl-weekly-anchor")?.querySelector(anchorSel);
+      const anchor = t3.closest(".bbgl-weekly-anchor")?.querySelector(anchorSel);
       if (anchor) {
-        const r = anchor.getBoundingClientRect();
+        const r4 = anchor.getBoundingClientRect();
         const activeH = parseFloat(getComputedStyle(anchor).getPropertyValue("--bbgl-handle-active-h")) || 32;
-        rect = { left: r.left, width: r.width, bottom: r.bottom, top: r.bottom - activeH, height: activeH };
+        rect = { left: r4.left, width: r4.width, bottom: r4.bottom, top: r4.bottom - activeH, height: activeH };
       } else {
-        rect = t.getBoundingClientRect();
+        rect = t3.getBoundingClientRect();
       }
     } else {
-      rect = t.getBoundingClientRect();
+      rect = t3.getBoundingClientRect();
     }
-    if (h) this.show(h, rect, side);
-    else if (txt) this.show('<div style="text-align:center; color:#ddd;">' + txt + "</div>", t.getBoundingClientRect(), side);
+    if (h3) this.show(h3, rect, side);
+    else if (txt) this.show('<div style="text-align:center; color:#ddd;">' + txt + "</div>", t3.getBoundingClientRect(), side);
     else this.hide();
   } };
   function generateRichTooltip(sl) {
-    const f = Formatter.abbr, fg = (n) => (n > 0 ? "+" : "") + f(n), s = sl.stats;
+    const f4 = Formatter.abbr, fg = (n2) => (n2 > 0 ? "+" : "") + f4(n2), s3 = sl.stats;
     const MOS = CONSTANTS.MONTHS_SHORT;
     let lbl;
     if (sl.resolution === "DAY") {
-      const d = Formatter.parse(sl.date);
-      lbl = `${MOS[d.getUTCMonth()]} ${d.getUTCDate()} \u2022 ${d.getUTCFullYear()}`;
+      const d3 = Formatter.parse(sl.date);
+      lbl = `${MOS[d3.getUTCMonth()]} ${d3.getUTCDate()} \u2022 ${d3.getUTCFullYear()}`;
     } else if (sl.resolution === "WEEK") {
       if (sl._weekStart && sl._weekEnd) {
         const dS = Formatter.parse(sl._weekStart);
@@ -1132,27 +1142,27 @@ ${BBGL_ERROR_CODE}`);
       const year = sl._dailyList && sl._dailyList.length > 0 ? sl._dailyList[0].date.slice(0, 4) : sl.date ? sl.date.slice(0, 4) : String(calendarState.year);
       lbl = `${mIdx >= 0 ? MOS[mIdx] : sl.label} \u2022 ${year}`;
     } else if (sl.resolution === "YEAR") {
-      const days = sl._dailyList ? sl._dailyList.filter((d) => d.eSpent && d.eSpent.total > 0).length : 0;
+      const days = sl._dailyList ? sl._dailyList.filter((d3) => d3.eSpent && d3.eSpent.total > 0).length : 0;
       lbl = `${days} Day${days !== 1 ? "s" : ""} \u2022 ${sl.label}`;
     } else {
       lbl = Formatter.datePretty(sl.label || sl.date);
     }
-    let h = `<div class="tt-header">${lbl}</div><div class="tt-energy" style="margin-bottom:6px; padding-bottom:4px; border-bottom:1px solid #555;">Energy: ${Formatter.number(s.total.cost)}</div><div style="display:grid; grid-template-columns: 28px 1fr 1fr 1fr; column-gap:10px; row-gap:2px; font-family:'Arial', sans-serif; font-size:11px;">`;
+    let h3 = `<div class="tt-header">${lbl}</div><div class="tt-energy" style="margin-bottom:6px; padding-bottom:4px; border-bottom:1px solid #555;">Energy: ${Formatter.number(s3.total.cost)}</div><div style="display:grid; grid-template-columns: 28px 1fr 1fr 1fr; column-gap:10px; row-gap:2px; font-family:'Arial', sans-serif; font-size:11px;">`;
     const hs = "color:#666; font-size:9px; text-align:right; margin-bottom:2px;";
-    h += `<div style="grid-column:2; ${hs}">Start</div><div style="grid-column:3; ${hs}">Gain</div><div style="grid-column:4; ${hs}">End</div>`;
-    const r = (n, c, o, t = false) => {
-      const st = t ? "border-top:1px solid #444; padding-top:4px; margin-top:2px;" : "";
-      return `<div style="color:${c}; font-weight:700; ${st}">${n}</div><div style="text-align:right; color:#888; ${st}">${f(o.start)}</div><div style="text-align:right; color:${CONSTANTS.COLORS.GAINS}; font-weight:700; ${st}">${fg(o.gain)}</div><div style="text-align:right; color:#fff; font-weight:700; ${st}">${f(o.end)}</div>`;
+    h3 += `<div style="grid-column:2; ${hs}">Start</div><div style="grid-column:3; ${hs}">Gain</div><div style="grid-column:4; ${hs}">End</div>`;
+    const r4 = (n2, c3, o3, t3 = false) => {
+      const st = t3 ? "border-top:1px solid #444; padding-top:4px; margin-top:2px;" : "";
+      return `<div style="color:${c3}; font-weight:700; ${st}">${n2}</div><div style="text-align:right; color:#888; ${st}">${f4(o3.start)}</div><div style="text-align:right; color:${CONSTANTS.COLORS.GAINS}; font-weight:700; ${st}">${fg(o3.gain)}</div><div style="text-align:right; color:#fff; font-weight:700; ${st}">${f4(o3.end)}</div>`;
     };
-    h += r("STR", CONSTANTS.COLORS.STR, s.str) + r("DEF", CONSTANTS.COLORS.DEF, s.def) + r("SPD", CONSTANTS.COLORS.SPD, s.spd) + r("DEX", CONSTANTS.COLORS.DEX, s.dex) + r("TOT", CONSTANTS.COLORS.TOT, s.total, true);
-    return h + `</div>`;
+    h3 += r4("STR", CONSTANTS.COLORS.STR, s3.str) + r4("DEF", CONSTANTS.COLORS.DEF, s3.def) + r4("SPD", CONSTANTS.COLORS.SPD, s3.spd) + r4("DEX", CONSTANTS.COLORS.DEX, s3.dex) + r4("TOT", CONSTANTS.COLORS.TOT, s3.total, true);
+    return h3 + `</div>`;
   }
   function updateFooterTooltip() {
-    const b = document.getElementById("bbgl-gym-tab");
-    if (!b) return;
+    const b2 = document.getElementById("bbgl-gym-tab");
+    if (!b2) return;
     const isP = document.body.classList.contains("bbgl-page-mode-active");
     const txt = isP ? "Disabled while viewing the log in Page View" : "Big Black Gym Log";
-    if (b.getAttribute("data-tooltip") !== txt) b.setAttribute("data-tooltip", txt);
+    if (b2.getAttribute("data-tooltip") !== txt) b2.setAttribute("data-tooltip", txt);
   }
   app.TooltipController = TooltipController;
   app.generateRichTooltip = generateRichTooltip;
@@ -1205,8 +1215,8 @@ ${BBGL_ERROR_CODE}`);
     }, 1e3);
     return true;
   }
-  function incrementApiCount(n) {
-    runtime.apiCallTotal += n;
+  function incrementApiCount(n2) {
+    runtime.apiCallTotal += n2;
     const hud = dom.apiHud;
     if (hud) hud.innerHTML = `API Calls: ${runtime.apiCallTotal}`;
   }
@@ -1263,32 +1273,32 @@ ${BBGL_ERROR_CODE}`);
     incrementApiCount(reqs.length);
     if (mission === "FULL_SYNC") app.fetchWars(manualWars);
     try {
-      const res = await Promise.all(reqs.map((c) => fetch(c.url).then((r) => {
-        if (!r.ok) {
-          const se = new Error(`Torn returned an unexpected error (HTTP ${r.status}).`);
+      const res = await Promise.all(reqs.map((c3) => fetch(c3.url).then((r4) => {
+        if (!r4.ok) {
+          const se = new Error(`Torn returned an unexpected error (HTTP ${r4.status}).`);
           se.isTornError = true;
           throw se;
         }
-        return r.json();
-      }).then((d) => ({
-        cfg: c,
-        data: d
+        return r4.json();
+      }).then((d3) => ({
+        cfg: c3,
+        data: d3
       }))));
-      const errObj = res.find((r) => r.data.error);
+      const errObj = res.find((r4) => r4.data.error);
       if (errObj) {
         const te = new Error(tornKeyErrorText(errObj.data));
         te.isTornError = true;
         throw te;
       }
       let logs = {}, bs = null;
-      res.forEach((r) => {
-        if (r.data.log) logs = { ...logs, ...r.data.log };
-        if (r.cfg.type === "battlestats") bs = r.data;
+      res.forEach((r4) => {
+        if (r4.data.log) logs = { ...logs, ...r4.data.log };
+        if (r4.cfg.type === "battlestats") bs = r4.data;
       });
       const tsSec = Math.floor(ts / 1e3);
       if (!meta.syncFloor) meta.syncFloor = {};
-      reqs.forEach((c) => {
-        if (c.floorKey) meta.syncFloor[c.floorKey] = tsSec;
+      reqs.forEach((c3) => {
+        if (c3.floorKey) meta.syncFloor[c3.floorKey] = tsSec;
       });
       if (mission !== "TRAIN_SINGLE") {
         localStorage.setItem(KEYS.LAST_SYNC, ts.toString());
@@ -1309,17 +1319,17 @@ ${BBGL_ERROR_CODE}`);
               await app.DataController.processDataPayload(eData.log || {}, null);
             }
           }
-        } catch (e) {
-          Log.warn("Stat enhancer fetch failed", e);
+        } catch (e3) {
+          Log.warn("Stat enhancer fetch failed", e3);
         }
       }
       return {
         ok: true
       };
-    } catch (e) {
-      Log.error("Sync failed", e);
-      const isQuota = e.name === "QuotaExceededError" || e.message && e.message.toLowerCase().includes("quota");
-      const errorMsg = isQuota ? MSG_SYNC_QUOTA : e.isTornError ? e.message : MSG_SYNC_NETWORK_ERROR;
+    } catch (e3) {
+      Log.error("Sync failed", e3);
+      const isQuota = e3.name === "QuotaExceededError" || e3.message && e3.message.toLowerCase().includes("quota");
+      const errorMsg = isQuota ? MSG_SYNC_QUOTA : e3.isTornError ? e3.message : MSG_SYNC_NETWORK_ERROR;
       return {
         ok: false,
         error: errorMsg
@@ -1332,13 +1342,13 @@ ${BBGL_ERROR_CODE}`);
   app.universalFetch = universalFetch;
 
   // src/ui/assets.ts
-  function cdnize(u) {
-    return u.replace(
+  function cdnize(u4) {
+    return u4.replace(
       /^https:\/\/raw\.githubusercontent\.com\/([^/]+)\/([^/]+)\/(?:refs\/heads\/)?([^/]+)\//,
       "https://cdn.jsdelivr.net/gh/$1/$2@$3/"
     );
   }
-  var decode = (s) => atob(s);
+  var decode = (s3) => atob(s3);
   var CUSTOM_STICKERS = [
     { id: 1, name: "Just Checking the Mirror", url: decode("aHR0cHM6Ly9yYXcuZ2l0aHVidXNlcmNvbnRlbnQuY29tL0JpZ0JsYWNrSGF3azQyMDY5L2FzZGZhc2tpamRuZmF3ZWYvcmVmcy9oZWFkcy9tYWluL1NjcnB0SW1ncy9TdGlja2VyYm9vay9HeW0vanN0LWNoay1taXJyci5wbmc=") },
     { id: 2, name: "Up, Down, Repeat", url: decode("aHR0cHM6Ly9yYXcuZ2l0aHVidXNlcmNvbnRlbnQuY29tL0JpZ0JsYWNrSGF3azQyMDY5L2FzZGZhc2tpamRuZmF3ZWYvcmVmcy9oZWFkcy9tYWluL1NjcnB0SW1ncy9TdGlja2VyYm9vay9HeW0vdXAtZG4tcnB0LnBuZw==") },
@@ -1361,8 +1371,8 @@ ${BBGL_ERROR_CODE}`);
     { id: 19, name: "Trigger Warning", url: decode("aHR0cHM6Ly9yYXcuZ2l0aHVidXNlcmNvbnRlbnQuY29tL0JpZ0JsYWNrSGF3azQyMDY5L2FzZGZhc2tpamRuZmF3ZWYvcmVmcy9oZWFkcy9tYWluL1NjcnB0SW1ncy9TdGlja2VyYm9vay9DYXNpbm8vdHJnci13cm5nLnBuZw==") },
     { id: 20, name: "Leslie's Sick Day", url: decode("aHR0cHM6Ly9yYXcuZ2l0aHVidXNlcmNvbnRlbnQuY29tL0JpZ0JsYWNrSGF3azQyMDY5L2FzZGZhc2tpamRuZmF3ZWYvcmVmcy9oZWFkcy9tYWluL1NjcnB0SW1ncy9TdGlja2VyYm9vay9DYXNpbm8vbHNscy1zY2stZHkucG5n") }
   ];
-  CUSTOM_STICKERS.forEach((s) => {
-    s.url = cdnize(s.url);
+  CUSTOM_STICKERS.forEach((s3) => {
+    s3.url = cdnize(s3.url);
   });
   var PAGE_TITLES = [
     "Sweat Equity",
@@ -1373,11 +1383,11 @@ ${BBGL_ERROR_CODE}`);
   ];
 
   // src/domain/capsules.ts
-  function classifyDay(d) {
-    const e = d.eSpent ? d.eSpent.total : 0;
-    if (e >= 2e3) return "diamond";
-    if (e >= 1500) return "gold";
-    if (e >= 1e3) return "green";
+  function classifyDay(d3) {
+    const e3 = d3.eSpent ? d3.eSpent.total : 0;
+    if (e3 >= 2e3) return "diamond";
+    if (e3 >= 1500) return "gold";
+    if (e3 >= 1e3) return "green";
     return null;
   }
   var CAPSULE_RANK = { green: 1, gold: 2, diamond: 3 };
@@ -1388,10 +1398,10 @@ ${BBGL_ERROR_CODE}`);
       slots[empty] = color;
       return;
     }
-    for (let i = 0; i < slots.length; i++) {
-      const current = slots[i];
+    for (let i3 = 0; i3 < slots.length; i3++) {
+      const current = slots[i3];
       if (current && CAPSULE_RANK[current] < CAPSULE_RANK[color]) {
-        slots[i] = color;
+        slots[i3] = color;
         placeCapsuleUnit(slots, current);
         return;
       }
@@ -1399,19 +1409,19 @@ ${BBGL_ERROR_CODE}`);
   }
   function computeWeekCapsules(days, hjDaySet = null) {
     const slots = [null, null, null, null, null];
-    const hjDays = hjDaySet ? days.filter((d) => hjDaySet.has(d.date)) : [];
+    const hjDays = hjDaySet ? days.filter((d3) => hjDaySet.has(d3.date)) : [];
     const jumpGold = hjDays.length >= GAME.GOLD_WEEK_JUMPS;
     const JUMP_ALLOTMENT = [2, 3];
-    days.forEach((d) => {
-      const jumpIdx = hjDays.indexOf(d);
+    days.forEach((d3) => {
+      const jumpIdx = hjDays.indexOf(d3);
       if (jumpIdx === 0 || jumpIdx === 1) {
         const jumpUnits = JUMP_ALLOTMENT[jumpIdx];
-        const naturalTier = classifyDay(d);
+        const naturalTier = classifyDay(d3);
         const upgradeUnits = Math.min(TIER_UNITS[naturalTier] || 0, jumpUnits);
-        for (let i = 0; i < upgradeUnits; i++) placeCapsuleUnit(slots, naturalTier);
-        for (let i = 0; i < jumpUnits - upgradeUnits; i++) placeCapsuleUnit(slots, jumpGold ? "gold" : "green");
+        for (let i3 = 0; i3 < upgradeUnits; i3++) placeCapsuleUnit(slots, naturalTier);
+        for (let i3 = 0; i3 < jumpUnits - upgradeUnits; i3++) placeCapsuleUnit(slots, jumpGold ? "gold" : "green");
       } else {
-        const tier = classifyDay(d);
+        const tier = classifyDay(d3);
         if (!tier) return;
         placeCapsuleUnit(slots, tier);
         if (tier === "diamond") placeCapsuleUnit(slots, tier);
@@ -1421,10 +1431,10 @@ ${BBGL_ERROR_CODE}`);
   }
   function computeWeekCompletion(days, hjDaySet = null) {
     const capsules = computeWeekCapsules(days, hjDaySet);
-    const filled = capsules.filter((c) => c !== null);
+    const filled = capsules.filter((c3) => c3 !== null);
     const isCompleted = filled.length === capsules.length;
-    const isGold = isCompleted && filled.every((c) => c === "gold" || c === "diamond");
-    const isDiamond = isCompleted && filled.every((c) => c === "diamond");
+    const isGold = isCompleted && filled.every((c3) => c3 === "gold" || c3 === "diamond");
+    const isDiamond = isCompleted && filled.every((c3) => c3 === "diamond");
     return { capsules, isCompleted, isGold, isDiamond };
   }
 
@@ -1438,38 +1448,38 @@ ${BBGL_ERROR_CODE}`);
   var LEVEL_STEP2_VAL = 289;
   var LEVEL_TAIL_POWER = 4.5;
   function computeLevelExpCost(level, atrophy) {
-    const t = (level - 1) / 98;
+    const t3 = (level - 1) / 98;
     const val1 = (LEVEL_STEP1_VAL - LEVEL_FLOOR) / (LEVEL_P0_MAX - LEVEL_FLOOR);
     const val2 = (LEVEL_STEP2_VAL - LEVEL_FLOOR) / (LEVEL_P0_MAX - LEVEL_FLOOR);
     let frac;
-    if (t <= LEVEL_STEP1_END) {
-      frac = val1 * (t / LEVEL_STEP1_END);
-    } else if (t <= LEVEL_STEP2_END) {
-      frac = val1 + (val2 - val1) * ((t - LEVEL_STEP1_END) / (LEVEL_STEP2_END - LEVEL_STEP1_END));
+    if (t3 <= LEVEL_STEP1_END) {
+      frac = val1 * (t3 / LEVEL_STEP1_END);
+    } else if (t3 <= LEVEL_STEP2_END) {
+      frac = val1 + (val2 - val1) * ((t3 - LEVEL_STEP1_END) / (LEVEL_STEP2_END - LEVEL_STEP1_END));
     } else {
-      const u = (t - LEVEL_STEP2_END) / (1 - LEVEL_STEP2_END);
-      frac = val2 + (1 - val2) * Math.pow(u, LEVEL_TAIL_POWER);
+      const u4 = (t3 - LEVEL_STEP2_END) / (1 - LEVEL_STEP2_END);
+      frac = val2 + (1 - val2) * Math.pow(u4, LEVEL_TAIL_POWER);
     }
     const base = Math.round(LEVEL_FLOOR + (LEVEL_P0_MAX - LEVEL_FLOOR) * frac);
     return Math.round(base * LEVEL_ATRO_MULT[atrophy]);
   }
-  var LEVEL_ATRO_BUDGETS = [0, 1, 2].map((a) => {
-    let s = 0;
-    for (let lv = 1; lv <= 99; lv++) s += computeLevelExpCost(lv, a);
-    return s;
+  var LEVEL_ATRO_BUDGETS = [0, 1, 2].map((a3) => {
+    let s3 = 0;
+    for (let lv = 1; lv <= 99; lv++) s3 += computeLevelExpCost(lv, a3);
+    return s3;
   });
   function calculateLevelProgress(totalExp) {
     let remaining = totalExp;
     let atrophy = 0;
-    for (let a = 0; a < 3; a++) {
-      const budget = LEVEL_ATRO_BUDGETS[a];
+    for (let a3 = 0; a3 < 3; a3++) {
+      const budget = LEVEL_ATRO_BUDGETS[a3];
       if (remaining < budget) {
-        atrophy = a;
+        atrophy = a3;
         break;
       }
-      if (remaining === budget && a < 2) return { atrophy: a, level: 100, expInLevel: 0, expToNext: 0 };
+      if (remaining === budget && a3 < 2) return { atrophy: a3, level: 100, expInLevel: 0, expToNext: 0 };
       remaining -= budget;
-      atrophy = a + 1;
+      atrophy = a3 + 1;
     }
     if (atrophy >= 3) return { atrophy: 2, level: 100, expInLevel: 0, expToNext: 0 };
     let level = 1;
@@ -1497,30 +1507,30 @@ ${BBGL_ERROR_CODE}`);
       const hjE = Math.min(eSpent, 1e3);
       const extraE = Math.max(eSpent - 1e3, 0);
       const hjBase = hjE * 0.3;
-      const t22 = Math.min(extraE, 500) * 0.25;
+      const t23 = Math.min(extraE, 500) * 0.25;
       const t32 = Math.max(extraE - 500, 0) * 0.3;
       const diamond2 = eSpent >= 2e3 ? 50 : 0;
-      return Math.round(hjBase + t22 + t32 + diamond2);
+      return Math.round(hjBase + t23 + t32 + diamond2);
     }
     const t1 = Math.min(eSpent, 1e3) * 0.2;
-    const t2 = Math.min(Math.max(eSpent - 1e3, 0), 500) * 0.25;
+    const t22 = Math.min(Math.max(eSpent - 1e3, 0), 500) * 0.25;
     const t3 = Math.max(eSpent - 1500, 0) * 0.3;
     const diamond = eSpent >= 2e3 ? 50 : 0;
-    return Math.round(t1 + t2 + t3 + diamond);
+    return Math.round(t1 + t22 + t3 + diamond);
   }
 
   // src/domain/day.ts
-  function sumStats2(o) {
-    return (o.str || 0) + (o.def || 0) + (o.spd || 0) + (o.dex || 0);
+  function sumStats2(o3) {
+    return (o3.str || 0) + (o3.def || 0) + (o3.spd || 0) + (o3.dex || 0);
   }
   function initializeDayObject(dateStr, baseBreakdown) {
-    const b = { ...baseBreakdown };
+    const b2 = { ...baseBreakdown };
     return {
       date: dateStr,
-      startTotal: b.str + b.def + b.spd + b.dex,
-      endTotal: b.str + b.def + b.spd + b.dex,
-      startBreakdown: { ...b },
-      endBreakdown: { ...b },
+      startTotal: b2.str + b2.def + b2.spd + b2.dex,
+      endTotal: b2.str + b2.def + b2.spd + b2.dex,
+      startBreakdown: { ...b2 },
+      endBreakdown: { ...b2 },
       gains: { total: 0, ...ZERO_BREAKDOWN },
       eSpent: { total: 0, ...ZERO_BREAKDOWN },
       items: {},
@@ -1532,17 +1542,17 @@ ${BBGL_ERROR_CODE}`);
     };
   }
   function findHappyJumps2(seriesArr) {
-    const doses = (seriesArr || []).filter((e) => e.type === "item" && e.logId === ECSTASY_LOG);
+    const doses = (seriesArr || []).filter((e3) => e3.type === "item" && e3.logId === ECSTASY_LOG);
     if (doses.length === 0) return [];
-    const clicks = (seriesArr || []).filter((e) => e.type !== "item" && "ts" in e && e.cost);
+    const clicks = (seriesArr || []).filter((e3) => e3.type !== "item" && "ts" in e3 && e3.cost);
     const jumps = [];
     doses.forEach((dose) => {
       const windowEnd = dose.ts + (GAME.HJ_QUARTER_SECONDS - dose.ts % GAME.HJ_QUARTER_SECONDS);
       let cost = 0;
       let tsEnd = dose.ts;
       const stats = { str: 0, def: 0, spd: 0, dex: 0 };
-      clicks.forEach((c) => {
-        const click = c;
+      clicks.forEach((c3) => {
+        const click = c3;
         if (click.ts < dose.ts || click.ts >= windowEnd) return;
         cost += click.cost;
         stats[click.stat] = (stats[click.stat] || 0) + (click.gain || 0);
@@ -1555,76 +1565,76 @@ ${BBGL_ERROR_CODE}`);
   function normalizeApiLogs(rawLogs) {
     if (!rawLogs || Object.keys(rawLogs).length === 0) return [];
     const entries = [];
-    Object.keys(rawLogs).forEach((k) => {
-      const l = rawLogs[k];
-      const meta = ITEM_LOG_META[l.log];
+    Object.keys(rawLogs).forEach((k3) => {
+      const l3 = rawLogs[k3];
+      const meta = ITEM_LOG_META[l3.log];
       if (meta) {
-        const e = { type: "item", id: k, ts: l.timestamp, logId: l.log };
-        const d2 = l.data || {};
-        if (meta.energy) e.energy = l.log === XANAX_LOG ? 250 : parseInt(String(d2.energy_increased || 0), 10);
-        if (meta.energyLost) e.energyLost = parseInt(String(d2.energy_decreased ?? 0), 10);
-        if (meta.happyLost) e.happyLost = parseInt(String(d2.happy_decreased ?? 0), 10);
-        if (meta.happy) e.happy = parseInt(String(d2.happy_increased || 0), 10);
+        const e3 = { type: "item", id: k3, ts: l3.timestamp, logId: l3.log };
+        const d4 = l3.data || {};
+        if (meta.energy) e3.energy = l3.log === XANAX_LOG ? 250 : parseInt(String(d4.energy_increased || 0), 10);
+        if (meta.energyLost) e3.energyLost = parseInt(String(d4.energy_decreased ?? 0), 10);
+        if (meta.happyLost) e3.happyLost = parseInt(String(d4.happy_decreased ?? 0), 10);
+        if (meta.happy) e3.happy = parseInt(String(d4.happy_increased || 0), 10);
         if (meta.stat) {
-          const sn2 = ["strength", "defense", "speed", "dexterity"].find((s) => d2[`${s}_increased`] != null);
+          const sn2 = ["strength", "defense", "speed", "dexterity"].find((s3) => d4[`${s3}_increased`] != null);
           if (sn2) {
-            e.statKey = sn2 === "strength" ? "str" : sn2 === "defense" ? "def" : sn2 === "speed" ? "spd" : "dex";
-            e.statGain = r2(parseFloat(String(d2[`${sn2}_increased`] || 0)));
+            e3.statKey = sn2 === "strength" ? "str" : sn2 === "defense" ? "def" : sn2 === "speed" ? "spd" : "dex";
+            e3.statGain = r2(parseFloat(String(d4[`${sn2}_increased`] || 0)));
           }
         }
-        entries.push(e);
+        entries.push(e3);
         return;
       }
-      const sn = GAME.STAT_MAP[l.log];
+      const sn = GAME.STAT_MAP[l3.log];
       if (!sn) return;
       const ab = sn === "strength" ? "str" : sn === "defense" ? "def" : sn === "speed" ? "spd" : "dex";
-      const d = l.data || {};
-      const gain = r2(parseFloat(String(d[`${sn}_increased`] || 0)));
-      const cost = parseInt(String(d.energy_used || 0), 10);
+      const d3 = l3.data || {};
+      const gain = r2(parseFloat(String(d3[`${sn}_increased`] || 0)));
+      const cost = parseInt(String(d3.energy_used || 0), 10);
       entries.push({
         type: "gym",
-        id: k,
-        ts: l.timestamp,
+        id: k3,
+        ts: l3.timestamp,
         stat: ab,
         key: sn,
         gain,
-        after: r2(parseFloat(String(d[`${sn}_after`] || 0))),
+        after: r2(parseFloat(String(d3[`${sn}_after`] || 0))),
         cost,
         rate: cost > 0 ? r2(gain / cost * 150) : 0
       });
     });
-    return entries.sort((a, b) => a.ts - b.ts);
+    return entries.sort((a3, b2) => a3.ts - b2.ts);
   }
 
   // src/domain/history-engine.ts
   function rebuildFromSeries(seriesArr, baselineBreakdown) {
     const days = {};
     const running = { ...baselineBreakdown };
-    seriesArr.forEach((e) => {
-      const dateKey = Formatter.dateLogical(e.ts * 1e3);
+    seriesArr.forEach((e3) => {
+      const dateKey = Formatter.dateLogical(e3.ts * 1e3);
       if (!days[dateKey]) days[dateKey] = initializeDayObject(dateKey, { ...running });
-      if (e.type === "item") {
+      if (e3.type === "item") {
         if (!days[dateKey].items) days[dateKey].items = {};
         if (!days[dateKey].itemLogIds) days[dateKey].itemLogIds = [];
-        const itemKey = `${e.ts}_${e.logId}`;
+        const itemKey = `${e3.ts}_${e3.logId}`;
         if (!days[dateKey].itemLogIds.includes(itemKey)) {
           days[dateKey].itemLogIds.push(itemKey);
-          days[dateKey].items[e.logId] = (days[dateKey].items[e.logId] || 0) + 1;
-          if (e.logId === ECAN_LOG && e.energy) days[dateKey].itemEnergy = (days[dateKey].itemEnergy || 0) + e.energy;
-          if (e.energyLost != null) days[dateKey].itemEnergyLost = (days[dateKey].itemEnergyLost || 0) + e.energyLost;
-          if (e.happyLost != null) days[dateKey].itemHappyLost = (days[dateKey].itemHappyLost || 0) + e.happyLost;
-          if (e.happy) days[dateKey].itemHappy = (days[dateKey].itemHappy || 0) + e.happy;
+          days[dateKey].items[e3.logId] = (days[dateKey].items[e3.logId] || 0) + 1;
+          if (e3.logId === ECAN_LOG && e3.energy) days[dateKey].itemEnergy = (days[dateKey].itemEnergy || 0) + e3.energy;
+          if (e3.energyLost != null) days[dateKey].itemEnergyLost = (days[dateKey].itemEnergyLost || 0) + e3.energyLost;
+          if (e3.happyLost != null) days[dateKey].itemHappyLost = (days[dateKey].itemHappyLost || 0) + e3.happyLost;
+          if (e3.happy) days[dateKey].itemHappy = (days[dateKey].itemHappy || 0) + e3.happy;
         }
-        if (!e.synthetic) days[dateKey].series.push(e);
+        if (!e3.synthetic) days[dateKey].series.push(e3);
       } else {
-        days[dateKey].gains[e.stat] += e.gain;
-        days[dateKey].gains.total += e.gain;
-        days[dateKey].eSpent[e.stat] += e.cost;
-        days[dateKey].eSpent.total += e.cost;
-        days[dateKey].endBreakdown[e.stat] = e.after;
-        if (e.ts > days[dateKey].lastLogTimestamp) days[dateKey].lastLogTimestamp = e.ts;
-        if (!e.synthetic) days[dateKey].series.push(e);
-        running[e.stat] = e.after;
+        days[dateKey].gains[e3.stat] += e3.gain;
+        days[dateKey].gains.total += e3.gain;
+        days[dateKey].eSpent[e3.stat] += e3.cost;
+        days[dateKey].eSpent.total += e3.cost;
+        days[dateKey].endBreakdown[e3.stat] = e3.after;
+        if (e3.ts > days[dateKey].lastLogTimestamp) days[dateKey].lastLogTimestamp = e3.ts;
+        if (!e3.synthetic) days[dateKey].series.push(e3);
+        running[e3.stat] = e3.after;
       }
     });
     Object.values(days).forEach((day) => {
@@ -1634,39 +1644,39 @@ ${BBGL_ERROR_CODE}`);
     const logicalToday = Formatter.dateLogical();
     const sortedKeys = Object.keys(days).sort();
     const todayObj = days[logicalToday] || initializeDayObject(logicalToday, { ...running });
-    const history2 = sortedKeys.filter((k) => k !== logicalToday).map((k) => days[k]);
+    const history2 = sortedKeys.filter((k3) => k3 !== logicalToday).map((k3) => days[k3]);
     return { history: history2, today: todayObj };
   }
-  function reconcileIncremental(s, cleanLogs) {
+  function reconcileIncremental(s3, cleanLogs) {
     const minApiTs = cleanLogs[0].ts;
     const maxApiTs = cleanLogs[cleanLogs.length - 1].ts;
-    const apiEntries = cleanLogs.map((l) => {
-      if (l.type === "item") return { ...l };
-      return { type: "gym", id: l.id, ts: l.ts, stat: l.stat, gain: r2(l.gain), cost: l.cost, after: r2(l.after) };
+    const apiEntries = cleanLogs.map((l3) => {
+      if (l3.type === "item") return { ...l3 };
+      return { type: "gym", id: l3.id, ts: l3.ts, stat: l3.stat, gain: r2(l3.gain), cost: l3.cost, after: r2(l3.after) };
     });
-    const getSetKey = (e) => e.type === "item" ? `item_${e.id}` : `${e.ts}_${e.stat}_${e.after}`;
+    const getSetKey = (e3) => e3.type === "item" ? `item_${e3.id}` : `${e3.ts}_${e3.stat}_${e3.after}`;
     const apiTsStatSet = new Set(apiEntries.map(getSetKey));
     const earliestDay = Formatter.dateLogical(minApiTs * 1e3);
-    const allDays = [...s.history || []];
-    if (s.today) allDays.push(s.today);
+    const allDays = [...s3.history || []];
+    if (s3.today) allDays.push(s3.today);
     const prefix = [];
     const affected = [];
-    allDays.forEach((d) => {
-      (d.date < earliestDay ? prefix : affected).push(d);
+    allDays.forEach((d3) => {
+      (d3.date < earliestDay ? prefix : affected).push(d3);
     });
     const keptAffected = [];
-    affected.forEach((d) => {
-      if (Array.isArray(d.series)) {
-        d.series.forEach((e) => {
-          if (e.ts < minApiTs || e.ts > maxApiTs || !apiTsStatSet.has(getSetKey(e))) keptAffected.push(e);
+    affected.forEach((d3) => {
+      if (Array.isArray(d3.series)) {
+        d3.series.forEach((e3) => {
+          if (e3.ts < minApiTs || e3.ts > maxApiTs || !apiTsStatSet.has(getSetKey(e3))) keptAffected.push(e3);
         });
       }
     });
-    const mergedAffected = [...keptAffected, ...apiEntries].sort((a, b) => a.ts - b.ts);
-    const seed = prefix.length ? prefix[prefix.length - 1].endBreakdown : s.meta && s.meta.baselineBreakdown || ZERO_BREAKDOWN;
+    const mergedAffected = [...keptAffected, ...apiEntries].sort((a3, b2) => a3.ts - b2.ts);
+    const seed = prefix.length ? prefix[prefix.length - 1].endBreakdown : s3.meta && s3.meta.baselineBreakdown || ZERO_BREAKDOWN;
     const rebuilt = rebuildFromSeries(mergedAffected, seed);
     return {
-      result: { meta: { ...s.meta }, history: [...prefix, ...rebuilt.history], today: rebuilt.today },
+      result: { meta: { ...s3.meta }, history: [...prefix, ...rebuilt.history], today: rebuilt.today },
       changedDays: [...rebuilt.history, rebuilt.today]
     };
   }
@@ -1692,8 +1702,8 @@ ${BBGL_ERROR_CODE}`);
         if (!historyCache.meta.stickers) historyCache.meta.stickers = {};
         historyCache.meta.stickers[key] = newState;
       }
-    } catch (e) {
-      Log.warn("Failed to persist sticker cleared state", e);
+    } catch (e3) {
+      Log.warn("Failed to persist sticker cleared state", e3);
     }
   }
   function getInstallWeekKey() {
@@ -1780,22 +1790,22 @@ ${BBGL_ERROR_CODE}`);
       const rewardStartTs = runtime.demoMode ? null : getActiveHistory().meta && getActiveHistory().meta.rewardStartDate || null;
       Object.keys(weekMap).sort().forEach((wk) => {
         if (installWeekKey && wk < installWeekKey) return;
-        const days = weekMap[wk].sort((a, b) => a.date.localeCompare(b.date));
+        const days = weekMap[wk].sort((a3, b2) => a3.date.localeCompare(b2.date));
         if (!runtime.demoMode) {
           days.forEach((day) => {
             if (installDateKey && day.date < installDateKey) return;
             let daySeries = day.series || [];
             if (installDateKey && day.date === installDateKey && rewardStartTs) {
-              daySeries = daySeries.filter((s) => s.ts >= rewardStartTs);
+              daySeries = daySeries.filter((s3) => s3.ts >= rewardStartTs);
             }
-            const e = daySeries.filter((s) => s.type === "gym").reduce((sum, s) => sum + (s.cost || 0), 0);
-            const hasTrainLog = daySeries.some((s) => s.type === "gym");
+            const e3 = daySeries.filter((s3) => s3.type === "gym").reduce((sum, s3) => sum + (s3.cost || 0), 0);
+            const hasTrainLog = daySeries.some((s3) => s3.type === "gym");
             const isHJ = daySeries === day.series ? hjDaySet.has(day.date) : findHappyJumps2(daySeries).length > 0;
-            careerLevelExp += computeDailyLevelExp(e, hasTrainLog, isHJ);
+            careerLevelExp += computeDailyLevelExp(e3, hasTrainLog, isHJ);
           });
         }
         if (wk >= todayWeekKey) return;
-        const stickerworthyDays = days.filter((d) => d.eSpent && d.eSpent.total >= 1e3);
+        const stickerworthyDays = days.filter((d3) => d3.eSpent && d3.eSpent.total >= 1e3);
         if (!stickerworthyDays.length) return;
         const { isCompleted, isGold, isDiamond } = computeWeekCompletion(days, hjDaySet);
         const numFeatured = isGold ? 2 : isCompleted ? 1 : 0;
@@ -1809,8 +1819,8 @@ ${BBGL_ERROR_CODE}`);
           stickerMap.set(day.date, CUSTOM_STICKERS[idx]);
           rouletteCounter++;
         });
-        featuredDays.forEach((day, i) => {
-          const newIdx = unlockedCount + i;
+        featuredDays.forEach((day, i3) => {
+          const newIdx = unlockedCount + i3;
           if (newIdx < CUSTOM_STICKERS.length) {
             const idx = runtime.demoMode ? 0 : newIdx;
             stickerMap.set(day.date, CUSTOM_STICKERS[idx]);
@@ -1832,10 +1842,10 @@ ${BBGL_ERROR_CODE}`);
       if (!runtime.demoMode) {
         const existingStates = historyCache && historyCache.meta && historyCache.meta.stickers ? historyCache.meta.stickers : {};
         const freshStates = {};
-        for (let i = 1; i <= CUSTOM_STICKERS.length; i++) {
-          const key = String(i);
+        for (let i3 = 1; i3 <= CUSTOM_STICKERS.length; i3++) {
+          const key = String(i3);
           const wasClear = (existingStates[key] || "--")[1] === "+";
-          freshStates[key] = (i <= unlockedCount ? "+" : "-") + (wasClear ? "+" : "-");
+          freshStates[key] = (i3 <= unlockedCount ? "+" : "-") + (wasClear ? "+" : "-");
         }
         if (historyCache) {
           if (!historyCache.meta) historyCache.meta = {};
@@ -1861,28 +1871,28 @@ ${BBGL_ERROR_CODE}`);
     },
     getTimeline() {
       if (this._cache.timeline) return this._cache.timeline;
-      const s = getActiveHistory();
-      let t = [...s.history || []];
-      if (s.today && (s.today.date || s.today.startTotal > 0)) {
-        t = t.filter((d) => d.date !== s.today.date);
-        t.push(s.today);
+      const s3 = getActiveHistory();
+      let t3 = [...s3.history || []];
+      if (s3.today && (s3.today.date || s3.today.startTotal > 0)) {
+        t3 = t3.filter((d3) => d3.date !== s3.today.date);
+        t3.push(s3.today);
       }
-      t.sort((a, b) => a.date.localeCompare(b.date));
-      if (s.meta && s.meta.logStartDate) {
-        const floor = Formatter.dateLogical(s.meta.logStartDate * 1e3);
-        t = t.filter((d) => d.date >= floor);
+      t3.sort((a3, b2) => a3.date.localeCompare(b2.date));
+      if (s3.meta && s3.meta.logStartDate) {
+        const floor = Formatter.dateLogical(s3.meta.logStartDate * 1e3);
+        t3 = t3.filter((d3) => d3.date >= floor);
       }
-      this._cache.timeline = t;
-      return t;
+      this._cache.timeline = t3;
+      return t3;
     },
     getDateMap() {
       if (this._cache.dateMap) return this._cache.dateMap;
-      const t = this.getTimeline(), m = {};
-      t.forEach((d) => {
-        m[d.date] = d;
+      const t3 = this.getTimeline(), m3 = {};
+      t3.forEach((d3) => {
+        m3[d3.date] = d3;
       });
-      this._cache.dateMap = m;
-      return m;
+      this._cache.dateMap = m3;
+      return m3;
     },
     periodCalendarDays(sl) {
       if (!sl || sl.resolution === "DAY") return 1;
@@ -1894,50 +1904,50 @@ ${BBGL_ERROR_CODE}`);
       };
       const dl = sl._dailyList || [];
       if (sl.resolution === "WEEK") {
-        const s = sl._weekStart || dl[0] && dl[0].date, e = sl._weekEnd || (dl.length ? dl[dl.length - 1].date : null);
-        return s && e ? span(s, e) : dl.length || 1;
+        const s3 = sl._weekStart || dl[0] && dl[0].date, e3 = sl._weekEnd || (dl.length ? dl[dl.length - 1].date : null);
+        return s3 && e3 ? span(s3, e3) : dl.length || 1;
       }
       if (!dl.length) return 1;
       if (sl.resolution === "MONTH") {
-        const p = dl[0].date.slice(0, 7), y = +p.slice(0, 4), mo = +p.slice(5, 7);
-        const dim = new Date(y, mo, 0).getDate();
-        return span(`${p}-01`, `${p}-${String(dim).padStart(2, "0")}`);
+        const p3 = dl[0].date.slice(0, 7), y3 = +p3.slice(0, 4), mo = +p3.slice(5, 7);
+        const dim = new Date(y3, mo, 0).getDate();
+        return span(`${p3}-01`, `${p3}-${String(dim).padStart(2, "0")}`);
       }
       if (sl.resolution === "YEAR") {
-        const y = dl[0].date.slice(0, 4);
-        return span(`${y}-01-01`, `${y}-12-31`);
+        const y3 = dl[0].date.slice(0, 4);
+        return span(`${y3}-01-01`, `${y3}-12-31`);
       }
       const tl = this.getTimeline();
       return tl.length ? span(tl[0].date, today) : dl.length || 1;
     },
     _buildRateCache() {
-      const h = getActiveHistory();
-      const allDays = [...h.history || []].sort((a, b) => a.date.localeCompare(b.date));
+      const h3 = getActiveHistory();
+      const allDays = [...h3.history || []].sort((a3, b2) => a3.date.localeCompare(b2.date));
       const running = { str: null, def: null, spd: null, dex: null };
       const arr = [];
       const derived = {};
       let floorDate = null;
-      if (h.meta && h.meta.logStartDate) {
-        floorDate = Formatter.dateLogical(h.meta.logStartDate * 1e3);
+      if (h3.meta && h3.meta.logStartDate) {
+        floorDate = Formatter.dateLogical(h3.meta.logStartDate * 1e3);
       }
       allDays.forEach((day) => {
         if (day.series && day.series.length > 0) {
-          day.series.forEach((e) => {
-            if (e.cost > 0) {
-              running[e.stat] = e.rate;
-              if (!derived[e.stat] && (!floorDate || day.date >= floorDate)) {
-                derived[e.stat] = e.rate;
+          day.series.forEach((e3) => {
+            if (e3.cost > 0) {
+              running[e3.stat] = e3.rate;
+              if (!derived[e3.stat] && (!floorDate || day.date >= floorDate)) {
+                derived[e3.stat] = e3.rate;
               }
             }
           });
         } else {
-          STAT_KEYS.forEach((k) => {
-            const cost = day.eSpent && day.eSpent[k] || 0;
-            const gain = day.gains ? day.gains[k] || 0 : 0;
+          STAT_KEYS.forEach((k3) => {
+            const cost = day.eSpent && day.eSpent[k3] || 0;
+            const gain = day.gains ? day.gains[k3] || 0 : 0;
             if (cost > 0) {
-              running[k] = gain / cost * 150;
-              if (!derived[k] && (!floorDate || day.date >= floorDate)) {
-                derived[k] = gain / cost * 150;
+              running[k3] = gain / cost * 150;
+              if (!derived[k3] && (!floorDate || day.date >= floorDate)) {
+                derived[k3] = gain / cost * 150;
               }
             }
           });
@@ -1967,19 +1977,19 @@ ${BBGL_ERROR_CODE}`);
       return this._cache.originRates && this._cache.originRates[stat] || 0;
     },
     getSlice(mode, target, year = null) {
-      let k = `${mode}_${target}`;
-      if (mode === "CUSTOM") k = `CUSTOM_${target.map((d) => d.date).join("_")}`;
-      if (mode === "MONTH") k = `MONTH_${year}_${target}`;
-      if (this._cache.slices[k]) return this._cache.slices[k];
+      let k3 = `${mode}_${target}`;
+      if (mode === "CUSTOM") k3 = `CUSTOM_${target.map((d3) => d3.date).join("_")}`;
+      if (mode === "MONTH") k3 = `MONTH_${year}_${target}`;
+      if (this._cache.slices[k3]) return this._cache.slices[k3];
       let raw = null, res = mode, list = [];
       if (mode === "DAY") raw = this.getDateMap()[target];
       else if (mode === "MONTH") {
         const idx = CONSTANTS.MONTHS.indexOf(target);
         if (idx > -1) {
-          const p = `${year}-${String(idx + 1).padStart(2, "0")}`;
-          list = this.getTimeline().filter((d) => d.date.startsWith(p));
+          const p3 = `${year}-${String(idx + 1).padStart(2, "0")}`;
+          list = this.getTimeline().filter((d3) => d3.date.startsWith(p3));
         }
-      } else if (mode === "YEAR") list = this.getTimeline().filter((d) => d.date.startsWith(target));
+      } else if (mode === "YEAR") list = this.getTimeline().filter((d3) => d3.date.startsWith(target));
       else if (mode === "ALL") {
         list = this.getTimeline();
         res = "ALL";
@@ -1988,13 +1998,13 @@ ${BBGL_ERROR_CODE}`);
         res = "WEEK";
       }
       const sl = this._hydrate(raw, list, target, res);
-      this._cache.slices[k] = sl;
+      this._cache.slices[k3] = sl;
       return sl;
     },
     _getLastEntryRate(day, stat, totalGain, totalCost) {
       if (day.series && day.series.length > 0) {
-        for (let i = day.series.length - 1; i >= 0; i--) {
-          const entry = day.series[i];
+        for (let i3 = day.series.length - 1; i3 >= 0; i3--) {
+          const entry = day.series[i3];
           if (entry.stat === stat && entry.cost > 0) {
             return entry.rate != null ? entry.rate : r2(entry.gain / entry.cost * 150);
           }
@@ -2003,55 +2013,55 @@ ${BBGL_ERROR_CODE}`);
       return r2(totalGain / totalCost * 150);
     },
     _hydrate(sDay, dList, lbl, res) {
-      const r = { label: lbl, resolution: res, date: sDay ? sDay.date : dList[0] ? dList[0].date : lbl, stats: {}, meta: {
+      const r4 = { label: lbl, resolution: res, date: sDay ? sDay.date : dList[0] ? dList[0].date : lbl, stats: {}, meta: {
         tier: 0,
         isGap: false,
         totalEnergy: 0
       }, _dailyList: dList || [] };
-      const ge = (d, k) => !d || !d.eSpent ? 0 : d.eSpent[k] || 0;
-      const gg = (d, k) => d && d.gains ? d.gains[k] || 0 : 0;
-      const gend = (d, k) => d && (d.endBreakdown || d.end) ? (d.endBreakdown || d.end)[k] || 0 : 0;
-      const gst = (d, k) => d && (d.startBreakdown || d.start) ? (d.startBreakdown || d.start)[k] || 0 : 0;
+      const ge = (d3, k3) => !d3 || !d3.eSpent ? 0 : d3.eSpent[k3] || 0;
+      const gg = (d3, k3) => d3 && d3.gains ? d3.gains[k3] || 0 : 0;
+      const gend = (d3, k3) => d3 && (d3.endBreakdown || d3.end) ? (d3.endBreakdown || d3.end)[k3] || 0 : 0;
+      const gst = (d3, k3) => d3 && (d3.startBreakdown || d3.start) ? (d3.startBreakdown || d3.start)[k3] || 0 : 0;
       const keys = [...STAT_KEYS, "total"];
       if (sDay) {
-        keys.forEach((k) => {
-          const e2 = ge(sDay, k), g = gg(sDay, k);
-          let s = gst(sDay, k), end = gend(sDay, k);
-          if (k === "total") {
-            if (!s) s = STAT_KEYS.reduce((a, x) => a + gst(sDay, x), 0);
-            if (!end) end = STAT_KEYS.reduce((a, x) => a + gend(sDay, x), 0);
+        keys.forEach((k3) => {
+          const e4 = ge(sDay, k3), g4 = gg(sDay, k3);
+          let s3 = gst(sDay, k3), end = gend(sDay, k3);
+          if (k3 === "total") {
+            if (!s3) s3 = STAT_KEYS.reduce((a3, x3) => a3 + gst(sDay, x3), 0);
+            if (!end) end = STAT_KEYS.reduce((a3, x3) => a3 + gend(sDay, x3), 0);
           }
-          r.stats[k] = { start: s, gain: g, end, cost: e2, rate: e2 > 0 ? this._getLastEntryRate(sDay, k, g, e2) : k !== "total" ? this.getHistoricalRate(sDay.date, k) : 0 };
+          r4.stats[k3] = { start: s3, gain: g4, end, cost: e4, rate: e4 > 0 ? this._getLastEntryRate(sDay, k3, g4, e4) : k3 !== "total" ? this.getHistoricalRate(sDay.date, k3) : 0 };
         });
-        r.meta.totalEnergy = r.stats.total.cost;
+        r4.meta.totalEnergy = r4.stats.total.cost;
       } else if (dList.length > 0) {
-        const srt = [...dList].sort((a, b) => a.date.localeCompare(b.date)), f = srt[0], l = srt[srt.length - 1];
-        keys.forEach((k) => {
+        const srt = [...dList].sort((a3, b2) => a3.date.localeCompare(b2.date)), f4 = srt[0], l3 = srt[srt.length - 1];
+        keys.forEach((k3) => {
           let tc = 0, tg = 0;
-          srt.forEach((d) => {
-            tc += ge(d, k);
-            tg += gg(d, k);
+          srt.forEach((d3) => {
+            tc += ge(d3, k3);
+            tg += gg(d3, k3);
           });
-          let s = gst(f, k), end = gend(l, k);
-          if (k === "total") {
-            if (!s) s = STAT_KEYS.reduce((a, x) => a + gst(f, x), 0);
-            if (!end) end = STAT_KEYS.reduce((a, x) => a + gend(l, x), 0);
+          let s3 = gst(f4, k3), end = gend(l3, k3);
+          if (k3 === "total") {
+            if (!s3) s3 = STAT_KEYS.reduce((a3, x3) => a3 + gst(f4, x3), 0);
+            if (!end) end = STAT_KEYS.reduce((a3, x3) => a3 + gend(l3, x3), 0);
           }
-          r.stats[k] = { start: s, gain: tg, end, cost: tc, rate: tc > 0 ? r2(tg / tc * 150) : 0 };
+          r4.stats[k3] = { start: s3, gain: tg, end, cost: tc, rate: tc > 0 ? r2(tg / tc * 150) : 0 };
         });
-        r.meta.totalEnergy = r.stats.total.cost;
+        r4.meta.totalEnergy = r4.stats.total.cost;
       } else {
-        r.meta.isGap = true;
-        const pastEnd = { ...[...this.getTimeline()].reverse().find((d) => d.date < r.date)?.endBreakdown || getActiveHistory().meta.baselineBreakdown || {} };
-        pastEnd.total = STAT_KEYS.reduce((a, x) => a + (pastEnd[x] || 0), 0);
-        keys.forEach((k) => {
-          r.stats[k] = { start: pastEnd[k] || 0, gain: 0, end: pastEnd[k] || 0, cost: 0, rate: k !== "total" ? this.getHistoricalRate(r.date, k) : 0 };
+        r4.meta.isGap = true;
+        const pastEnd = { ...[...this.getTimeline()].reverse().find((d3) => d3.date < r4.date)?.endBreakdown || getActiveHistory().meta.baselineBreakdown || {} };
+        pastEnd.total = STAT_KEYS.reduce((a3, x3) => a3 + (pastEnd[x3] || 0), 0);
+        keys.forEach((k3) => {
+          r4.stats[k3] = { start: pastEnd[k3] || 0, gain: 0, end: pastEnd[k3] || 0, cost: 0, rate: k3 !== "total" ? this.getHistoricalRate(r4.date, k3) : 0 };
         });
       }
-      keys.forEach((k) => {
-        if (r.stats[k]) r.stats[k].gain = Math.max(0, r2(r.stats[k].end - r.stats[k].start));
+      keys.forEach((k3) => {
+        if (r4.stats[k3]) r4.stats[k3].gain = Math.max(0, r2(r4.stats[k3].end - r4.stats[k3].start));
       });
-      const e = r.meta.totalEnergy;
+      const e3 = r4.meta.totalEnergy;
       let hjDaySet;
       if (this.getHappyJumpData) {
         const hjData = this.getHappyJumpData();
@@ -2059,64 +2069,64 @@ ${BBGL_ERROR_CODE}`);
       } else {
         hjDaySet = /* @__PURE__ */ new Set();
       }
-      const isHJ = r.date && hjDaySet.has(r.date);
-      if (e >= 2e3) r.meta.tier = 3;
-      else if (e >= 1500) r.meta.tier = 2;
-      else if (e >= 1e3 || isHJ) r.meta.tier = 1;
-      else r.meta.tier = 0;
+      const isHJ = r4.date && hjDaySet.has(r4.date);
+      if (e3 >= 2e3) r4.meta.tier = 3;
+      else if (e3 >= 1500) r4.meta.tier = 2;
+      else if (e3 >= 1e3 || isHJ) r4.meta.tier = 1;
+      else r4.meta.tier = 0;
       const itemDays = sDay ? [sDay] : dList || [];
       const items = {};
       let itemEnergy = 0;
       let odEnergyLost = 0;
       let odHappyLost = 0;
-      itemDays.forEach((d) => {
-        if (d && d.items) Object.keys(d.items).forEach((id) => {
-          items[id] = (items[id] || 0) + d.items[id];
+      itemDays.forEach((d3) => {
+        if (d3 && d3.items) Object.keys(d3.items).forEach((id) => {
+          items[id] = (items[id] || 0) + d3.items[id];
         });
-        (d && d.series || []).forEach((e2) => {
-          if (e2.type !== "item") return;
-          if (e2.logId === ECAN_LOG && e2.energy) itemEnergy += e2.energy;
-          if (e2.energyLost != null) odEnergyLost += e2.energyLost;
-          if (e2.happyLost != null) odHappyLost += e2.happyLost;
+        (d3 && d3.series || []).forEach((e4) => {
+          if (e4.type !== "item") return;
+          if (e4.logId === ECAN_LOG && e4.energy) itemEnergy += e4.energy;
+          if (e4.energyLost != null) odEnergyLost += e4.energyLost;
+          if (e4.happyLost != null) odHappyLost += e4.happyLost;
         });
       });
-      r.items = items;
-      r.xanax = items[XANAX_LOG] || 0;
-      r.xanaxODs = items[XANAX_OD_LOG] || 0;
-      r.lsdODs = items[LSD_OD_LOG] || 0;
-      r.exODs = items[EX_OD_LOG] || 0;
-      r.odEnergyLost = odEnergyLost;
-      r.exHappyLost = odHappyLost;
-      r.ecans = items[ECAN_LOG] || 0;
-      r.ecanEnergy = itemEnergy;
-      r.dayCount = sDay ? 1 : dList ? dList.length : 0;
-      return r;
+      r4.items = items;
+      r4.xanax = items[XANAX_LOG] || 0;
+      r4.xanaxODs = items[XANAX_OD_LOG] || 0;
+      r4.lsdODs = items[LSD_OD_LOG] || 0;
+      r4.exODs = items[EX_OD_LOG] || 0;
+      r4.odEnergyLost = odEnergyLost;
+      r4.exHappyLost = odHappyLost;
+      r4.ecans = items[ECAN_LOG] || 0;
+      r4.ecanEnergy = itemEnergy;
+      r4.dayCount = sDay ? 1 : dList ? dList.length : 0;
+      return r4;
     },
     async processDataPayload(apiLogs, apiBattlestats) {
       Perf.start("processDataPayload");
-      let s = getActiveHistory();
+      let s3 = getActiveHistory();
       const fullApiLogs = normalizeApiLogs(apiLogs);
       let cleanLogs = fullApiLogs;
-      if (s.meta.logStartDate) {
-        cleanLogs = cleanLogs.filter((l) => l.ts >= s.meta.logStartDate);
+      if (s3.meta.logStartDate) {
+        cleanLogs = cleanLogs.filter((l3) => l3.ts >= s3.meta.logStartDate);
         if (cleanLogs.length === 0 && historyCache) {
-          const changedToday = apiBattlestats ? this._snapToBattlestats(apiBattlestats, s) : false;
+          const changedToday = apiBattlestats ? this._snapToBattlestats(apiBattlestats, s3) : false;
           const logicalToday2 = Formatter.dateLogical();
-          if (s.today.date !== logicalToday2) {
+          if (s3.today.date !== logicalToday2) {
             const changedDays = [];
-            if (s.today.series && s.today.series.length > 0 || s.today.gains && s.today.gains.total > 0) {
-              s.history.push(s.today);
-              changedDays.push(s.today);
+            if (s3.today.series && s3.today.series.length > 0 || s3.today.gains && s3.today.gains.total > 0) {
+              s3.history.push(s3.today);
+              changedDays.push(s3.today);
             }
-            s.today = initializeDayObject(logicalToday2, s.today.endBreakdown);
-            changedDays.push(s.today);
-            setHistoryCache(s);
+            s3.today = initializeDayObject(logicalToday2, s3.today.endBreakdown);
+            changedDays.push(s3.today);
+            setHistoryCache(s3);
             this.invalidate();
-            await app.DBManager.saveDays(s.meta, changedDays);
+            await app.DBManager.saveDays(s3.meta, changedDays);
           } else if (changedToday) {
-            setHistoryCache(s);
+            setHistoryCache(s3);
             this.invalidateToday();
-            await app.DBManager.saveDays(s.meta, [s.today]);
+            await app.DBManager.saveDays(s3.meta, [s3.today]);
           }
           window.dispatchEvent(new CustomEvent("bbgl:dataUpdated"));
           Perf.end("processDataPayload");
@@ -2124,83 +2134,83 @@ ${BBGL_ERROR_CODE}`);
         }
         let inc = null;
         try {
-          inc = this._reconcileIncremental(s, cleanLogs);
-        } catch (e) {
-          Log.warn("Incremental reconcile failed; falling back to full rebuild", e);
+          inc = this._reconcileIncremental(s3, cleanLogs);
+        } catch (e3) {
+          Log.warn("Incremental reconcile failed; falling back to full rebuild", e3);
           inc = null;
         }
         if (inc) {
           setHistoryCache(inc.result);
-          s = getActiveHistory();
-          this._runDailyGrind([], apiBattlestats, s);
+          s3 = getActiveHistory();
+          this._runDailyGrind([], apiBattlestats, s3);
           const changedDays = inc.changedDays.slice();
           const logicalToday2 = Formatter.dateLogical();
           let rolled = false;
-          if (s.today.date !== logicalToday2) {
-            if (s.today.series && s.today.series.length > 0 || s.today.gains && s.today.gains.total > 0) s.history.push(s.today);
-            s.today = initializeDayObject(
+          if (s3.today.date !== logicalToday2) {
+            if (s3.today.series && s3.today.series.length > 0 || s3.today.gains && s3.today.gains.total > 0) s3.history.push(s3.today);
+            s3.today = initializeDayObject(
               logicalToday2,
-              s.today.endBreakdown
+              s3.today.endBreakdown
             );
             rolled = true;
           }
-          setHistoryCache(s);
+          setHistoryCache(s3);
           this.invalidate();
           if (rolled) {
-            const all = [...s.history || []];
-            if (s.today) all.push(s.today);
-            await app.DBManager.saveDays(s.meta, all);
+            const all = [...s3.history || []];
+            if (s3.today) all.push(s3.today);
+            await app.DBManager.saveDays(s3.meta, all);
           } else {
-            if (!changedDays.includes(s.today)) changedDays.push(s.today);
-            await app.DBManager.saveDays(s.meta, changedDays);
+            if (!changedDays.includes(s3.today)) changedDays.push(s3.today);
+            await app.DBManager.saveDays(s3.meta, changedDays);
           }
           window.dispatchEvent(new CustomEvent("bbgl:dataUpdated"));
           Perf.end("processDataPayload");
           return "SUCCESS";
         }
         try {
-          setHistoryCache(await this._reconcileFull(s, cleanLogs));
-        } catch (e) {
-          Log.warn("Reconciliation error", e);
+          setHistoryCache(await this._reconcileFull(s3, cleanLogs));
+        } catch (e3) {
+          Log.warn("Reconciliation error", e3);
         }
-        s = getActiveHistory();
+        s3 = getActiveHistory();
       }
-      if (!s.meta.logStartDate) {
+      if (!s3.meta.logStartDate) {
         if (apiBattlestats) {
-          s.meta.baselineBreakdown = { str: apiBattlestats.strength || 0, def: apiBattlestats.defense || 0, spd: apiBattlestats.speed || 0, dex: apiBattlestats.dexterity || 0 };
+          s3.meta.baselineBreakdown = { str: apiBattlestats.strength || 0, def: apiBattlestats.defense || 0, spd: apiBattlestats.speed || 0, dex: apiBattlestats.dexterity || 0 };
         }
         const nowTs = Math.floor(Date.now() / 1e3);
-        s.meta.logStartDate = nowTs;
-        s.meta.rewardStartDate = nowTs;
-        cleanLogs = cleanLogs.filter((l) => l.ts >= s.meta.logStartDate);
-        s.today = initializeDayObject(Formatter.dateLogical(), { ...s.meta.baselineBreakdown });
+        s3.meta.logStartDate = nowTs;
+        s3.meta.rewardStartDate = nowTs;
+        cleanLogs = cleanLogs.filter((l3) => l3.ts >= s3.meta.logStartDate);
+        s3.today = initializeDayObject(Formatter.dateLogical(), { ...s3.meta.baselineBreakdown });
       }
-      this._runDailyGrind(cleanLogs, apiBattlestats, s);
+      this._runDailyGrind(cleanLogs, apiBattlestats, s3);
       const logicalToday = Formatter.dateLogical();
-      if (s.today.date !== logicalToday) {
-        if (s.today.series && s.today.series.length > 0 || s.today.gains && s.today.gains.total > 0) s.history.push(s.today);
-        s.today = initializeDayObject(logicalToday, s.today.endBreakdown);
+      if (s3.today.date !== logicalToday) {
+        if (s3.today.series && s3.today.series.length > 0 || s3.today.gains && s3.today.gains.total > 0) s3.history.push(s3.today);
+        s3.today = initializeDayObject(logicalToday, s3.today.endBreakdown);
       }
-      this.saveSmartHistory(s);
+      this.saveSmartHistory(s3);
       window.dispatchEvent(new CustomEvent("bbgl:dataUpdated"));
       Perf.end("processDataPayload");
       return "SUCCESS";
     },
-    saveSmartHistory(d) {
-      const allDays = [...d.history || []];
-      if (d.today) allDays.push(d.today);
-      app.DBManager.saveDays(d.meta, allDays);
-      setHistoryCache(d);
+    saveSmartHistory(d3) {
+      const allDays = [...d3.history || []];
+      if (d3.today) allDays.push(d3.today);
+      app.DBManager.saveDays(d3.meta, allDays);
+      setHistoryCache(d3);
       this.invalidate();
     },
     flattenAllSeries() {
-      const s = getActiveHistory();
+      const s3 = getActiveHistory();
       const all = [];
-      const days = [...s.history || []];
-      if (s.today) days.push(s.today);
+      const days = [...s3.history || []];
+      if (s3.today) days.push(s3.today);
       days.forEach((day) => {
         if (day.series && day.series.length > 0) {
-          day.series.forEach((e) => all.push(e));
+          day.series.forEach((e3) => all.push(e3));
         } else {
           const base = Formatter.parse(day.date);
           const ts = Math.floor(base.getTime() / 1e3) + 43200;
@@ -2212,71 +2222,71 @@ ${BBGL_ERROR_CODE}`);
           });
         }
       });
-      return all.sort((a, b) => a.ts - b.ts);
+      return all.sort((a3, b2) => a3.ts - b2.ts);
     },
-    _runDailyGrind(logs, bs, s) {
-      const allDays = [...s.history || [], s.today];
+    _runDailyGrind(logs, bs, s3) {
+      const allDays = [...s3.history || [], s3.today];
       const globalLastTs = allDays.reduce((max, day) => Math.max(max, day.lastLogTimestamp || 0), 0);
-      const lastTs = Math.max(globalLastTs, s.meta.logStartDate || 0);
-      const validLogs = logs.filter((l) => l.ts > lastTs);
-      validLogs.forEach((l) => this._applyLogToState(l, s));
-      if (bs) this._snapToBattlestats(bs, s);
+      const lastTs = Math.max(globalLastTs, s3.meta.logStartDate || 0);
+      const validLogs = logs.filter((l3) => l3.ts > lastTs);
+      validLogs.forEach((l3) => this._applyLogToState(l3, s3));
+      if (bs) this._snapToBattlestats(bs, s3);
     },
-    _applyLogToState(l, s) {
-      const logDate = Formatter.dateLogical(l.ts * 1e3);
-      if (s.today.date !== logDate) {
-        if (s.today.series && s.today.series.length > 0) s.history.push(s.today);
-        s.today = initializeDayObject(logDate, s.today.endBreakdown);
+    _applyLogToState(l3, s3) {
+      const logDate = Formatter.dateLogical(l3.ts * 1e3);
+      if (s3.today.date !== logDate) {
+        if (s3.today.series && s3.today.series.length > 0) s3.history.push(s3.today);
+        s3.today = initializeDayObject(logDate, s3.today.endBreakdown);
       }
-      if (l.type === "item") {
-        if (!s.today.items) s.today.items = {};
-        if (!s.today.itemLogIds) s.today.itemLogIds = [];
-        const itemKey = `${l.ts}_${l.logId}`;
-        if (!s.today.itemLogIds.includes(itemKey)) {
-          s.today.itemLogIds.push(itemKey);
-          s.today.items[l.logId] = (s.today.items[l.logId] || 0) + 1;
-          if (l.logId === ECAN_LOG && l.energy) s.today.itemEnergy = (s.today.itemEnergy || 0) + l.energy;
-          if (l.energyLost != null) s.today.itemEnergyLost = (s.today.itemEnergyLost || 0) + l.energyLost;
-          if (l.happyLost != null) s.today.itemHappyLost = (s.today.itemHappyLost || 0) + l.happyLost;
-          if (l.happy) s.today.itemHappy = (s.today.itemHappy || 0) + l.happy;
+      if (l3.type === "item") {
+        if (!s3.today.items) s3.today.items = {};
+        if (!s3.today.itemLogIds) s3.today.itemLogIds = [];
+        const itemKey = `${l3.ts}_${l3.logId}`;
+        if (!s3.today.itemLogIds.includes(itemKey)) {
+          s3.today.itemLogIds.push(itemKey);
+          s3.today.items[l3.logId] = (s3.today.items[l3.logId] || 0) + 1;
+          if (l3.logId === ECAN_LOG && l3.energy) s3.today.itemEnergy = (s3.today.itemEnergy || 0) + l3.energy;
+          if (l3.energyLost != null) s3.today.itemEnergyLost = (s3.today.itemEnergyLost || 0) + l3.energyLost;
+          if (l3.happyLost != null) s3.today.itemHappyLost = (s3.today.itemHappyLost || 0) + l3.happyLost;
+          if (l3.happy) s3.today.itemHappy = (s3.today.itemHappy || 0) + l3.happy;
         }
-        const entry = { type: "item", id: l.id, ts: l.ts, logId: l.logId };
-        if (l.energy) entry.energy = l.energy;
-        if (l.energyLost != null) entry.energyLost = l.energyLost;
-        if (l.happyLost != null) entry.happyLost = l.happyLost;
-        if (l.happy) entry.happy = l.happy;
-        if (l.statKey) {
-          entry.statKey = l.statKey;
-          entry.statGain = l.statGain;
+        const entry = { type: "item", id: l3.id, ts: l3.ts, logId: l3.logId };
+        if (l3.energy) entry.energy = l3.energy;
+        if (l3.energyLost != null) entry.energyLost = l3.energyLost;
+        if (l3.happyLost != null) entry.happyLost = l3.happyLost;
+        if (l3.happy) entry.happy = l3.happy;
+        if (l3.statKey) {
+          entry.statKey = l3.statKey;
+          entry.statGain = l3.statGain;
         }
-        s.today.series.push(entry);
+        s3.today.series.push(entry);
       } else {
-        s.today.gains[l.stat] += l.gain;
-        s.today.gains.total += l.gain;
-        s.today.eSpent[l.stat] += l.cost;
-        s.today.eSpent.total += l.cost;
-        s.today.endBreakdown[l.stat] = l.after;
-        if (l.ts > s.today.lastLogTimestamp) s.today.lastLogTimestamp = l.ts;
-        s.today.series.push({ type: "gym", id: l.id, ts: l.ts, stat: l.stat, gain: l.gain, cost: l.cost, after: l.after, rate: l.cost > 0 ? r2(l.gain / l.cost * 150) : 0 });
-        s.today.endTotal = sumStats2(s.today.endBreakdown);
+        s3.today.gains[l3.stat] += l3.gain;
+        s3.today.gains.total += l3.gain;
+        s3.today.eSpent[l3.stat] += l3.cost;
+        s3.today.eSpent.total += l3.cost;
+        s3.today.endBreakdown[l3.stat] = l3.after;
+        if (l3.ts > s3.today.lastLogTimestamp) s3.today.lastLogTimestamp = l3.ts;
+        s3.today.series.push({ type: "gym", id: l3.id, ts: l3.ts, stat: l3.stat, gain: l3.gain, cost: l3.cost, after: l3.after, rate: l3.cost > 0 ? r2(l3.gain / l3.cost * 150) : 0 });
+        s3.today.endTotal = sumStats2(s3.today.endBreakdown);
       }
     },
-    _snapToBattlestats(bs, s) {
+    _snapToBattlestats(bs, s3) {
       let upd = false;
-      BS_STAT_ROWS.forEach((i) => {
-        const apiVal = bs[i.api];
+      BS_STAT_ROWS.forEach((i3) => {
+        const apiVal = bs[i3.api];
         if (apiVal === void 0) return;
-        const localVal = s.today.endBreakdown[i.abbr] || 0;
-        const lg = s.today.gains[i.abbr] || 0;
+        const localVal = s3.today.endBreakdown[i3.abbr] || 0;
+        const lg = s3.today.gains[i3.abbr] || 0;
         if (localVal !== apiVal) {
-          s.today.endBreakdown[i.abbr] = apiVal;
-          s.today.startBreakdown[i.abbr] = apiVal - lg;
+          s3.today.endBreakdown[i3.abbr] = apiVal;
+          s3.today.startBreakdown[i3.abbr] = apiVal - lg;
           upd = true;
         }
       });
       if (upd) {
-        s.today.endTotal = sumStats2(s.today.endBreakdown);
-        s.today.startTotal = sumStats2(s.today.startBreakdown);
+        s3.today.endTotal = sumStats2(s3.today.endBreakdown);
+        s3.today.startTotal = sumStats2(s3.today.startBreakdown);
       }
       return upd;
     },
@@ -2286,27 +2296,27 @@ ${BBGL_ERROR_CODE}`);
       Perf.end("_rebuildFromSeries");
       return rebuilt;
     },
-    async _reconcileFull(s, cleanLogs) {
+    async _reconcileFull(s3, cleanLogs) {
       const stored = await app.DBManager.getStorage();
-      if (!stored) return { meta: s.meta, history: s.history, today: s.today };
+      if (!stored) return { meta: s3.meta, history: s3.history, today: s3.today };
       if (stored.series && cleanLogs.length > 0) {
         const minApiTs = cleanLogs[0].ts;
         const maxApiTs = cleanLogs[cleanLogs.length - 1].ts;
-        const apiEntries = cleanLogs.map((l) => {
-          if (l.type === "item") return { ...l };
-          return { type: "gym", id: l.id, ts: l.ts, stat: l.stat, gain: r2(l.gain), cost: l.cost, after: r2(l.after) };
+        const apiEntries = cleanLogs.map((l3) => {
+          if (l3.type === "item") return { ...l3 };
+          return { type: "gym", id: l3.id, ts: l3.ts, stat: l3.stat, gain: r2(l3.gain), cost: l3.cost, after: r2(l3.after) };
         });
-        const getSetKey = (e) => e.type === "item" ? `item_${e.id}` : `${e.ts}_${e.stat}_${e.after}`;
+        const getSetKey = (e3) => e3.type === "item" ? `item_${e3.id}` : `${e3.ts}_${e3.stat}_${e3.after}`;
         const apiTsStatSet = new Set(apiEntries.map(getSetKey));
-        const kept = stored.series.filter((e) => e.ts < minApiTs || e.ts > maxApiTs || !apiTsStatSet.has(getSetKey(e)));
-        stored.series = [...kept, ...apiEntries].sort((a, b) => a.ts - b.ts);
+        const kept = stored.series.filter((e3) => e3.ts < minApiTs || e3.ts > maxApiTs || !apiTsStatSet.has(getSetKey(e3)));
+        stored.series = [...kept, ...apiEntries].sort((a3, b2) => a3.ts - b2.ts);
       }
-      stored.meta = { ...stored.meta, logStartDate: s.meta.logStartDate, syncFloor: s.meta.syncFloor || stored.meta.syncFloor, stickers: stored.meta.stickers || s.meta.stickers || {} };
+      stored.meta = { ...stored.meta, logStartDate: s3.meta.logStartDate, syncFloor: s3.meta.syncFloor || stored.meta.syncFloor, stickers: stored.meta.stickers || s3.meta.stickers || {} };
       const rebuilt = this._rebuildFromSeries(stored.series || [], stored.meta.baselineBreakdown || ZERO_BREAKDOWN);
       return { meta: stored.meta, history: rebuilt.history, today: rebuilt.today };
     },
-    _reconcileIncremental(s, cleanLogs) {
-      return reconcileIncremental(s, cleanLogs);
+    _reconcileIncremental(s3, cleanLogs) {
+      return reconcileIncremental(s3, cleanLogs);
     }
   };
   function getActiveHistory() {
@@ -2340,21 +2350,21 @@ ${BBGL_ERROR_CODE}`);
         }
         Perf.start("initDB");
         const req = indexedDB.open(this._DB_NAME, 2);
-        req.onupgradeneeded = (e) => {
-          const db = e.target.result;
+        req.onupgradeneeded = (e3) => {
+          const db = e3.target.result;
           if (db.objectStoreNames.contains("history")) db.deleteObjectStore("history");
           if (!db.objectStoreNames.contains(this._META_STORE)) db.createObjectStore(this._META_STORE);
           if (!db.objectStoreNames.contains(this._DAYS_STORE)) db.createObjectStore(this._DAYS_STORE);
         };
-        req.onsuccess = (e) => {
-          this._db = e.target.result;
+        req.onsuccess = (e3) => {
+          this._db = e3.target.result;
           Perf.end("initDB");
           resolve(this._db);
         };
-        req.onerror = (e) => {
+        req.onerror = (e3) => {
           Perf.end("initDB");
-          Log.error("IndexedDB open failed", e);
-          reject(e);
+          Log.error("IndexedDB open failed", e3);
+          reject(e3);
         };
       });
     },
@@ -2362,7 +2372,7 @@ ${BBGL_ERROR_CODE}`);
       if (!this._db) {
         try {
           await this.initDB();
-        } catch (e) {
+        } catch (e3) {
         }
       }
       return this._db;
@@ -2372,9 +2382,9 @@ ${BBGL_ERROR_CODE}`);
         const tx = this._db.transaction(this._META_STORE, "readonly");
         const req = tx.objectStore(this._META_STORE).get(this._META_KEY);
         req.onsuccess = () => resolve(req.result || null);
-        req.onerror = (e) => {
-          Log.error("IndexedDB read failed", e);
-          reject(e);
+        req.onerror = (e3) => {
+          Log.error("IndexedDB read failed", e3);
+          reject(e3);
         };
       });
     },
@@ -2383,16 +2393,16 @@ ${BBGL_ERROR_CODE}`);
         const out = [];
         const tx = this._db.transaction(this._DAYS_STORE, "readonly");
         const req = tx.objectStore(this._DAYS_STORE).openCursor();
-        req.onsuccess = (e) => {
-          const cur = e.target.result;
+        req.onsuccess = (e3) => {
+          const cur = e3.target.result;
           if (cur) {
             out.push(cur.value);
             cur.continue();
           } else resolve(out);
         };
-        req.onerror = (e) => {
-          Log.error("IndexedDB read failed", e);
-          reject(e);
+        req.onerror = (e3) => {
+          Log.error("IndexedDB read failed", e3);
+          reject(e3);
         };
       });
     },
@@ -2408,8 +2418,8 @@ ${BBGL_ERROR_CODE}`);
           const dayStore = tx.objectStore(this._DAYS_STORE);
           if (replaceAll) dayStore.clear();
           tx.objectStore(this._META_STORE).put(meta || {}, this._META_KEY);
-          (dayObjs || []).forEach((d) => {
-            if (d && d.date) dayStore.put(d, d.date);
+          (dayObjs || []).forEach((d3) => {
+            if (d3 && d3.date) dayStore.put(d3, d3.date);
           });
           tx.oncomplete = () => {
             app._syncChannel.postMessage({
@@ -2418,16 +2428,16 @@ ${BBGL_ERROR_CODE}`);
             });
             resolve();
           };
-          tx.onerror = (e) => {
-            const err = e.target.error;
+          tx.onerror = (e3) => {
+            const err = e3.target.error;
             Log.error("IndexedDB write failed", err);
             if (err && err.name === "QuotaExceededError") {
               bbglError("\u26A0\uFE0F STORAGE ERROR: Browser quota exceeded.\n\nYour data could not be saved. Please export your history and then 'Clear Data' to free up space.");
             }
             reject(err);
           };
-        } catch (e) {
-          reject(e);
+        } catch (e3) {
+          reject(e3);
         }
       });
     },
@@ -2442,11 +2452,11 @@ ${BBGL_ERROR_CODE}`);
       const logicalToday = Formatter.dateLogical();
       let today = null;
       const history2 = [];
-      days.forEach((d) => {
-        if (d.date === logicalToday) today = d;
-        else if (d.series && d.series.length > 0 || d.gains && d.gains.total > 0) history2.push(d);
+      days.forEach((d3) => {
+        if (d3.date === logicalToday) today = d3;
+        else if (d3.series && d3.series.length > 0 || d3.gains && d3.gains.total > 0) history2.push(d3);
       });
-      history2.sort((a, b) => a.date.localeCompare(b.date));
+      history2.sort((a3, b2) => a3.date.localeCompare(b2.date));
       if (!today) {
         const carry = history2.length > 0 ? history2[history2.length - 1].endBreakdown : meta.baselineBreakdown;
         today = initializeDayObject(logicalToday, { ...carry || ZERO_BREAKDOWN });
@@ -2465,16 +2475,16 @@ ${BBGL_ERROR_CODE}`);
       const [metaRaw, days] = await Promise.all([this._readMeta(), this._readAllDays()]);
       if (metaRaw === null && days.length === 0) return app.sanitizeStorageRecord(null);
       const series = [];
-      days.forEach((d) => {
-        if (d && Array.isArray(d.series) && d.series.length > 0) {
-          for (const e of d.series) series.push(e);
-        } else if (d && d.gains && d.gains.total > 0) {
-          const base = Formatter.parse(d.date);
+      days.forEach((d3) => {
+        if (d3 && Array.isArray(d3.series) && d3.series.length > 0) {
+          for (const e3 of d3.series) series.push(e3);
+        } else if (d3 && d3.gains && d3.gains.total > 0) {
+          const base = Formatter.parse(d3.date);
           const ts = Math.floor(base.getTime() / 1e3) + 43200;
           STAT_KEYS.forEach((stat) => {
-            const gain = d.gains && d.gains[stat] || 0;
-            const cost = d.eSpent && d.eSpent[stat] || 0;
-            const after = d.endBreakdown && d.endBreakdown[stat] || 0;
+            const gain = d3.gains && d3.gains[stat] || 0;
+            const cost = d3.eSpent && d3.eSpent[stat] || 0;
+            const after = d3.endBreakdown && d3.endBreakdown[stat] || 0;
             if (gain > 0 || cost > 0) series.push({
               ts,
               stat,
@@ -2487,7 +2497,7 @@ ${BBGL_ERROR_CODE}`);
           });
         }
       });
-      series.sort((a, b) => a.ts - b.ts);
+      series.sort((a3, b2) => a3.ts - b2.ts);
       return app.sanitizeStorageRecord({ meta: metaRaw || {}, series });
     },
     // Restores your gym history from an imported backup file.
@@ -2519,9 +2529,9 @@ ${BBGL_ERROR_CODE}`);
           });
           resolve();
         };
-        tx.onerror = (e) => {
-          Log.error("IndexedDB clear failed", e);
-          reject(e);
+        tx.onerror = (e3) => {
+          Log.error("IndexedDB clear failed", e3);
+          reject(e3);
         };
       });
     }
@@ -2543,8 +2553,8 @@ ${BBGL_ERROR_CODE}`);
         if (dom.panel && dom.panel.style.display !== "none") app.renderPanelContent();
         app.renderScanOverlay();
         app.renderBackfillButton();
-      } catch (e) {
-        Log.warn("Cross-tab sync failed", e);
+      } catch (e3) {
+        Log.warn("Cross-tab sync failed", e3);
       }
     }, 200);
   };
@@ -2591,8 +2601,8 @@ ${BBGL_ERROR_CODE}`);
     scheduleHeartbeat();
   }
   async function checkExitSync() {
-    const f = sessionStorage.getItem(KEYS.SESSION);
-    if (f === "true" && !window.location.href.includes("gym.php")) {
+    const f4 = sessionStorage.getItem(KEYS.SESSION);
+    if (f4 === "true" && !window.location.href.includes("gym.php")) {
       sessionStorage.removeItem(KEYS.SESSION);
       await app.universalFetch("FULL_SYNC");
       scheduleHeartbeat();
@@ -2605,20 +2615,20 @@ ${BBGL_ERROR_CODE}`);
     dex: "5303"
   };
   function syncSidebarState() {
-    const a = window.location.hash.includes("gymlog"), ids = [app.SB_DESKTOP.id, app.SB_MOBILE.id, app.SB_FLYOUT.id];
+    const a3 = window.location.hash.includes("gymlog"), ids = [app.SB_DESKTOP.id, app.SB_MOBILE.id, app.SB_FLYOUT.id];
     const BBGL_ACTIVE = "active___bbgl";
     const probe = document.querySelector('[id^="nav-"][class*="active___"]');
     if (probe && !ids.includes(probe.id)) {
-      const real = Array.from(probe.classList).find((c) => c.startsWith("active___") && c !== BBGL_ACTIVE);
+      const real = Array.from(probe.classList).find((c3) => c3.startsWith("active___") && c3 !== BBGL_ACTIVE);
       if (real) runtime._sidebarActiveCls = real;
     }
     const realActive = runtime._sidebarActiveCls;
-    if (a) {
+    if (a3) {
       ids.forEach((id) => {
-        const c = document.getElementById(id);
-        if (!c) return;
-        if (!c.classList.contains(BBGL_ACTIVE)) c.classList.add(BBGL_ACTIVE);
-        if (realActive && !c.classList.contains(realActive)) c.classList.add(realActive);
+        const c3 = document.getElementById(id);
+        if (!c3) return;
+        if (!c3.classList.contains(BBGL_ACTIVE)) c3.classList.add(BBGL_ACTIVE);
+        if (realActive && !c3.classList.contains(realActive)) c3.classList.add(realActive);
       });
       document.querySelectorAll('[id^="nav-"]').forEach((navEl) => {
         if (ids.includes(navEl.id)) return;
@@ -2628,8 +2638,8 @@ ${BBGL_ERROR_CODE}`);
       });
     } else {
       ids.forEach((id) => {
-        const c = document.getElementById(id);
-        if (c) Array.from(c.classList).filter((cls) => cls.startsWith("active___")).forEach((cls) => c.classList.remove(cls));
+        const c3 = document.getElementById(id);
+        if (c3) Array.from(c3.classList).filter((cls) => cls.startsWith("active___")).forEach((cls) => c3.classList.remove(cls));
       });
     }
   }
@@ -2654,11 +2664,11 @@ ${BBGL_ERROR_CODE}`);
   }
   function _getLayoutWindows() {
     const out = /* @__PURE__ */ new Set();
-    document.querySelectorAll('[class*="visible___"], [class*="opened___"]').forEach((w) => {
-      if (!w || w.id === "bbgl-panel") return;
-      if (w.id === "notes_panel_button" || w.id === "people_panel_button" || w.id === "notes_settings_button") return;
-      if ((w.offsetWidth || 0) < 120 || (w.offsetHeight || 0) < 120) return;
-      out.add(w);
+    document.querySelectorAll('[class*="visible___"], [class*="opened___"]').forEach((w3) => {
+      if (!w3 || w3.id === "bbgl-panel") return;
+      if (w3.id === "notes_panel_button" || w3.id === "people_panel_button" || w3.id === "notes_settings_button") return;
+      if ((w3.offsetWidth || 0) < 120 || (w3.offsetHeight || 0) < 120) return;
+      out.add(w3);
     });
     return Array.from(out);
   }
@@ -2666,28 +2676,28 @@ ${BBGL_ERROR_CODE}`);
     if (!runtime.layoutResizeObserver) return;
     const prev = runtime._layoutResizeTargets || (runtime._layoutResizeTargets = /* @__PURE__ */ new Set());
     const next = /* @__PURE__ */ new Set();
-    (precomputedWindows || _getLayoutWindows()).forEach((w) => {
-      next.add(w);
-      if (!prev.has(w)) runtime.layoutResizeObserver.observe(w);
+    (precomputedWindows || _getLayoutWindows()).forEach((w3) => {
+      next.add(w3);
+      if (!prev.has(w3)) runtime.layoutResizeObserver.observe(w3);
     });
-    prev.forEach((w) => {
-      if (!next.has(w)) {
+    prev.forEach((w3) => {
+      if (!next.has(w3)) {
         try {
-          runtime.layoutResizeObserver.unobserve(w);
-        } catch (_) {
+          runtime.layoutResizeObserver.unobserve(w3);
+        } catch (_3) {
         }
-        prev.delete(w);
+        prev.delete(w3);
       }
     });
-    next.forEach((w) => prev.add(w));
+    next.forEach((w3) => prev.add(w3));
   }
   function syncChangelogNotif(active) {
     const ids = [app.SB_DESKTOP.id, app.SB_MOBILE.id, app.SB_FLYOUT.id];
     ids.forEach((id) => {
-      const c = document.getElementById(id);
-      if (!c) return;
-      if (active) c.classList.add("bbgl-sb-notif");
-      else c.classList.remove("bbgl-sb-notif");
+      const c3 = document.getElementById(id);
+      if (!c3) return;
+      if (active) c3.classList.add("bbgl-sb-notif");
+      else c3.classList.remove("bbgl-sb-notif");
     });
   }
   function syncSiblingSelect(primaryId, siblingId, val) {
@@ -2776,51 +2786,51 @@ ${BBGL_ERROR_CODE}`);
     };
   }
   function normalizeBackfill(ds) {
-    const d = defaultBackfill();
+    const d3 = defaultBackfill();
     if (ds && typeof ds === "object") {
-      if (ds.targets && typeof ds.targets === "object") d.targets = ds.targets;
-      if (typeof ds.rowsUsed === "number") d.rowsUsed = ds.rowsUsed;
-      else if (typeof ds.rowsThisWindow === "number") d.rowsUsed = ds.rowsThisWindow;
-      if (typeof ds.cooldownUntil === "number") d.cooldownUntil = ds.cooldownUntil;
-      if (ds.lastResult === "complete" || ds.lastResult === "partial") d.lastResult = ds.lastResult;
-      if (ds.stopReason === "paused" || ds.stopReason === "error" || ds.stopReason === "interrupted" || ds.stopReason === "cap") d.stopReason = ds.stopReason;
-      if (ds.completion === "origin" || ds.completion === "exhausted") d.completion = ds.completion;
-      if (typeof ds.acknowledged === "boolean") d.acknowledged = ds.acknowledged;
-      if (typeof ds.lock === "number") d.lock = ds.lock;
-      if (typeof ds.lockOwner === "string") d.lockOwner = ds.lockOwner;
+      if (ds.targets && typeof ds.targets === "object") d3.targets = ds.targets;
+      if (typeof ds.rowsUsed === "number") d3.rowsUsed = ds.rowsUsed;
+      else if (typeof ds.rowsThisWindow === "number") d3.rowsUsed = ds.rowsThisWindow;
+      if (typeof ds.cooldownUntil === "number") d3.cooldownUntil = ds.cooldownUntil;
+      if (ds.lastResult === "complete" || ds.lastResult === "partial") d3.lastResult = ds.lastResult;
+      if (ds.stopReason === "paused" || ds.stopReason === "error" || ds.stopReason === "interrupted" || ds.stopReason === "cap") d3.stopReason = ds.stopReason;
+      if (ds.completion === "origin" || ds.completion === "exhausted") d3.completion = ds.completion;
+      if (typeof ds.acknowledged === "boolean") d3.acknowledged = ds.acknowledged;
+      if (typeof ds.lock === "number") d3.lock = ds.lock;
+      if (typeof ds.lockOwner === "string") d3.lockOwner = ds.lockOwner;
     }
-    return d;
+    return d3;
   }
   function sanitizeMeta(metaRaw) {
-    const m = metaRaw && typeof metaRaw === "object" ? metaRaw : {};
-    if (!m.baselineBreakdown) m.baselineBreakdown = {
+    const m3 = metaRaw && typeof metaRaw === "object" ? metaRaw : {};
+    if (!m3.baselineBreakdown) m3.baselineBreakdown = {
       ...ZERO_BREAKDOWN
     };
-    m.backfill = normalizeBackfill(m.backfill);
-    const k = ["str", "def", "spd", "dex"];
-    k.forEach((key) => {
-      if (m.baselineBreakdown[key] !== void 0) m.baselineBreakdown[key] = parseFloat(m.baselineBreakdown[key]) || 0;
+    m3.backfill = normalizeBackfill(m3.backfill);
+    const k3 = ["str", "def", "spd", "dex"];
+    k3.forEach((key) => {
+      if (m3.baselineBreakdown[key] !== void 0) m3.baselineBreakdown[key] = parseFloat(m3.baselineBreakdown[key]) || 0;
     });
-    return m;
+    return m3;
   }
-  function sanitizeEntry(e) {
-    if (e.type === "item") {
-      if (e.ts !== void 0) e.ts = parseInt(e.ts);
-      if (e.energy !== void 0) e.energy = parseInt(e.energy);
+  function sanitizeEntry(e3) {
+    if (e3.type === "item") {
+      if (e3.ts !== void 0) e3.ts = parseInt(e3.ts);
+      if (e3.energy !== void 0) e3.energy = parseInt(e3.energy);
       return;
     }
-    if (e.ts !== void 0) e.ts = parseInt(e.ts);
-    if (e.gain !== void 0) e.gain = parseFloat(e.gain);
-    if (e.after !== void 0) e.after = parseFloat(e.after);
-    if (e.cost !== void 0) e.cost = parseInt(e.cost);
-    e.rate = e.cost > 0 ? r2(e.gain / e.cost * 150) : 0;
+    if (e3.ts !== void 0) e3.ts = parseInt(e3.ts);
+    if (e3.gain !== void 0) e3.gain = parseFloat(e3.gain);
+    if (e3.after !== void 0) e3.after = parseFloat(e3.after);
+    if (e3.cost !== void 0) e3.cost = parseInt(e3.cost);
+    e3.rate = e3.cost > 0 ? r2(e3.gain / e3.cost * 150) : 0;
   }
-  function sanitizeDayRecord(d) {
-    if (d && Array.isArray(d.series)) d.series.forEach(sanitizeEntry);
-    return d;
+  function sanitizeDayRecord(d3) {
+    if (d3 && Array.isArray(d3.series)) d3.series.forEach(sanitizeEntry);
+    return d3;
   }
-  function sanitizeStorageRecord(s) {
-    if (!s || typeof s !== "object") return {
+  function sanitizeStorageRecord(s3) {
+    if (!s3 || typeof s3 !== "object") return {
       meta: {
         baselineBreakdown: {
           ...ZERO_BREAKDOWN
@@ -2828,34 +2838,34 @@ ${BBGL_ERROR_CODE}`);
       },
       series: []
     };
-    s.meta = sanitizeMeta(s.meta);
-    if (!s.series || !Array.isArray(s.series)) s.series = [];
-    s.series.forEach(sanitizeEntry);
-    return s;
+    s3.meta = sanitizeMeta(s3.meta);
+    if (!s3.series || !Array.isArray(s3.series)) s3.series = [];
+    s3.series.forEach(sanitizeEntry);
+    return s3;
   }
-  function validateImportSchema(j) {
-    if (!j || typeof j !== "object") return {
+  function validateImportSchema(j4) {
+    if (!j4 || typeof j4 !== "object") return {
       ok: false,
       msg: "Invalid file format."
     };
     if (WIPE_BELOW_VERSION !== "0.0.0") {
-      const importedVer = j.meta && j.meta.version ? String(j.meta.version) : "";
+      const importedVer = j4.meta && j4.meta.version ? String(j4.meta.version) : "";
       if (!importedVer || compareVersions(importedVer, WIPE_BELOW_VERSION) < 0) return {
         ok: false,
         msg: "This export is from before a required data reset and can no longer be imported. Please start tracking fresh."
       };
     }
-    if (!j.storage || typeof j.storage !== "object") return {
+    if (!j4.storage || typeof j4.storage !== "object") return {
       ok: false,
       msg: "No training data found in file."
     };
-    const s = j.storage;
-    if (s.series && !Array.isArray(s.series)) return {
+    const s3 = j4.storage;
+    if (s3.series && !Array.isArray(s3.series)) return {
       ok: false,
       msg: "Training series is malformed (not an array)."
     };
-    if (s.meta && s.meta.baselineBreakdown) {
-      const keys = Object.keys(s.meta.baselineBreakdown);
+    if (s3.meta && s3.meta.baselineBreakdown) {
+      const keys = Object.keys(s3.meta.baselineBreakdown);
       if (!keys.includes("str") && !keys.includes("def")) return {
         ok: false,
         msg: "Baseline stats are missing or invalid."
@@ -2887,18 +2897,18 @@ ${BBGL_ERROR_CODE}`);
       const wars = data.rankedwars || {};
       const myFactionId = data.ID || null;
       if (myFactionId) {
-        Object.values(wars).forEach((w) => {
-          if (!w || !w.war) return;
-          if (w.war.end && w.war.winner != null) {
-            w.outcome = w.war.winner === myFactionId ? "won" : "lost";
+        Object.values(wars).forEach((w3) => {
+          if (!w3 || !w3.war) return;
+          if (w3.war.end && w3.war.winner != null) {
+            w3.outcome = w3.war.winner === myFactionId ? "won" : "lost";
           }
-          w.factionId = myFactionId;
+          w3.factionId = myFactionId;
         });
       }
       localStorage.setItem(KEYS.WARS_DATA, JSON.stringify(wars));
       localStorage.setItem(KEYS.WARS_SYNC, Date.now().toString());
-    } catch (e) {
-      Log.error("Wars fetch failed", e);
+    } catch (e3) {
+      Log.error("Wars fetch failed", e3);
     }
   }
   async function fetchFactionHistory() {
@@ -2908,35 +2918,35 @@ ${BBGL_ERROR_CODE}`);
       if (!res.ok) return;
       const data = await res.json();
       if (data.error) return;
-      const joinEvents = Object.values(data.log || {}).filter((e) => e && e.data && e.data.faction && e.timestamp).sort((a, b) => a.timestamp - b.timestamp);
-      const factionHistory = joinEvents.map((e, i) => ({
-        factionId: e.data.faction,
-        joinedAt: e.timestamp,
-        leftAt: joinEvents[i + 1] ? joinEvents[i + 1].timestamp : null
+      const joinEvents = Object.values(data.log || {}).filter((e3) => e3 && e3.data && e3.data.faction && e3.timestamp).sort((a3, b2) => a3.timestamp - b2.timestamp);
+      const factionHistory = joinEvents.map((e3, i3) => ({
+        factionId: e3.data.faction,
+        joinedAt: e3.timestamp,
+        leftAt: joinEvents[i3 + 1] ? joinEvents[i3 + 1].timestamp : null
       }));
       localStorage.setItem(KEYS.FACTION_HISTORY, JSON.stringify(factionHistory));
-    } catch (e) {
-      Log.warn("Faction history fetch failed", e);
+    } catch (e3) {
+      Log.warn("Faction history fetch failed", e3);
     }
   }
   function getFactionHistory() {
     try {
       const raw = localStorage.getItem(KEYS.FACTION_HISTORY);
       return raw ? JSON.parse(raw) : null;
-    } catch (e) {
+    } catch (e3) {
       return null;
     }
   }
   async function fetchPastFactionWars() {
     const factionHistory = getFactionHistory();
     if (!factionHistory || !factionHistory.length) return;
-    const pastFactions = factionHistory.filter((m) => m.leftAt !== null);
+    const pastFactions = factionHistory.filter((m3) => m3.leftAt !== null);
     if (!pastFactions.length) return;
     let wars = {};
     try {
-      const e = localStorage.getItem(KEYS.WARS_DATA);
-      if (e) wars = JSON.parse(e);
-    } catch (e) {
+      const e3 = localStorage.getItem(KEYS.WARS_DATA);
+      if (e3) wars = JSON.parse(e3);
+    } catch (e3) {
     }
     for (const membership of pastFactions) {
       try {
@@ -2945,24 +2955,24 @@ ${BBGL_ERROR_CODE}`);
         if (!res.ok) continue;
         const data = await res.json();
         if (data.error) continue;
-        Object.entries(data.rankedwars || {}).forEach(([id, w]) => {
-          if (!w || !w.war) return;
-          if (w.war.end && w.war.winner != null)
-            w.outcome = w.war.winner === membership.factionId ? "won" : "lost";
-          w.factionId = membership.factionId;
-          wars[id] = w;
+        Object.entries(data.rankedwars || {}).forEach(([id, w3]) => {
+          if (!w3 || !w3.war) return;
+          if (w3.war.end && w3.war.winner != null)
+            w3.outcome = w3.war.winner === membership.factionId ? "won" : "lost";
+          w3.factionId = membership.factionId;
+          wars[id] = w3;
         });
-      } catch (e) {
-        Log.warn("Past faction wars fetch failed for " + membership.factionId, e);
+      } catch (e3) {
+        Log.warn("Past faction wars fetch failed for " + membership.factionId, e3);
       }
     }
     localStorage.setItem(KEYS.WARS_DATA, JSON.stringify(wars));
   }
   function wasInFactionDuringWar(factionHistory, factionId, warEnd) {
     if (!factionHistory) return true;
-    const intervals = factionHistory.filter((m) => m.factionId === factionId);
+    const intervals = factionHistory.filter((m3) => m3.factionId === factionId);
     if (!intervals.length) return true;
-    return intervals.some((m) => m.joinedAt <= warEnd && (m.leftAt === null || m.leftAt > warEnd));
+    return intervals.some((m3) => m3.joinedAt <= warEnd && (m3.leftAt === null || m3.leftAt > warEnd));
   }
   var _warMarkerCache = { raw: false, cutoff: -1, map: {} };
   function getWarMarkers() {
@@ -2975,29 +2985,29 @@ ${BBGL_ERROR_CODE}`);
     if (raw) {
       try {
         const wars = JSON.parse(raw);
-        Object.values(wars).forEach((w) => {
-          if (!w || !w.war || !w.war.end) return;
-          if (w.war.end < cutoff) return;
-          if (!wasInFactionDuringWar(factionHistory, w.factionId, w.war.end)) return;
-          if (w.war.start && w.war.start >= cutoff) {
-            const ds2 = Formatter.dateLogical(w.war.start * 1e3);
+        Object.values(wars).forEach((w3) => {
+          if (!w3 || !w3.war || !w3.war.end) return;
+          if (w3.war.end < cutoff) return;
+          if (!wasInFactionDuringWar(factionHistory, w3.factionId, w3.war.end)) return;
+          if (w3.war.start && w3.war.start >= cutoff) {
+            const ds2 = Formatter.dateLogical(w3.war.start * 1e3);
             (map[ds2] = map[ds2] || {}).warStart = true;
           }
-          const ds = Formatter.dateLogical(w.war.end * 1e3);
+          const ds = Formatter.dateLogical(w3.war.end * 1e3);
           const entry = map[ds] = map[ds] || {};
-          if (w.outcome === "won") entry.warWon = true;
-          else if (w.outcome === "lost") entry.warLost = true;
+          if (w3.outcome === "won") entry.warWon = true;
+          else if (w3.outcome === "lost") entry.warLost = true;
           else entry.warEnd = true;
         });
-      } catch (e) {
+      } catch (e3) {
       }
     }
     _warMarkerCache = { raw, cutoff, map };
     return map;
   }
-  function renderCell(cont, y, m, d, g, rIdx, cIdx) {
-    const ds = Formatter.dateISO(y, m, d), sl = app.DataController.getSlice("DAY", ds), isFlipped = cont.classList.contains("bbgl-row-archived"), cell = document.createElement("div");
-    cell.className = "bbgl-day-cell" + (isFlipped ? " is-archived" : "") + (g ? " ghost-cell" : "");
+  function renderCell(cont, y3, m3, d3, g4, rIdx, cIdx) {
+    const ds = Formatter.dateISO(y3, m3, d3), sl = app.DataController.getSlice("DAY", ds), isFlipped = cont.classList.contains("bbgl-row-archived"), cell = document.createElement("div");
+    cell.className = "bbgl-day-cell" + (isFlipped ? " is-archived" : "") + (g4 ? " ghost-cell" : "");
     cell.dataset.date = ds;
     let buildShine = null;
     cell.addEventListener("mouseenter", () => {
@@ -3053,7 +3063,7 @@ ${BBGL_ERROR_CODE}`);
     }
     const ns = document.createElement("span");
     ns.className = "day-num";
-    ns.innerText = d;
+    ns.innerText = d3;
     cell.appendChild(ns);
     if (isFlipped) {
       const wm = getWarMarkers()[ds];
@@ -3064,11 +3074,11 @@ ${BBGL_ERROR_CODE}`);
       if (wm && wm.warStart) eventImgs.push(app.CAL_IMG_BASE + "war-strt.png");
       if (wm && wm.warWon) eventImgs.push(app.CAL_IMG_BASE + "war-win.png");
       if (wm && wm.warLost) eventImgs.push(app.CAL_IMG_BASE + "war-lost.png");
-      eventImgs.forEach((url, i) => {
+      eventImgs.forEach((url, i3) => {
         const ep = document.createElement("div");
-        ep.className = "bbgl-event-post-it" + (eventImgs.length > 1 && i === eventImgs.length - 1 ? " bbgl-event-post-it-top" : "");
+        ep.className = "bbgl-event-post-it" + (eventImgs.length > 1 && i3 === eventImgs.length - 1 ? " bbgl-event-post-it-top" : "");
         ep.style.backgroundImage = `url('${url}')`;
-        ep.style.setProperty("--ei", i);
+        ep.style.setProperty("--ei", i3);
         ep.style.setProperty("--stack-total", eventImgs.length);
         cell.appendChild(ep);
       });
@@ -3076,7 +3086,7 @@ ${BBGL_ERROR_CODE}`);
     if (isFlipped && sl.meta.tier > 0) {
       const item = app.DataController.getStickerMap().get(ds);
       if (item) {
-        const uid = Math.floor(new Date(Date.UTC(y, m, d)).getTime() / 864e5);
+        const uid = Math.floor(new Date(Date.UTC(y3, m3, d3)).getTime() / 864e5);
         const sw = document.createElement("div"), si = document.createElement("img");
         sw.className = "sticker-wrapper" + (sl.meta.tier === 3 ? " sticker-tier-diamond" : "");
         sw.style.setProperty(
@@ -3104,8 +3114,8 @@ ${BBGL_ERROR_CODE}`);
         if (app.DataController._cache.featuredDays && app.DataController._cache.featuredDays.has(ds) && !app.DataController.isStickerCleared(item.id)) {
           const pi = document.createElement("div");
           pi.className = "new-sticker-post-it";
-          pi.onclick = (e) => {
-            e.stopPropagation();
+          pi.onclick = (e3) => {
+            e3.stopPropagation();
             cell.style.setProperty("overflow", "visible", "important");
             cell.style.setProperty("z-index", "100", "important");
             pi.classList.add("post-it-rip");
@@ -3127,9 +3137,9 @@ ${BBGL_ERROR_CODE}`);
       cell.classList.add("is-viewing");
       if (buildShine) buildShine();
     }
-    const h = app.getActiveHistory();
+    const h3 = app.getActiveHistory();
     const tl = app.DataController.getTimeline();
-    const firstDate = tl.length > 0 ? tl[0].date : h ? h.today.date : null;
+    const firstDate = tl.length > 0 ? tl[0].date : h3 ? h3.today.date : null;
     const isInteractive = !sl.meta.isGap || firstDate && ds >= firstDate && ds <= Formatter.dateLogical();
     if (isInteractive) cell.setAttribute("data-tooltip-html", app.generateRichTooltip(sl));
     else cell.setAttribute("data-tooltip", app.app.TOOLTIPS.CELL_DATE(ds));
@@ -3162,6 +3172,7 @@ ${BBGL_ERROR_CODE}`);
     get LOGO() {
       return `<svg id="bbgl-header-icon" xmlns="http://www.w3.org/2000/svg" viewBox="60 20 280 215" width="28" height="28" style="margin-right: 4px;">${ASSETS.GRADIENT}<g transform="scale(1, 1.15)"><path fill="url(#bbgl_silver_grad)" d="${this.LOGO_PATH}"></path></g></svg>`;
     },
+    CLIPBOARD: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" width="100%" height="100%">${ASSETS.GRADIENT}<path fill="url(#bbgl_silver_grad)" d="M17,2.25V18H2V2.25H5.5l-2,2.106V16.5h12V4.356L13.543,2.25H17Zm-2.734,3L11.781,2.573V2.266A2.266,2.266,0,0,0,7.25,2.25v.323L4.777,5.25ZM9.5,1.5a.75.75,0,1,1-.75.75A.75.75,0,0,1,9.5,1.5ZM5.75,12.75h7.5v.75H5.75Zm0-.75h7.5v-.75H5.75Zm0-1.5h7.5V9.75H5.75Zm0-1.5h7.5V8.25H5.75Z"></path></svg>`,
     MINIMIZE: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24" class="bbgl-native-icon" aria-label="Minimize">${ASSETS.GRADIENT}<rect fill="url(#bbgl_silver_grad)" x="0" y="21" width="24" height="3"></rect></svg>`,
     POPOUT: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 18 18" width="24" height="24" class="bbgl-native-icon">${ASSETS.GRADIENT}<path fill="url(#bbgl_silver_grad)" d="M12,12H6V6h6ZM4.5,6.621V4.5H6.621L4.061,1.939,6,0H0V6L1.939,4.061ZM6.621,13.5H4.5V11.379L1.939,13.94,0,12v6H6L4.061,16.06ZM13.5,11.379V13.5H11.379l2.561,2.56L12,18h6V12l-1.94,1.94L13.5,11.379ZM12,0l1.94,1.939L11.379,4.5H13.5V6.621l2.56-2.561L18,6V0Z"></path></svg>`,
     COMPRESS: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 18 18" width="24" height="24" class="bbgl-native-icon">${ASSETS.GRADIENT}<g transform="translate(1290 304)"><path fill="url(#bbgl_silver_grad)" d="M-1277-291h6l-1.939,1.939,1.561,1.561-2.121,2.12-1.561-1.561L-1277-285Zm-9.94,4.06-1.561,1.561-2.12-2.12,1.561-1.561L-1291-291h6v6ZM-1284-292v-6h6v6Zm7-7v-6l1.939,1.94,1.561-1.561,2.121,2.121-1.561,1.561L-1271-299Zm-14,0,1.939-1.939-1.561-1.561,2.12-2.121,1.561,1.561L-1285-305v6Z"></path></g></svg>`,
@@ -3185,33 +3196,33 @@ ${BBGL_ERROR_CODE}`);
   function ensureBackfillTargets(ds) {
     if (!ds.targets || typeof ds.targets !== "object") ds.targets = {};
     const fr = ds.targets.frontiers;
-    const validShape = fr && typeof fr === "object" && BACKFILL_GROUP_KEYS.every((g) => fr[g] && typeof fr[g].cursor === "number") && Object.keys(fr).every((k) => BACKFILL_GROUP_KEYS.includes(k));
+    const validShape = fr && typeof fr === "object" && BACKFILL_GROUP_KEYS.every((g4) => fr[g4] && typeof fr[g4].cursor === "number") && Object.keys(fr).every((k3) => BACKFILL_GROUP_KEYS.includes(k3));
     if (!validShape) {
       ds.targets.frontiers = {};
       const seed = Math.floor(Date.now() / 1e3);
-      BACKFILL_GROUP_KEYS.forEach((g) => {
-        ds.targets.frontiers[g] = { cursor: seed, complete: false };
+      BACKFILL_GROUP_KEYS.forEach((g4) => {
+        ds.targets.frontiers[g4] = { cursor: seed, complete: false };
       });
     }
     return ds.targets.frontiers;
   }
-  function seriesEntryCode(e) {
-    return e.type === "item" ? String(e.logId) : app.GYM_STAT_LOGS[e.stat];
+  function seriesEntryCode(e3) {
+    return e3.type === "item" ? String(e3.logId) : app.GYM_STAT_LOGS[e3.stat];
   }
   function computeBackfillFloor(stored, frontiers) {
     const existing = typeof stored.meta.logStartDate === "number" ? stored.meta.logStartDate : null;
     if (!stored.series.length) return existing;
     const perGroupOldest = {};
-    stored.series.forEach((e) => {
-      const code = seriesEntryCode(e);
-      const g = code && BACKFILL_GROUP_OF[code];
-      if (g && (perGroupOldest[g] === void 0 || e.ts < perGroupOldest[g])) perGroupOldest[g] = e.ts;
+    stored.series.forEach((e3) => {
+      const code = seriesEntryCode(e3);
+      const g4 = code && BACKFILL_GROUP_OF[code];
+      if (g4 && (perGroupOldest[g4] === void 0 || e3.ts < perGroupOldest[g4])) perGroupOldest[g4] = e3.ts;
     });
     let shallowPartialDayStart = null;
-    Object.keys(frontiers || {}).forEach((g) => {
-      const fr = frontiers[g];
-      if (fr && !fr.complete && perGroupOldest[g] !== void 0) {
-        const dayStart = backfillDayStart(perGroupOldest[g]);
+    Object.keys(frontiers || {}).forEach((g4) => {
+      const fr = frontiers[g4];
+      if (fr && !fr.complete && perGroupOldest[g4] !== void 0) {
+        const dayStart = backfillDayStart(perGroupOldest[g4]);
         if (shallowPartialDayStart === null || dayStart > shallowPartialDayStart) shallowPartialDayStart = dayStart;
       }
     });
@@ -3247,53 +3258,53 @@ ${BBGL_ERROR_CODE}`);
     };
     if (!Array.isArray(stored.series)) stored.series = [];
     if (collected && collected.length > 0) {
-      const seenGym = new Set(stored.series.filter((e) => e.type !== "item").map((e) => `${e.ts}_${e.stat}_${e.after}`));
-      const itemKey = (e) => `${e.ts}_${e.logId}`;
-      const seenItem = new Set(stored.series.filter((e) => e.type === "item").map(itemKey));
-      collected.forEach((l) => {
-        if (l.type === "item") {
-          const key2 = itemKey(l);
+      const seenGym = new Set(stored.series.filter((e3) => e3.type !== "item").map((e3) => `${e3.ts}_${e3.stat}_${e3.after}`));
+      const itemKey = (e3) => `${e3.ts}_${e3.logId}`;
+      const seenItem = new Set(stored.series.filter((e3) => e3.type === "item").map(itemKey));
+      collected.forEach((l3) => {
+        if (l3.type === "item") {
+          const key2 = itemKey(l3);
           if (!seenItem.has(key2)) {
             seenItem.add(key2);
             const entry = {
-              ts: l.ts,
+              ts: l3.ts,
               type: "item",
-              id: l.id,
-              logId: l.logId
+              id: l3.id,
+              logId: l3.logId
             };
-            if (l.energy) entry.energy = l.energy;
-            if (l.energyLost != null) entry.energyLost = l.energyLost;
-            if (l.happyLost != null) entry.happyLost = l.happyLost;
-            if (l.happy) entry.happy = l.happy;
-            if (l.statKey) {
-              entry.statKey = l.statKey;
-              entry.statGain = l.statGain;
+            if (l3.energy) entry.energy = l3.energy;
+            if (l3.energyLost != null) entry.energyLost = l3.energyLost;
+            if (l3.happyLost != null) entry.happyLost = l3.happyLost;
+            if (l3.happy) entry.happy = l3.happy;
+            if (l3.statKey) {
+              entry.statKey = l3.statKey;
+              entry.statGain = l3.statGain;
             }
             stored.series.push(entry);
           }
           return;
         }
-        const after = r2(l.after);
-        const key = `${l.ts}_${l.stat}_${after}`;
+        const after = r2(l3.after);
+        const key = `${l3.ts}_${l3.stat}_${after}`;
         if (!seenGym.has(key)) {
           seenGym.add(key);
           stored.series.push({
-            ts: l.ts,
-            stat: l.stat,
-            gain: r2(l.gain),
-            cost: l.cost,
+            ts: l3.ts,
+            stat: l3.stat,
+            gain: r2(l3.gain),
+            cost: l3.cost,
             after,
-            rate: l.cost > 0 ? r2(l.gain / l.cost * 150) : 0
+            rate: l3.cost > 0 ? r2(l3.gain / l3.cost * 150) : 0
           });
         }
       });
-      stored.series.sort((a, b) => a.ts - b.ts);
+      stored.series.sort((a3, b2) => a3.ts - b2.ts);
       const baseline = {
         ...stored.meta && stored.meta.baselineBreakdown || ZERO_BREAKDOWN
       };
-      STAT_KEYS.forEach((k) => {
-        const first = stored.series.find((e) => e.stat === k);
-        if (first) baseline[k] = r2(first.after - first.gain);
+      STAT_KEYS.forEach((k3) => {
+        const first = stored.series.find((e3) => e3.stat === k3);
+        if (first) baseline[k3] = r2(first.after - first.gain);
       });
       stored.meta.baselineBreakdown = baseline;
       stored.meta.logStartDate = computeBackfillFloor(stored, ds.targets.frontiers);
@@ -3314,8 +3325,8 @@ ${BBGL_ERROR_CODE}`);
   }
   async function acknowledgeBackfill() {
     if (runtime.demoMode || runtime.backfilling) return;
-    const s = app.getActiveHistory();
-    const ds = s.meta && s.meta.backfill;
+    const s3 = app.getActiveHistory();
+    const ds = s3.meta && s3.meta.backfill;
     if (!ds || ds.lastResult !== "complete" || ds.acknowledged !== false) return;
     ds.acknowledged = true;
     await finalizeBackfill(ds, []);
@@ -3325,14 +3336,14 @@ ${BBGL_ERROR_CODE}`);
   }
   async function proceedPartialBackfill() {
     if (runtime.demoMode || runtime.backfilling) return;
-    const s = app.getActiveHistory();
-    const ds = s.meta && s.meta.backfill;
+    const s3 = app.getActiveHistory();
+    const ds = s3.meta && s3.meta.backfill;
     if (!ds || ds.lastResult !== "partial" || ds.acknowledged !== false) return;
     ds.acknowledged = true;
     try {
       await persistBackfillState(ds);
-    } catch (e) {
-      Log.warn("Backfill proceed save failed", e);
+    } catch (e3) {
+      Log.warn("Backfill proceed save failed", e3);
     }
     renderBackfillButton();
     app.renderScanOverlay();
@@ -3344,23 +3355,23 @@ ${BBGL_ERROR_CODE}`);
     if (!stored.meta) stored.meta = { baselineBreakdown: { ...ZERO_BREAKDOWN } };
     let cutoff = typeof stored.meta.rewardStartDate === "number" ? stored.meta.rewardStartDate : null;
     if (cutoff === null) {
-      const p = Date.parse(userConfig.privacyAgreed);
-      cutoff = isNaN(p) ? Math.floor(Date.now() / 1e3) : Math.floor(p / 1e3);
+      const p3 = Date.parse(userConfig.privacyAgreed);
+      cutoff = isNaN(p3) ? Math.floor(Date.now() / 1e3) : Math.floor(p3 / 1e3);
     }
-    stored.series = stored.series.filter((e) => e.ts >= cutoff);
+    stored.series = stored.series.filter((e3) => e3.ts >= cutoff);
     let curStats = null;
     try {
       const res = await fetch(`https://api.torn.com/user/?selections=battlestats&key=${userConfig.apiKey}&timestamp=${Date.now()}`);
       app.incrementApiCount(1);
       const data = await res.json();
       if (!data.error) curStats = data;
-    } catch (e) {
-      Log.warn("Discard baseline battlestats fetch failed", e);
+    } catch (e3) {
+      Log.warn("Discard baseline battlestats fetch failed", e3);
     }
     if (curStats) {
       const liveGain = { str: 0, def: 0, spd: 0, dex: 0 };
-      stored.series.forEach((e) => {
-        if (e.type !== "item" && liveGain[e.stat] !== void 0) liveGain[e.stat] += e.gain || 0;
+      stored.series.forEach((e3) => {
+        if (e3.type !== "item" && liveGain[e3.stat] !== void 0) liveGain[e3.stat] += e3.gain || 0;
       });
       stored.meta.baselineBreakdown = {
         str: r2((curStats.strength || 0) - liveGain.str),
@@ -3398,9 +3409,9 @@ ${BBGL_ERROR_CODE}`);
       return;
     }
     if (runtime.backfilling) return;
-    const s = app.getActiveHistory();
-    if (!s.meta.backfill) s.meta.backfill = app.defaultBackfill();
-    const ds = s.meta.backfill;
+    const s3 = app.getActiveHistory();
+    if (!s3.meta.backfill) s3.meta.backfill = app.defaultBackfill();
+    const ds = s3.meta.backfill;
     const now = Date.now();
     if (ds.cooldownUntil) {
       if (now < ds.cooldownUntil) {
@@ -3468,11 +3479,11 @@ ${BBGL_ERROR_CODE}`);
           break;
         }
         let pick = null;
-        BACKFILL_GROUP_KEYS.forEach((g) => {
-          const fr2 = frontiers[g];
+        BACKFILL_GROUP_KEYS.forEach((g4) => {
+          const fr2 = frontiers[g4];
           if (!fr2 || fr2.complete) return;
           if (drainDay !== null && fr2.cursor < drainDay) return;
-          if (pick === null || fr2.cursor > frontiers[pick].cursor) pick = g;
+          if (pick === null || fr2.cursor > frontiers[pick].cursor) pick = g4;
         });
         if (pick === null) break;
         const fr = frontiers[pick];
@@ -3494,7 +3505,7 @@ ${BBGL_ERROR_CODE}`);
         }
         let rowKeys = data.log ? Object.keys(data.log) : [];
         if (rowKeys.length === 0) {
-          await new Promise((r) => setTimeout(r, BACKFILL.THROTTLE_MS));
+          await new Promise((r4) => setTimeout(r4, BACKFILL.THROTTLE_MS));
           let confirm2;
           try {
             confirm2 = await fetchBackfillPage(param, fr.cursor);
@@ -3522,9 +3533,9 @@ ${BBGL_ERROR_CODE}`);
         sessionRows += rowKeys.length;
         ds.rowsUsed = (ds.rowsUsed || 0) + rowKeys.length;
         let oldestTs = fr.cursor;
-        for (const k of rowKeys) {
-          const t = data.log[k].timestamp;
-          if (t < oldestTs) oldestTs = t;
+        for (const k3 of rowKeys) {
+          const t3 = data.log[k3].timestamp;
+          if (t3 < oldestTs) oldestTs = t3;
         }
         fr.cursor = oldestTs - 1;
         if (btn) btn.innerText = `Scanning... ${ds.rowsUsed}`;
@@ -3532,9 +3543,9 @@ ${BBGL_ERROR_CODE}`);
         if (drainDay === null && ds.rowsUsed >= BACKFILL.SOFT_CAP) {
           capHit = true;
           let maxCursor = -Infinity;
-          BACKFILL_GROUP_KEYS.forEach((g) => {
-            const f = frontiers[g];
-            if (f && !f.complete && f.cursor > maxCursor) maxCursor = f.cursor;
+          BACKFILL_GROUP_KEYS.forEach((g4) => {
+            const f4 = frontiers[g4];
+            if (f4 && !f4.complete && f4.cursor > maxCursor) maxCursor = f4.cursor;
           });
           if (maxCursor > -Infinity) drainDay = backfillDayStart(maxCursor);
         }
@@ -3545,10 +3556,10 @@ ${BBGL_ERROR_CODE}`);
           stoppedEarly = true;
           break;
         }
-        await new Promise((r) => setTimeout(r, BACKFILL.THROTTLE_MS));
+        await new Promise((r4) => setTimeout(r4, BACKFILL.THROTTLE_MS));
       }
-    } catch (e) {
-      Log.error("Deep sync failed", e);
+    } catch (e3) {
+      Log.error("Deep sync failed", e3);
       stoppedEarly = true;
     }
     ds.lock = 0;
@@ -3559,15 +3570,15 @@ ${BBGL_ERROR_CODE}`);
       runtime.backfillAbort = null;
       try {
         await discardBackfillData(ds);
-      } catch (e) {
-        Log.error("Backfill discard failed", e);
+      } catch (e3) {
+        Log.error("Backfill discard failed", e3);
       }
       window.dispatchEvent(new CustomEvent("bbgl:dataUpdated"));
       renderBackfillButton();
       app.renderScanOverlay();
       return;
     }
-    const allComplete = BACKFILL_GROUP_KEYS.every((g) => frontiers[g] && frontiers[g].complete);
+    const allComplete = BACKFILL_GROUP_KEYS.every((g4) => frontiers[g4] && frontiers[g4].complete);
     if (allComplete && !stoppedEarly && !aborted) {
       ds.lastResult = "complete";
       ds.stopReason = null;
@@ -3588,20 +3599,20 @@ ${BBGL_ERROR_CODE}`);
     }
     try {
       await finalizeBackfill(ds, pending);
-    } catch (e) {
-      Log.error("Deep scan save failed", e);
+    } catch (e3) {
+      Log.error("Deep scan save failed", e3);
     } finally {
       runtime.backfilling = false;
       runtime.backfillAbort = null;
     }
     if (ds.lastResult === "complete") {
       const baseline = historyCache && historyCache.meta && historyCache.meta.baselineBreakdown || ZERO_BREAKDOWN;
-      const reachedOrigin = STAT_KEYS.every((k) => (baseline[k] || 0) <= BACKFILL.ORIGIN_MAX_STAT);
+      const reachedOrigin = STAT_KEYS.every((k3) => (baseline[k3] || 0) <= BACKFILL.ORIGIN_MAX_STAT);
       ds.completion = reachedOrigin ? "origin" : "exhausted";
       try {
         await persistBackfillState(ds);
-      } catch (e) {
-        Log.error("Backfill completion flag save failed", e);
+      } catch (e3) {
+        Log.error("Backfill completion flag save failed", e3);
       }
     }
     window.dispatchEvent(new CustomEvent("bbgl:dataUpdated"));
@@ -3610,8 +3621,8 @@ ${BBGL_ERROR_CODE}`);
   }
   async function recoverInterruptedBackfill() {
     if (runtime.demoMode || runtime.backfilling) return;
-    const s = app.getActiveHistory();
-    const ds = s.meta && s.meta.backfill;
+    const s3 = app.getActiveHistory();
+    const ds = s3.meta && s3.meta.backfill;
     if (!ds || !ds.lock) return;
     if (Date.now() - ds.lock <= BACKFILL.LOCK_STALE_MS) return;
     ds.lock = 0;
@@ -3623,8 +3634,8 @@ ${BBGL_ERROR_CODE}`);
     }
     try {
       await persistBackfillState(ds);
-    } catch (e) {
-      Log.warn("Backfill lock recovery save failed", e);
+    } catch (e3) {
+      Log.warn("Backfill lock recovery save failed", e3);
     }
   }
   function buildBackfillChoiceModalHTML() {
@@ -3633,8 +3644,8 @@ ${BBGL_ERROR_CODE}`);
     return `<div class="bbgl-modal-overlay" id="bbgl-choice-modal"><div class="bbgl-modal-window"><div class="close-settings-btn bbgl-close-x" id="bbgl-choice-close" title="Close">${ICONS.CLOSE}</div>${app.buildSection("Start Tracking", intro + buttons, "margin-bottom:8px;")}</div></div>`;
   }
   function closeBackfillChoiceModal() {
-    const m = document.getElementById("bbgl-choice-modal");
-    if (m && m.parentNode) m.parentNode.removeChild(m);
+    const m3 = document.getElementById("bbgl-choice-modal");
+    if (m3 && m3.parentNode) m3.parentNode.removeChild(m3);
   }
   function openBackfillChoiceModal() {
     if (runtime.demoMode) return;
@@ -3647,8 +3658,8 @@ ${BBGL_ERROR_CODE}`);
       app.switchView("ledger");
     };
     modal.querySelector("#bbgl-choice-close").onclick = close;
-    modal.onclick = (e) => {
-      if (e.target === modal) close();
+    modal.onclick = (e3) => {
+      if (e3.target === modal) close();
     };
     const fresh = modal.querySelector("#bbgl-choice-fresh-btn");
     if (fresh) fresh.onclick = function() {
@@ -3665,9 +3676,9 @@ ${BBGL_ERROR_CODE}`);
   var _backfillCountdownId = null;
   function formatCountdown(ms) {
     const total = Math.max(0, Math.ceil(ms / 1e3));
-    const h = Math.floor(total / 3600), m = Math.floor(total % 3600 / 60), s = total % 60;
-    const pad = (n) => String(n).padStart(2, "0");
-    return `${pad(h)}:${pad(m)}:${pad(s)}`;
+    const h3 = Math.floor(total / 3600), m3 = Math.floor(total % 3600 / 60), s3 = total % 60;
+    const pad = (n2) => String(n2).padStart(2, "0");
+    return `${pad(h3)}:${pad(m3)}:${pad(s3)}`;
   }
   function startBackfillFromSettings() {
     if (runtime.demoMode) return;
@@ -3713,8 +3724,8 @@ ${BBGL_ERROR_CODE}`);
     delete btn.dataset.originalText;
     btn.onclick = null;
     if (runtime.demoMode) return;
-    const s = app.getActiveHistory();
-    const ds = s.meta && s.meta.backfill;
+    const s3 = app.getActiveHistory();
+    const ds = s3.meta && s3.meta.backfill;
     if (runtime.backfilling || ds && ds.acknowledged === false) {
       btn.style.opacity = "0.6";
       btn.style.pointerEvents = "none";
@@ -3796,10 +3807,10 @@ ${BBGL_ERROR_CODE}`);
     let _seed = 2654435769;
     function rand() {
       _seed += 1831565813;
-      let t = _seed;
-      t = Math.imul(t ^ t >>> 15, t | 1);
-      t ^= t + Math.imul(t ^ t >>> 7, t | 61);
-      return ((t ^ t >>> 14) >>> 0) / 4294967296;
+      let t3 = _seed;
+      t3 = Math.imul(t3 ^ t3 >>> 15, t3 | 1);
+      t3 ^= t3 + Math.imul(t3 ^ t3 >>> 7, t3 | 61);
+      return ((t3 ^ t3 >>> 14) >>> 0) / 4294967296;
     }
     function randInt(lo, hi) {
       return lo + Math.floor(rand() * (hi - lo + 1));
@@ -3823,14 +3834,14 @@ ${BBGL_ERROR_CODE}`);
     }
     const statKeys = ["str", "def", "spd", "dex"];
     const dates = [];
-    for (let i = NUM_DAYS - 1; i >= 0; i--) {
-      const ms = todayMs - i * DAY_MS;
-      const d = new Date(ms);
-      dates.push(Formatter.dateISO(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate()));
+    for (let i3 = NUM_DAYS - 1; i3 >= 0; i3--) {
+      const ms = todayMs - i3 * DAY_MS;
+      const d3 = new Date(ms);
+      dates.push(Formatter.dateISO(d3.getUTCFullYear(), d3.getUTCMonth(), d3.getUTCDate()));
     }
     const baseline = {};
-    statKeys.forEach((k) => {
-      baseline[k] = 15e3 + randInt(0, 1e4);
+    statKeys.forEach((k3) => {
+      baseline[k3] = 15e3 + randInt(0, 1e4);
     });
     const weekStartOffset = userConfig.weekStartMode === "mon" ? 1 : 0;
     const todayDate = new Date(todayMs);
@@ -3877,10 +3888,10 @@ ${BBGL_ERROR_CODE}`);
       const chosenStats = [...statKeys].sort(() => rand() - 0.5).slice(0, numStats);
       const ePerStat = {};
       let eRemain = eTotal;
-      chosenStats.forEach((k, i) => {
-        const share = i === chosenStats.length - 1 ? eRemain : Math.round((rand() * 0.4 + 0.1) * eTotal / numStats) * 10 || 10;
-        ePerStat[k] = Math.max(10, Math.min(share, eRemain));
-        eRemain -= ePerStat[k];
+      chosenStats.forEach((k3, i3) => {
+        const share = i3 === chosenStats.length - 1 ? eRemain : Math.round((rand() * 0.4 + 0.1) * eTotal / numStats) * 10 || 10;
+        ePerStat[k3] = Math.max(10, Math.min(share, eRemain));
+        eRemain -= ePerStat[k3];
       });
       if (eRemain > 0 && chosenStats.length) ePerStat[chosenStats[0]] += eRemain;
       const startBreakdown = { ...running };
@@ -3888,22 +3899,22 @@ ${BBGL_ERROR_CODE}`);
       const gains = { total: 0, ...ZERO_BREAKDOWN };
       const series = [];
       const dayStartSec = Math.floor(Formatter.parse(dateStr).getTime() / 1e3);
-      chosenStats.forEach((k) => {
-        const cost = ePerStat[k] || 0;
+      chosenStats.forEach((k3) => {
+        const cost = ePerStat[k3] || 0;
         if (!cost) return;
         const trainsForStat = Math.floor(cost / DEMO_E_PER_TRAIN);
         let statGainAccum = 0;
-        for (let t = 0; t < trainsForStat; t++) {
-          const raw = simulationGain(running[k]);
+        for (let t3 = 0; t3 < trainsForStat; t3++) {
+          const raw = simulationGain(running[k3]);
           const jittered = raw * (0.97 + rand() * 0.06);
-          running[k] += jittered;
+          running[k3] += jittered;
           statGainAccum += jittered;
-          const ts = hjWindowStart !== null ? dayStartSec + hjWindowStart + Math.floor(rand() * GAME.HJ_WINDOW_SECONDS) : dayStartSec + 36e3 + Math.floor((t + rand()) * (28800 / Math.max(1, trainsForStat)));
-          series.push({ ts, stat: k, gain: Math.round(jittered), cost: DEMO_E_PER_TRAIN, after: Math.round(running[k]), rate: r2(Math.round(jittered) / DEMO_E_PER_TRAIN * 150), synthetic: true });
+          const ts = hjWindowStart !== null ? dayStartSec + hjWindowStart + Math.floor(rand() * GAME.HJ_WINDOW_SECONDS) : dayStartSec + 36e3 + Math.floor((t3 + rand()) * (28800 / Math.max(1, trainsForStat)));
+          series.push({ ts, stat: k3, gain: Math.round(jittered), cost: DEMO_E_PER_TRAIN, after: Math.round(running[k3]), rate: r2(Math.round(jittered) / DEMO_E_PER_TRAIN * 150), synthetic: true });
         }
-        eSpent[k] = cost;
+        eSpent[k3] = cost;
         const roundedStatGain = Math.round(statGainAccum);
-        gains[k] = roundedStatGain;
+        gains[k3] = roundedStatGain;
         gains.total += roundedStatGain;
       });
       eSpent.total = eSpent.str + eSpent.def + eSpent.spd + eSpent.dex;
@@ -3926,9 +3937,9 @@ ${BBGL_ERROR_CODE}`);
     const oldestDate = history2.length ? history2[0].date : today;
     const logStartDate = Math.floor(Formatter.parse(oldestDate).getTime() / 1e3);
     const lastRates = {};
-    statKeys.forEach((k) => {
-      const perFiveE = simulationGain(running[k]);
-      lastRates[k] = perFiveE * (DEMO_FORMULA_E_BASE / DEMO_E_PER_TRAIN);
+    statKeys.forEach((k3) => {
+      const perFiveE = simulationGain(running[k3]);
+      lastRates[k3] = perFiveE * (DEMO_FORMULA_E_BASE / DEMO_E_PER_TRAIN);
     });
     const meta = { baselineBreakdown: { ...baseline }, logStartDate };
     return { meta, history: history2, today: todayObj };
@@ -3995,15 +4006,15 @@ ${BBGL_ERROR_CODE}`);
   app.buildWelcomeReturningSection = buildWelcomeReturningSection;
 
   // src/ui/achievements-view.js
-  function computeAchievements(s) {
+  function computeAchievements(s3) {
     const { hjDaySet } = app.DataController.getHappyJumpData();
-    const allDays = [...s.history || []];
-    if (s.today && s.today.date) {
-      const filtered = allDays.filter((d) => d.date !== s.today.date);
-      filtered.push(s.today);
+    const allDays = [...s3.history || []];
+    if (s3.today && s3.today.date) {
+      const filtered = allDays.filter((d3) => d3.date !== s3.today.date);
+      filtered.push(s3.today);
       allDays.splice(0, allDays.length, ...filtered);
     }
-    allDays.sort((a, b) => a.date.localeCompare(b.date));
+    allDays.sort((a3, b2) => a3.date.localeCompare(b2.date));
     if (!allDays.length) return null;
     const GREEN = 1e3, GOLD = 1500, DIAMOND = 2e3;
     let greenDays = 0, goldDays = 0, diamondDays = 0, trainingDays = 0, lifetimeEnergy = 0, lifetimeGains = 0;
@@ -4025,21 +4036,21 @@ ${BBGL_ERROR_CODE}`);
     const statEnhByStat = { str: { count: 0, gain: 0 }, def: { count: 0, gain: 0 }, spd: { count: 0, gain: 0 }, dex: { count: 0, gain: 0 } };
     const weekE = {}, weekG = {}, monthE = {}, monthG = {}, weekDayMap = {}, weekStatG = {}, monthStatG = {};
     allDays.forEach((day) => {
-      const e = day.eSpent && day.eSpent.total || 0, g = day.gains && day.gains.total || 0;
-      lifetimeEnergy += e;
-      lifetimeGains += g;
-      if (e >= GOLD) {
+      const e3 = day.eSpent && day.eSpent.total || 0, g4 = day.gains && day.gains.total || 0;
+      lifetimeEnergy += e3;
+      lifetimeGains += g4;
+      if (e3 >= GOLD) {
         goldDays++;
         trainingDays++;
-      } else if (e >= GREEN) {
+      } else if (e3 >= GREEN) {
         greenDays++;
         trainingDays++;
-      } else if (e > 0) {
+      } else if (e3 > 0) {
         trainingDays++;
       }
-      if (e >= DIAMOND) diamondDays++;
-      if (e > maxEDay.value) maxEDay = { value: e, date: day.date };
-      if (g > maxGainsDay.value) maxGainsDay = { value: g, date: day.date };
+      if (e3 >= DIAMOND) diamondDays++;
+      if (e3 > maxEDay.value) maxEDay = { value: e3, date: day.date };
+      if (g4 > maxGainsDay.value) maxGainsDay = { value: g4, date: day.date };
       (day.series || []).forEach((entry) => {
         if ((entry.gain || 0) > maxClick.value) maxClick = { value: entry.gain, date: day.date, stat: entry.stat, ts: entry.ts, cost: entry.cost };
         const _esk = entry.stat;
@@ -4049,10 +4060,10 @@ ${BBGL_ERROR_CODE}`);
         }
       });
       const wk = getWeekKey(day.date), mk = day.date.slice(0, 7);
-      weekE[wk] = (weekE[wk] || 0) + e;
-      weekG[wk] = (weekG[wk] || 0) + g;
-      monthE[mk] = (monthE[mk] || 0) + e;
-      monthG[mk] = (monthG[mk] || 0) + g;
+      weekE[wk] = (weekE[wk] || 0) + e3;
+      weekG[wk] = (weekG[wk] || 0) + g4;
+      monthE[mk] = (monthE[mk] || 0) + e3;
+      monthG[mk] = (monthG[mk] || 0) + g4;
       if (!weekDayMap[wk]) weekDayMap[wk] = [];
       weekDayMap[wk].push(day);
       ["str", "def", "spd", "dex"].forEach((sk) => {
@@ -4081,42 +4092,42 @@ ${BBGL_ERROR_CODE}`);
           if (qty > 0) odItemTotals[id].count += qty;
         });
       }
-      (day.series || []).forEach((e2) => {
-        if (e2.type === "item" && e2.happy && happyItemTotals[e2.logId]) {
-          happyItemTotals[e2.logId].happy += e2.happy;
+      (day.series || []).forEach((e4) => {
+        if (e4.type === "item" && e4.happy && happyItemTotals[e4.logId]) {
+          happyItemTotals[e4.logId].happy += e4.happy;
         }
-        if (e2.type === "item" && e2.energy && energyItemTotals[e2.logId]) {
-          energyItemTotals[e2.logId].energy += e2.energy;
+        if (e4.type === "item" && e4.energy && energyItemTotals[e4.logId]) {
+          energyItemTotals[e4.logId].energy += e4.energy;
         }
-        if (e2.type === "item" && e2.energyLost != null && odItemTotals[e2.logId]) {
-          odItemTotals[e2.logId].energyLost += e2.energyLost;
+        if (e4.type === "item" && e4.energyLost != null && odItemTotals[e4.logId]) {
+          odItemTotals[e4.logId].energyLost += e4.energyLost;
         }
-        if (e2.type === "item" && e2.happyLost != null && odItemTotals[e2.logId]) {
-          odItemTotals[e2.logId].happyLost += e2.happyLost;
+        if (e4.type === "item" && e4.happyLost != null && odItemTotals[e4.logId]) {
+          odItemTotals[e4.logId].happyLost += e4.happyLost;
         }
-        if (e2.type === "item" && e2.statKey && statEnhByStat[e2.statKey]) {
-          statEnhByStat[e2.statKey].count++;
-          statEnhByStat[e2.statKey].gain = Math.round((statEnhByStat[e2.statKey].gain + (e2.statGain || 0)) * 100) / 100;
+        if (e4.type === "item" && e4.statKey && statEnhByStat[e4.statKey]) {
+          statEnhByStat[e4.statKey].count++;
+          statEnhByStat[e4.statKey].gain = Math.round((statEnhByStat[e4.statKey].gain + (e4.statGain || 0)) * 100) / 100;
         }
       });
     });
-    const maxOf = (obj, key) => Object.entries(obj).reduce((best, [k, v]) => v > best.value ? { [key]: k, value: v } : best, { value: 0, [key]: null });
-    const maxStatOf = (obj, key) => Object.entries(obj).reduce((best, [k, v]) => {
-      const sep = k.indexOf("\0");
-      return v > best.value ? { value: v, stat: k.slice(0, sep), [key]: k.slice(sep + 1) } : best;
+    const maxOf = (obj, key) => Object.entries(obj).reduce((best, [k3, v3]) => v3 > best.value ? { [key]: k3, value: v3 } : best, { value: 0, [key]: null });
+    const maxStatOf = (obj, key) => Object.entries(obj).reduce((best, [k3, v3]) => {
+      const sep = k3.indexOf("\0");
+      return v3 > best.value ? { value: v3, stat: k3.slice(0, sep), [key]: k3.slice(sep + 1) } : best;
     }, { value: 0, stat: null, [key]: null });
     const bestStatWk = maxStatOf(weekStatG, "weekOf"), bestStatMn = maxStatOf(monthStatG, "rawMonth");
-    Object.entries(weekStatG).forEach(([k, v]) => {
-      const _sep = k.indexOf("\0");
-      const _sk = k.slice(0, _sep), _wk = k.slice(_sep + 1);
+    Object.entries(weekStatG).forEach(([k3, v3]) => {
+      const _sep = k3.indexOf("\0");
+      const _sk = k3.slice(0, _sep), _wk = k3.slice(_sep + 1);
       const _cur = bestWeekByStat[_sk];
-      if (!_cur || v > _cur.value) bestWeekByStat[_sk] = { value: v, weekOf: _wk };
+      if (!_cur || v3 > _cur.value) bestWeekByStat[_sk] = { value: v3, weekOf: _wk };
     });
-    Object.entries(monthStatG).forEach(([k, v]) => {
-      const _sep = k.indexOf("\0");
-      const _sk = k.slice(0, _sep), _mk = k.slice(_sep + 1);
+    Object.entries(monthStatG).forEach(([k3, v3]) => {
+      const _sep = k3.indexOf("\0");
+      const _sk = k3.slice(0, _sep), _mk = k3.slice(_sep + 1);
       const _cur = bestMonthByStat[_sk];
-      if (!_cur || v > _cur.value) bestMonthByStat[_sk] = { value: v, rawMonth: _mk };
+      if (!_cur || v3 > _cur.value) bestMonthByStat[_sk] = { value: v3, rawMonth: _mk };
     });
     const fmtMonth = (mk) => mk ? `${CONSTANTS.MONTHS[parseInt(mk.slice(5)) - 1]} ${mk.slice(0, 4)}` : null;
     let greenWeeks = 0, goldWeeks = 0, diamondWeeks = 0;
@@ -4136,19 +4147,19 @@ ${BBGL_ERROR_CODE}`);
     let longestDiamondStreak = 0, longestDiamondStreakStart = null, longestDiamondStreakEnd = null, longestDiamondStreakGains = _zg();
     let sT = 0, sTStart = null, sTGains = _zg(), sG = 0, sGStart = null, sGGains = _zg(), sGo = 0, sGoStart = null, sGoGains = _zg(), sDi = 0, sDiStart = null, sDiGains = _zg(), prevDate = null;
     allDays.forEach((day) => {
-      const e = day.eSpent && day.eSpent.total || 0;
-      const g = day.gains || {};
+      const e3 = day.eSpent && day.eSpent.total || 0;
+      const g4 = day.gains || {};
       const consecutive = prevDate && (/* @__PURE__ */ new Date(day.date + "T00:00:00Z") - /* @__PURE__ */ new Date(prevDate + "T00:00:00Z")) / 864e5 === 1;
-      if (e > 0) {
+      if (e3 > 0) {
         if (consecutive && sT > 0) {
           sT++;
-          ["str", "def", "spd", "dex"].forEach((k) => {
-            sTGains[k] += g[k] || 0;
+          ["str", "def", "spd", "dex"].forEach((k3) => {
+            sTGains[k3] += g4[k3] || 0;
           });
         } else {
           sT = 1;
           sTStart = day.date;
-          sTGains = { str: g.str || 0, def: g.def || 0, spd: g.spd || 0, dex: g.dex || 0 };
+          sTGains = { str: g4.str || 0, def: g4.def || 0, spd: g4.spd || 0, dex: g4.dex || 0 };
         }
         if (sT > longestStreak) {
           longestStreak = sT;
@@ -4161,16 +4172,16 @@ ${BBGL_ERROR_CODE}`);
         sTStart = null;
         sTGains = _zg();
       }
-      if (e >= GREEN) {
+      if (e3 >= GREEN) {
         if (consecutive && sG > 0) {
           sG++;
-          ["str", "def", "spd", "dex"].forEach((k) => {
-            sGGains[k] += g[k] || 0;
+          ["str", "def", "spd", "dex"].forEach((k3) => {
+            sGGains[k3] += g4[k3] || 0;
           });
         } else {
           sG = 1;
           sGStart = day.date;
-          sGGains = { str: g.str || 0, def: g.def || 0, spd: g.spd || 0, dex: g.dex || 0 };
+          sGGains = { str: g4.str || 0, def: g4.def || 0, spd: g4.spd || 0, dex: g4.dex || 0 };
         }
         if (sG > longestGoalStreak) {
           longestGoalStreak = sG;
@@ -4183,16 +4194,16 @@ ${BBGL_ERROR_CODE}`);
         sGStart = null;
         sGGains = _zg();
       }
-      if (e >= GOLD) {
+      if (e3 >= GOLD) {
         if (consecutive && sGo > 0) {
           sGo++;
-          ["str", "def", "spd", "dex"].forEach((k) => {
-            sGoGains[k] += g[k] || 0;
+          ["str", "def", "spd", "dex"].forEach((k3) => {
+            sGoGains[k3] += g4[k3] || 0;
           });
         } else {
           sGo = 1;
           sGoStart = day.date;
-          sGoGains = { str: g.str || 0, def: g.def || 0, spd: g.spd || 0, dex: g.dex || 0 };
+          sGoGains = { str: g4.str || 0, def: g4.def || 0, spd: g4.spd || 0, dex: g4.dex || 0 };
         }
         if (sGo > longestGoldStreak) {
           longestGoldStreak = sGo;
@@ -4205,16 +4216,16 @@ ${BBGL_ERROR_CODE}`);
         sGoStart = null;
         sGoGains = _zg();
       }
-      if (e >= 2e3) {
+      if (e3 >= 2e3) {
         if (consecutive && sDi > 0) {
           sDi++;
-          ["str", "def", "spd", "dex"].forEach((k) => {
-            sDiGains[k] += g[k] || 0;
+          ["str", "def", "spd", "dex"].forEach((k3) => {
+            sDiGains[k3] += g4[k3] || 0;
           });
         } else {
           sDi = 1;
           sDiStart = day.date;
-          sDiGains = { str: g.str || 0, def: g.def || 0, spd: g.spd || 0, dex: g.dex || 0 };
+          sDiGains = { str: g4.str || 0, def: g4.def || 0, spd: g4.spd || 0, dex: g4.dex || 0 };
         }
         if (sDi > longestDiamondStreak) {
           longestDiamondStreak = sDi;
@@ -4254,7 +4265,7 @@ ${BBGL_ERROR_CODE}`);
     const lastDay = allDays[allDays.length - 1];
     const curBD = lastDay && lastDay.endBreakdown ? lastDay.endBreakdown : null;
     const currentStats = curBD ? { str: curBD.str || 0, def: curBD.def || 0, spd: curBD.spd || 0, dex: curBD.dex || 0, total: (curBD.str || 0) + (curBD.def || 0) + (curBD.spd || 0) + (curBD.dex || 0) } : null;
-    return { baseline: s.meta && s.meta.baselineBreakdown ? { ...s.meta.baselineBreakdown } : null, currentStats, lifetimeEnergy, lifetimeGains, logStartDate: s.meta && s.meta.logStartDate || null, greenDays, goldDays, diamondDays, trainingDays, calDays, greenWeeks, goldWeeks, diamondWeeks, stickersUnlocked, trainingRestRatio: calDays > 0 ? (trainingDays / calDays * 100).toFixed(1) + "%" : "N/A", longestStreak, longestStreakStart, longestStreakEnd, longestStreakGains, longestGoalStreak, longestGoalStreakStart, longestGoalStreakEnd, longestGoalStreakGains, longestGoldStreak, longestGoldStreakStart, longestGoldStreakEnd, longestGoldStreakGains, happyJumps, happyJumpsWeekBest: hjWeekBest.weekOf ? hjWeekBest : null, happyJumpsMonthBest: hjMonthBest.month ? { value: hjMonthBest.value, month: fmtMonth(hjMonthBest.month) } : null, mostEInOneDay: maxEDay.date ? maxEDay : null, mostEInOneWeek: mxWkE.weekOf ? mxWkE : null, mostEInOneMonth: mxMnE.month ? { value: mxMnE.value, month: fmtMonth(mxMnE.month), rawMonth: mxMnE.month } : null, highestGainPerClick: maxClick.date ? maxClick : null, highestGainsInOneDay: maxGainsDay.date ? maxGainsDay : null, highestStatGainDay: maxStatGainDay.date ? maxStatGainDay : null, highestGainsInOneWeek: mxWkG.weekOf ? mxWkG : null, highestGainsInOneMonth: mxMnG.month ? { value: mxMnG.value, month: fmtMonth(mxMnG.month) } : null, highestStatGainWeek: bestStatWk.weekOf ? bestStatWk : null, highestStatGainMonth: bestStatMn.rawMonth ? { value: bestStatMn.value, month: fmtMonth(bestStatMn.rawMonth), rawMonth: bestStatMn.rawMonth, stat: bestStatMn.stat } : null, perStatBest: { bestTrain: bestTrainByStat, bestDay: bestDayByStat, bestWeek: bestWeekByStat, bestMonth: bestMonthByStat }, bestHappyJump: bestHJByStat, longestDiamondStreak, longestDiamondStreakStart, longestDiamondStreakEnd, longestDiamondStreakGains, happyItemTotals, energyItemTotals, odItemTotals, statEnhByStat };
+    return { baseline: s3.meta && s3.meta.baselineBreakdown ? { ...s3.meta.baselineBreakdown } : null, currentStats, lifetimeEnergy, lifetimeGains, logStartDate: s3.meta && s3.meta.logStartDate || null, greenDays, goldDays, diamondDays, trainingDays, calDays, greenWeeks, goldWeeks, diamondWeeks, stickersUnlocked, trainingRestRatio: calDays > 0 ? (trainingDays / calDays * 100).toFixed(1) + "%" : "N/A", longestStreak, longestStreakStart, longestStreakEnd, longestStreakGains, longestGoalStreak, longestGoalStreakStart, longestGoalStreakEnd, longestGoalStreakGains, longestGoldStreak, longestGoldStreakStart, longestGoldStreakEnd, longestGoldStreakGains, happyJumps, happyJumpsWeekBest: hjWeekBest.weekOf ? hjWeekBest : null, happyJumpsMonthBest: hjMonthBest.month ? { value: hjMonthBest.value, month: fmtMonth(hjMonthBest.month) } : null, mostEInOneDay: maxEDay.date ? maxEDay : null, mostEInOneWeek: mxWkE.weekOf ? mxWkE : null, mostEInOneMonth: mxMnE.month ? { value: mxMnE.value, month: fmtMonth(mxMnE.month), rawMonth: mxMnE.month } : null, highestGainPerClick: maxClick.date ? maxClick : null, highestGainsInOneDay: maxGainsDay.date ? maxGainsDay : null, highestStatGainDay: maxStatGainDay.date ? maxStatGainDay : null, highestGainsInOneWeek: mxWkG.weekOf ? mxWkG : null, highestGainsInOneMonth: mxMnG.month ? { value: mxMnG.value, month: fmtMonth(mxMnG.month) } : null, highestStatGainWeek: bestStatWk.weekOf ? bestStatWk : null, highestStatGainMonth: bestStatMn.rawMonth ? { value: bestStatMn.value, month: fmtMonth(bestStatMn.rawMonth), rawMonth: bestStatMn.rawMonth, stat: bestStatMn.stat } : null, perStatBest: { bestTrain: bestTrainByStat, bestDay: bestDayByStat, bestWeek: bestWeekByStat, bestMonth: bestMonthByStat }, bestHappyJump: bestHJByStat, longestDiamondStreak, longestDiamondStreakStart, longestDiamondStreakEnd, longestDiamondStreakGains, happyItemTotals, energyItemTotals, odItemTotals, statEnhByStat };
   }
   var _achLockedResizeObserver = null;
   var _achLockedStabilizeToken = 0;
@@ -4273,11 +4284,11 @@ ${BBGL_ERROR_CODE}`);
     let lastGap = null;
     const tick = () => {
       if (token !== _achLockedStabilizeToken) return;
-      const c = document.getElementById("bbgl-ach-pages");
-      const f = document.getElementById("bbgl-ach-footer");
-      const lockedEl = c && c.querySelector(".bbgl-ach-locked");
-      if (!c || !f || !lockedEl) return;
-      const gap = f.getBoundingClientRect().top - c.getBoundingClientRect().top;
+      const c3 = document.getElementById("bbgl-ach-pages");
+      const f4 = document.getElementById("bbgl-ach-footer");
+      const lockedEl = c3 && c3.querySelector(".bbgl-ach-locked");
+      if (!c3 || !f4 || !lockedEl) return;
+      const gap = f4.getBoundingClientRect().top - c3.getBoundingClientRect().top;
       if (gap >= 40 && lastGap !== null && Math.abs(gap - lastGap) < 0.5) {
         lockedEl.style.height = gap + "px";
         lockedEl.style.setProperty("--ach-gap", gap + "px");
@@ -4296,9 +4307,9 @@ ${BBGL_ERROR_CODE}`);
     resizeAchLockedPage();
   }
   function renderAchievements() {
-    const s = app.getActiveHistory();
+    const s3 = app.getActiveHistory();
     if (!runtime._achCache) {
-      runtime._achCache = Perf.wrap("computeAchievements", () => computeAchievements(s));
+      runtime._achCache = Perf.wrap("computeAchievements", () => computeAchievements(s3));
       runtime._achPage = viewState.achPage || 0;
     }
     if (!runtime._achCache) return;
@@ -4308,22 +4319,22 @@ ${BBGL_ERROR_CODE}`);
     const ind = document.getElementById("bbgl-ach-pageindicator");
     if (!ind) return;
     ind.innerHTML = "";
-    for (let i = 0; i < 6; i++) {
-      const d = document.createElement("div");
-      d.className = "pg-dot" + (i === runtime._achPage ? " active" : "");
-      d.onclick = () => {
-        if (i !== runtime._achPage) gotoAchievementsPage(i - runtime._achPage);
+    for (let i3 = 0; i3 < 6; i3++) {
+      const d3 = document.createElement("div");
+      d3.className = "pg-dot" + (i3 === runtime._achPage ? " active" : "");
+      d3.onclick = () => {
+        if (i3 !== runtime._achPage) gotoAchievementsPage(i3 - runtime._achPage);
       };
-      ind.appendChild(d);
+      ind.appendChild(d3);
     }
-    const p = document.querySelector(".bbgl-ach-prev"), n = document.querySelector(".bbgl-ach-next");
-    if (p) {
-      p.style.display = "";
-      p.removeAttribute("aria-hidden");
+    const p3 = document.querySelector(".bbgl-ach-prev"), n2 = document.querySelector(".bbgl-ach-next");
+    if (p3) {
+      p3.style.display = "";
+      p3.removeAttribute("aria-hidden");
     }
-    if (n) {
-      n.style.display = "";
-      n.removeAttribute("aria-hidden");
+    if (n2) {
+      n2.style.display = "";
+      n2.removeAttribute("aria-hidden");
     }
   }
   function gotoAchievementsPage(dir) {
@@ -4354,14 +4365,14 @@ ${BBGL_ERROR_CODE}`);
       apply();
     }
   }
-  function achLedgerClip(n) {
-    if (n === null || n === void 0 || typeof n === "number" && Number.isNaN(n)) return "\u2014";
-    return Formatter.achAbbr(n, ACH_FMT.gains);
+  function achLedgerClip(n2) {
+    if (n2 === null || n2 === void 0 || typeof n2 === "number" && Number.isNaN(n2)) return "\u2014";
+    return Formatter.achAbbr(n2, ACH_FMT.gains);
   }
-  function achFmtVal(n) {
-    if (n === null || n === void 0) return "\u2014";
-    if (typeof n === "number") return achLedgerClip(n);
-    return String(n);
+  function achFmtVal(n2) {
+    if (n2 === null || n2 === void 0) return "\u2014";
+    if (typeof n2 === "number") return achLedgerClip(n2);
+    return String(n2);
   }
   function achFmtDate(dateStr) {
     if (!dateStr) return "";
@@ -4369,38 +4380,38 @@ ${BBGL_ERROR_CODE}`);
   }
   function achFmtWeekRange(weekOf) {
     if (!weekOf) return "";
-    const d = Formatter.parse(weekOf);
-    const end = new Date(d.getTime() + 6 * 864e5);
+    const d3 = Formatter.parse(weekOf);
+    const end = new Date(d3.getTime() + 6 * 864e5);
     return `${Formatter.dateMonthDay(weekOf)} \u2013 ${Formatter.dateMonthDay(Formatter.dateISO(end.getUTCFullYear(), end.getUTCMonth(), end.getUTCDate()))}, ${end.getUTCFullYear()}`;
   }
   function achFmtStreakRange(start, end) {
     if (!start || !end) return "";
-    const s = achFmtDate(start), e = achFmtDate(end);
+    const s3 = achFmtDate(start), e3 = achFmtDate(end);
     const sy = start.slice(0, 4), ey = end.slice(0, 4);
-    return (sy === ey ? s.replace(/,?\s*\d{4}$/, "") : s) + " \u2013 " + e;
+    return (sy === ey ? s3.replace(/,?\s*\d{4}$/, "") : s3) + " \u2013 " + e3;
   }
-  function achEsc(s) {
-    return String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/"/g, "&quot;");
+  function achEsc(s3) {
+    return String(s3).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/"/g, "&quot;");
   }
-  function achRowHTML(r) {
-    const isFxClass = r.statClass && r.statClass.startsWith("ach-fx-");
-    const subCls = !isFxClass && r.statClass ? " " + achEsc(r.statClass) : "";
-    const valCls = isFxClass && r.statClass ? " " + achEsc(r.statClass) : "";
-    const valNum = r.dualHtml ? r.dualHtml : r.display === "\u2014" || r.display === "\u2014" ? `<span class="ach-null">\u2014</span>` : achEsc(r.display);
-    const tip = r.tip ? ` data-tooltip="${achEsc(r.tip)}"` : "";
-    const dateEl = r.clipDate ? `<div class="ach-date">${achEsc(r.clipDate)}</div>` : "";
-    const subEl = r.sub ? `<span class="ach-sub${subCls}">${achEsc(r.sub)}</span>` : "";
-    return `<div class="bbgl-ach-row"${tip} data-ach-key="${achEsc(r.key || "")}" data-clip="${achEsc(r.label + ": " + r.rawVal)}" data-clip-date="${achEsc(r.clipDate || "")}"><div class="ach-row-main"><div class="ach-k-stack"><span class="ach-k">${achEsc(r.label)}:</span>${dateEl}</div><div class="ach-v-wrap">${subEl}<span class="ach-value${valCls}">${valNum}</span></div></div></div>`;
+  function achRowHTML(r4) {
+    const isFxClass = r4.statClass && r4.statClass.startsWith("ach-fx-");
+    const subCls = !isFxClass && r4.statClass ? " " + achEsc(r4.statClass) : "";
+    const valCls = isFxClass && r4.statClass ? " " + achEsc(r4.statClass) : "";
+    const valNum = r4.dualHtml ? r4.dualHtml : r4.display === "\u2014" || r4.display === "\u2014" ? `<span class="ach-null">\u2014</span>` : achEsc(r4.display);
+    const tip = r4.tip ? ` data-tooltip="${achEsc(r4.tip)}"` : "";
+    const dateEl = r4.clipDate ? `<div class="ach-date">${achEsc(r4.clipDate)}</div>` : "";
+    const subEl = r4.sub ? `<span class="ach-sub${subCls}">${achEsc(r4.sub)}</span>` : "";
+    return `<div class="bbgl-ach-row"${tip} data-ach-key="${achEsc(r4.key || "")}" data-clip="${achEsc(r4.label + ": " + r4.rawVal)}" data-clip-date="${achEsc(r4.clipDate || "")}"><div class="ach-row-main"><div class="ach-k-stack"><span class="ach-k">${achEsc(r4.label)}:</span>${dateEl}</div><div class="ach-v-wrap">${subEl}<span class="ach-value${valCls}">${valNum}</span></div></div></div>`;
   }
   function achRowsClip(rows) {
-    return rows.map((r) => r.clipDate ? `${r.label}: ${r.rawVal} (${r.clipDate})` : `${r.label}: ${r.rawVal}`).join("\n");
+    return rows.map((r4) => r4.clipDate ? `${r4.label}: ${r4.rawVal} (${r4.clipDate})` : `${r4.label}: ${r4.rawVal}`).join("\n");
   }
   function achBuildSection(title, rows, sectionKey = "", colCount = 4) {
-    const COLS = colCount, rpc = rows.length ? Math.ceil(rows.length / COLS) : 0, cols = Array.from({ length: COLS }, (_, ci) => {
+    const COLS = colCount, rpc = rows.length ? Math.ceil(rows.length / COLS) : 0, cols = Array.from({ length: COLS }, (_3, ci) => {
       const chunk = [];
-      for (let r = 0; r < rpc; r++) {
-        const i = ci * rpc + r;
-        if (i < rows.length) chunk.push(rows[i]);
+      for (let r4 = 0; r4 < rpc; r4++) {
+        const i3 = ci * rpc + r4;
+        if (i3 < rows.length) chunk.push(rows[i3]);
       }
       return chunk;
     }), colsHTML = cols.map((chunk) => `<div class="bbgl-ach-col">${chunk.map(achRowHTML).join("")}</div>`).join(""), clipAll = achRowsClip(rows);
@@ -4419,8 +4430,8 @@ ${BBGL_ERROR_CODE}`);
     return `${CONSTANTS.MONTHS[parseInt(rawMonth.slice(5)) - 1]}, ${rawMonth.slice(0, 4)}`;
   }
   function achFmtTimeTCT(ts) {
-    const d = new Date(ts * 1e3);
-    return String(d.getUTCHours()).padStart(2, "0") + ":" + String(d.getUTCMinutes()).padStart(2, "0") + ":" + String(d.getUTCSeconds()).padStart(2, "0") + " TCT";
+    const d3 = new Date(ts * 1e3);
+    return String(d3.getUTCHours()).padStart(2, "0") + ":" + String(d3.getUTCMinutes()).padStart(2, "0") + ":" + String(d3.getUTCSeconds()).padStart(2, "0") + " TCT";
   }
   var _achTzLocalCache = null;
   function achTimeZoneSuffix() {
@@ -4428,86 +4439,86 @@ ${BBGL_ERROR_CODE}`);
     if (_achTzLocalCache) return _achTzLocalCache;
     try {
       const parts = new Intl.DateTimeFormat(void 0, { timeZoneName: "short" }).formatToParts(/* @__PURE__ */ new Date());
-      const tz = parts.find((p) => p.type === "timeZoneName");
+      const tz = parts.find((p3) => p3.type === "timeZoneName");
       _achTzLocalCache = tz && tz.value ? tz.value : "Local";
-    } catch (e) {
+    } catch (e3) {
       _achTzLocalCache = "Local";
     }
     return _achTzLocalCache;
   }
   function achFmtTimeHMClip(ts) {
-    const d = new Date(ts * 1e3);
-    return String(d.getUTCHours()).padStart(2, "0") + ":" + String(d.getUTCMinutes()).padStart(2, "0");
+    const d3 = new Date(ts * 1e3);
+    return String(d3.getUTCHours()).padStart(2, "0") + ":" + String(d3.getUTCMinutes()).padStart(2, "0");
   }
   function achFmtTimeHMS(ts) {
-    const d = new Date(ts * 1e3);
-    const h = TimeManager.useLocal() ? d.getHours() : d.getUTCHours();
-    const m = TimeManager.useLocal() ? d.getMinutes() : d.getUTCMinutes();
-    const s = TimeManager.useLocal() ? d.getSeconds() : d.getUTCSeconds();
-    return String(h).padStart(2, "0") + ":" + String(m).padStart(2, "0") + ":" + String(s).padStart(2, "0") + " " + achTimeZoneSuffix();
+    const d3 = new Date(ts * 1e3);
+    const h3 = TimeManager.useLocal() ? d3.getHours() : d3.getUTCHours();
+    const m3 = TimeManager.useLocal() ? d3.getMinutes() : d3.getUTCMinutes();
+    const s3 = TimeManager.useLocal() ? d3.getSeconds() : d3.getUTCSeconds();
+    return String(h3).padStart(2, "0") + ":" + String(m3).padStart(2, "0") + ":" + String(s3).padStart(2, "0") + " " + achTimeZoneSuffix();
   }
   function achBuildPageLocked() {
     return `<div class="bbgl-ach-locked"><div class="bbgl-ach-locked-icon">\u{1F512}</div><div class="bbgl-ach-locked-text">Reach Level 100 to unlock this page!</div></div>`;
   }
-  function achBuildPage0(d) {
-    const ps = d.perStatBest || { bestTrain: {}, bestDay: {}, bestWeek: {}, bestMonth: {} };
+  function achBuildPage0(d3) {
+    const ps = d3.perStatBest || { bestTrain: {}, bestDay: {}, bestWeek: {}, bestMonth: {} };
     const STATS = ["str", "def", "spd", "dex"];
     const STAT_LABEL = { str: "Strength", def: "Defense", spd: "Speed", dex: "Dexterity" };
-    const rows = [{ key: "best-train", short: "Single Train", long: "Highest Single Train", tip: "Highest gains achieved from a single click, per individual stat.", recs: ps.bestTrain, getDate: (r) => achFmtDate(r.date), getTime: (r) => r.ts ? achFmtTimeHMS(r.ts) : "" }, { key: "best-day", short: "Best Day", long: "Best Training Day", tip: "Highest gains achieved in a single calendar day, per individual stat.", recs: ps.bestDay, getDate: (r) => achFmtDate(r.date) }, { key: "best-week", short: "Best Week", long: "Best Training Week", tip: "Highest gains achieved in a single calendar week, per individual stat.", recs: ps.bestWeek, getDate: (r) => achFmtWeekShort(r.weekOf) }, { key: "best-month", short: "Best Month", long: "Best Month", tip: "Highest gains achieved in a single calendar month, per individual stat.", recs: ps.bestMonth, getDate: (r) => achFmtMonthLong(r.rawMonth) }];
+    const rows = [{ key: "best-train", short: "Single Train", long: "Highest Single Train", tip: "Highest gains achieved from a single click, per individual stat.", recs: ps.bestTrain, getDate: (r4) => achFmtDate(r4.date), getTime: (r4) => r4.ts ? achFmtTimeHMS(r4.ts) : "" }, { key: "best-day", short: "Best Day", long: "Best Training Day", tip: "Highest gains achieved in a single calendar day, per individual stat.", recs: ps.bestDay, getDate: (r4) => achFmtDate(r4.date) }, { key: "best-week", short: "Best Week", long: "Best Training Week", tip: "Highest gains achieved in a single calendar week, per individual stat.", recs: ps.bestWeek, getDate: (r4) => achFmtWeekShort(r4.weekOf) }, { key: "best-month", short: "Best Month", long: "Best Month", tip: "Highest gains achieved in a single calendar month, per individual stat.", recs: ps.bestMonth, getDate: (r4) => achFmtMonthLong(r4.rawMonth) }];
     const headerStats = STATS.map((sk) => `<div class="ach-stat-header ach-stat-${sk} bbgl-ach-col-copy" data-stat="${sk}" data-tooltip="Click to copy ${STAT_LABEL[sk]} column" style="cursor:pointer">${STAT_LABEL[sk]}</div>`).join("");
     const header = `<div class="bbgl-ach-grid-header"><div class="ach-grid-label-area"><span class="bbgl-ach-section-title" data-ach-section="greatest-gains" data-clip-title="Greatest Gains" data-tooltip="Click any stat or row to copy its data, or click this title to copy the entire section to your clipboard.">Greatest Gains</span></div>${headerStats}</div>`;
-    const rowsHTML = rows.map((r) => {
-      const labelArea = `<div class="ach-grid-label-area"><div class="ach-k"><span class="ach-title-short">${achEsc(r.short)}</span><span class="ach-title-long">${achEsc(r.long)}</span></div></div>`;
+    const rowsHTML = rows.map((r4) => {
+      const labelArea = `<div class="ach-grid-label-area"><div class="ach-k"><span class="ach-title-short">${achEsc(r4.short)}</span><span class="ach-title-long">${achEsc(r4.long)}</span></div></div>`;
       const cells = STATS.map((sk) => {
-        const rec = r.recs ? r.recs[sk] : null;
+        const rec = r4.recs ? r4.recs[sk] : null;
         const valHTML = rec ? "+" + Formatter.dual(rec.value) : '<span class="ach-null">\u2014</span>';
-        const dateHTML = rec ? `<div class="ach-date">${achEsc(r.getDate(rec))}</div>` : "";
-        const timeHTML = rec && r.getTime ? `<div class="ach-time">${achEsc(r.getTime(rec))}</div>` : "";
-        return `<div class="bbgl-ach-stat-cell" data-ach-key="${achEsc(r.key)}" data-stat="${sk}"><span class="ach-value">${valHTML}</span>${dateHTML}${timeHTML}</div>`;
+        const dateHTML = rec ? `<div class="ach-date">${achEsc(r4.getDate(rec))}</div>` : "";
+        const timeHTML = rec && r4.getTime ? `<div class="ach-time">${achEsc(r4.getTime(rec))}</div>` : "";
+        return `<div class="bbgl-ach-stat-cell" data-ach-key="${achEsc(r4.key)}" data-stat="${sk}"><span class="ach-value">${valHTML}</span>${dateHTML}${timeHTML}</div>`;
       }).join("");
-      const tipAttr = r.tip ? ` data-tooltip="${achEsc(r.tip)}"` : "";
-      return `<div class="bbgl-ach-row bbgl-ach-row-multi" data-ach-key="${achEsc(r.key)}"${tipAttr}>${labelArea}${cells}</div>`;
+      const tipAttr = r4.tip ? ` data-tooltip="${achEsc(r4.tip)}"` : "";
+      return `<div class="bbgl-ach-row bbgl-ach-row-multi" data-ach-key="${achEsc(r4.key)}"${tipAttr}>${labelArea}${cells}</div>`;
     }).join("");
     return `<div class="bbgl-ach-section bbgl-ach-section-page0">${header}${rowsHTML}</div>`;
   }
-  function achBuildPage1(d) {
+  function achBuildPage1(d3) {
     const STATS = ["str", "def", "spd", "dex"];
     const STAT_LABEL = { str: "Strength", def: "Defense", spd: "Speed", dex: "Dexterity" };
-    const rows = [{ key: "training-streak", short: "Best Streak", long: "Best Training Streak", tip: "Total stats gained during your longest consecutive training streak.", len: d.longestStreak, start: d.longestStreakStart, end: d.longestStreakEnd, gains: d.longestStreakGains }, { key: "green-streak", short: "Best Green", long: "Best Green Streak", tip: "Total stats gained during your longest streak of achieving at least Green (1,000E+).", len: d.longestGoalStreak, start: d.longestGoalStreakStart, end: d.longestGoalStreakEnd, gains: d.longestGoalStreakGains }, { key: "gold-streak", short: "Best Gold", long: "Best Gold Streak", tip: "Total stats gained during your longest streak of achieving at least Gold (1,500E+).", len: d.longestGoldStreak, start: d.longestGoldStreakStart, end: d.longestGoldStreakEnd, gains: d.longestGoldStreakGains }, { key: "diamond-streak", short: "Best Diamond", long: "Best Diamond Streak", tip: "Total stats gained during your longest streak of achieving Diamond (2,000E+).", len: d.longestDiamondStreak, start: d.longestDiamondStreakStart, end: d.longestDiamondStreakEnd, gains: d.longestDiamondStreakGains }];
+    const rows = [{ key: "training-streak", short: "Best Streak", long: "Best Training Streak", tip: "Total stats gained during your longest consecutive training streak.", len: d3.longestStreak, start: d3.longestStreakStart, end: d3.longestStreakEnd, gains: d3.longestStreakGains }, { key: "green-streak", short: "Best Green", long: "Best Green Streak", tip: "Total stats gained during your longest streak of achieving at least Green (1,000E+).", len: d3.longestGoalStreak, start: d3.longestGoalStreakStart, end: d3.longestGoalStreakEnd, gains: d3.longestGoalStreakGains }, { key: "gold-streak", short: "Best Gold", long: "Best Gold Streak", tip: "Total stats gained during your longest streak of achieving at least Gold (1,500E+).", len: d3.longestGoldStreak, start: d3.longestGoldStreakStart, end: d3.longestGoldStreakEnd, gains: d3.longestGoldStreakGains }, { key: "diamond-streak", short: "Best Diamond", long: "Best Diamond Streak", tip: "Total stats gained during your longest streak of achieving Diamond (2,000E+).", len: d3.longestDiamondStreak, start: d3.longestDiamondStreakStart, end: d3.longestDiamondStreakEnd, gains: d3.longestDiamondStreakGains }];
     const headerStats = STATS.map((sk) => `<div class="ach-stat-header ach-stat-${sk}">${STAT_LABEL[sk]}</div>`).join("") + `<div class="ach-stat-header ach-stat-tot">Total</div>`;
     const header = `<div class="bbgl-ach-grid-header"><div class="ach-grid-label-area"><span class="bbgl-ach-section-title" data-ach-section="sexiest-streaks" data-clip-title="Sexiest Streaks" data-tooltip="Click any stat or row to copy its data, or click this title to copy the entire section to your clipboard.">SEXIEST STREAKS</span></div>${headerStats}</div>`;
-    const rowsHTML = rows.map((r) => {
-      const dayBit = `<span class="ach-streak-days">${r.len ? r.len + "d" : "\u2014"}</span>`;
-      const presentStats = r.gains ? STATS.filter((sk) => (r.gains[sk] || 0) > 0) : [];
-      const total = presentStats.reduce((a, sk) => a + (r.gains[sk] || 0), 0);
-      const dateText = r.start && r.end ? achEsc(achFmtStreakRange(r.start, r.end)) : "\u2014";
+    const rowsHTML = rows.map((r4) => {
+      const dayBit = `<span class="ach-streak-days">${r4.len ? r4.len + "d" : "\u2014"}</span>`;
+      const presentStats = r4.gains ? STATS.filter((sk) => (r4.gains[sk] || 0) > 0) : [];
+      const total = presentStats.reduce((a3, sk) => a3 + (r4.gains[sk] || 0), 0);
+      const dateText = r4.start && r4.end ? achEsc(achFmtStreakRange(r4.start, r4.end)) : "\u2014";
       const dateHTML = `<div class="ach-date ach-streak-date">${dayBit}<span class="ach-streak-sep">\u2022</span><span class="ach-streak-daterange">${dateText}</span></div>`;
       const totalText = total > 0 ? "+" + achFmtGain(total) : '<span class="ach-null">\u2014</span>';
-      const inlineDays = r.len ? `<span class="ach-streak-days ach-streak-days-inline"> \xB7 ${r.len}d</span>` : "";
-      const inlineDate = r.start && r.end ? `<span class="bbgl-ach-streak-date-inline">&nbsp;&nbsp;${dateText}</span>` : "";
-      const labelArea = `<div class="ach-grid-label-area"><div class="ach-k"><span class="ach-title-short">${achEsc(r.short)}</span><span class="ach-title-long">${achEsc(r.long)}</span>${inlineDays}${inlineDate}</div></div>`;
+      const inlineDays = r4.len ? `<span class="ach-streak-days ach-streak-days-inline"> \xB7 ${r4.len}d</span>` : "";
+      const inlineDate = r4.start && r4.end ? `<span class="bbgl-ach-streak-date-inline">&nbsp;&nbsp;${dateText}</span>` : "";
+      const labelArea = `<div class="ach-grid-label-area"><div class="ach-k"><span class="ach-title-short">${achEsc(r4.short)}</span><span class="ach-title-long">${achEsc(r4.long)}</span>${inlineDays}${inlineDate}</div></div>`;
       const cells = STATS.map((sk) => {
-        const v = r.gains && r.gains[sk] || 0;
-        const valHTML = v > 0 ? "+" + achEsc(achFmtGain(v)) : '<span class="ach-null">\u2014</span>';
-        return `<div class="bbgl-ach-stat-cell" data-ach-key="${r.key}" data-stat="${sk}"><span class="ach-value">${valHTML}</span></div>`;
+        const v3 = r4.gains && r4.gains[sk] || 0;
+        const valHTML = v3 > 0 ? "+" + achEsc(achFmtGain(v3)) : '<span class="ach-null">\u2014</span>';
+        return `<div class="bbgl-ach-stat-cell" data-ach-key="${r4.key}" data-stat="${sk}"><span class="ach-value">${valHTML}</span></div>`;
       }).join("");
-      const totalCell = `<div class="bbgl-ach-stat-cell bbgl-ach-stat-cell-total" data-ach-key="${r.key}" data-stat="total"><span class="ach-value ach-stat-tot">${totalText}</span></div>`;
-      const tipAttr = r.tip ? ` data-tooltip="${achEsc(r.tip)}"` : "";
-      return `<div class="bbgl-ach-row bbgl-ach-row-multi" data-ach-key="${r.key}"${tipAttr}>${labelArea}${cells}${totalCell}${dateHTML}</div>`;
+      const totalCell = `<div class="bbgl-ach-stat-cell bbgl-ach-stat-cell-total" data-ach-key="${r4.key}" data-stat="total"><span class="ach-value ach-stat-tot">${totalText}</span></div>`;
+      const tipAttr = r4.tip ? ` data-tooltip="${achEsc(r4.tip)}"` : "";
+      return `<div class="bbgl-ach-row bbgl-ach-row-multi" data-ach-key="${r4.key}"${tipAttr}>${labelArea}${cells}${totalCell}${dateHTML}</div>`;
     }).join("");
-    const consVal = d.trainingRestRatio || "\u2014";
+    const consVal = d3.trainingRestRatio || "\u2014";
     const consDaysShort = "";
-    const consDaysLong = "(" + (d.trainingDays || 0) + "/" + (d.calDays || 0) + " Days)";
+    const consDaysLong = "(" + (d3.trainingDays || 0) + "/" + (d3.calDays || 0) + " Days)";
     const consRow = `<div class="bbgl-ach-row bbgl-ach-row-multi bbgl-ach-consistency-row" data-ach-key="consistency" data-tooltip="Your lifetime ratio of active training days versus total calendar days."><div class="bbgl-ach-consistency-text">Training Consistency: <span class="ach-cons-val">${achEsc(consVal)}</span> <span class="ach-cons-days">${achEsc(consDaysLong)}</span></div></div>`;
     return `<div class="bbgl-ach-section bbgl-ach-section-page0 bbgl-ach-section-page1">${header}${rowsHTML}${consRow}</div>`;
   }
   function achFmtTimeHM(ts) {
-    const d = new Date(ts * 1e3);
-    const h = TimeManager.useLocal() ? d.getHours() : d.getUTCHours();
-    const m = TimeManager.useLocal() ? d.getMinutes() : d.getUTCMinutes();
-    return String(h).padStart(2, "0") + ":" + String(m).padStart(2, "0");
+    const d3 = new Date(ts * 1e3);
+    const h3 = TimeManager.useLocal() ? d3.getHours() : d3.getUTCHours();
+    const m3 = TimeManager.useLocal() ? d3.getMinutes() : d3.getUTCMinutes();
+    return String(h3).padStart(2, "0") + ":" + String(m3).padStart(2, "0");
   }
-  function achBuildPage2(d) {
+  function achBuildPage2(d3) {
     const STAT_ABBR = { str: "STR", def: "DEF", spd: "SPD", dex: "DEX" };
     const STAT_FULL = { str: "Strength", def: "Defense", spd: "Speed", dex: "Dexterity" };
     const STATS = ["str", "def", "spd", "dex"];
@@ -4531,32 +4542,32 @@ ${BBGL_ERROR_CODE}`);
       clipParts.push("Total: +" + achFmtGain(rec.value));
       return `<div class="bbgl-ach-hh-best-row" data-tooltip="${achEsc(tip)}" data-ach-key="${key}" data-clip="${achEsc(longLabel + " (" + dateStr + ", " + timeStrClip + "): " + clipParts.join(" | "))}" data-clip-date="${achEsc(dateStr + "  " + timeStrClip)}"><div class="bbgl-ach-hh-label"><span class="ach-k"><span class="ach-title-long">${achEsc(longLabel)}</span><span class="ach-title-short">${achEsc(shortLabel)}</span></span><div class="bbgl-ach-hh-date-line">${achEsc(dateStr)}<span class="bbgl-ach-hh-time"> &nbsp; ${achEsc(timeStr)}</span></div></div><div class="bbgl-ach-hh-cells">${statCells}${totalCell}</div></div>`;
     };
-    const hjCount = countRow("Happy Jumps Performed", "Happy Jumps", d.happyJumps || 0, "hj-count", "Total number of Happy Jumps performed.<br><i>HJ = 1000E+ spent within 15m of using Ecstasy</i>", true);
-    const hjBest = bestRow("Best Happy Jump", "Best Jump", d.bestHappyJump && d.bestHappyJump.total, "best-hj", "The single Happy Jump that yielded the highest combined stat gain.");
+    const hjCount = countRow("Happy Jumps Performed", "Happy Jumps", d3.happyJumps || 0, "hj-count", "Total number of Happy Jumps performed.<br><i>HJ = 1000E+ spent within 15m of using Ecstasy</i>", true);
+    const hjBest = bestRow("Best Happy Jump", "Best Jump", d3.bestHappyJump && d3.bestHappyJump.total, "best-hj", "The single Happy Jump that yielded the highest combined stat gain.");
     const rowsHTML = `<div class="bbgl-ach-hh-group" data-ach-key="happy-jumps-group">${hjCount}${hjBest}</div>`;
-    let clipAll = `Happy Jumps Performed: ${d.happyJumps || 0}
-Best Happy Jump: ${d.bestHappyJump && d.bestHappyJump.total ? (() => {
-      const rec = d.bestHappyJump.total;
+    let clipAll = `Happy Jumps Performed: ${d3.happyJumps || 0}
+Best Happy Jump: ${d3.bestHappyJump && d3.bestHappyJump.total ? (() => {
+      const rec = d3.bestHappyJump.total;
       const trained = STATS.filter((sk) => (rec.stats[sk] || 0) > 0);
       const parts = trained.map((sk) => STAT_ABBR[sk] + ": +" + achFmtGain(rec.stats[sk]));
       parts.push("Total: +" + achFmtGain(rec.value));
       return parts.join(" | ");
     })() : "\u2014"}`;
     let helpersHTML = "";
-    if (d.happyItemTotals) {
+    if (d3.happyItemTotals) {
       const hhOrder = { 2180: 1, 2210: 2, 2020: 3, 8983: 4 };
       const helpers = HAPPY_LOGS.map((id) => {
-        const rec = d.happyItemTotals[id] || { count: 0, happy: 0 };
+        const rec = d3.happyItemTotals[id] || { count: 0, happy: 0 };
         const meta = ITEM_LOG_META[id];
         return { id, label: meta.achLabel || meta.label, short: meta.short || meta.label, count: rec.count, happy: rec.happy };
-      }).filter((h) => h.count > 0).sort((a, b) => (hhOrder[a.id] || 99) - (hhOrder[b.id] || 99));
+      }).filter((h3) => h3.count > 0).sort((a3, b2) => (hhOrder[a3.id] || 99) - (hhOrder[b2.id] || 99));
       if (helpers.length > 0) {
-        const helperRow = (h) => {
-          const tip = isExpanded ? `Amount of ${h.label} \xB7 Happy Gained` : `Amount of ${h.label}`;
-          const clipVal = `${h.label}: ${h.count} (${Formatter.number(h.happy)} Happy)`;
-          let html = `<div class="bbgl-ach-row" data-tooltip="${achEsc(tip)}" data-ach-key="happy-helper-${h.id}" data-clip="${achEsc(clipVal)}"><div class="ach-row-main"><div class="ach-k-stack"><span class="ach-k"><span class="ach-title-long">${achEsc(h.label)}</span><span class="ach-title-short">${achEsc(h.short)}</span>:</span></div><div class="ach-v-wrap"><span class="ach-value">${Formatter.number(h.count)}</span><span class="ach-value ach-happy-col">+${achEsc(achFmtGain(h.happy))} <span class="ach-happy-word">H</span></span></div></div></div>`;
-          if (h.id === 2210 && d.odItemTotals && d.odItemTotals[EX_OD_LOG] && d.odItemTotals[EX_OD_LOG].count > 0) {
-            const exRec = d.odItemTotals[EX_OD_LOG];
+        const helperRow = (h3) => {
+          const tip = isExpanded ? `Amount of ${h3.label} \xB7 Happy Gained` : `Amount of ${h3.label}`;
+          const clipVal = `${h3.label}: ${h3.count} (${Formatter.number(h3.happy)} Happy)`;
+          let html = `<div class="bbgl-ach-row" data-tooltip="${achEsc(tip)}" data-ach-key="happy-helper-${h3.id}" data-clip="${achEsc(clipVal)}"><div class="ach-row-main"><div class="ach-k-stack"><span class="ach-k"><span class="ach-title-long">${achEsc(h3.label)}</span><span class="ach-title-short">${achEsc(h3.short)}</span>:</span></div><div class="ach-v-wrap"><span class="ach-value">${Formatter.number(h3.count)}</span><span class="ach-value ach-happy-col">+${achEsc(achFmtGain(h3.happy))} <span class="ach-happy-word">H</span></span></div></div></div>`;
+          if (h3.id === 2210 && d3.odItemTotals && d3.odItemTotals[EX_OD_LOG] && d3.odItemTotals[EX_OD_LOG].count > 0) {
+            const exRec = d3.odItemTotals[EX_OD_LOG];
             const countHtml = achEsc(Formatter.number(exRec.count));
             const lostNum = exRec.happyLost > 0 ? `-${achEsc(Formatter.number(exRec.happyLost))}` : '<span class="ach-null">\u2014</span>';
             const eLostNum = exRec.energyLost > 0 ? `-${achEsc(Formatter.number(exRec.energyLost))}` : '<span class="ach-null">\u2014</span>';
@@ -4574,14 +4585,14 @@ Best Happy Jump: ${d.bestHappyJump && d.bestHappyJump.total ? (() => {
         const colCount = 2;
         const rpc = Math.ceil(helpers.length / colCount);
         const cols = [];
-        for (let i = 0; i < colCount; i++) {
-          const start = i * rpc;
+        for (let i3 = 0; i3 < colCount; i3++) {
+          const start = i3 * rpc;
           const chunk = helpers.slice(start, start + rpc);
           if (chunk.length) {
             cols.push(`<div class="bbgl-ach-col">${chunk.map(helperRow).join("")}</div>`);
           }
         }
-        const clipHelpers = helpers.map((h) => `${h.label}: ${h.count} (${Formatter.number(h.happy)} Happy)`).join("\n");
+        const clipHelpers = helpers.map((h3) => `${h3.label}: ${h3.count} (${Formatter.number(h3.happy)} Happy)`).join("\n");
         clipAll += "\n\n\u2014 Happy Helpers \u2014\n" + clipHelpers;
         helpersHTML = `<div class="bbgl-ach-cols" style="grid-template-columns:repeat(${colCount},minmax(0,1fr)); padding-top:1px; padding-bottom:0;">${cols.join("")}</div>`;
       }
@@ -4611,23 +4622,23 @@ Best Happy Jump: ${d.bestHappyJump && d.bestHappyJump.total ? (() => {
           if (qty > 0) odItemTotals[id].count += qty;
         });
       }
-      (day.series || []).forEach((e) => {
-        if (e.type === "item" && e.energy && energyItemTotals[e.logId]) energyItemTotals[e.logId].energy += e.energy;
-        if (e.type === "item" && e.energyLost != null && odItemTotals[e.logId]) odItemTotals[e.logId].energyLost += e.energyLost;
-        if (e.type === "item" && e.happyLost != null && odItemTotals[e.logId]) odItemTotals[e.logId].happyLost += e.happyLost;
-        if (e.type === "item" && e.statKey && statEnhByStat[e.statKey]) {
-          statEnhByStat[e.statKey].count++;
-          statEnhByStat[e.statKey].gain = Math.round((statEnhByStat[e.statKey].gain + (e.statGain || 0)) * 100) / 100;
+      (day.series || []).forEach((e3) => {
+        if (e3.type === "item" && e3.energy && energyItemTotals[e3.logId]) energyItemTotals[e3.logId].energy += e3.energy;
+        if (e3.type === "item" && e3.energyLost != null && odItemTotals[e3.logId]) odItemTotals[e3.logId].energyLost += e3.energyLost;
+        if (e3.type === "item" && e3.happyLost != null && odItemTotals[e3.logId]) odItemTotals[e3.logId].happyLost += e3.happyLost;
+        if (e3.type === "item" && e3.statKey && statEnhByStat[e3.statKey]) {
+          statEnhByStat[e3.statKey].count++;
+          statEnhByStat[e3.statKey].gain = Math.round((statEnhByStat[e3.statKey].gain + (e3.statGain || 0)) * 100) / 100;
         }
       });
     });
     return { energyItemTotals, odItemTotals, statEnhByStat };
   }
-  function achBuildPageOverview(d) {
+  function achBuildPageOverview(d3) {
     const NULL = '<span class="ach-null">\u2014</span>';
-    const enh = d.statEnhByStat || {};
-    const enrg = d.energyItemTotals || {};
-    const od = d.odItemTotals || {};
+    const enh = d3.statEnhByStat || {};
+    const enrg = d3.energyItemTotals || {};
+    const od = d3.odItemTotals || {};
     const STAT_ABBR = { str: "Str", def: "Def", spd: "Spd", dex: "Dex" };
     const isExpanded = achIsExpandedMode();
     const STAT_ENH_MAP = { 2150: "str", 2130: "spd", 2140: "def", 2120: "dex" };
@@ -4694,7 +4705,7 @@ Best Happy Jump: ${d.bestHappyJump && d.bestHappyJump.total ? (() => {
     const switchHTML = `<div class="bbgl-enh-mode-switch" data-tooltip-html="<b>Changes the data scope displayed on this page.</b><br><i><b>All-Time</b> shows totals across your entire log history. <b>Selected</b> shows data for the selected period on the calendar.</i>" data-tooltip-side="left"><span class="bbgl-enh-sw-opt${isPeriod ? "" : " active"}" data-mode="alltime">All-Time</span><span class="bbgl-enh-sw-opt${isPeriod ? " active" : ""}" data-mode="selected">Selected</span></div>`;
     return `<div class="bbgl-ach-section bbgl-ach-section-energy"><div class="bbgl-ach-title-row"><span class="bbgl-ach-section-title" data-ach-section="endocrine-enhancers" data-clip-section="${achEsc(clipAll)}" data-clip-title="Endocrine Enhancers" data-tooltip="Click any row to copy its data, or click this title to copy the entire section to your clipboard.">ENDOCRINE ENHANCERS</span>${switchHTML}</div><div class="bbgl-ach-cols" style="grid-template-columns:repeat(2,minmax(0,1fr));">${cols}</div></div>`;
   }
-  function buildAchievementsPage(pageIdx, d) {
+  function buildAchievementsPage(pageIdx, d3) {
     const mk = (label, value, opts = {}) => {
       const base = { label, key: opts.key || "", sub: opts.sub || "", statClass: opts.statClass || "", tip: opts.tip || "", clipDate: opts.clipDate || "" };
       if ("dualHtml" in opts) return { ...base, dualHtml: opts.dualHtml, display: opts.display !== void 0 ? opts.display : "", rawVal: opts.rawVal !== void 0 ? opts.rawVal : opts.dualHtml && typeof value === "number" ? achLedgerClip(value) : "\u2014" };
@@ -4707,77 +4718,77 @@ Best Happy Jump: ${d.bestHappyJump && d.bestHappyJump.total ? (() => {
     };
     const mkRec = (label, rec, getDate, tip, suffix, key = "") => {
       const dt = rec ? getDate(rec) : "";
-      const v = rec ? rec.value : null;
-      const o = { key, statClass: rec && rec.stat ? "ach-stat-" + rec.stat : "", sub: rec && rec.stat ? rec.stat.toUpperCase() : "", tip, clipDate: dt };
-      if (suffix) return rec ? mk(label, v, { ...o, dualHtml: Formatter.achDual(v, ACH_FMT.gains) + " E", rawVal: achLedgerClip(v) + " E" }) : mk(label, null, { ...o, display: "\u2014", rawVal: "\u2014" });
-      return mk(label, v, o);
+      const v3 = rec ? rec.value : null;
+      const o3 = { key, statClass: rec && rec.stat ? "ach-stat-" + rec.stat : "", sub: rec && rec.stat ? rec.stat.toUpperCase() : "", tip, clipDate: dt };
+      if (suffix) return rec ? mk(label, v3, { ...o3, dualHtml: Formatter.achDual(v3, ACH_FMT.gains) + " E", rawVal: achLedgerClip(v3) + " E" }) : mk(label, null, { ...o3, display: "\u2014", rawVal: "\u2014" });
+      return mk(label, v3, o3);
     };
-    const achUnit = (n, sing, plur) => n ? n + '<span class="ach-unit"> ' + (n === 1 ? sing : plur) + "</span>" : "\u2014";
+    const achUnit = (n2, sing, plur) => n2 ? n2 + '<span class="ach-unit"> ' + (n2 === 1 ? sing : plur) + "</span>" : "\u2014";
     if (pageIdx === 0) {
-      return achBuildPage0(d);
+      return achBuildPage0(d3);
     } else if (pageIdx === 1) {
-      return achBuildPage1(d);
+      return achBuildPage1(d3);
     } else if (pageIdx === 2) {
-      const overviewD = viewState.achEnhPeriodMode ? computeEnhancersForPeriod(calendarState.selectedData || app.DataController.getSlice("DAY", Formatter.dateLogical())) : d;
+      const overviewD = viewState.achEnhPeriodMode ? computeEnhancersForPeriod(calendarState.selectedData || app.DataController.getSlice("DAY", Formatter.dateLogical())) : d3;
       return achBuildPageOverview(overviewD);
     } else if (pageIdx === 3) {
-      return achBuildPage2(d);
+      return achBuildPage2(d3);
     } else if (pageIdx === 5) {
       return achBuildPageLocked();
     } else {
-      const consistRows = [mk("Best Training Streak", d.longestStreak, { key: "training-streak", dualHtml: achUnit(d.longestStreak, "Day", "Days"), rawVal: d.longestStreak ? d.longestStreak + (d.longestStreak === 1 ? " Day" : " Days") : "\u2014", clipDate: achFmtStreakRange(d.longestStreakStart, d.longestStreakEnd), tip: "Longest streak of active training days" }), mk("Best Green Streak", d.longestGoalStreak, { key: "green-streak", dualHtml: achUnit(d.longestGoalStreak, "Day", "Days"), rawVal: d.longestGoalStreak ? d.longestGoalStreak + (d.longestGoalStreak === 1 ? " Day" : " Days") : "\u2014", clipDate: achFmtStreakRange(d.longestGoalStreakStart, d.longestGoalStreakEnd), tip: "Longest streak of achieving at least Green (1000E+)" }), mk("Best Gold Streak", d.longestGoldStreak, { key: "gold-streak", dualHtml: achUnit(d.longestGoldStreak, "Day", "Days"), rawVal: d.longestGoldStreak ? d.longestGoldStreak + (d.longestGoldStreak === 1 ? " Day" : " Days") : "\u2014", clipDate: achFmtStreakRange(d.longestGoldStreakStart, d.longestGoldStreakEnd), tip: "Longest streak of achieving Gold (1500E+)" }), mk("Consistency Rate", null, { key: "consistency", display: d.trainingRestRatio || "\u2014", rawVal: d.trainingRestRatio || "\u2014", tip: "Lifetime ratio of rest days to training days" }), mk("Happy Jumps", d.happyJumps, { key: "happy-jumps", display: String(d.happyJumps || 0), rawVal: String(d.happyJumps || 0), tip: "Total Happy Jumps performed" })];
-      const rewardRows = [mk("Green Days", d.greenDays, { key: "green-days", display: String(d.greenDays || 0), rawVal: String(d.greenDays || 0), statClass: "ach-fx-green", tip: "Total days where the minimum daily goal (Green: 1,000E+) was achieved." }), mk("Gold Days", d.goldDays, { key: "gold-days", display: String(d.goldDays || 0), rawVal: String(d.goldDays || 0), statClass: "ach-fx-gold", tip: "Total days where the elite daily goal (Gold: 1,500E+) was achieved." }), mk("Diamond Days", d.diamondDays, { key: "diamond-days", display: String(d.diamondDays || 0), rawVal: String(d.diamondDays || 0), statClass: "ach-fx-diamond", tip: "Total days where the ultimate daily goal (Diamond: 2,000E+) was achieved." }), mk("Stickers Unlocked", d.stickersUnlocked, { key: "stickers", display: (d.stickersUnlocked || 0) + "/" + CUSTOM_STICKERS.length, rawVal: (d.stickersUnlocked || 0) + "/" + CUSTOM_STICKERS.length, statClass: "ach-fx-holo", tip: "Total unique milestone stickers earned through consistent training." }), mk("Green Weeks", d.greenWeeks, { key: "green-weeks", display: String(d.greenWeeks || 0), rawVal: String(d.greenWeeks || 0), statClass: "ach-fx-green", tip: "Total weeks where the minimum weekly training goal was met." }), mk("Gold Weeks", d.goldWeeks, {
+      const consistRows = [mk("Best Training Streak", d3.longestStreak, { key: "training-streak", dualHtml: achUnit(d3.longestStreak, "Day", "Days"), rawVal: d3.longestStreak ? d3.longestStreak + (d3.longestStreak === 1 ? " Day" : " Days") : "\u2014", clipDate: achFmtStreakRange(d3.longestStreakStart, d3.longestStreakEnd), tip: "Longest streak of active training days" }), mk("Best Green Streak", d3.longestGoalStreak, { key: "green-streak", dualHtml: achUnit(d3.longestGoalStreak, "Day", "Days"), rawVal: d3.longestGoalStreak ? d3.longestGoalStreak + (d3.longestGoalStreak === 1 ? " Day" : " Days") : "\u2014", clipDate: achFmtStreakRange(d3.longestGoalStreakStart, d3.longestGoalStreakEnd), tip: "Longest streak of achieving at least Green (1000E+)" }), mk("Best Gold Streak", d3.longestGoldStreak, { key: "gold-streak", dualHtml: achUnit(d3.longestGoldStreak, "Day", "Days"), rawVal: d3.longestGoldStreak ? d3.longestGoldStreak + (d3.longestGoldStreak === 1 ? " Day" : " Days") : "\u2014", clipDate: achFmtStreakRange(d3.longestGoldStreakStart, d3.longestGoldStreakEnd), tip: "Longest streak of achieving Gold (1500E+)" }), mk("Consistency Rate", null, { key: "consistency", display: d3.trainingRestRatio || "\u2014", rawVal: d3.trainingRestRatio || "\u2014", tip: "Lifetime ratio of rest days to training days" }), mk("Happy Jumps", d3.happyJumps, { key: "happy-jumps", display: String(d3.happyJumps || 0), rawVal: String(d3.happyJumps || 0), tip: "Total Happy Jumps performed" })];
+      const rewardRows = [mk("Green Days", d3.greenDays, { key: "green-days", display: String(d3.greenDays || 0), rawVal: String(d3.greenDays || 0), statClass: "ach-fx-green", tip: "Total days where the minimum daily goal (Green: 1,000E+) was achieved." }), mk("Gold Days", d3.goldDays, { key: "gold-days", display: String(d3.goldDays || 0), rawVal: String(d3.goldDays || 0), statClass: "ach-fx-gold", tip: "Total days where the elite daily goal (Gold: 1,500E+) was achieved." }), mk("Diamond Days", d3.diamondDays, { key: "diamond-days", display: String(d3.diamondDays || 0), rawVal: String(d3.diamondDays || 0), statClass: "ach-fx-diamond", tip: "Total days where the ultimate daily goal (Diamond: 2,000E+) was achieved." }), mk("Stickers Unlocked", d3.stickersUnlocked, { key: "stickers", display: (d3.stickersUnlocked || 0) + "/" + CUSTOM_STICKERS.length, rawVal: (d3.stickersUnlocked || 0) + "/" + CUSTOM_STICKERS.length, statClass: "ach-fx-holo", tip: "Total unique milestone stickers earned through consistent training." }), mk("Green Weeks", d3.greenWeeks, { key: "green-weeks", display: String(d3.greenWeeks || 0), rawVal: String(d3.greenWeeks || 0), statClass: "ach-fx-green", tip: "Total weeks where the minimum weekly training goal was met." }), mk("Gold Weeks", d3.goldWeeks, {
         key: "gold-weeks",
-        display: String(d.goldWeeks || 0),
-        rawVal: String(d.goldWeeks || 0),
+        display: String(d3.goldWeeks || 0),
+        rawVal: String(d3.goldWeeks || 0),
         statClass: "ach-fx-gold",
         tip: "Total weeks where the elite weekly training goal was met."
-      }), mk("Diamond Weeks", d.diamondWeeks, { key: "diamond-weeks", display: String(d.diamondWeeks || 0), rawVal: String(d.diamondWeeks || 0), statClass: "ach-fx-diamond", tip: "Total weeks where the ultimate weekly training goal was met." })];
+      }), mk("Diamond Weeks", d3.diamondWeeks, { key: "diamond-weeks", display: String(d3.diamondWeeks || 0), rawVal: String(d3.diamondWeeks || 0), statClass: "ach-fx-diamond", tip: "Total weeks where the ultimate weekly training goal was met." })];
       void consistRows;
       return achBuildSection("Rewards Reaped", rewardRows, "rewards-reaped", 2);
     }
   }
-  var achFmtGain = (v) => Formatter.achAbbr(v, ACH_FMT.compact);
-  function achStatAbbr(s) {
-    return s ? s.charAt(0).toUpperCase() + s.slice(1) : "";
+  var achFmtGain = (v3) => Formatter.achAbbr(v3, ACH_FMT.compact);
+  function achStatAbbr(s3) {
+    return s3 ? s3.charAt(0).toUpperCase() + s3.slice(1) : "";
   }
-  function achStatFull(s) {
-    return { str: "Strength", def: "Defense", spd: "Speed", dex: "Dexterity" }[s] || s;
+  function achStatFull(s3) {
+    return { str: "Strength", def: "Defense", spd: "Speed", dex: "Dexterity" }[s3] || s3;
   }
   function achIsExpandedMode() {
-    const p = document.getElementById("bbgl-panel");
-    return !!(p && p.classList.contains("bbgl-expanded"));
+    const p3 = document.getElementById("bbgl-panel");
+    return !!(p3 && p3.classList.contains("bbgl-expanded"));
   }
   function achOdLabel(label) {
     return label.replace(/ OD$/, " Overdoses");
   }
-  function achFmtGainsLine(g) {
+  function achFmtGainsLine(g4) {
     const ORDER = ["str", "def", "spd", "dex"];
-    return ORDER.filter((k) => g && g[k] > 0).map((k) => "+" + achFmtGain(g[k]) + " " + achStatAbbr(k)).join(" | ");
+    return ORDER.filter((k3) => g4 && g4[k3] > 0).map((k3) => "+" + achFmtGain(g4[k3]) + " " + achStatAbbr(k3)).join(" | ");
   }
   function achFmtTs(ts) {
-    const d = new Date(ts * 1e3);
-    const datePart = Formatter.datePretty(Formatter.dateISO(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate()));
-    return datePart + "  " + String(d.getUTCHours()).padStart(2, "0") + ":" + String(d.getUTCMinutes()).padStart(2, "0") + ":" + String(d.getUTCSeconds()).padStart(2, "0");
+    const d3 = new Date(ts * 1e3);
+    const datePart = Formatter.datePretty(Formatter.dateISO(d3.getUTCFullYear(), d3.getUTCMonth(), d3.getUTCDate()));
+    return datePart + "  " + String(d3.getUTCHours()).padStart(2, "0") + ":" + String(d3.getUTCMinutes()).padStart(2, "0") + ":" + String(d3.getUTCSeconds()).padStart(2, "0");
   }
   function achGetDay(date) {
-    const s = app.getActiveHistory();
-    const all = [...s.history || []];
-    if (s.today && s.today.date) {
-      const i = all.findIndex((d) => d.date === s.today.date);
-      if (i >= 0) all[i] = s.today;
-      else all.push(s.today);
+    const s3 = app.getActiveHistory();
+    const all = [...s3.history || []];
+    if (s3.today && s3.today.date) {
+      const i3 = all.findIndex((d3) => d3.date === s3.today.date);
+      if (i3 >= 0) all[i3] = s3.today;
+      else all.push(s3.today);
     }
-    return all.find((d) => d.date === date) || null;
+    return all.find((d3) => d3.date === date) || null;
   }
   function achGetTrainBA(rec) {
     const day = achGetDay(rec.date);
     if (!day) return null;
-    const series = [...day.series || []].sort((a, b) => a.ts - b.ts);
+    const series = [...day.series || []].sort((a3, b2) => a3.ts - b2.ts);
     let before = day.startBreakdown && day.startBreakdown[rec.stat] || 0;
-    for (const e of series) {
-      if (e.ts === rec.ts && e.stat === rec.stat) return { before, after: before + rec.value };
-      if (e.stat === rec.stat) before += e.gain || 0;
+    for (const e3 of series) {
+      if (e3.ts === rec.ts && e3.stat === rec.stat) return { before, after: before + rec.value };
+      if (e3.stat === rec.stat) before += e3.gain || 0;
     }
     return null;
   }
@@ -4787,30 +4798,30 @@ Best Happy Jump: ${d.bestHappyJump && d.bestHappyJump.total ? (() => {
     return { before: day.startBreakdown && day.startBreakdown[rec.stat] || 0, after: day.endBreakdown && day.endBreakdown[rec.stat] || 0 };
   }
   function achGetMonthBA(rawMonth, stat) {
-    const s = app.getActiveHistory();
-    const all = [...s.history || []];
-    if (s.today && s.today.date) {
-      const i = all.findIndex((d) => d.date === s.today.date);
-      if (i >= 0) all[i] = s.today;
-      else all.push(s.today);
+    const s3 = app.getActiveHistory();
+    const all = [...s3.history || []];
+    if (s3.today && s3.today.date) {
+      const i3 = all.findIndex((d3) => d3.date === s3.today.date);
+      if (i3 >= 0) all[i3] = s3.today;
+      else all.push(s3.today);
     }
-    const days = all.filter((d) => d.date.slice(0, 7) === rawMonth && (d.gains && d.gains[stat] || 0) > 0).sort((a, b) => a.date.localeCompare(b.date));
+    const days = all.filter((d3) => d3.date.slice(0, 7) === rawMonth && (d3.gains && d3.gains[stat] || 0) > 0).sort((a3, b2) => a3.date.localeCompare(b2.date));
     if (!days.length) return null;
     return { before: days[0].startBreakdown && days[0].startBreakdown[stat] || 0, after: days[days.length - 1].endBreakdown && days[days.length - 1].endBreakdown[stat] || 0 };
   }
   function achGetWeekBA(weekOf, stat) {
-    const s = app.getActiveHistory();
-    const all = [...s.history || []];
-    if (s.today && s.today.date) {
-      const i = all.findIndex((d) => d.date === s.today.date);
-      if (i >= 0) all[i] = s.today;
-      else all.push(s.today);
+    const s3 = app.getActiveHistory();
+    const all = [...s3.history || []];
+    if (s3.today && s3.today.date) {
+      const i3 = all.findIndex((d3) => d3.date === s3.today.date);
+      if (i3 >= 0) all[i3] = s3.today;
+      else all.push(s3.today);
     }
     const startD = /* @__PURE__ */ new Date(weekOf + "T00:00:00Z");
     const endD = new Date(startD);
     endD.setUTCDate(endD.getUTCDate() + 6);
     const endStr = Formatter.dateISO(endD.getUTCFullYear(), endD.getUTCMonth(), endD.getUTCDate());
-    const days = all.filter((d) => d.date >= weekOf && d.date <= endStr && (d.gains && d.gains[stat] || 0) > 0).sort((a, b) => a.date.localeCompare(b.date));
+    const days = all.filter((d3) => d3.date >= weekOf && d3.date <= endStr && (d3.gains && d3.gains[stat] || 0) > 0).sort((a3, b2) => a3.date.localeCompare(b2.date));
     if (!days.length) return null;
     return { before: days[0].startBreakdown && days[0].startBreakdown[stat] || 0, after: days[days.length - 1].endBreakdown && days[days.length - 1].endBreakdown[stat] || 0 };
   }
@@ -4823,14 +4834,14 @@ Best Happy Jump: ${d.bestHappyJump && d.bestHappyJump.total ? (() => {
     const endStr = Formatter.dateISO(we.getUTCFullYear(), we.getUTCMonth(), we.getUTCDate());
     return Formatter.datePretty(weekOf) + " \u2013 " + Formatter.datePretty(endStr);
   }
-  function achClipSection(H, title, blocks) {
+  function achClipSection(H3, title, blocks) {
     const NL = "\n";
-    let s = H + NL + NL + "\u2014 " + title + " \u2014" + NL;
-    blocks.forEach((b, i) => {
-      if (i) s += blocks[i - 1].includes(NL) || b.includes(NL) ? NL + NL : NL;
-      s += b;
+    let s3 = H3 + NL + NL + "\u2014 " + title + " \u2014" + NL;
+    blocks.forEach((b2, i3) => {
+      if (i3) s3 += blocks[i3 - 1].includes(NL) || b2.includes(NL) ? NL + NL : NL;
+      s3 += b2;
     });
-    return s;
+    return s3;
   }
   function achFmtStatBlock(key, rec, stat, indent) {
     if (!rec) return null;
@@ -4872,25 +4883,25 @@ Best Happy Jump: ${d.bestHappyJump && d.bestHappyJump.total ? (() => {
       }
       return;
     }
-    const H = "\u{1F451}BBGL Achievements", cache = runtime._achCache;
+    const H3 = "\u{1F451}BBGL Achievements", cache = runtime._achCache;
     let txt = "", flashEl = null;
-    const NL = "\n", I = "  ";
+    const NL = "\n", I2 = "  ";
     const PS_MAP = { "best-train": "bestTrain", "best-day": "bestDay", "best-week": "bestWeek", "best-month": "bestMonth" };
     const TITLE_MAP = { "best-train": "Highest Gains in a Single Train", "best-day": "Highest Gains in a Single Day", "best-week": "Highest Gains in a Single Week", "best-month": "Highest Gains in a Single Month" };
     if (el.classList.contains("bbgl-ach-col-copy")) {
       const sk = el.getAttribute("data-stat");
-      const r = cache;
+      const r4 = cache;
       const PS_MAP_L = { "best-train": "bestTrain", "best-day": "bestDay", "best-week": "bestWeek", "best-month": "bestMonth" };
       const TITLE_MAP_L = { "best-train": "Best Train", "best-day": "Best Day", "best-week": "Best Week", "best-month": "Best Month" };
-      if (sk && r && r.perStatBest) {
+      if (sk && r4 && r4.perStatBest) {
         const lines = ["best-train", "best-day", "best-week", "best-month"].map((mkey) => {
-          const rec = (r.perStatBest[PS_MAP_L[mkey]] || {})[sk];
+          const rec = (r4.perStatBest[PS_MAP_L[mkey]] || {})[sk];
           return achFmtStatBlock(mkey, rec, sk, "  ");
         }).filter(Boolean);
         if (lines.length) {
           txt = "\u{1F451}BBGL Achievements\nGreatest Gains \u2014 " + achStatFull(sk) + ":\n" + lines.join(NL);
           const _sec = el.closest(".bbgl-ach-section");
-          const _cells = _sec ? Array.from(_sec.querySelectorAll(`.bbgl-ach-stat-cell[data-stat="${sk}"]`)).filter((c) => !c.querySelector(".ach-null")) : [];
+          const _cells = _sec ? Array.from(_sec.querySelectorAll(`.bbgl-ach-stat-cell[data-stat="${sk}"]`)).filter((c3) => !c3.querySelector(".ach-null")) : [];
           flashEl = _cells.length ? _cells : el;
         }
       }
@@ -4901,16 +4912,16 @@ Best Happy Jump: ${d.bestHappyJump && d.bestHappyJump.total ? (() => {
       const rec = recs && stat ? recs[stat] : null;
       const block = achFmtStatBlock(key, rec, stat, "");
       if (block && TITLE_MAP[key]) {
-        txt = H + NL + TITLE_MAP[key] + ":" + NL + block;
+        txt = H3 + NL + TITLE_MAP[key] + ":" + NL + block;
         flashEl = el;
       } else if (cache && /^(training|green|gold|diamond)-streak$/.test(key)) {
         const SK = { "training-streak": ["Best Training Streak", cache.longestStreak, cache.longestStreakGains, cache.longestStreakStart, cache.longestStreakEnd], "green-streak": ["Best Green Streak", cache.longestGoalStreak, cache.longestGoalStreakGains, cache.longestGoalStreakStart, cache.longestGoalStreakEnd], "gold-streak": ["Best Gold Streak", cache.longestGoldStreak, cache.longestGoldStreakGains, cache.longestGoldStreakStart, cache.longestGoldStreakEnd], "diamond-streak": ["Best Diamond Streak", cache.longestDiamondStreak, cache.longestDiamondStreakGains, cache.longestDiamondStreakStart, cache.longestDiamondStreakEnd] };
         const SF = { str: "Strength", def: "Defense", spd: "Speed", dex: "Dexterity", total: "Total" };
         const ent = SK[key];
         if (ent && ent[2]) {
-          const label = ent[0], g = ent[2], st = ent[3], en = ent[4];
-          const v = stat === "total" ? ["str", "def", "spd", "dex"].reduce((a, k) => a + (g[k] || 0), 0) : g[stat] || 0;
-          txt = H + NL + label + " \u2014 " + SF[stat] + ":" + NL + "+" + Formatter.number(v) + " " + SF[stat] + (st && en ? NL + I + Formatter.datePretty(st) + " \u2013 " + Formatter.datePretty(en) : "");
+          const label = ent[0], g4 = ent[2], st = ent[3], en2 = ent[4];
+          const v3 = stat === "total" ? ["str", "def", "spd", "dex"].reduce((a3, k3) => a3 + (g4[k3] || 0), 0) : g4[stat] || 0;
+          txt = H3 + NL + label + " \u2014 " + SF[stat] + ":" + NL + "+" + Formatter.number(v3) + " " + SF[stat] + (st && en2 ? NL + I2 + Formatter.datePretty(st) + " \u2013 " + Formatter.datePretty(en2) : "");
           flashEl = el;
         }
       } else if (key === "best-hj") {
@@ -4918,13 +4929,13 @@ Best Happy Jump: ${d.bestHappyJump && d.bestHappyJump.total ? (() => {
         const label = "Best Happy Jump";
         const HHSF = { str: "Strength", def: "Defense", spd: "Speed", dex: "Dexterity", total: "Total" };
         if (rec2 && rec2.stats) {
-          const v = stat === "total" ? rec2.value : rec2.stats[stat] || 0;
-          txt = H + NL + label + " \u2014 " + HHSF[stat] + ": +" + achFmtGain(v);
+          const v3 = stat === "total" ? rec2.value : rec2.stats[stat] || 0;
+          txt = H3 + NL + label + " \u2014 " + HHSF[stat] + ": +" + achFmtGain(v3);
           flashEl = el;
         }
       }
     } else if (el.classList.contains("bbgl-ach-hh-group")) {
-      const gKey = el.getAttribute("data-ach-key"), r = cache;
+      const gKey = el.getAttribute("data-ach-key"), r4 = cache;
       const GABR = { str: "STR", def: "DEF", spd: "SPD", dex: "DEX" };
       const GSTS = [
         "str",
@@ -4940,45 +4951,45 @@ Best Happy Jump: ${d.bestHappyJump && d.bestHappyJump.total ? (() => {
         return pts.join(" | ");
       };
       if (gKey === "happy-jumps-group") {
-        txt = H + NL + "Happy Jumps Performed: " + (r.happyJumps || 0) + NL + "Best Happy Jump: " + fmtJ(r.bestHappyJump && r.bestHappyJump.total);
+        txt = H3 + NL + "Happy Jumps Performed: " + (r4.happyJumps || 0) + NL + "Best Happy Jump: " + fmtJ(r4.bestHappyJump && r4.bestHappyJump.total);
         flashEl = Array.from(el.children);
       }
     } else if (el.classList.contains("bbgl-ach-section-title") || el.classList.contains("bbgl-ach-subsection-title")) {
-      const sec = el.getAttribute("data-ach-section"), r = cache, title = el.getAttribute("data-clip-title") || "";
+      const sec = el.getAttribute("data-ach-section"), r4 = cache, title = el.getAttribute("data-clip-title") || "";
       const gain = (label, rec, getBA, getDate) => {
         if (!rec) return label + ": \u2014";
         const ba = getBA(rec), baStr = achFmtBA(ba);
         const line1 = label + ": +" + Formatter.number(rec.value) + " " + achStatFull(rec.stat) + (baStr ? " | " + baStr : "");
-        return line1 + NL + I + getDate(rec);
+        return line1 + NL + I2 + getDate(rec);
       };
-      const eRow = (label, rec, getDate) => !rec ? label + ": \u2014" : label + ": " + Formatter.number(rec.value) + " E" + NL + I + getDate(rec);
+      const eRow = (label, rec, getDate) => !rec ? label + ": \u2014" : label + ": " + Formatter.number(rec.value) + " E" + NL + I2 + getDate(rec);
       const streak = (label, len, gains, start, end) => {
         if (!len) return label + ": \u2014";
         const gLine = gains ? achFmtGainsLine(gains) : "";
         const tot = gains ? (gains.str || 0) + (gains.def || 0) + (gains.spd || 0) + (gains.dex || 0) : 0;
-        let s = label + ": " + len + (len === 1 ? " Day" : " Days") + NL;
-        if (gLine) s += I + "Gains: " + gLine + NL;
-        if (tot) s += I + "Total Gains: +" + Formatter.number(tot) + NL;
-        if (start && end) s += I + Formatter.datePretty(start) + " \u2013 " + Formatter.datePretty(end);
-        return s;
+        let s3 = label + ": " + len + (len === 1 ? " Day" : " Days") + NL;
+        if (gLine) s3 += I2 + "Gains: " + gLine + NL;
+        if (tot) s3 += I2 + "Total Gains: +" + Formatter.number(tot) + NL;
+        if (start && end) s3 += I2 + Formatter.datePretty(start) + " \u2013 " + Formatter.datePretty(end);
+        return s3;
       };
       let blocks;
       if (sec === "greatest-gains") {
         const buildMulti = (label, mkey) => {
-          const mRecs = r && r.perStatBest ? r.perStatBest[PS_MAP[mkey]] : null;
+          const mRecs = r4 && r4.perStatBest ? r4.perStatBest[PS_MAP[mkey]] : null;
           if (!mRecs) return label + ": \u2014";
-          const mLines = ["str", "def", "spd", "dex"].map((sk) => achFmtStatBlock(mkey, mRecs[sk], sk, I)).filter(Boolean);
+          const mLines = ["str", "def", "spd", "dex"].map((sk) => achFmtStatBlock(mkey, mRecs[sk], sk, I2)).filter(Boolean);
           if (!mLines.length) return label + ": \u2014";
           return label + ":" + NL + mLines.join(NL);
         };
         blocks = [buildMulti("Best Train", "best-train"), buildMulti("Best Day", "best-day"), buildMulti("Best Week", "best-week"), buildMulti("Best Month", "best-month")];
-      } else if (sec === "expended-energy") blocks = [eRow("Best Day", r.mostEInOneDay, (rec) => Formatter.datePretty(rec.date)), eRow("Best Week", r.mostEInOneWeek, (rec) => achFmtWeekCopy(rec.weekOf)), eRow("Best Month", r.mostEInOneMonth, (rec) => rec.month)];
-      else if (sec === "consistency-kept") blocks = [streak("Best Training Streak", r.longestStreak, r.longestStreakGains, r.longestStreakStart, r.longestStreakEnd), streak("Best Green Streak", r.longestGoalStreak, r.longestGoalStreakGains, r.longestGoalStreakStart, r.longestGoalStreakEnd), streak("Best Gold Streak", r.longestGoldStreak, r.longestGoldStreakGains, r.longestGoldStreakStart, r.longestGoldStreakEnd), "Consistency: " + (r.trainingRestRatio || "\u2014") + " | " + (r.trainingDays || 0) + "/" + (r.calDays || 0) + " Days Trained", "Happy Jumps: " + (r.happyJumps || 0)];
-      else if (sec === "sexiest-streaks") blocks = [streak("Best Training Streak", r.longestStreak, r.longestStreakGains, r.longestStreakStart, r.longestStreakEnd), streak("Best Green Streak", r.longestGoalStreak, r.longestGoalStreakGains, r.longestGoalStreakStart, r.longestGoalStreakEnd), streak("Best Gold Streak", r.longestGoldStreak, r.longestGoldStreakGains, r.longestGoldStreakStart, r.longestGoldStreakEnd), streak("Best Diamond Streak", r.longestDiamondStreak, r.longestDiamondStreakGains, r.longestDiamondStreakStart, r.longestDiamondStreakEnd), "Consistency: " + (r.trainingRestRatio || "\u2014") + " | " + (r.trainingDays || 0) + "/" + (r.calDays || 0) + " Calendar Days Trained"];
-      else if (sec === "rewards-reaped") blocks = ["Green Days: " + (r.greenDays || 0), "Green Weeks: " + (r.greenWeeks || 0), "Gold Days: " + (r.goldDays || 0), "Gold Weeks: " + (r.goldWeeks || 0), "Diamond Days: " + (r.diamondDays || 0), "Diamond Weeks: " + (r.diamondWeeks || 0), "Stickers Unlocked: " + (r.stickersUnlocked || 0) + "/" + CUSTOM_STICKERS.length];
+      } else if (sec === "expended-energy") blocks = [eRow("Best Day", r4.mostEInOneDay, (rec) => Formatter.datePretty(rec.date)), eRow("Best Week", r4.mostEInOneWeek, (rec) => achFmtWeekCopy(rec.weekOf)), eRow("Best Month", r4.mostEInOneMonth, (rec) => rec.month)];
+      else if (sec === "consistency-kept") blocks = [streak("Best Training Streak", r4.longestStreak, r4.longestStreakGains, r4.longestStreakStart, r4.longestStreakEnd), streak("Best Green Streak", r4.longestGoalStreak, r4.longestGoalStreakGains, r4.longestGoalStreakStart, r4.longestGoalStreakEnd), streak("Best Gold Streak", r4.longestGoldStreak, r4.longestGoldStreakGains, r4.longestGoldStreakStart, r4.longestGoldStreakEnd), "Consistency: " + (r4.trainingRestRatio || "\u2014") + " | " + (r4.trainingDays || 0) + "/" + (r4.calDays || 0) + " Days Trained", "Happy Jumps: " + (r4.happyJumps || 0)];
+      else if (sec === "sexiest-streaks") blocks = [streak("Best Training Streak", r4.longestStreak, r4.longestStreakGains, r4.longestStreakStart, r4.longestStreakEnd), streak("Best Green Streak", r4.longestGoalStreak, r4.longestGoalStreakGains, r4.longestGoalStreakStart, r4.longestGoalStreakEnd), streak("Best Gold Streak", r4.longestGoldStreak, r4.longestGoldStreakGains, r4.longestGoldStreakStart, r4.longestGoldStreakEnd), streak("Best Diamond Streak", r4.longestDiamondStreak, r4.longestDiamondStreakGains, r4.longestDiamondStreakStart, r4.longestDiamondStreakEnd), "Consistency: " + (r4.trainingRestRatio || "\u2014") + " | " + (r4.trainingDays || 0) + "/" + (r4.calDays || 0) + " Calendar Days Trained"];
+      else if (sec === "rewards-reaped") blocks = ["Green Days: " + (r4.greenDays || 0), "Green Weeks: " + (r4.greenWeeks || 0), "Gold Days: " + (r4.goldDays || 0), "Gold Weeks: " + (r4.goldWeeks || 0), "Diamond Days: " + (r4.diamondDays || 0), "Diamond Weeks: " + (r4.diamondWeeks || 0), "Stickers Unlocked: " + (r4.stickersUnlocked || 0) + "/" + CUSTOM_STICKERS.length];
       if (blocks) {
         txt = achClipSection(
-          H,
+          H3,
           title,
           blocks
         );
@@ -4996,7 +5007,7 @@ Best Happy Jump: ${d.bestHappyJump && d.bestHappyJump.total ? (() => {
           flashEl = el;
         }
       } else if (el.hasAttribute("data-clip-section")) {
-        txt = H + NL + NL + "\u2014 " + title + " \u2014" + NL + el.getAttribute("data-clip-section");
+        txt = H3 + NL + NL + "\u2014 " + title + " \u2014" + NL + el.getAttribute("data-clip-section");
         if (sec === "happy-helpers") {
           const _sec = el.closest(".bbgl-ach-section");
           const _rows = _sec ? Array.from(_sec.querySelectorAll(".bbgl-ach-cols .bbgl-ach-row")) : [];
@@ -5013,55 +5024,55 @@ Best Happy Jump: ${d.bestHappyJump && d.bestHappyJump.total ? (() => {
         }
       }
     } else {
-      const key = el.getAttribute("data-ach-key"), r = cache;
+      const key = el.getAttribute("data-ach-key"), r4 = cache;
       const PS_MAP2 = { "best-train": "bestTrain", "best-day": "bestDay", "best-week": "bestWeek", "best-month": "bestMonth" };
       const TITLE_MAP2 = { "best-train": "Highest Gains in a Single Train", "best-day": "Highest Gains in a Single Day", "best-week": "Highest Gains in a Single Week", "best-month": "Highest Gains in a Single Month" };
       if (key === "best-train" || key === "best-day" || key === "best-week" || key === "best-month") {
-        const mRecs = r && r.perStatBest ? r.perStatBest[PS_MAP2[key]] : null;
+        const mRecs = r4 && r4.perStatBest ? r4.perStatBest[PS_MAP2[key]] : null;
         const mTitle = TITLE_MAP2[key];
         if (mRecs && mTitle) {
-          const mLines = ["str", "def", "spd", "dex"].map((sk) => achFmtStatBlock(key, mRecs[sk], sk, I)).filter(Boolean);
-          txt = H + NL + mTitle + ":" + (mLines.length ? NL + mLines.join(NL) : NL + "\u2014");
+          const mLines = ["str", "def", "spd", "dex"].map((sk) => achFmtStatBlock(key, mRecs[sk], sk, I2)).filter(Boolean);
+          txt = H3 + NL + mTitle + ":" + (mLines.length ? NL + mLines.join(NL) : NL + "\u2014");
         }
-      } else if (key === "most-e-day" && r.mostEInOneDay) {
-        const rec = r.mostEInOneDay;
-        txt = H + NL + "Most Energy Used Training in a Single Day:" + NL + Formatter.number(rec.value) + " E" + NL + I + Formatter.datePretty(rec.date);
-      } else if (key === "most-e-week" && r.mostEInOneWeek) {
-        const rec = r.mostEInOneWeek;
-        txt = H + NL + "Most Energy Used Training in a Single Week:" + NL + Formatter.number(rec.value) + " E" + NL + I + achFmtWeekCopy(rec.weekOf);
-      } else if (key === "most-e-month" && r.mostEInOneMonth) {
-        const rec = r.mostEInOneMonth;
-        txt = H + NL + "Most Energy Used Training in a Single Month:" + NL + Formatter.number(rec.value) + " E" + NL + I + rec.month;
+      } else if (key === "most-e-day" && r4.mostEInOneDay) {
+        const rec = r4.mostEInOneDay;
+        txt = H3 + NL + "Most Energy Used Training in a Single Day:" + NL + Formatter.number(rec.value) + " E" + NL + I2 + Formatter.datePretty(rec.date);
+      } else if (key === "most-e-week" && r4.mostEInOneWeek) {
+        const rec = r4.mostEInOneWeek;
+        txt = H3 + NL + "Most Energy Used Training in a Single Week:" + NL + Formatter.number(rec.value) + " E" + NL + I2 + achFmtWeekCopy(rec.weekOf);
+      } else if (key === "most-e-month" && r4.mostEInOneMonth) {
+        const rec = r4.mostEInOneMonth;
+        txt = H3 + NL + "Most Energy Used Training in a Single Month:" + NL + Formatter.number(rec.value) + " E" + NL + I2 + rec.month;
       } else if (key === "training-streak" || key === "green-streak" || key === "gold-streak" || key === "diamond-streak") {
-        const SK = { "training-streak": ["Longest Training Streak", r.longestStreak, r.longestStreakGains, r.longestStreakStart, r.longestStreakEnd], "green-streak": ["Longest Green Streak (1,000 E+)", r.longestGoalStreak, r.longestGoalStreakGains, r.longestGoalStreakStart, r.longestGoalStreakEnd], "gold-streak": ["Longest Gold Streak (1,500 E+)", r.longestGoldStreak, r.longestGoldStreakGains, r.longestGoldStreakStart, r.longestGoldStreakEnd], "diamond-streak": ["Longest Diamond Streak (2,000 E+)", r.longestDiamondStreak, r.longestDiamondStreakGains, r.longestDiamondStreakStart, r.longestDiamondStreakEnd] }[key];
-        const label = SK[0], len = SK[1] || 0, gains = SK[2], st = SK[3], en = SK[4];
+        const SK = { "training-streak": ["Longest Training Streak", r4.longestStreak, r4.longestStreakGains, r4.longestStreakStart, r4.longestStreakEnd], "green-streak": ["Longest Green Streak (1,000 E+)", r4.longestGoalStreak, r4.longestGoalStreakGains, r4.longestGoalStreakStart, r4.longestGoalStreakEnd], "gold-streak": ["Longest Gold Streak (1,500 E+)", r4.longestGoldStreak, r4.longestGoldStreakGains, r4.longestGoldStreakStart, r4.longestGoldStreakEnd], "diamond-streak": ["Longest Diamond Streak (2,000 E+)", r4.longestDiamondStreak, r4.longestDiamondStreakGains, r4.longestDiamondStreakStart, r4.longestDiamondStreakEnd] }[key];
+        const label = SK[0], len = SK[1] || 0, gains = SK[2], st = SK[3], en2 = SK[4];
         const gLine = gains ? achFmtGainsLine(gains) : "";
         const tot = gains ? (gains.str || 0) + (gains.def || 0) + (gains.spd || 0) + (gains.dex || 0) : 0;
-        txt = H + NL + label + ": " + len + (len === 1 ? " Day" : " Days");
+        txt = H3 + NL + label + ": " + len + (len === 1 ? " Day" : " Days");
         if (gLine) txt += NL + "Gains: " + gLine;
         if (tot) txt += NL + "Total Gains: +" + Formatter.number(tot);
-        if (st && en) txt += NL + I + Formatter.datePretty(st) + " \u2013 " + Formatter.datePretty(en);
+        if (st && en2) txt += NL + I2 + Formatter.datePretty(st) + " \u2013 " + Formatter.datePretty(en2);
       } else if (key === "consistency") {
-        txt = H + NL + "Training Consistency: " + (r.trainingRestRatio || "\u2014") + NL + (r.trainingDays || 0) + "/" + (r.calDays || 0) + " Days Trained";
+        txt = H3 + NL + "Training Consistency: " + (r4.trainingRestRatio || "\u2014") + NL + (r4.trainingDays || 0) + "/" + (r4.calDays || 0) + " Days Trained";
       } else if (key === "happy-jumps") {
-        txt = H + NL + "Happy Jumps: " + (r.happyJumps || 0);
+        txt = H3 + NL + "Happy Jumps: " + (r4.happyJumps || 0);
       } else if (key === "green-days") {
-        txt = H + NL + "Green Days: " + (r.greenDays || 0);
+        txt = H3 + NL + "Green Days: " + (r4.greenDays || 0);
       } else if (key === "green-weeks") {
-        txt = H + NL + "Green Weeks: " + (r.greenWeeks || 0);
+        txt = H3 + NL + "Green Weeks: " + (r4.greenWeeks || 0);
       } else if (key === "gold-days") {
-        txt = H + NL + "Gold Days: " + (r.goldDays || 0);
+        txt = H3 + NL + "Gold Days: " + (r4.goldDays || 0);
       } else if (key === "gold-weeks") {
-        txt = H + NL + "Gold Weeks: " + (r.goldWeeks || 0);
+        txt = H3 + NL + "Gold Weeks: " + (r4.goldWeeks || 0);
       } else if (key === "diamond-days") {
-        txt = H + NL + "Diamond Days: " + (r.diamondDays || 0);
+        txt = H3 + NL + "Diamond Days: " + (r4.diamondDays || 0);
       } else if (key === "diamond-weeks") {
-        txt = H + NL + "Diamond Weeks: " + (r.diamondWeeks || 0);
+        txt = H3 + NL + "Diamond Weeks: " + (r4.diamondWeeks || 0);
       } else if (key === "stickers") {
-        txt = H + NL + "Stickers Unlocked: " + (r.stickersUnlocked || 0) + "/" + CUSTOM_STICKERS.length;
+        txt = H3 + NL + "Stickers Unlocked: " + (r4.stickersUnlocked || 0) + "/" + CUSTOM_STICKERS.length;
       } else {
         const clip = el.getAttribute("data-clip") || "", clipDate = el.getAttribute("data-clip-date") || "";
-        txt = H + NL + NL + (clipDate ? clipDate + ":" + NL : "") + clip;
+        txt = H3 + NL + NL + (clipDate ? clipDate + ":" + NL : "") + clip;
       }
       flashEl = el;
     }
@@ -5131,72 +5142,72 @@ Best Happy Jump: ${d.bestHappyJump && d.bestHappyJump.total ? (() => {
   app.toggleAchievementsView = toggleAchievementsView;
 
   // src/ui/ledger.js
-  function buildSessionText(sl, s, keys) {
+  function buildSessionText(sl, s3, keys) {
     const statEmoji = { str: "\u{1F4AA}", def: "\u{1F6E1}\uFE0F", spd: "\u{1F3AF}", dex: "\u{1F93A}" };
     const statNames = { str: "Strength", def: "Defense", spd: "Speed", dex: "Dexterity" };
     let ds = "";
     if (sl._dailyList && sl._dailyList.length > 1) ds = `${Formatter.dateFull(sl._dailyList[0].date)} - ${Formatter.dateFull(sl._dailyList[sl._dailyList.length - 1].date)}`;
     else ds = Formatter.dateFull(sl.date);
     const isSingle = keys.length === 1;
-    const eCost = isSingle ? s[keys[0]].cost : s.total.cost;
+    const eCost = isSingle ? s3[keys[0]].cost : s3.total.cost;
     const eTxt = eCost > 0 ? `\u26A1${Formatter.number(eCost)} E` : "\u{1F6CC} I was a lazy POS.";
-    const statLines = keys.filter((k) => s[k].gain > 0 || s[k].cost > 0).map((k) => `${statEmoji[k]}${statNames[k]}: +${Formatter.achAbbr(s[k].gain, ACH_FMT.gains)} (${Formatter.achAbbr(s[k].start, ACH_FMT.gains)} \u2192 ${Formatter.achAbbr(s[k].end, ACH_FMT.gains)})`);
+    const statLines = keys.filter((k3) => s3[k3].gain > 0 || s3[k3].cost > 0).map((k3) => `${statEmoji[k3]}${statNames[k3]}: +${Formatter.achAbbr(s3[k3].gain, ACH_FMT.gains)} (${Formatter.achAbbr(s3[k3].start, ACH_FMT.gains)} \u2192 ${Formatter.achAbbr(s3[k3].end, ACH_FMT.gains)})`);
     return ["\u{1F451}BBGymLog", `${ds} |${eTxt}`, ...statLines].join("\n");
   }
   function flashCopied(flashEl) {
     const _flashEls = Array.isArray(flashEl) ? flashEl : [flashEl];
-    const _states = _flashEls.map((e) => {
-      const kids = Array.from(e.children);
-      const visStates = kids.map((c) => c.style.visibility);
-      kids.forEach((c) => {
-        c.style.visibility = "hidden";
+    const _states = _flashEls.map((e3) => {
+      const kids = Array.from(e3.children);
+      const visStates = kids.map((c3) => c3.style.visibility);
+      kids.forEach((c3) => {
+        c3.style.visibility = "hidden";
       });
-      const prevPos = e.style.position;
-      const cs = window.getComputedStyle(e);
-      if (cs.position === "static") e.style.position = "relative";
+      const prevPos = e3.style.position;
+      const cs = window.getComputedStyle(e3);
+      if (cs.position === "static") e3.style.position = "relative";
       const overlay = document.createElement("span");
       overlay.className = "bbgl-ach-copied-flash";
       overlay.textContent = "Copied!";
-      e.appendChild(overlay);
-      return { e, kids, visStates, prevPos, overlay };
+      e3.appendChild(overlay);
+      return { e: e3, kids, visStates, prevPos, overlay };
     });
-    setTimeout(() => _states.forEach((s) => {
-      if (s.overlay && s.overlay.parentNode) s.overlay.parentNode.removeChild(s.overlay);
-      s.kids.forEach((c, i) => {
-        c.style.visibility = s.visStates[i];
+    setTimeout(() => _states.forEach((s3) => {
+      if (s3.overlay && s3.overlay.parentNode) s3.overlay.parentNode.removeChild(s3.overlay);
+      s3.kids.forEach((c3, i3) => {
+        c3.style.visibility = s3.visStates[i3];
       });
-      s.e.style.position = s.prevPos;
+      s3.e.style.position = s3.prevPos;
     }), 1e3);
   }
   function renderStats(sl, rawLbl) {
-    const c = dom.ledgerView;
-    if (!c) return;
+    const c3 = dom.ledgerView;
+    if (!c3) return;
     if (!sl.stats) sl = app.DataController._hydrate(sl, [], rawLbl, "DAY");
-    const s = sl.stats, isP = sl.resolution !== "DAY";
+    const s3 = sl.stats, isP = sl.resolution !== "DAY";
     const dEl = dom.dateLabel;
     if (dEl) {
       const isExp = dom.panel.classList.contains("bbgl-expanded") || dom.panel.classList.contains("bbgl-mode-page");
-      let l;
+      let l3;
       if (sl.resolution === "WEEK") {
         const start = sl._weekStart || (sl._dailyList && sl._dailyList.length > 0 ? sl._dailyList[0].date : null) || sl.date;
         const end = sl._weekEnd || (sl._dailyList && sl._dailyList.length > 0 ? sl._dailyList[sl._dailyList.length - 1].date : null) || sl.date;
-        l = `Week of ${Formatter.dateMonthDay(start)}<span class="view-exp"> - ${Formatter.dateMonthDay(end)}</span>`;
+        l3 = `Week of ${Formatter.dateMonthDay(start)}<span class="view-exp"> - ${Formatter.dateMonthDay(end)}</span>`;
       } else {
-        l = isExp ? Formatter.dateFull(sl.label) : Formatter.datePretty(sl.label);
-        if (!l) l = sl.label;
+        l3 = isExp ? Formatter.dateFull(sl.label) : Formatter.datePretty(sl.label);
+        if (!l3) l3 = sl.label;
         if (sl.resolution === "MONTH") {
-          l = sl.label + " " + calendarState.year;
+          l3 = sl.label + " " + calendarState.year;
         } else if (isP && sl._dailyList.length > 0 && sl.resolution !== "ALL") {
           const endLabel = Formatter.dateMonthDay(sl._dailyList[sl._dailyList.length - 1].date);
-          l += `<span class="view-exp"> (${Formatter.dateMonthDay(sl._dailyList[0].date)} - ${endLabel})</span>`;
+          l3 += `<span class="view-exp"> (${Formatter.dateMonthDay(sl._dailyList[0].date)} - ${endLabel})</span>`;
         }
       }
-      dEl.innerHTML = l;
+      dEl.innerHTML = l3;
     }
     const sumEl = dom.summaryLabel;
-    if (sumEl) sumEl.innerHTML = `Total E: ${Formatter.dual(s.total.cost)} <span style="opacity:0.3; margin:0 6px">|</span> Total Gains: ${Formatter.dual(s.total.gain)}`;
+    if (sumEl) sumEl.innerHTML = `Total E: ${Formatter.dual(s3.total.cost)} <span style="opacity:0.3; margin:0 6px">|</span> Total Gains: ${Formatter.dual(s3.total.gain)}`;
     const lm = { "STR": "Strength", "DEF": "Defense", "SPD": "Speed", "DEX": "Dexterity", "TOT": "Total" };
-    runtime.currentStats = { sl, s };
+    runtime.currentStats = { sl, s: s3 };
     if (dom.itemCounters) {
       const items = sl.items || {};
       const isDay = sl.resolution === "DAY";
@@ -5211,20 +5222,20 @@ Best Happy Jump: ${d.bestHappyJump && d.bestHappyJump.total ? (() => {
         const drugAvg = days > 0 ? cnt(drugCode) / days : 0;
         drugSub = sl.resolution === "ALL" ? "" : `<span class="bbgl-ic-sub">(${drugAvg.toFixed(2)})</span>`;
       }
-      const nameOf = (c2) => {
-        if (c2 === 2290) return "Xanax";
-        if (c2 === 2230) return "LSD";
-        if (c2 === 2040) return "Cans";
-        if (c2 === 2190) return "FHC";
-        if (c2 === 8981) return "Eggs";
-        return shortOf(c2);
+      const nameOf = (c4) => {
+        if (c4 === 2290) return "Xanax";
+        if (c4 === 2230) return "LSD";
+        if (c4 === 2040) return "Cans";
+        if (c4 === 2190) return "FHC";
+        if (c4 === 8981) return "Eggs";
+        return shortOf(c4);
       };
       const isAll = sl.resolution === "ALL";
       const drugTip = `<div style="text-align:center">${nameOf(drugCode)} Taken` + (!isDay && !isAll ? `<br><span class="tt-sub">(Avg/Day)</span>` : ``) + `</div>`;
       parts.push(`<span class="bbgl-ic" data-tooltip-html='${drugTip}'>${shortOf(drugCode)}: ${cnt(drugCode)}${drugSub}</span>`);
       [ECAN_LOG, 2190, secondaryCode, 8981].forEach((code) => {
-        const c2 = cnt(code);
-        if (c2 <= 0) return;
+        const c4 = cnt(code);
+        if (c4 <= 0) return;
         const sub = code === ECAN_LOG && sl.resolution !== "ALL" ? `<span class="bbgl-ic-sub">(+${Math.round(sl.ecanEnergy || 0)})</span>` : "";
         let dynTip = "";
         if (code === ECAN_LOG) {
@@ -5232,7 +5243,7 @@ Best Happy Jump: ${d.bestHappyJump && d.bestHappyJump.total ? (() => {
         } else {
           dynTip = `<div style="text-align:center">${nameOf(code)} Used</div>`;
         }
-        parts.push(`<span class="bbgl-ic bbgl-ic-dyn" data-tooltip-html='${dynTip}'>${shortOf(code)}: ${c2}${sub}</span>`);
+        parts.push(`<span class="bbgl-ic bbgl-ic-dyn" data-tooltip-html='${dynTip}'>${shortOf(code)}: ${c4}${sub}</span>`);
       });
       const refills = cnt(4900);
       const refillVal = isDay ? refills > 0 ? `<span class="bbgl-ic-yes">\u2713</span>` : `<span class="bbgl-ic-no">\u2717</span>` : `${refills}`;
@@ -5243,44 +5254,44 @@ Best Happy Jump: ${d.bestHappyJump && d.bestHappyJump.total ? (() => {
     const todayStr = Formatter.dateLogical();
     const slLastDate = sl._dailyList && sl._dailyList.length > 0 ? sl._dailyList[sl._dailyList.length - 1].date : sl.date;
     const isCurrentPeriod = sl.resolution === "ALL" || slLastDate >= todayStr;
-    const col = (lc, k, cl) => {
-      const d = s[k], ft = lm[lc] || lc;
+    const col = (lc, k3, cl) => {
+      const d3 = s3[k3], ft = lm[lc] || lc;
       let rh = "", rt = "";
-      const fmtR = (n) => {
-        if (!n && n !== 0) return "0";
-        const a = Math.abs(n);
-        if (a >= 1e15) return (n / 1e15).toFixed(4) + "q";
-        if (a >= 1e12) return (n / 1e12).toFixed(4) + "t";
-        if (a >= 1e9) return (n / 1e9).toFixed(4) + "b";
-        if (a >= 100) return Math.round(n).toLocaleString("en-US");
-        return n.toFixed(1);
+      const fmtR = (n2) => {
+        if (!n2 && n2 !== 0) return "0";
+        const a3 = Math.abs(n2);
+        if (a3 >= 1e15) return (n2 / 1e15).toFixed(4) + "q";
+        if (a3 >= 1e12) return (n2 / 1e12).toFixed(4) + "t";
+        if (a3 >= 1e9) return (n2 / 1e9).toFixed(4) + "b";
+        if (a3 >= 100) return Math.round(n2).toLocaleString("en-US");
+        return n2.toFixed(1);
       };
       const mkTip = (r1, r22, pct, sg) => `<div style='text-align:center;line-height:1.6'><div style='margin-bottom:0px'>Growth Rate</div><div style='font-size:0.85em;opacity:0.35;margin-bottom:3px'>(Gains/150E)</div><div>${fmtR(r1)} \u2192 ${fmtR(r22)}</div><div style='font-size:0.85em;color:#aaa'>${sg}${Math.round(pct)}%</div></div>`;
-      if (isP && k !== "total") {
+      if (isP && k3 !== "total") {
         let th = `<span style="opacity:0.3">--</span>`;
         if (userConfig.ratesEnabled && sl._dailyList.length > 0) {
           const _fpd = /* @__PURE__ */ new Date(sl._dailyList[0].date + "T00:00:00Z");
           _fpd.setUTCDate(_fpd.getUTCDate() - 1);
-          const r1 = app.DataController.getHistoricalRate(_fpd.toISOString().slice(0, 10), k), r22 = app.DataController._hydrate(sl._dailyList[sl._dailyList.length - 1], [], "", "DAY").stats[k].rate, del = r22 - r1, sg = del >= 0 ? "+" : "", pct = r1 > 0 ? (r22 - r1) / r1 * 100 : 0;
+          const r1 = app.DataController.getHistoricalRate(_fpd.toISOString().slice(0, 10), k3), r22 = app.DataController._hydrate(sl._dailyList[sl._dailyList.length - 1], [], "", "DAY").stats[k3].rate, del = r22 - r1, sg = del >= 0 ? "+" : "", pct = r1 > 0 ? (r22 - r1) / r1 * 100 : 0;
           th = `<div class="rates-group" style="display:flex;flex-direction:column;align-items:center;line-height:1.1"><span>${sg}${Formatter.achAbbr(del, ACH_FMT.compact)}</span><span class="view-exp rate-pct" style="font-size:0.8em;opacity:0.7;margin-top:2px;margin-bottom:-2px;">(${sg}${Formatter.ratePct(pct)}%)</span></div>`;
           rt = mkTip(r1, r22, pct, sg);
         }
         rh = userConfig.ratesEnabled ? th : "";
       } else {
-        if (userConfig.ratesEnabled && k !== "total") {
+        if (userConfig.ratesEnabled && k3 !== "total") {
           const _pd = /* @__PURE__ */ new Date(sl.date + "T00:00:00Z");
           _pd.setUTCDate(_pd.getUTCDate() - 1);
-          const r1 = app.DataController.getHistoricalRate(_pd.toISOString().slice(0, 10), k), r22 = d.rate, del = r22 - r1, sg = del >= 0 ? "+" : "", pct = r1 > 0 ? del / r1 * 100 : 0;
-          rh = userConfig.ratesEnabled ? Formatter.dual(d.rate, true) : "";
+          const r1 = app.DataController.getHistoricalRate(_pd.toISOString().slice(0, 10), k3), r22 = d3.rate, del = r22 - r1, sg = del >= 0 ? "+" : "", pct = r1 > 0 ? del / r1 * 100 : 0;
+          rh = userConfig.ratesEnabled ? Formatter.dual(d3.rate, true) : "";
           rt = mkTip(r1, r22, pct, sg);
         } else {
-          rh = userConfig.ratesEnabled ? Formatter.dual(d.rate, true) : "";
+          rh = userConfig.ratesEnabled ? Formatter.dual(d3.rate, true) : "";
           rt = `Growth Rate (Gains / 150E)`;
         }
       }
-      return `<div class="stat-column" data-copy-stat="${k}"><div class="col-header cell-stack"><div class="l-top c-label ${cl} bbgl-copy-label" data-tooltip="Click to copy ${ft} data" style="cursor:pointer"><span class="view-std">${lc}</span><span class="view-exp">${ft}</span></div><div class="l-bot" data-tooltip="${isP ? `Energy Used on ${ft}` : `Energy Used`}">${Formatter.dual(d.cost)} E</div></div><div class="bbgl-spacer"></div><div class="col-data-block cell-stack c-gain"><div class="l-top" data-tooltip="${ft} Gained">+${Formatter.dual(d.gain)}</div><div class="l-bot" data-tooltip="${rt}">${rh}</div></div><div class="bbgl-spacer"></div><div class="col-data-block cell-stack c-total"><div class="l-top" data-tooltip="${isCurrentPeriod ? "Current" : "Ending"} ${ft}">${Formatter.dual(d.end)}</div><div class="l-bot" data-tooltip="Starting ${ft}">${Formatter.dual(d.start)}</div></div></div>`;
+      return `<div class="stat-column" data-copy-stat="${k3}"><div class="col-header cell-stack"><div class="l-top c-label ${cl} bbgl-copy-label" data-tooltip="Click to copy ${ft} data" style="cursor:pointer"><span class="view-std">${lc}</span><span class="view-exp">${ft}</span></div><div class="l-bot" data-tooltip="${isP ? `Energy Used on ${ft}` : `Energy Used`}">${Formatter.dual(d3.cost)} E</div></div><div class="bbgl-spacer"></div><div class="col-data-block cell-stack c-gain"><div class="l-top" data-tooltip="${ft} Gained">+${Formatter.dual(d3.gain)}</div><div class="l-bot" data-tooltip="${rt}">${rh}</div></div><div class="bbgl-spacer"></div><div class="col-data-block cell-stack c-total"><div class="l-top" data-tooltip="${isCurrentPeriod ? "Current" : "Ending"} ${ft}">${Formatter.dual(d3.end)}</div><div class="l-bot" data-tooltip="Starting ${ft}">${Formatter.dual(d3.start)}</div></div></div>`;
     };
-    c.innerHTML = ` ${col("STR", "str", "t-str")} ${col("DEF", "def", "t-def")} ${col("SPD", "spd", "t-spd")} ${col("DEX", "dex", "t-dex")} `;
+    c3.innerHTML = ` ${col("STR", "str", "t-str")} ${col("DEF", "def", "t-def")} ${col("SPD", "spd", "t-spd")} ${col("DEX", "dex", "t-dex")} `;
   }
   app.buildSessionText = buildSessionText;
   app.flashCopied = flashCopied;
@@ -5288,23 +5299,23 @@ Best Happy Jump: ${d.bestHappyJump && d.bestHappyJump.total ? (() => {
 
   // src/data/import-export.js
   async function exportData() {
-    let s;
+    let s3;
     try {
-      s = await app.DBManager.getStorage();
-      if (!s) {
+      s3 = await app.DBManager.getStorage();
+      if (!s3) {
         bbglError("Export Error: Local database is inaccessible or empty. Cannot export data.\n\nRecommendation: Please refresh the page and try again. If you are using Private Browsing or have strict storage limits enabled, you may need to disable them for Torn.com to allow the Gym Log to save and export data.");
         return;
       }
-    } catch (e) {
-      bbglError("Export Error: " + (e.message || "Failed to read local database.") + "\n\nRecommendation: Please refresh the page. Ensure your browser is not blocking local storage for Torn.com.");
+    } catch (e3) {
+      bbglError("Export Error: " + (e3.message || "Failed to read local database.") + "\n\nRecommendation: Please refresh the page. Ensure your browser is not blocking local storage for Torn.com.");
       return;
     }
     const active = app.getActiveHistory();
     let activeCount = 0;
-    [...active.history || [], active.today].filter(Boolean).forEach((d) => {
-      if (d.series) activeCount += d.series.length;
+    [...active.history || [], active.today].filter(Boolean).forEach((d3) => {
+      if (d3.series) activeCount += d3.series.length;
     });
-    if (s.series && s.series.length < activeCount) {
+    if (s3.series && s3.series.length < activeCount) {
       if (!confirm(`\u26A0\uFE0F EXPORT WARNING \u26A0\uFE0F
 
 The exported file will be missing some recent logs visible on your screen due to a database error.
@@ -5322,57 +5333,57 @@ Download incomplete file anyway?`)) {
     const filename = `BBGymLogData - ${month} ${day}_${year}.json`;
     app.DataController.buildProgressionCache();
     if (historyCache && historyCache.meta && historyCache.meta.stickers) {
-      if (!s.meta) s.meta = {};
-      s.meta.stickers = historyCache.meta.stickers;
+      if (!s3.meta) s3.meta = {};
+      s3.meta.stickers = historyCache.meta.stickers;
     }
     const use24h = !new Intl.DateTimeFormat(navigator.language, { hour: "numeric" }).format(/* @__PURE__ */ new Date(0)).match(/AM|PM/i);
-    const ordinal = (n) => {
-      const sfx = ["th", "st", "nd", "rd"], v = n % 100;
-      return n + (sfx[(v - 20) % 10] || sfx[v] || sfx[0]);
+    const ordinal = (n2) => {
+      const sfx = ["th", "st", "nd", "rd"], v3 = n2 % 100;
+      return n2 + (sfx[(v3 - 20) % 10] || sfx[v3] || sfx[0]);
     };
-    const fmtReadable = (d) => `${CONSTANTS.MONTHS[d.getUTCMonth()]} ${ordinal(d.getUTCDate())}, ${d.getUTCFullYear()} - ${String(d.getUTCHours()).padStart(2, "0")}:${String(d.getUTCMinutes()).padStart(2, "0")} UTC`;
+    const fmtReadable = (d3) => `${CONSTANTS.MONTHS[d3.getUTCMonth()]} ${ordinal(d3.getUTCDate())}, ${d3.getUTCFullYear()} - ${String(d3.getUTCHours()).padStart(2, "0")}:${String(d3.getUTCMinutes()).padStart(2, "0")} UTC`;
     const tzName = (() => {
       try {
-        return new Intl.DateTimeFormat("en", { timeZoneName: "short" }).formatToParts(now).find((p) => p.type === "timeZoneName").value;
-      } catch (e) {
+        return new Intl.DateTimeFormat("en", { timeZoneName: "short" }).formatToParts(now).find((p3) => p3.type === "timeZoneName").value;
+      } catch (e3) {
         return "";
       }
     })();
     const fmtTs = (ts) => {
-      const d = new Date(ts * 1e3);
-      const utcStr = `${String(d.getUTCHours()).padStart(2, "0")}:${String(d.getUTCMinutes()).padStart(2, "0")}:${String(d.getUTCSeconds()).padStart(2, "0")} UTC`;
-      const lH = d.getHours(), lM = String(d.getMinutes()).padStart(2, "0"), lS = String(d.getSeconds()).padStart(2, "0");
+      const d3 = new Date(ts * 1e3);
+      const utcStr = `${String(d3.getUTCHours()).padStart(2, "0")}:${String(d3.getUTCMinutes()).padStart(2, "0")}:${String(d3.getUTCSeconds()).padStart(2, "0")} UTC`;
+      const lH = d3.getHours(), lM = String(d3.getMinutes()).padStart(2, "0"), lS = String(d3.getSeconds()).padStart(2, "0");
       const localStr = use24h ? `${String(lH).padStart(2, "0")}:${lM}:${lS}` : `${lH % 12 || 12}:${lM}:${lS}${lH >= 12 ? "pm" : "am"}`;
       return `${utcStr} / ${localStr}${tzName ? ` ${tzName}` : ""}`;
     };
-    const exportStorage = JSON.parse(JSON.stringify(s));
+    const exportStorage = JSON.parse(JSON.stringify(s3));
     const itemTotals = {};
     Object.keys(ITEM_LOG_META).forEach((id) => {
-      const m = ITEM_LOG_META[id];
-      const g = ITEM_GROUP_LABELS[m.group] || "Other Items";
-      if (!itemTotals[g]) itemTotals[g] = {};
-      itemTotals[g][m.label] = 0;
+      const m3 = ITEM_LOG_META[id];
+      const g4 = ITEM_GROUP_LABELS[m3.group] || "Other Items";
+      if (!itemTotals[g4]) itemTotals[g4] = {};
+      itemTotals[g4][m3.label] = 0;
     });
-    (exportStorage.series || []).forEach((e) => {
-      if (typeof e.gain === "number") e.gain = r2(e.gain);
-      if (typeof e.after === "number") e.after = r2(e.after);
-      if (e.type === "item" && ITEM_LOG_META[e.logId]) {
-        const m = ITEM_LOG_META[e.logId];
-        itemTotals[ITEM_GROUP_LABELS[m.group] || "Other Items"][m.label]++;
+    (exportStorage.series || []).forEach((e3) => {
+      if (typeof e3.gain === "number") e3.gain = r2(e3.gain);
+      if (typeof e3.after === "number") e3.after = r2(e3.after);
+      if (e3.type === "item" && ITEM_LOG_META[e3.logId]) {
+        const m3 = ITEM_LOG_META[e3.logId];
+        itemTotals[ITEM_GROUP_LABELS[m3.group] || "Other Items"][m3.label]++;
       }
     });
     const getUtcDay = (ts) => {
-      const d = new Date(ts * 1e3);
-      return { label: `${CONSTANTS.MONTHS[d.getUTCMonth()]} ${ordinal(d.getUTCDate())}, ${d.getUTCFullYear()}`, key: `${d.getUTCFullYear()}-${d.getUTCMonth()}-${d.getUTCDate()}` };
+      const d3 = new Date(ts * 1e3);
+      return { label: `${CONSTANTS.MONTHS[d3.getUTCMonth()]} ${ordinal(d3.getUTCDate())}, ${d3.getUTCFullYear()}`, key: `${d3.getUTCFullYear()}-${d3.getUTCMonth()}-${d3.getUTCDate()}` };
     };
     const getLocalDay = (ts) => {
-      const d = new Date(ts * 1e3);
-      return { label: `${CONSTANTS.MONTHS[d.getMonth()]} ${ordinal(d.getDate())}, ${d.getFullYear()}`, key: `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}` };
+      const d3 = new Date(ts * 1e3);
+      return { label: `${CONSTANTS.MONTHS[d3.getMonth()]} ${ordinal(d3.getDate())}, ${d3.getFullYear()}`, key: `${d3.getFullYear()}-${d3.getMonth()}-${d3.getDate()}` };
     };
     const log = [];
     let curDayObj = null, prevLocalKey = null;
-    [...exportStorage.series || []].reverse().forEach((e) => {
-      const utc = getUtcDay(e.ts), local = getLocalDay(e.ts);
+    [...exportStorage.series || []].reverse().forEach((e3) => {
+      const utc = getUtcDay(e3.ts), local = getLocalDay(e3.ts);
       if (!curDayObj || utc.key !== curDayObj._k) {
         curDayObj = { day: `${utc.label} - UTC`, _k: utc.key, _lk: /* @__PURE__ */ new Set(), entries: [] };
         log.push(curDayObj);
@@ -5380,42 +5391,42 @@ Download incomplete file anyway?`)) {
       }
       if (prevLocalKey !== null && local.key !== prevLocalKey) curDayObj.entries.push(`\u2500\u2500 ${local.label} (${tzName}) \u2500\u2500`);
       else if (prevLocalKey === null && utc.key !== local.key) curDayObj.entries.push(`\u2500\u2500 ${local.label} (${tzName}) \u2500\u2500`);
-      if (e.type === "item") {
-        const label = ITEM_LOG_META[e.logId] && ITEM_LOG_META[e.logId].label || `Item ${e.logId}`;
-        const entry = { [label]: e.ts };
-        if (e.energy) entry.e = e.energy;
-        if (e.energyLost != null) entry.eLost = e.energyLost;
-        if (e.happy) entry.happy = e.happy;
-        if (e.statKey) {
-          entry.stat = e.statKey;
-          entry.gain = e.statGain;
+      if (e3.type === "item") {
+        const label = ITEM_LOG_META[e3.logId] && ITEM_LOG_META[e3.logId].label || `Item ${e3.logId}`;
+        const entry = { [label]: e3.ts };
+        if (e3.energy) entry.e = e3.energy;
+        if (e3.energyLost != null) entry.eLost = e3.energyLost;
+        if (e3.happy) entry.happy = e3.happy;
+        if (e3.statKey) {
+          entry.stat = e3.statKey;
+          entry.gain = e3.statGain;
         }
         curDayObj.entries.push(entry);
       } else {
         curDayObj.entries.push({
-          at: fmtTs(e.ts),
-          ts: e.ts,
-          stat: e.stat,
-          gain: r2(e.gain),
-          cost: e.cost,
-          after: r2(e.after),
-          ...e.rate !== void 0 ? { rate: e.rate } : {}
+          at: fmtTs(e3.ts),
+          ts: e3.ts,
+          stat: e3.stat,
+          gain: r2(e3.gain),
+          cost: e3.cost,
+          after: r2(e3.after),
+          ...e3.rate !== void 0 ? { rate: e3.rate } : {}
         });
       }
       curDayObj._lk.add(local.key);
       prevLocalKey = local.key;
     });
-    log.forEach((d) => {
-      if (d._lk && d._lk.size === 1 && [...d._lk][0] === d._k) d.day = d.day.replace(" - UTC", ` - UTC/${tzName}`);
-      delete d._k;
-      delete d._lk;
+    log.forEach((d3) => {
+      if (d3._lk && d3._lk.size === 1 && [...d3._lk][0] === d3._k) d3.day = d3.day.replace(" - UTC", ` - UTC/${tzName}`);
+      delete d3._k;
+      delete d3._lk;
     });
     exportStorage.series = log;
     const achievements = app.computeAchievements(app.getActiveHistory());
     const cleanCfg = {};
-    ALLOWED_CONFIG_KEYS.forEach((k) => {
-      if (userConfig[k] !== void 0) {
-        cleanCfg[k] = userConfig[k];
+    ALLOWED_CONFIG_KEYS.forEach((k3) => {
+      if (userConfig[k3] !== void 0) {
+        cleanCfg[k3] = userConfig[k3];
       }
     });
     const stickers = exportStorage?.meta?.stickers;
@@ -5428,100 +5439,100 @@ Download incomplete file anyway?`)) {
         const wars = JSON.parse(warsRaw);
         const logCutoff = exportStorage.meta && exportStorage.meta.logStartDate ? exportStorage.meta.logStartDate : 0;
         const factionHistory = app.getFactionHistory();
-        rankedWars = Object.entries(wars).filter(([, w]) => w.war && w.war.end && w.war.end >= logCutoff && app.wasInFactionDuringWar(factionHistory, w.factionId, w.war.end)).map(([id, w]) => ({ id, start: w.war && w.war.start, end: w.war && w.war.end, winner: w.war && w.war.winner }));
+        rankedWars = Object.entries(wars).filter(([, w3]) => w3.war && w3.war.end && w3.war.end >= logCutoff && app.wasInFactionDuringWar(factionHistory, w3.factionId, w3.war.end)).map(([id, w3]) => ({ id, start: w3.war && w3.war.start, end: w3.war && w3.war.end, winner: w3.war && w3.war.winner }));
       }
-    } catch (e) {
+    } catch (e3) {
     }
     let content = JSON.stringify({ meta: { version: SCRIPT_VERSION, exportedAt: fmtReadable(now), itemTotals, ...rankedWars ? { rankedWars } : {} }, config: cleanCfg, achievements, storage: exportStorage, _s: stickers ? JSON.stringify(stickers) : void 0 }, null, 2);
-    content = content.replace(/\{\n(\s+)"at": ("[^"]*"),\n\s+"ts": (\d+),\n\s+"stat": ("[^"]*"),\n\s+"gain": ([\d.]+),\n\s+"cost": (\d+),\n\s+"after": ([\d.]+)(?:,\n\s+"rate": ([\d.]+))?\n\s+\}/g, (m, sp, la, ts, st, g, co, a2, r) => {
-      let o = '{"at": ' + la + ', "ts": ' + ts + ",\n" + sp + '"stat": ' + st + ",\n" + sp + '"gain": ' + g + ', "cost": ' + co + ",\n" + sp + '"after": ' + a2;
-      if (r) o += ', "rate": ' + r;
-      return o + "}";
+    content = content.replace(/\{\n(\s+)"at": ("[^"]*"),\n\s+"ts": (\d+),\n\s+"stat": ("[^"]*"),\n\s+"gain": ([\d.]+),\n\s+"cost": (\d+),\n\s+"after": ([\d.]+)(?:,\n\s+"rate": ([\d.]+))?\n\s+\}/g, (m3, sp, la, ts, st, g4, co, a4, r4) => {
+      let o3 = '{"at": ' + la + ', "ts": ' + ts + ",\n" + sp + '"stat": ' + st + ",\n" + sp + '"gain": ' + g4 + ', "cost": ' + co + ",\n" + sp + '"after": ' + a4;
+      if (r4) o3 += ', "rate": ' + r4;
+      return o3 + "}";
     });
-    const itemLineLabels = Object.values(ITEM_LOG_META).map((m) => m.label.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")).join("|");
-    content = content.replace(new RegExp('\\{\\n\\s+"(' + itemLineLabels + ')":[^}]*\\}', "g"), (m) => m.replace(/\s*\n\s*/g, " "));
+    const itemLineLabels = Object.values(ITEM_LOG_META).map((m3) => m3.label.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")).join("|");
+    content = content.replace(new RegExp('\\{\\n\\s+"(' + itemLineLabels + ')":[^}]*\\}', "g"), (m3) => m3.replace(/\s*\n\s*/g, " "));
     content = content.replace(/\},(\ *\n\ +)\{"at":/g, '},\n$1{"at":');
     content = content.replace(/\},(\ *\n([ ]+))"\u2500/g, '},\n\n$2"\u2500');
     content = content.replace(/\u2500",(\ *\n([ ]+))\{"at":/g, '\u2500",\n\n$2{"at":');
     content = content.replace(/"meta": \{\n\s+"version": "([^"]+)",\n\s+"exportedAt": "([^"]+)"\n\s+\}/, '"meta": {"version": "$1", "exportedAt": "$2"}');
-    content = content.replace(/"config": \{([\s\S]*?)\n\s+\}(?=,\n\s+"achievements")/, (m, inner) => '"config": {' + inner.replace(/\n\s+/g, " ").trimStart() + "}");
+    content = content.replace(/"config": \{([\s\S]*?)\n\s+\}(?=,\n\s+"achievements")/, (m3, inner) => '"config": {' + inner.replace(/\n\s+/g, " ").trimStart() + "}");
     try {
-      const f = new File([content], filename, { type: "text/plain" });
-      if (navigator.canShare && navigator.canShare({ files: [f] }) && window.innerWidth <= 800) {
-        await navigator.share({ title: filename, files: [f] });
+      const f4 = new File([content], filename, { type: "text/plain" });
+      if (navigator.canShare && navigator.canShare({ files: [f4] }) && window.innerWidth <= 800) {
+        await navigator.share({ title: filename, files: [f4] });
         return;
       }
-    } catch (e) {
+    } catch (e3) {
     }
     const blob = new Blob([content], { type: "application/json" });
     const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.style.display = "none";
-    a.href = url;
-    a.download = filename;
-    document.body.appendChild(a);
-    a.click();
+    const a3 = document.createElement("a");
+    a3.style.display = "none";
+    a3.href = url;
+    a3.download = filename;
+    document.body.appendChild(a3);
+    a3.click();
     setTimeout(() => {
-      document.body.removeChild(a);
+      document.body.removeChild(a3);
       URL.revokeObjectURL(url);
     }, 3e3);
   }
-  function importData(f, onDone, opts = {}) {
-    if (!f) {
+  function importData(f4, onDone, opts = {}) {
+    if (!f4) {
       if (onDone) onDone(false);
       return;
     }
     const silent = !!opts.silent;
-    const r = new FileReader();
-    r.onload = async (e) => {
+    const r4 = new FileReader();
+    r4.onload = async (e3) => {
       let ok = false;
       try {
-        const j = JSON.parse(e.target.result);
-        const val = app.validateImportSchema(j);
+        const j4 = JSON.parse(e3.target.result);
+        const val = app.validateImportSchema(j4);
         if (!val.ok) {
           if (!silent) bbglError(`Import Failed: ${val.msg}`);
           if (onDone) onDone(false);
           return;
         }
-        if (j.storage) {
-          j.storage = app.sanitizeStorageRecord(j.storage);
-          if (j.storage.series && j.storage.series.length && j.storage.series[0] && j.storage.series[0].day) {
+        if (j4.storage) {
+          j4.storage = app.sanitizeStorageRecord(j4.storage);
+          if (j4.storage.series && j4.storage.series.length && j4.storage.series[0] && j4.storage.series[0].day) {
             const labelToItem = {};
             Object.keys(ITEM_LOG_META).forEach((id) => {
               labelToItem[ITEM_LOG_META[id].label] = { logId: Number(id), energy: !!ITEM_LOG_META[id].energy };
             });
-            j.storage.series = j.storage.series.flatMap((d) => (d.entries || []).filter((e2) => typeof e2 === "object" && e2 !== null)).reverse();
-            j.storage.series = j.storage.series.map((e2) => {
-              if (e2 && e2.ts === void 0 && e2.stat === void 0) {
-                const k = Object.keys(e2).find((key) => key !== "e" && labelToItem[key]);
-                if (k) {
-                  const m = labelToItem[k];
-                  const out = { type: "item", logId: m.logId, ts: e2[k] };
-                  if (e2.e !== void 0) out.energy = e2.e;
+            j4.storage.series = j4.storage.series.flatMap((d3) => (d3.entries || []).filter((e4) => typeof e4 === "object" && e4 !== null)).reverse();
+            j4.storage.series = j4.storage.series.map((e4) => {
+              if (e4 && e4.ts === void 0 && e4.stat === void 0) {
+                const k3 = Object.keys(e4).find((key) => key !== "e" && labelToItem[key]);
+                if (k3) {
+                  const m3 = labelToItem[k3];
+                  const out = { type: "item", logId: m3.logId, ts: e4[k3] };
+                  if (e4.e !== void 0) out.energy = e4.e;
                   return out;
                 }
               }
-              delete e2.at;
-              delete e2.loggedAt;
-              return e2;
+              delete e4.at;
+              delete e4.loggedAt;
+              return e4;
             });
           }
-          const importedMeta = j.storage.meta || {};
-          let stickers = importedMeta.stickers || j._s;
+          const importedMeta = j4.storage.meta || {};
+          let stickers = importedMeta.stickers || j4._s;
           if (typeof stickers === "string") {
             try {
               stickers = JSON.parse(stickers);
-            } catch (e2) {
+            } catch (e4) {
             }
           }
           if (!stickers) stickers = {};
-          j.storage.meta.stickers = stickers;
-          await app.DBManager.setStorage(j.storage);
-          const rebuilt = app.DataController._rebuildFromSeries(j.storage.series || [], j.storage.meta && j.storage.meta.baselineBreakdown || ZERO_BREAKDOWN);
+          j4.storage.meta.stickers = stickers;
+          await app.DBManager.setStorage(j4.storage);
+          const rebuilt = app.DataController._rebuildFromSeries(j4.storage.series || [], j4.storage.meta && j4.storage.meta.baselineBreakdown || ZERO_BREAKDOWN);
           setHistoryCache({ meta: { ...importedMeta, stickers }, history: rebuilt.history, today: rebuilt.today });
-          if (j.config && typeof j.config === "object") {
-            ALLOWED_CONFIG_KEYS.forEach((k) => {
-              if (j.config[k] !== void 0) userConfig[k] = j.config[k];
+          if (j4.config && typeof j4.config === "object") {
+            ALLOWED_CONFIG_KEYS.forEach((k3) => {
+              if (j4.config[k3] !== void 0) userConfig[k3] = j4.config[k3];
             });
             if (!userConfig.privacyAgreed || isNaN(Date.parse(userConfig.privacyAgreed))) {
               userConfig.privacyAgreed = (/* @__PURE__ */ new Date()).toISOString();
@@ -5529,7 +5540,7 @@ Download incomplete file anyway?`)) {
             saveConfig();
           }
           try {
-            const importedVer = j && j.meta && j.meta.version ? String(j.meta.version) : "";
+            const importedVer = j4 && j4.meta && j4.meta.version ? String(j4.meta.version) : "";
             const curSeen = localStorage.getItem(KEYS.CHANGELOG_VER);
             if (!curSeen) {
               if (importedVer) localStorage.setItem(KEYS.CHANGELOG_VER, importedVer);
@@ -5540,7 +5551,7 @@ Download incomplete file anyway?`)) {
               localStorage.setItem(KEYS.CHANGELOG_NOTIF, "1");
               app.syncChangelogNotif(true);
             }
-          } catch (e2) {
+          } catch (e4) {
           }
           app.DataController.invalidate();
           calendarState.selectedData = null;
@@ -5559,10 +5570,10 @@ Download incomplete file anyway?`)) {
       if (inp2) inp2.value = "";
       if (onDone) onDone(ok);
     };
-    r.readAsText(f);
+    r4.readAsText(f4);
   }
-  function importDataFromWelcome(f) {
-    importData(f, async (success) => {
+  function importDataFromWelcome(f4) {
+    importData(f4, async (success) => {
       if (!success) return;
       app.refreshInitLock();
       if (!userConfig.apiKey) {
@@ -5597,7 +5608,7 @@ Please enter a new key to continue.`);
         viewState.activeViewLabel = null;
         app.switchView("ledger");
         app.syncWithFeedback("FULL_SYNC");
-      } catch (e) {
+      } catch (e3) {
         bbglError(MSG_KEY_NETWORK_ERROR);
         app.renderPanelContent();
         const wv = dom.welcomeView;
@@ -5609,9 +5620,9 @@ Please enter a new key to continue.`);
     if (confirm("\u26A0\uFE0F CLEAR LOG HISTORY? \u26A0\uFE0F\n\nThis will permanently delete your training data.\n\nUse 'Export Log' before proceeding to preserve it.")) {
       await app.DBManager.clearStorage();
       const keep = [KEYS.CONFIG, KEYS.STATE, "bbgl_initialized"];
-      for (let i = localStorage.length - 1; i >= 0; i--) {
-        const k = localStorage.key(i);
-        if (k && k.startsWith("bbgl_") && k !== KEYS.STORAGE && !keep.includes(k)) localStorage.removeItem(k);
+      for (let i3 = localStorage.length - 1; i3 >= 0; i3--) {
+        const k3 = localStorage.key(i3);
+        if (k3 && k3.startsWith("bbgl_") && k3 !== KEYS.STORAGE && !keep.includes(k3)) localStorage.removeItem(k3);
       }
       sessionStorage.removeItem(KEYS.SESSION);
       sessionStorage.removeItem(KEYS.SESSION_CACHE);
@@ -5632,9 +5643,9 @@ Please enter a new key to continue.`);
   }
   async function factoryReset() {
     await app.DBManager.clearStorage();
-    for (let i = localStorage.length - 1; i >= 0; i--) {
-      const k = localStorage.key(i);
-      if (k && k.startsWith("bbgl_")) localStorage.removeItem(k);
+    for (let i3 = localStorage.length - 1; i3 >= 0; i3--) {
+      const k3 = localStorage.key(i3);
+      if (k3 && k3.startsWith("bbgl_")) localStorage.removeItem(k3);
     }
     sessionStorage.removeItem(KEYS.SESSION);
     sessionStorage.removeItem(KEYS.SESSION_CACHE);
@@ -5648,8 +5659,8 @@ Please enter a new key to continue.`);
     runtime.currentStats = null;
     runtime._achPage = 0;
     const _fresh = { apiKey: "", dayStartMode: "utc", weekStartMode: "mon", animations: true, buttonLocation: "both", ratesEnabled: true, bestGym: true, bestGymSpecialist: true, bestGymUnpurchased: true, drugTracker: "xanax", privacyAgreed: "" };
-    ALLOWED_CONFIG_KEYS.forEach((k) => {
-      userConfig[k] = _fresh[k] !== void 0 ? _fresh[k] : userConfig[k];
+    ALLOWED_CONFIG_KEYS.forEach((k3) => {
+      userConfig[k3] = _fresh[k3] !== void 0 ? _fresh[k3] : userConfig[k3];
     });
     saveConfig();
     localStorage.setItem(KEYS.CHANGELOG_NOTIF, "1");
@@ -5664,15 +5675,15 @@ Please enter a new key to continue.`);
   // src/ui/best-gym.js
   var BestGymController = { _suppressed: {}, _reactItem(btn) {
     try {
-      const key = Object.keys(btn).find((k) => k.startsWith("__reactFiber$") || k.startsWith("__reactInternalInstance$"));
-      let f = btn[key], depth = 0;
-      while (f && depth < 16) {
-        const pp = f.memoizedProps;
+      const key = Object.keys(btn).find((k3) => k3.startsWith("__reactFiber$") || k3.startsWith("__reactInternalInstance$"));
+      let f4 = btn[key], depth = 0;
+      while (f4 && depth < 16) {
+        const pp = f4.memoizedProps;
         if (pp && pp.item && pp.item.id != null && pp.item.status) return pp.item;
-        f = f.return;
+        f4 = f4.return;
         depth++;
       }
-    } catch (e) {
+    } catch (e3) {
     }
     return null;
   }, scanGyms() {
@@ -5699,9 +5710,9 @@ Please enter a new key to continue.`);
     const tiers = GYM_TIERS[stat];
     if (!tiers) return null;
     const rankOf = (id) => {
-      for (let i = 0; i < tiers.length; i++) {
-        const g = tiers[i];
-        if (Array.isArray(g) ? g.indexOf(id) !== -1 : g === id) return i;
+      for (let i3 = 0; i3 < tiers.length; i3++) {
+        const g4 = tiers[i3];
+        if (Array.isArray(g4) ? g4.indexOf(id) !== -1 : g4 === id) return i3;
       }
       return -1;
     };
@@ -5724,8 +5735,8 @@ Please enter a new key to continue.`);
     try {
       gym.btn.click();
       return true;
-    } catch (e) {
-      Log.warn("BestGym: gym switch failed", e);
+    } catch (e3) {
+      Log.warn("BestGym: gym switch failed", e3);
       return false;
     }
   }, _statFromLabel(label) {
@@ -5734,9 +5745,9 @@ Please enter a new key to continue.`);
     if (label === "Train speed") return "spd";
     if (label === "Train dexterity") return "dex";
     return null;
-  }, handleTrainClick(e) {
+  }, handleTrainClick(e3) {
     if (!userConfig.bestGym) return false;
-    const btn = e.target && e.target.closest ? e.target.closest("button") : null;
+    const btn = e3.target && e3.target.closest ? e3.target.closest("button") : null;
     if (!btn) return false;
     const stat = this._statFromLabel(btn.getAttribute("aria-label") || "");
     if (!stat || this._suppressed[stat]) return false;
@@ -5745,8 +5756,8 @@ Please enter a new key to continue.`);
     if (!best || best === scan.active) return false;
     const gym = scan.gyms[best];
     if (!gym || !this.swapToGym(gym)) return false;
-    e.preventDefault();
-    e.stopImmediatePropagation();
+    e3.preventDefault();
+    e3.stopImmediatePropagation();
     this._suppressed[stat] = true;
     return true;
   } };
@@ -5757,13 +5768,13 @@ Please enter a new key to continue.`);
     const colors = ["#4a6070", "#7a3d36", "#8a6530", "#486644"];
     const xs = [4, 9.5, 15, 20.5];
     const maxH = 14, minH = 2;
-    const vals = keys.map((k) => stats && stats[k] ? stats[k].end : 0);
+    const vals = keys.map((k3) => stats && stats[k3] ? stats[k3].end : 0);
     const maxVal = Math.max(...vals);
-    const hs = vals.map((v) => maxVal > 0 ? Math.max(v / maxVal * maxH, minH) : maxH * 0.25);
-    const lines = keys.map((k, i) => {
-      return `<line x1="${xs[i]}" y1="20" x2="${xs[i]}" y2="${(20 - hs[i]).toFixed(2)}" stroke="${colors[i]}" stroke-width="5" stroke-linecap="round"/>`;
+    const hs = vals.map((v3) => maxVal > 0 ? Math.max(v3 / maxVal * maxH, minH) : maxH * 0.25);
+    const lines = keys.map((k3, i3) => {
+      return `<line x1="${xs[i3]}" y1="20" x2="${xs[i3]}" y2="${(20 - hs[i3]).toFixed(2)}" stroke="${colors[i3]}" stroke-width="5" stroke-linecap="round"/>`;
     });
-    const bgLines = keys.map((k, i) => `<line x1="${xs[i]}" y1="20" x2="${xs[i]}" y2="${(20 - hs[i]).toFixed(2)}" stroke="#000" stroke-width="7" stroke-linecap="round"/>`);
+    const bgLines = keys.map((k3, i3) => `<line x1="${xs[i3]}" y1="20" x2="${xs[i3]}" y2="${(20 - hs[i3]).toFixed(2)}" stroke="#000" stroke-width="7" stroke-linecap="round"/>`);
     return `<svg viewBox="0 0 24 24" fill="none">${bgLines.join("")}${lines.join("")}</svg>`;
   }
   var CAP_W = 500;
@@ -5787,8 +5798,8 @@ Please enter a new key to continue.`);
     const FORWARD_SPREAD_S = 1.2;
     const BACKWARD_SPREAD_S = 1.2;
     const PHASE1_END_S = FORWARD_SPREAD_S + PASS_S;
-    for (let i = 0; i < CAP_N; i++) {
-      const bx = CAP_PAD_X + i * (CAP_SLOT_W + CAP_GAP), gx = bx + CAP_TERM_W, gw = CAP_SLOT_W - 2 * CAP_TERM_W, winY = CAP_PAD_Y + 18, winH = CAP_SLOT_H - 18 * 2, fy = winY + 3, fh = winH - 3 * 2;
+    for (let i3 = 0; i3 < CAP_N; i3++) {
+      const bx = CAP_PAD_X + i3 * (CAP_SLOT_W + CAP_GAP), gx = bx + CAP_TERM_W, gw = CAP_SLOT_W - 2 * CAP_TERM_W, winY = CAP_PAD_Y + 18, winH = CAP_SLOT_H - 18 * 2, fy = winY + 3, fh = winH - 3 * 2;
       CAP_WIN_LEFT_PCT.push(gx / CAP_W * 100);
       CAP_WIN_DELAY_FWD_S.push(gx / CAP_W * FORWARD_SPREAD_S);
       CAP_WIN_DELAY_BWD_S.push(PHASE1_END_S + (CAP_W - gx) / CAP_W * BACKWARD_SPREAD_S);
@@ -5802,28 +5813,28 @@ Please enter a new key to continue.`);
     const cacheKey = slots.join(",") + "|" + lit + "|" + animated;
     const cached = _capBarCache.get(cacheKey);
     if (cached) return cached;
-    const W = CAP_W, H = CAP_H, n = CAP_N;
+    const W3 = CAP_W, H3 = CAP_H, n2 = CAP_N;
     const padX = CAP_PAD_X, padY = CAP_PAD_Y, gap = CAP_GAP;
     const slotW = CAP_SLOT_W, slotH = CAP_SLOT_H;
     const termW = CAP_TERM_W;
     const colorKey = { green: "g", gold: "o", diamond: "d", silver: "s" };
-    const f = (v) => v.toFixed(2);
-    let out = `<rect width="${W}" height="${H}" fill="url(#bbc-housing)"/>`;
+    const f4 = (v3) => v3.toFixed(2);
+    let out = `<rect width="${W3}" height="${H3}" fill="url(#bbc-housing)"/>`;
     let overlay = "";
-    for (let i = 0; i < n; i++) {
-      const bx = padX + i * (slotW + gap);
+    for (let i3 = 0; i3 < n2; i3++) {
+      const bx = padX + i3 * (slotW + gap);
       const by = padY;
-      out += `<rect x="${f(bx)}" y="${by}" width="${f(slotW)}" height="${slotH}" fill="#000" fill-opacity=".5"/>`;
-      out += `<rect x="${f(bx)}" y="${by}" width="${f(slotW)}" height="${slotH}" fill="url(#bbc-recess-shadow)"/>`;
-      out += `<rect x="${f(bx)}" y="${by}" width="${f(slotW)}" height="3" fill="#000" fill-opacity=".6"/>`;
-      out += `<rect x="${f(bx)}" y="${f(by + slotH - 1.5)}" width="${f(slotW)}" height="1.5" fill="#fff" fill-opacity=".15"/>`;
-      const color = slots[i];
+      out += `<rect x="${f4(bx)}" y="${by}" width="${f4(slotW)}" height="${slotH}" fill="#000" fill-opacity=".5"/>`;
+      out += `<rect x="${f4(bx)}" y="${by}" width="${f4(slotW)}" height="${slotH}" fill="url(#bbc-recess-shadow)"/>`;
+      out += `<rect x="${f4(bx)}" y="${by}" width="${f4(slotW)}" height="3" fill="#000" fill-opacity=".6"/>`;
+      out += `<rect x="${f4(bx)}" y="${f4(by + slotH - 1.5)}" width="${f4(slotW)}" height="1.5" fill="#fff" fill-opacity=".15"/>`;
+      const color = slots[i3];
       if (!color) continue;
-      out += `<rect x="${f(bx)}" y="${by}" width="${termW}" height="${slotH}" fill="url(#bbc-term)"/>`;
-      out += `<rect x="${f(bx)}" y="${by}" width="${termW}" height="${slotH}" fill="url(#bbc-hatch)"/>`;
-      out += `<rect x="${f(bx + slotW - termW)}" y="${by}" width="${termW}" height="${slotH}" fill="url(#bbc-term)"/>`;
-      out += `<rect x="${f(bx + slotW - termW)}" y="${by}" width="${termW}" height="${slotH}" fill="url(#bbc-hatch)"/>`;
-      out += `<rect x="${f(bx)}" y="${by}" width="${f(slotW)}" height="2.5" fill="#000" fill-opacity=".4"/>`;
+      out += `<rect x="${f4(bx)}" y="${by}" width="${termW}" height="${slotH}" fill="url(#bbc-term)"/>`;
+      out += `<rect x="${f4(bx)}" y="${by}" width="${termW}" height="${slotH}" fill="url(#bbc-hatch)"/>`;
+      out += `<rect x="${f4(bx + slotW - termW)}" y="${by}" width="${termW}" height="${slotH}" fill="url(#bbc-term)"/>`;
+      out += `<rect x="${f4(bx + slotW - termW)}" y="${by}" width="${termW}" height="${slotH}" fill="url(#bbc-hatch)"/>`;
+      out += `<rect x="${f4(bx)}" y="${by}" width="${f4(slotW)}" height="2.5" fill="#000" fill-opacity=".4"/>`;
       const gx = bx + termW, gw = slotW - 2 * termW;
       const gy = by, gh = slotH;
       const railH = 18;
@@ -5832,20 +5843,20 @@ Please enter a new key to continue.`);
       const fy = winY + fillInset, fh = winH - fillInset * 2;
       const fid = colorKey[color];
       const fillId = fid === "s" ? "s" : fid + (lit ? "L" : "D");
-      out += `<rect x="${f(gx)}" y="${gy}" width="${f(gw)}" height="${railH}" fill="url(#bbc-term)"/>`;
-      out += `<rect x="${f(gx)}" y="${gy}" width="${f(gw)}" height="${railH}" fill="url(#bbc-hatch)"/>`;
-      out += `<rect x="${f(gx)}" y="${f(gy + gh - railH)}" width="${f(gw)}" height="${railH}" fill="url(#bbc-term)"/>`;
-      out += `<rect x="${f(gx)}" y="${f(gy + gh - railH)}" width="${f(gw)}" height="${railH}" fill="url(#bbc-hatch)"/>`;
+      out += `<rect x="${f4(gx)}" y="${gy}" width="${f4(gw)}" height="${railH}" fill="url(#bbc-term)"/>`;
+      out += `<rect x="${f4(gx)}" y="${gy}" width="${f4(gw)}" height="${railH}" fill="url(#bbc-hatch)"/>`;
+      out += `<rect x="${f4(gx)}" y="${f4(gy + gh - railH)}" width="${f4(gw)}" height="${railH}" fill="url(#bbc-term)"/>`;
+      out += `<rect x="${f4(gx)}" y="${f4(gy + gh - railH)}" width="${f4(gw)}" height="${railH}" fill="url(#bbc-hatch)"/>`;
       if (lit && color !== "silver") out += `<g filter="url(#bbc-tube-glow)">`;
-      out += `<rect x="${f(gx)}" y="${fy}" width="${f(gw)}" height="${fh}" fill="url(#bbc-${fillId})"/>`;
-      out += `<rect x="${f(gx)}" y="${fy}" width="${f(gw)}" height="${fh}" fill="url(#bbc-recess-shadow)" opacity="${lit ? 0.4 : 1}"/>`;
-      out += `<rect x="${f(gx)}" y="${fy}" width="${f(gw)}" height="${fh}" fill="url(#bbc-recess-shine)"/>`;
+      out += `<rect x="${f4(gx)}" y="${fy}" width="${f4(gw)}" height="${fh}" fill="url(#bbc-${fillId})"/>`;
+      out += `<rect x="${f4(gx)}" y="${fy}" width="${f4(gw)}" height="${fh}" fill="url(#bbc-recess-shadow)" opacity="${lit ? 0.4 : 1}"/>`;
+      out += `<rect x="${f4(gx)}" y="${fy}" width="${f4(gw)}" height="${fh}" fill="url(#bbc-recess-shine)"/>`;
       if (lit && color !== "silver") out += `</g>`;
       if (animated && color !== "silver") {
-        overlay += `<div class="bbgl-cap-win" style="left:${CAP_WIN_LEFT_PCT[i].toFixed(2)}%;width:${CAP_WIN_WIDTH_PCT.toFixed(2)}%;top:${CAP_WIN_TOP_PCT.toFixed(2)}%;height:${CAP_WIN_HEIGHT_PCT.toFixed(2)}%"><div class="bbgl-cap-sweep bbgl-cap-sweep-pass-fwd bbgl-cap-sweep-${color}" style="animation-delay:${CAP_WIN_DELAY_FWD_S[i].toFixed(3)}s"></div><div class="bbgl-cap-sweep bbgl-cap-sweep-pass-bwd bbgl-cap-sweep-${color}" style="animation-delay:${CAP_WIN_DELAY_BWD_S[i].toFixed(3)}s"></div></div>`;
+        overlay += `<div class="bbgl-cap-win" style="left:${CAP_WIN_LEFT_PCT[i3].toFixed(2)}%;width:${CAP_WIN_WIDTH_PCT.toFixed(2)}%;top:${CAP_WIN_TOP_PCT.toFixed(2)}%;height:${CAP_WIN_HEIGHT_PCT.toFixed(2)}%"><div class="bbgl-cap-sweep bbgl-cap-sweep-pass-fwd bbgl-cap-sweep-${color}" style="animation-delay:${CAP_WIN_DELAY_FWD_S[i3].toFixed(3)}s"></div><div class="bbgl-cap-sweep bbgl-cap-sweep-pass-bwd bbgl-cap-sweep-${color}" style="animation-delay:${CAP_WIN_DELAY_BWD_S[i3].toFixed(3)}s"></div></div>`;
       }
     }
-    const svg = `<svg class="bbgl-cap-svg" viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" xmlns="http://www.w3.org/2000/svg">${CAP_BAR_DEFS}${out}</svg>`;
+    const svg = `<svg class="bbgl-cap-svg" viewBox="0 0 ${W3} ${H3}" preserveAspectRatio="none" xmlns="http://www.w3.org/2000/svg">${CAP_BAR_DEFS}${out}</svg>`;
     const html = overlay ? svg + `<div class="bbgl-cap-overlay">${overlay}</div>` : svg;
     _capBarCache.set(cacheKey, html);
     return html;
@@ -5854,17 +5865,17 @@ Please enter a new key to continue.`);
     const mBtn = document.getElementById("month-stats-btn");
     const yBtn = document.getElementById("year-stats-btn");
     if (!mBtn || !yBtn) return;
-    const y = calendarState.year, m = calendarState.month;
-    mBtn.innerHTML = buildChartSVG(app.DataController.getSlice("MONTH", CONSTANTS.MONTHS[m], y));
-    yBtn.innerHTML = buildChartSVG(app.DataController.getSlice("YEAR", String(y)));
+    const y3 = calendarState.year, m3 = calendarState.month;
+    mBtn.innerHTML = buildChartSVG(app.DataController.getSlice("MONTH", CONSTANTS.MONTHS[m3], y3));
+    yBtn.innerHTML = buildChartSVG(app.DataController.getSlice("YEAR", String(y3)));
     const aBtn = document.getElementById("all-time-btn");
     if (aBtn) aBtn.innerHTML = buildChartSVG(app.DataController.getSlice("ALL", "All-Time"));
-    mBtn.setAttribute("data-tooltip-html", app.generateRichTooltip(app.DataController.getSlice("MONTH", CONSTANTS.MONTHS[m], y)));
-    yBtn.setAttribute("data-tooltip-html", app.generateRichTooltip(app.DataController.getSlice("YEAR", String(y))));
+    mBtn.setAttribute("data-tooltip-html", app.generateRichTooltip(app.DataController.getSlice("MONTH", CONSTANTS.MONTHS[m3], y3)));
+    yBtn.setAttribute("data-tooltip-html", app.generateRichTooltip(app.DataController.getSlice("YEAR", String(y3))));
     if (aBtn) aBtn.setAttribute("data-tooltip-html", app.generateRichTooltip(app.DataController.getSlice("ALL", "All-Time")));
     const activeL = viewState.activeViewLabel;
-    mBtn.classList.toggle("active", activeL === CONSTANTS.MONTHS[m]);
-    yBtn.classList.toggle("active", activeL === String(y));
+    mBtn.classList.toggle("active", activeL === CONSTANTS.MONTHS[m3]);
+    yBtn.classList.toggle("active", activeL === String(y3));
     if (aBtn) aBtn.classList.toggle("active", activeL === "All-Time");
   }
   function injectBestGymToggle() {
@@ -5886,22 +5897,22 @@ Please enter a new key to continue.`);
     host.appendChild(pill);
     dom.bestGym = pill;
   }
-  function setBestGym(v) {
-    userConfig.bestGym = v;
+  function setBestGym(v3) {
+    userConfig.bestGym = v3;
     saveConfig();
-    const a = document.getElementById("set-bestgym-toggle");
-    if (a) a.checked = v;
-    const b = document.getElementById("bbgl-bestgym-input");
-    if (b) b.checked = v;
+    const a3 = document.getElementById("set-bestgym-toggle");
+    if (a3) a3.checked = v3;
+    const b2 = document.getElementById("bbgl-bestgym-input");
+    if (b2) b2.checked = v3;
     const sp = document.getElementById("set-bestgym-spec-toggle");
     if (sp) {
       const row = sp.closest(".bbgl-setting-row");
-      if (row) row.classList.toggle("bbgl-row-disabled", !v);
+      if (row) row.classList.toggle("bbgl-row-disabled", !v3);
     }
     const up = document.getElementById("set-bestgym-unpurch-toggle");
     if (up) {
       const row = up.closest(".bbgl-setting-row");
-      if (row) row.classList.toggle("bbgl-row-disabled", !v);
+      if (row) row.classList.toggle("bbgl-row-disabled", !v3);
     }
   }
   app.BestGymController = BestGymController;
@@ -5925,55 +5936,55 @@ Please enter a new key to continue.`);
 
   // src/ui/calendar.js
   function renderPanelContent() {
-    const s = app.getActiveHistory(), dm = app.DataController.getDateMap(), tk = Formatter.dateLogical();
-    if ((s.today.startTotal > 0 || s.today.date) && !dm[tk]) dm[tk] = s.today;
-    const c = dom.calContainer;
-    if (!c) return;
+    const s3 = app.getActiveHistory(), dm = app.DataController.getDateMap(), tk = Formatter.dateLogical();
+    if ((s3.today.startTotal > 0 || s3.today.date) && !dm[tk]) dm[tk] = s3.today;
+    const c3 = dom.calContainer;
+    if (!c3) return;
     Perf.start("renderPanel");
-    c.innerHTML = "";
-    const y = calendarState.year, m = calendarState.month, yt = dom.yearTrigger;
-    dom.monthTrigger.textContent = CONSTANTS.MONTHS[m];
-    yt.textContent = y;
+    c3.innerHTML = "";
+    const y3 = calendarState.year, m3 = calendarState.month, yt = dom.yearTrigger;
+    dom.monthTrigger.textContent = CONSTANTS.MONTHS[m3];
+    yt.textContent = y3;
     yt.classList.remove("disabled");
-    let f = new Date(y, m, 1), start = f.getDay();
+    let f4 = new Date(y3, m3, 1), start = f4.getDay();
     if (start === -1) start = 6;
     if (userConfig.weekStartMode === "mon") start = start === 0 ? 6 : start - 1;
-    const dim = new Date(y, m + 1, 0).getDate(), dipm = new Date(y, m, 0).getDate();
-    let pm = m - 1, py = y;
+    const dim = new Date(y3, m3 + 1, 0).getDate(), dipm = new Date(y3, m3, 0).getDate();
+    let pm = m3 - 1, py = y3;
     if (pm < 0) {
       pm = 11;
       py--;
     }
     let cells = [];
-    for (let i = 0; i < start; i++) cells.push({ y: py, m: pm, d: dipm - start + i + 1, g: true });
-    for (let d = 1; d <= dim; d++) cells.push({ y, m, d, g: false });
+    for (let i3 = 0; i3 < start; i3++) cells.push({ y: py, m: pm, d: dipm - start + i3 + 1, g: true });
+    for (let d3 = 1; d3 <= dim; d3++) cells.push({ y: y3, m: m3, d: d3, g: false });
     let rem = 7 - cells.length % 7;
     if (rem < 7 && rem > 0) {
-      let nm = m + 1, ny = y;
+      let nm = m3 + 1, ny = y3;
       if (nm > 11) {
         nm = 0;
         ny++;
       }
-      for (let i = 1; i <= rem; i++) cells.push({ y: ny, m: nm, d: i, g: true });
+      for (let i3 = 1; i3 <= rem; i3++) cells.push({ y: ny, m: nm, d: i3, g: true });
     }
-    calendarState.visibleCells = cells.map((z) => Formatter.dateISO(z.y, z.m, z.d));
-    c.style.setProperty("--total-rows", 6);
-    c.style.setProperty("--bg-url", `url(${app.CAL_IMG_BASE}cal-grid-futr.jpg)`);
+    calendarState.visibleCells = cells.map((z3) => Formatter.dateISO(z3.y, z3.m, z3.d));
+    c3.style.setProperty("--total-rows", 6);
+    c3.style.setProperty("--bg-url", `url(${app.CAL_IMG_BASE}cal-grid-futr.jpg)`);
     const todayStr = Formatter.dateLogical();
     const frag = document.createDocumentFragment();
     let batch = [], ridx = 0;
-    cells.forEach(function tickCalendarCell(z) {
-      const ds = Formatter.dateISO(z.y, z.m, z.d), d = dm[ds] || null;
-      batch.push({ ...z, p: d });
+    cells.forEach(function tickCalendarCell(z3) {
+      const ds = Formatter.dateISO(z3.y, z3.m, z3.d), d3 = dm[ds] || null;
+      batch.push({ ...z3, p: d3 });
       if (batch.length === 7) {
         const rd = document.createElement("div"), last = batch[6], weekEndStr = Formatter.dateISO(last.y, last.m, last.d), isArch = weekEndStr < todayStr;
         rd.className = "bbgl-row-slice" + (isArch ? " bbgl-row-archived" : "");
         rd.style.setProperty("--row-idx", ridx);
         if (isArch) rd.style.setProperty("--bg-url", `url(${app.CAL_IMG_BASE}cal-grid-past.jpg)`);
         let wdb = [];
-        batch.forEach(function tickWeekCell(i, cIdx) {
-          app.renderCell(rd, i.y, i.m, i.d, i.g, ridx, cIdx);
-          wdb.push({ date: Formatter.dateISO(i.y, i.m, i.d), data: i.p });
+        batch.forEach(function tickWeekCell(i3, cIdx) {
+          app.renderCell(rd, i3.y, i3.m, i3.d, i3.g, ridx, cIdx);
+          wdb.push({ date: Formatter.dateISO(i3.y, i3.m, i3.d), data: i3.p });
         });
         frag.appendChild(rd);
         app.injectWeeklyBar(frag, wdb);
@@ -5981,7 +5992,7 @@ Please enter a new key to continue.`);
         ridx++;
       }
     });
-    c.appendChild(frag);
+    c3.appendChild(frag);
     if (runtime._pendingHistoryRestore) {
       const { sl, label } = runtime._pendingHistoryRestore;
       runtime._pendingHistoryRestore = null;
@@ -6004,7 +6015,7 @@ Please enter a new key to continue.`);
     if (runtime._lastLevelExp === void 0) {
       runtime._lastLevelExp = totalExp;
       const bars2 = app.getLevelBars();
-      bars2.forEach((b) => app.renderLevelBar(b, totalExp));
+      bars2.forEach((b2) => app.renderLevelBar(b2, totalExp));
       return;
     }
     const bars = app.getLevelBars();
@@ -6015,8 +6026,8 @@ Please enter a new key to continue.`);
         runLevelAnimationQueue();
       }
     } else if (!runtime._isAnimatingLevel) {
-      bars.forEach((b) => {
-        if (!b.fill.style.width) app.renderLevelBar(b, runtime._lastLevelExp);
+      bars.forEach((b2) => {
+        if (!b2.fill.style.width) app.renderLevelBar(b2, runtime._lastLevelExp);
       });
     }
     async function runLevelAnimationQueue() {
@@ -6036,31 +6047,31 @@ Please enter a new key to continue.`);
           const expNeededToFill = currentProg.expToNext - currentProg.expInLevel;
           const currentPct = parseFloat(bars[0].fill.style.width) || 0;
           const durationMs = Math.max(150, (100 - currentPct) / 100 * BASE_SPEED_MS);
-          bars.forEach((b) => {
-            b.fill.style.transitionDuration = durationMs + "ms";
-            b.fill.style.width = "96.8%";
-            b.fill.classList.add("level-full");
+          bars.forEach((b2) => {
+            b2.fill.style.transitionDuration = durationMs + "ms";
+            b2.fill.style.width = "96.8%";
+            b2.fill.classList.add("level-full");
           });
-          await new Promise((r) => setTimeout(r, durationMs + 50));
-          bars.forEach((b) => b.container.classList.add("bbgl-level-up-flash"));
-          await new Promise((r) => setTimeout(r, 200));
+          await new Promise((r4) => setTimeout(r4, durationMs + 50));
+          bars.forEach((b2) => b2.container.classList.add("bbgl-level-up-flash"));
+          await new Promise((r4) => setTimeout(r4, 200));
           const nextLevel = currentProg.level + 1;
-          bars.forEach((b) => {
-            b.num.innerHTML = '<span class="bbgl-lv-prefix">Lv </span>' + nextLevel;
+          bars.forEach((b2) => {
+            b2.num.innerHTML = '<span class="bbgl-lv-prefix">Lv </span>' + nextLevel;
           });
-          await new Promise((r) => setTimeout(r, 650));
-          bars.forEach((b) => b.container.classList.remove("bbgl-level-up-flash"));
+          await new Promise((r4) => setTimeout(r4, 650));
+          bars.forEach((b2) => b2.container.classList.remove("bbgl-level-up-flash"));
           runtime._lastLevelExp += expNeededToFill;
           if (nextLevel >= 100 && currentProg.atrophy < 2) {
             await runAtrophyAnimation(currentProg.atrophy, bars);
             forcedNextTier = currentProg.atrophy + 1;
           } else {
-            bars.forEach((b) => {
-              b.fill.style.transition = "none";
-              b.fill.style.width = "0%";
-              b.fill.classList.remove("level-full");
-              void b.fill.offsetWidth;
-              b.fill.style.transition = "";
+            bars.forEach((b2) => {
+              b2.fill.style.transition = "none";
+              b2.fill.style.width = "0%";
+              b2.fill.classList.remove("level-full");
+              void b2.fill.offsetWidth;
+              b2.fill.style.transition = "";
             });
           }
         } else {
@@ -6069,15 +6080,15 @@ Please enter a new key to continue.`);
           const { level, expInLevel, expToNext } = calculateLevelProgress(runtime._lastLevelExp);
           const targetPct = expToNext > 0 ? Math.min(100, expInLevel / expToNext * 100) : level >= 100 ? 100 : 0;
           const durationMs = Math.max(150, Math.abs(targetPct - currentPct) / 100 * BASE_SPEED_MS);
-          bars.forEach((b) => {
-            b.fill.style.transitionDuration = durationMs + "ms";
-            app.renderLevelBar(b, runtime._lastLevelExp);
+          bars.forEach((b2) => {
+            b2.fill.style.transitionDuration = durationMs + "ms";
+            app.renderLevelBar(b2, runtime._lastLevelExp);
           });
-          await new Promise((r) => setTimeout(r, durationMs + 50));
+          await new Promise((r4) => setTimeout(r4, durationMs + 50));
         }
       }
-      bars.forEach((b) => {
-        b.fill.style.transitionDuration = "";
+      bars.forEach((b2) => {
+        b2.fill.style.transitionDuration = "";
       });
       runtime._lastLevelExp = runtime._targetLevelExp;
       runtime._isAnimatingLevel = false;
@@ -6088,26 +6099,26 @@ Please enter a new key to continue.`);
     runtime._lastLevelExp = totalExp;
     runtime._targetLevelExp = totalExp;
     runtime._isAnimatingLevel = false;
-    app.getLevelBars().forEach((b) => {
-      b.fill.style.transition = "none";
-      b.container.classList.remove("bbgl-level-up-flash");
-      app.renderLevelBar(b, totalExp);
-      void b.fill.offsetWidth;
-      b.fill.style.transition = "";
+    app.getLevelBars().forEach((b2) => {
+      b2.fill.style.transition = "none";
+      b2.container.classList.remove("bbgl-level-up-flash");
+      app.renderLevelBar(b2, totalExp);
+      void b2.fill.offsetWidth;
+      b2.fill.style.transition = "";
     });
   }
   async function runAtrophyAnimation(fromAtrophy, bars) {
     const toAtrophy = fromAtrophy + 1;
     if (!userConfig.animations) {
-      bars.forEach((b) => {
-        b.container.dataset.atrophy = toAtrophy;
-        b.container.dataset.level = 1;
-        b.num.textContent = "Lv 1";
-        b.fill.style.transition = "none";
-        b.fill.style.width = "0%";
-        b.fill.classList.remove("level-full");
-        void b.fill.offsetWidth;
-        b.fill.style.transition = "";
+      bars.forEach((b2) => {
+        b2.container.dataset.atrophy = toAtrophy;
+        b2.container.dataset.level = 1;
+        b2.num.textContent = "Lv 1";
+        b2.fill.style.transition = "none";
+        b2.fill.style.width = "0%";
+        b2.fill.classList.remove("level-full");
+        void b2.fill.offsetWidth;
+        b2.fill.style.transition = "";
       });
       if (dom.panel) {
         dom.panel.dataset.atrophy = toAtrophy;
@@ -6118,37 +6129,37 @@ Please enter a new key to continue.`);
     const TUCK_MS = 350;
     const RISE_MS = 900;
     const FLASH_MS = 700;
-    bars.forEach((b) => b.container.classList.add("bbgl-crown-tuck"));
-    await new Promise((r) => setTimeout(r, TUCK_MS));
-    bars.forEach((b) => {
-      b.container.classList.remove("bbgl-crown-tuck");
-      b.container.dataset.atrophy = toAtrophy;
-      b.container.classList.add("bbgl-crown-rise");
+    bars.forEach((b2) => b2.container.classList.add("bbgl-crown-tuck"));
+    await new Promise((r4) => setTimeout(r4, TUCK_MS));
+    bars.forEach((b2) => {
+      b2.container.classList.remove("bbgl-crown-tuck");
+      b2.container.dataset.atrophy = toAtrophy;
+      b2.container.classList.add("bbgl-crown-rise");
     });
     if (dom.panel) dom.panel.dataset.atrophy = toAtrophy;
-    await new Promise((r) => setTimeout(r, RISE_MS));
-    bars.forEach((b) => b.container.classList.add("bbgl-atrophied-flash"));
-    await new Promise((r) => setTimeout(r, FLASH_MS));
-    bars.forEach((b) => {
-      b.container.classList.remove("bbgl-crown-rise", "bbgl-atrophied-flash");
-      b.container.dataset.level = 1;
-      b.num.textContent = "Lv 1";
-      b.fill.style.transition = "none";
-      b.fill.style.width = "0%";
-      b.fill.classList.remove("level-full");
-      void b.fill.offsetWidth;
-      b.fill.style.transition = "";
+    await new Promise((r4) => setTimeout(r4, RISE_MS));
+    bars.forEach((b2) => b2.container.classList.add("bbgl-atrophied-flash"));
+    await new Promise((r4) => setTimeout(r4, FLASH_MS));
+    bars.forEach((b2) => {
+      b2.container.classList.remove("bbgl-crown-rise", "bbgl-atrophied-flash");
+      b2.container.dataset.level = 1;
+      b2.num.textContent = "Lv 1";
+      b2.fill.style.transition = "none";
+      b2.fill.style.width = "0%";
+      b2.fill.classList.remove("level-full");
+      void b2.fill.offsetWidth;
+      b2.fill.style.transition = "";
     });
     if (dom.panel) dom.panel.dataset.level = 1;
   }
   function updateCellSelection(newLabel) {
-    const c = dom.calContainer;
-    if (!c) return;
-    c.querySelectorAll(".bbgl-day-cell.is-viewing").forEach((el) => {
+    const c3 = dom.calContainer;
+    if (!c3) return;
+    c3.querySelectorAll(".bbgl-day-cell.is-viewing").forEach((el) => {
       el.classList.remove("is-viewing");
       if (!el.matches(":hover")) el.classList.remove("shimmer-active");
     });
-    c.querySelectorAll(".bbgl-weekly-track.is-viewing").forEach((el) => el.classList.remove("is-viewing"));
+    c3.querySelectorAll(".bbgl-weekly-track.is-viewing").forEach((el) => el.classList.remove("is-viewing"));
     if (!newLabel) {
       const today = document.getElementById("active-date-today");
       if (today) {
@@ -6157,47 +6168,47 @@ Please enter a new key to continue.`);
       }
       return;
     }
-    const dC = c.querySelector(`.bbgl-day-cell[data-date="${newLabel}"]`);
+    const dC = c3.querySelector(`.bbgl-day-cell[data-date="${newLabel}"]`);
     if (dC) {
       dC.classList.add("is-viewing");
       if (userConfig.animations && !dC.classList.contains("shimmer-active")) dC.classList.add("shimmer-active");
       if (dC._buildShine) dC._buildShine();
       return;
     }
-    const track = c.querySelector(`.bbgl-weekly-track[data-label="${newLabel}"]`);
+    const track = c3.querySelector(`.bbgl-weekly-track[data-label="${newLabel}"]`);
     if (track) track.classList.add("is-viewing");
   }
-  function openHistory(d, l) {
+  function openHistory(d3, l3) {
     if (runtime.isViewAnimating) {
       dom.ledgerView.classList.remove("bbgl-crt-out", "bbgl-crt-in");
       runtime.isViewAnimating = false;
     }
-    viewState.activeViewLabel = l;
+    viewState.activeViewLabel = l3;
     saveViewState();
-    if (calendarState.selectedLabel === l && !dom.topPanel.classList.contains("viewing-graph")) return;
+    if (calendarState.selectedLabel === l3 && !dom.topPanel.classList.contains("viewing-graph")) return;
     runtime.isViewAnimating = true;
-    calendarState.selectedData = d;
-    calendarState.selectedLabel = l;
+    calendarState.selectedData = d3;
+    calendarState.selectedLabel = l3;
     const mBtn = document.getElementById("month-stats-btn");
     const yBtn = document.getElementById("year-stats-btn");
     const aBtn = document.getElementById("all-time-btn");
-    if (mBtn) mBtn.classList.toggle("active", l === CONSTANTS.MONTHS[calendarState.month]);
-    if (yBtn) yBtn.classList.toggle("active", l === String(calendarState.year));
-    if (aBtn) aBtn.classList.toggle("active", l === "All-Time");
+    if (mBtn) mBtn.classList.toggle("active", l3 === CONSTANTS.MONTHS[calendarState.month]);
+    if (yBtn) yBtn.classList.toggle("active", l3 === String(calendarState.year));
+    if (aBtn) aBtn.classList.toggle("active", l3 === "All-Time");
     app.closeItemViewer();
-    updateCellSelection(l);
+    updateCellSelection(l3);
     const tp = dom.topPanel;
     if (tp.classList.contains("viewing-stickers")) {
       app.switchView("ledger");
       setTimeout(() => {
-        app.renderStats(d, l);
+        app.renderStats(d3, l3);
       }, 300);
       return;
     }
     if (tp.classList.contains("viewing-graph")) {
       app.GraphController.draw();
       const de = dom.dateLabel;
-      if (de) de.innerText = Formatter.datePretty(l) || l;
+      if (de) de.innerText = Formatter.datePretty(l3) || l3;
       runtime.isViewAnimating = false;
     } else {
       if (viewState.achEnhPeriodMode && tp.classList.contains("viewing-achievements")) {
@@ -6210,7 +6221,7 @@ Please enter a new key to continue.`);
         el.classList.add("bbgl-crt-out");
         setTimeout(() => {
           el.classList.remove("bbgl-crt-out");
-          app.renderStats(d, l);
+          app.renderStats(d3, l3);
           el.classList.add("bbgl-crt-in");
           setTimeout(() => {
             el.classList.remove("bbgl-crt-in");
@@ -6218,13 +6229,13 @@ Please enter a new key to continue.`);
           }, 300);
         }, 280);
       } else {
-        app.renderStats(d, l);
+        app.renderStats(d3, l3);
         runtime.isViewAnimating = false;
       }
     }
   }
-  function closeHistory(e) {
-    if (e) e.stopPropagation();
+  function closeHistory(e3) {
+    if (e3) e3.stopPropagation();
     if (!calendarState.selectedData) return;
     if (runtime.isViewAnimating) {
       dom.ledgerView.classList.remove("bbgl-crt-out", "bbgl-crt-in");
@@ -6262,57 +6273,57 @@ Please enter a new key to continue.`);
       }
     }
   }
-  function changeMonth(d) {
-    const c = dom.calContainer;
-    if (!c) return;
-    let m = calendarState.month + d, y = calendarState.year;
-    if (m > 11) {
-      m = 0;
-      y++;
+  function changeMonth(d3) {
+    const c3 = dom.calContainer;
+    if (!c3) return;
+    let m3 = calendarState.month + d3, y3 = calendarState.year;
+    if (m3 > 11) {
+      m3 = 0;
+      y3++;
     }
-    if (m < 0) {
-      m = 11;
-      y--;
+    if (m3 < 0) {
+      m3 = 11;
+      y3--;
     }
     if (!userConfig.animations) {
-      calendarState.month = m;
-      calendarState.year = y;
-      viewState.calYear = y;
-      viewState.calMonth = m;
+      calendarState.month = m3;
+      calendarState.year = y3;
+      viewState.calYear = y3;
+      viewState.calMonth = m3;
       saveViewState();
       renderPanelContent();
       return;
     }
-    c.parentElement.querySelectorAll(".bbgl-cal-ghost").forEach((g) => g.remove());
-    const ghost = c.cloneNode(true);
+    c3.parentElement.querySelectorAll(".bbgl-cal-ghost").forEach((g4) => g4.remove());
+    const ghost = c3.cloneNode(true);
     ghost.className += " bbgl-cal-ghost";
-    ghost.style.animation = d > 0 ? "bbgl-slide-out-l 0.3s ease forwards" : "bbgl-slide-out-r 0.3s ease forwards";
-    c.parentElement.appendChild(ghost);
+    ghost.style.animation = d3 > 0 ? "bbgl-slide-out-l 0.3s ease forwards" : "bbgl-slide-out-r 0.3s ease forwards";
+    c3.parentElement.appendChild(ghost);
     const removeGhost = () => {
       if (ghost.parentElement) ghost.remove();
     };
     ghost.addEventListener("animationend", removeGhost, { once: true });
     const ghostTimer = setTimeout(removeGhost, 400);
     ghost.addEventListener("animationend", () => clearTimeout(ghostTimer), { once: true });
-    calendarState.month = m;
-    calendarState.year = y;
-    viewState.calYear = y;
-    viewState.calMonth = m;
+    calendarState.month = m3;
+    calendarState.year = y3;
+    viewState.calYear = y3;
+    viewState.calMonth = m3;
     saveViewState();
-    c.style.willChange = "transform";
+    c3.style.willChange = "transform";
     renderPanelContent();
-    c.style.animation = d > 0 ? "bbgl-slide-in-r 0.3s ease forwards" : "bbgl-slide-in-l 0.3s ease forwards";
-    c.addEventListener("animationend", () => {
-      c.style.animation = "";
-      c.style.willChange = "auto";
+    c3.style.animation = d3 > 0 ? "bbgl-slide-in-r 0.3s ease forwards" : "bbgl-slide-in-l 0.3s ease forwards";
+    c3.addEventListener("animationend", () => {
+      c3.style.animation = "";
+      c3.style.willChange = "auto";
     }, { once: true });
   }
   function calcAllTimeStats() {
     const sl = app.DataController.getSlice("ALL", "All-Time");
     openHistory(sl, "All-Time");
   }
-  function calcPeriodStats(t) {
-    const lbl = t === "month" ? CONSTANTS.MONTHS[calendarState.month] : String(calendarState.year), m = t === "month" ? "MONTH" : "YEAR", sl = app.DataController.getSlice(m, lbl, calendarState.year);
+  function calcPeriodStats(t3) {
+    const lbl = t3 === "month" ? CONSTANTS.MONTHS[calendarState.month] : String(calendarState.year), m3 = t3 === "month" ? "MONTH" : "YEAR", sl = app.DataController.getSlice(m3, lbl, calendarState.year);
     openHistory(sl, lbl);
   }
   app.renderPanelContent = renderPanelContent;
@@ -6328,7 +6339,7 @@ Please enter a new key to continue.`);
 
   // src/ui/torn-inject.js
   function injectWeeklyBar(cont, batch) {
-    const sl = app.DataController.getSlice("CUSTOM", batch.map((w) => w.data).filter((d) => d));
+    const sl = app.DataController.getSlice("CUSTOM", batch.map((w3) => w3.data).filter((d3) => d3));
     sl.label = `Week ${getISOWeek(batch[0].date)}`;
     sl._weekStart = batch[0].date;
     sl._weekEnd = batch[batch.length - 1].date;
@@ -6340,8 +6351,8 @@ Please enter a new key to continue.`);
     const tr = document.createElement("div");
     tr.className = "bbgl-weekly-track";
     tr.dataset.label = sl.label;
-    tr.onclick = (e) => {
-      e.stopPropagation();
+    tr.onclick = (e3) => {
+      e3.stopPropagation();
       app.openHistory(sl, sl.label);
     };
     if (calendarState.selectedLabel === sl.label) tr.classList.add("is-viewing");
@@ -6355,8 +6366,8 @@ Please enter a new key to continue.`);
       tab.setAttribute("data-tooltip-anchor", ".bbgl-bar-handle");
       tr.setAttribute("data-tooltip-html", tooltipHtml);
       tr.setAttribute("data-tooltip-anchor", ".bbgl-bar-handle");
-      tab.onclick = (e) => {
-        e.stopPropagation();
+      tab.onclick = (e3) => {
+        e3.stopPropagation();
         app.openHistory(slice, slice.label);
       };
       tab.addEventListener("mouseenter", () => tr.classList.add("is-scrub-hovered"));
@@ -6383,26 +6394,26 @@ Please enter a new key to continue.`);
   function getLiveLevelExp() {
     let totalExp = app.DataController.getCareerLevelExp();
     if (!runtime.demoMode) {
-      const h = app.getActiveHistory();
-      if (h && h.today) {
+      const h3 = app.getActiveHistory();
+      if (h3 && h3.today) {
         const today = Formatter.dateLogical();
         const installDateKey = app.getInstallDateKey();
-        const rewardStartTs = h.meta && h.meta.rewardStartDate || null;
-        let todaySeries = h.today.series || [];
+        const rewardStartTs = h3.meta && h3.meta.rewardStartDate || null;
+        let todaySeries = h3.today.series || [];
         if (installDateKey && today === installDateKey && rewardStartTs) {
-          todaySeries = todaySeries.filter((s) => s.ts >= rewardStartTs);
+          todaySeries = todaySeries.filter((s3) => s3.ts >= rewardStartTs);
         }
-        const todayE = todaySeries === h.today.series && h.today.eSpent ? h.today.eSpent.total || 0 : todaySeries.filter((s) => s.type === "gym").reduce((sum, s) => sum + (s.cost || 0), 0);
-        const hasTrainLog = todaySeries.some((s) => s.type === "gym");
+        const todayE = todaySeries === h3.today.series && h3.today.eSpent ? h3.today.eSpent.total || 0 : todaySeries.filter((s3) => s3.type === "gym").reduce((sum, s3) => sum + (s3.cost || 0), 0);
+        const hasTrainLog = todaySeries.some((s3) => s3.type === "gym");
         const { hjDaySet } = app.DataController.getHappyJumpData();
-        const isHJ = todaySeries === h.today.series ? hjDaySet.has(today) : findHappyJumps2(todaySeries).length > 0;
+        const isHJ = todaySeries === h3.today.series ? hjDaySet.has(today) : findHappyJumps2(todaySeries).length > 0;
         totalExp += computeDailyLevelExp(todayE, hasTrainLog, isHJ);
       }
     }
     return totalExp;
   }
   function getLevelBars() {
-    return [["bbgl-level-num", "bbgl-level-fill", "bbgl-level-container"], ["bbgl-gym-level-num", "bbgl-gym-level-fill", "bbgl-gym-level-container"]].map(([n, f, c]) => ({ num: document.getElementById(n), fill: document.getElementById(f), container: document.getElementById(c) })).filter((b) => b.num && b.fill && b.container);
+    return [["bbgl-level-num", "bbgl-level-fill", "bbgl-level-container"], ["bbgl-gym-level-num", "bbgl-gym-level-fill", "bbgl-gym-level-container"]].map(([n2, f4, c3]) => ({ num: document.getElementById(n2), fill: document.getElementById(f4), container: document.getElementById(c3) })).filter((b2) => b2.num && b2.fill && b2.container);
   }
   function renderLevelBar(bar, expVal) {
     const { atrophy, level, expInLevel, expToNext } = calculateLevelProgress(expVal);
@@ -6533,23 +6544,23 @@ Please enter a new key to continue.`);
     runtime._domObsArmed = false;
     const guard = (parent) => {
       if (!parent) return;
-      const o = new MutationObserver(() => {
+      const o3 = new MutationObserver(() => {
         if (!runtime._domObsArmed) rearmDomObs();
       });
-      o.observe(parent, { childList: true });
-      runtime._domGuards.push(o);
+      o3.observe(parent, { childList: true });
+      runtime._domGuards.push(o3);
     };
     const seen = /* @__PURE__ */ new Set();
-    [dom.gymTab && dom.gymTab.parentNode, dom.sbDesktop && dom.sbDesktop.parentNode, dom.sbMobile && dom.sbMobile.parentNode, dom.sbFlyout && dom.sbFlyout.parentNode].forEach((p) => {
-      if (p && !seen.has(p)) {
-        seen.add(p);
-        guard(p);
+    [dom.gymTab && dom.gymTab.parentNode, dom.sbDesktop && dom.sbDesktop.parentNode, dom.sbMobile && dom.sbMobile.parentNode, dom.sbFlyout && dom.sbFlyout.parentNode].forEach((p3) => {
+      if (p3 && !seen.has(p3)) {
+        seen.add(p3);
+        guard(p3);
       }
     });
   }
   function rearmDomObs() {
     if (!runtime.domObs || runtime._domObsArmed) return;
-    runtime._domGuards.forEach((o) => o.disconnect());
+    runtime._domGuards.forEach((o3) => o3.disconnect());
     runtime._domGuards = [];
     runtime.domObs.observe(document.body, { childList: true, subtree: true });
     runtime._domObsArmed = true;
@@ -6564,8 +6575,8 @@ Please enter a new key to continue.`);
   var SB_FLYOUT = { target: '#fly-out-panel [id="nav-gym"]', container: "area-mobile___AK1cR notList___jrp60", link: "link___tg6eQ mobileLink___NbSV4", row: "areaRow___Eheay", id: "nav-gym-log-flyout" };
   var GYM_LOG_ICON = `<svg xmlns="http://www.w3.org/2000/svg" stroke="transparent" stroke-width="0" width="18" height="18" viewBox="60 20 280 215"><g transform="scale(1, 1.15)"><path d="${ICONS.LOGO_PATH}"></path></g></svg>`;
   function handleLayout() {
-    const p = dom.panel, tb = dom.gymTab, isPanelOpen = p && p.style.display !== "none";
-    if (!p || p.classList.contains("bbgl-mode-page")) {
+    const p3 = dom.panel, tb = dom.gymTab, isPanelOpen = p3 && p3.style.display !== "none";
+    if (!p3 || p3.classList.contains("bbgl-mode-page")) {
       if (tb) tb.classList.toggle("bbgl-tab-active", !!isPanelOpen);
       return;
     }
@@ -6573,7 +6584,7 @@ Please enter a new key to continue.`);
     const settBtn = dom.settingsBtn && dom.settingsBtn.isConnected ? dom.settingsBtn : dom.settingsBtn = document.getElementById("notes_settings_button");
     const noteBtn = dom.notesBtn && dom.notesBtn.isConnected ? dom.notesBtn : dom.notesBtn = document.getElementById("notes_panel_button");
     const chatRoot = dom.chatRoot && dom.chatRoot.isConnected ? dom.chatRoot : dom.chatRoot = _bbglGetChatRoot();
-    const isOpen = (b) => b && b.className.includes("opened___");
+    const isOpen = (b2) => b2 && b2.className.includes("opened___");
     const peopOpen = isOpen(peopBtn), settOpen = isOpen(settBtn), notesOpen = isOpen(noteBtn);
     const innerW = window.innerWidth;
     const topCeiling = app.getTopCeiling();
@@ -6583,12 +6594,12 @@ Please enter a new key to continue.`);
     let maxNonChatWidth = 0;
     const winInfo = [];
     const shoveTargets = _bbglGetChatShoveTargets();
-    visWins.forEach((w) => {
-      const inChat = _bbglIsChatWindow(w, shoveTargets);
-      const rect = w.getBoundingClientRect();
+    visWins.forEach((w3) => {
+      const inChat = _bbglIsChatWindow(w3, shoveTargets);
+      const rect = w3.getBoundingClientRect();
       const dist = innerW - rect.right;
-      if (notesOpen && !inChat) maxNonChatWidth = Math.max(maxNonChatWidth, w.offsetWidth || 0);
-      winInfo.push({ w, rect, dist, inChat });
+      if (notesOpen && !inChat) maxNonChatWidth = Math.max(maxNonChatWidth, w3.offsetWidth || 0);
+      winInfo.push({ w: w3, rect, dist, inChat });
     });
     if (notesOpen) isNotesExpanded = maxNonChatWidth > 500 || innerW <= 620 && maxNonChatWidth > innerW * 0.75;
     let off = LAYOUT.BASE_RIGHT;
@@ -6612,51 +6623,51 @@ Please enter a new key to continue.`);
     }
     const totalShift = viewState.expanded ? 581 : 305;
     if (tb) tb.classList.toggle("bbgl-tab-active", !!isPanelOpen);
-    p.style.setProperty("max-height", `calc(100vh - ${topCeiling}px)`, "important");
-    p.style.right = pRight;
-    p.style.opacity = pOpacity;
-    p.style.pointerEvents = pPointer;
+    p3.style.setProperty("max-height", `calc(100vh - ${topCeiling}px)`, "important");
+    p3.style.right = pRight;
+    p3.style.opacity = pOpacity;
+    p3.style.pointerEvents = pPointer;
     const _staleParent = shoveTargets[0] && shoveTargets[0].parentElement || null;
     if (_staleParent && _staleParent.style.transform) _staleParent.style.transform = "";
-    shoveTargets.forEach((t) => {
-      t.style.right = isPanelOpen ? `${totalShift}px` : "";
-      const _tr = t.style.transition || "";
-      if (!_tr.includes("right")) t.style.transition = _tr ? _tr + ", right 0.2s ease-out" : "right 0.2s ease-out";
+    shoveTargets.forEach((t3) => {
+      t3.style.right = isPanelOpen ? `${totalShift}px` : "";
+      const _tr = t3.style.transition || "";
+      if (!_tr.includes("right")) t3.style.transition = _tr ? _tr + ", right 0.2s ease-out" : "right 0.2s ease-out";
     });
-    winInfo.forEach(({ w, inChat }) => {
+    winInfo.forEach(({ w: w3, inChat }) => {
       if (!inChat) {
-        w.style.transform = "";
+        w3.style.transform = "";
         return;
       }
     });
   }
-  function markPanelResizing(p) {
-    if (!p) return;
-    if (p._bbglResizingCancel) p._bbglResizingCancel();
-    p.classList.add("bbgl-resizing");
+  function markPanelResizing(p3) {
+    if (!p3) return;
+    if (p3._bbglResizingCancel) p3._bbglResizingCancel();
+    p3.classList.add("bbgl-resizing");
     let done = false;
     const finish = () => {
       if (done) return;
       done = true;
-      p.removeEventListener("transitionend", onEnd);
+      p3.removeEventListener("transitionend", onEnd);
       clearTimeout(timer);
-      p.classList.remove("bbgl-resizing");
-      p._bbglResizingCancel = null;
+      p3.classList.remove("bbgl-resizing");
+      p3._bbglResizingCancel = null;
     };
     const onEnd = (ev) => {
-      if (ev.target === p && (ev.propertyName === "width" || ev.propertyName === "height")) finish();
+      if (ev.target === p3 && (ev.propertyName === "width" || ev.propertyName === "height")) finish();
     };
-    p.addEventListener("transitionend", onEnd);
+    p3.addEventListener("transitionend", onEnd);
     const timer = setTimeout(finish, 350);
-    p._bbglResizingCancel = finish;
+    p3._bbglResizingCancel = finish;
   }
   function _bbglGetChatRoot() {
     return document.getElementById("chatRoot");
   }
   function _bbglGetChatShoveTargets() {
     const targets = [];
-    document.querySelectorAll('[id^="channel_panel_button:"]').forEach((b) => {
-      const id = b.id.slice("channel_panel_button:".length);
+    document.querySelectorAll('[id^="channel_panel_button:"]').forEach((b2) => {
+      const id = b2.id.slice("channel_panel_button:".length);
       if (!id) return;
       const box = document.getElementById(id);
       if (!box) return;
@@ -6665,15 +6676,15 @@ Please enter a new key to continue.`);
     });
     return targets;
   }
-  function _bbglIsChatWindow(w, shoveTargets) {
-    if (!w) return false;
-    if (shoveTargets && shoveTargets.some((t) => t === w || t.contains(w) || w.contains(t))) return true;
-    const cls = w.className || "";
+  function _bbglIsChatWindow(w3, shoveTargets) {
+    if (!w3) return false;
+    if (shoveTargets && shoveTargets.some((t3) => t3 === w3 || t3.contains(w3) || w3.contains(t3))) return true;
+    const cls = w3.className || "";
     return typeof cls === "string" && cls.toLowerCase().includes("chat");
   }
   function attachLayoutObservers() {
-    layoutObservers.forEach((o) => {
-      if (o.disconnect) o.disconnect();
+    layoutObservers.forEach((o3) => {
+      if (o3.disconnect) o3.disconnect();
     });
     layoutObservers.length = 0;
     const onLayoutChange = function onLayoutChange2() {
@@ -6698,25 +6709,25 @@ Please enter a new key to continue.`);
     }
     const watchClass = (el) => {
       if (!el) return;
-      const o = new MutationObserver(onLayoutChange);
-      o.observe(el, { attributes: true, attributeFilter: ["class"] });
-      layoutObservers.push(o);
+      const o3 = new MutationObserver(onLayoutChange);
+      o3.observe(el, { attributes: true, attributeFilter: ["class"] });
+      layoutObservers.push(o3);
     };
     const watchChatRoot = (el) => {
       if (!el) return;
-      const o = new MutationObserver(onLayoutChange);
-      o.observe(el, { childList: true, subtree: true, attributes: true, attributeFilter: ["class"] });
-      layoutObservers.push(o);
+      const o3 = new MutationObserver(onLayoutChange);
+      o3.observe(el, { childList: true, subtree: true, attributes: true, attributeFilter: ["class"] });
+      layoutObservers.push(o3);
     };
     const watchLayoutLifecycle = () => {
-      const o = new MutationObserver((muts) => {
-        for (const m of muts) {
-          if (m.type !== "childList") continue;
+      const o3 = new MutationObserver((muts) => {
+        for (const m3 of muts) {
+          if (m3.type !== "childList") continue;
           const nodes = [];
-          if (m.addedNodes && m.addedNodes.length) nodes.push(...m.addedNodes);
-          if (m.removedNodes && m.removedNodes.length) nodes.push(...m.removedNodes);
-          for (const n of nodes) {
-            const el = n && n.nodeType === 1 ? n : null;
+          if (m3.addedNodes && m3.addedNodes.length) nodes.push(...m3.addedNodes);
+          if (m3.removedNodes && m3.removedNodes.length) nodes.push(...m3.removedNodes);
+          for (const n2 of nodes) {
+            const el = n2 && n2.nodeType === 1 ? n2 : null;
             if (!el) continue;
             const cn = el.className || "";
             if (typeof cn === "string" && (cn.includes("visible___") || cn.includes("opened___")) || el.querySelector && el.querySelector('[class*="visible___"], [class*="opened___"]')) {
@@ -6726,8 +6737,8 @@ Please enter a new key to continue.`);
           }
         }
       });
-      o.observe(document.body, { childList: true, subtree: true });
-      layoutObservers.push(o);
+      o3.observe(document.body, { childList: true, subtree: true });
+      layoutObservers.push(o3);
     };
     dom.notesBtn = document.getElementById("notes_panel_button");
     dom.peopleBtn = document.getElementById("people_panel_button");
@@ -6744,9 +6755,9 @@ Please enter a new key to continue.`);
     const gymRoot = document.getElementById("gymroot");
     if (!gymRoot) return;
     if (document.getElementById("bbgl-gym-level-container")) return;
-    for (const p of gymRoot.querySelectorAll("p")) {
-      if (p.textContent.trim() === "What would you like to train today?") {
-        (p.parentElement?.parentElement ?? p).remove();
+    for (const p3 of gymRoot.querySelectorAll("p")) {
+      if (p3.textContent.trim() === "What would you like to train today?") {
+        (p3.parentElement?.parentElement ?? p3).remove();
         break;
       }
     }
@@ -6769,32 +6780,32 @@ Please enter a new key to continue.`);
   function injectFooterButton(notesBtnEl) {
     if (!notesBtnEl || !notesBtnEl.parentNode) return;
     if (document.getElementById("bbgl-gym-tab")) return;
-    const b = document.createElement("button");
-    b.id = "bbgl-gym-tab";
-    b.innerHTML = ICONS.LOGO;
-    b.type = "button";
-    b.setAttribute("data-tooltip", "Big Black Gym Log");
-    notesBtnEl.parentNode.insertBefore(b, notesBtnEl);
-    dom.gymTab = b;
+    const b2 = document.createElement("button");
+    b2.id = "bbgl-gym-tab";
+    b2.innerHTML = ICONS.LOGO;
+    b2.type = "button";
+    b2.setAttribute("data-tooltip", "Big Black Gym Log");
+    notesBtnEl.parentNode.insertBefore(b2, notesBtnEl);
+    dom.gymTab = b2;
     app.updateFooterTooltip();
   }
   function injectSidebarButton(cfg, mob) {
     if (document.getElementById(cfg.id)) return;
-    const c = document.createElement("div");
-    c.className = cfg.container;
-    c.id = cfg.id;
-    const r = document.createElement("div");
-    r.className = cfg.row;
-    const l = document.createElement("a");
-    l.href = "/calendar.php#gymlog";
-    l.className = cfg.link;
-    l.innerHTML = `<span class="svgIconWrap___AMIqR"><span class="defaultIcon___iiNis mobile___paLva">${GYM_LOG_ICON}</span></span>${mob ? "<span>Gym Log</span>" : '<span class="linkName___FoKha">Gym Log</span>'}`;
+    const c3 = document.createElement("div");
+    c3.className = cfg.container;
+    c3.id = cfg.id;
+    const r4 = document.createElement("div");
+    r4.className = cfg.row;
+    const l3 = document.createElement("a");
+    l3.href = "/calendar.php#gymlog";
+    l3.className = cfg.link;
+    l3.innerHTML = `<span class="svgIconWrap___AMIqR"><span class="defaultIcon___iiNis mobile___paLva">${GYM_LOG_ICON}</span></span>${mob ? "<span>Gym Log</span>" : '<span class="linkName___FoKha">Gym Log</span>'}`;
     const _isNewInstall = !localStorage.getItem("bbgl_initialized") && !localStorage.getItem(KEYS.SB_NOTIF);
     const _hasChangelogNotif = localStorage.getItem(KEYS.CHANGELOG_NOTIF) === "1";
-    if (_isNewInstall || _hasChangelogNotif) c.classList.add("bbgl-sb-notif");
-    l.addEventListener("click", (e) => {
-      e.preventDefault();
-      const hadNotif = c.classList.contains("bbgl-sb-notif");
+    if (_isNewInstall || _hasChangelogNotif) c3.classList.add("bbgl-sb-notif");
+    l3.addEventListener("click", (e3) => {
+      e3.preventDefault();
+      const hadNotif = c3.classList.contains("bbgl-sb-notif");
       const _liveIsNewInstall = !localStorage.getItem("bbgl_initialized") && !localStorage.getItem(KEYS.SB_NOTIF);
       const _liveHasChangelogNotif = localStorage.getItem(KEYS.CHANGELOG_NOTIF) === "1";
       if (hadNotif) {
@@ -6811,50 +6822,50 @@ Please enter a new key to continue.`);
         }
       }
     });
-    r.appendChild(l);
-    c.appendChild(r);
-    document.querySelectorAll(cfg.target).forEach((n) => {
-      const _liveContainer = Array.from(n.classList).filter((cl) => !cl.startsWith("active___")).join(" ");
+    r4.appendChild(l3);
+    c3.appendChild(r4);
+    document.querySelectorAll(cfg.target).forEach((n2) => {
+      const _liveContainer = Array.from(n2.classList).filter((cl) => !cl.startsWith("active___")).join(" ");
       if (_liveContainer) {
-        const hasNotif = c.classList.contains("bbgl-sb-notif");
-        c.className = _liveContainer;
-        if (hasNotif) c.classList.add("bbgl-sb-notif");
+        const hasNotif = c3.classList.contains("bbgl-sb-notif");
+        c3.className = _liveContainer;
+        if (hasNotif) c3.classList.add("bbgl-sb-notif");
       }
-      const _liveRow = n.querySelector('[class*="area-row"], [class*="areaRow"]') || n.firstElementChild;
-      if (_liveRow) r.className = _liveRow.className;
-      const _scopedSiblings = n.parentNode ? Array.from(n.parentNode.children).filter((el) => el !== n && el.id && el.id.startsWith("nav-") && el.id !== cfg.id && el.querySelector("a")) : [];
+      const _liveRow = n2.querySelector('[class*="area-row"], [class*="areaRow"]') || n2.firstElementChild;
+      if (_liveRow) r4.className = _liveRow.className;
+      const _scopedSiblings = n2.parentNode ? Array.from(n2.parentNode.children).filter((el) => el !== n2 && el.id && el.id.startsWith("nav-") && el.id !== cfg.id && el.querySelector("a")) : [];
       const _siblingSelector = mob ? '[id^="nav-"][class*="area-mobile"]' : '[id^="nav-"][class*="area-desktop"]';
-      const _allSiblings = _scopedSiblings.length ? _scopedSiblings : Array.from(document.querySelectorAll(_siblingSelector)).filter((el) => el !== n && el.id !== cfg.id && el.querySelector("a"));
+      const _allSiblings = _scopedSiblings.length ? _scopedSiblings : Array.from(document.querySelectorAll(_siblingSelector)).filter((el) => el !== n2 && el.id !== cfg.id && el.querySelector("a"));
       const _inactiveSibling = _allSiblings.find((el) => !Array.from(el.classList).some((cls) => cls.startsWith("active___")));
       const _siblingSection = _inactiveSibling || _allSiblings[0];
-      const _extractClass = (cn, prefixes) => (cn || "").split(/\s+/).filter((x) => x && prefixes.some((p2) => x.startsWith(p2))).join(" ");
+      const _extractClass = (cn, prefixes) => (cn || "").split(/\s+/).filter((x3) => x3 && prefixes.some((p4) => x3.startsWith(p4))).join(" ");
       const _neutralLink = _siblingSection ? _siblingSection.querySelector("a") : null;
       if (_neutralLink) {
-        l.className = _extractClass(_neutralLink.className, ["link___", "desktopLink", "mobileLink", "sidebarMobileLink"]);
+        l3.className = _extractClass(_neutralLink.className, ["link___", "desktopLink", "mobileLink", "sidebarMobileLink"]);
         const _sw = _neutralLink.querySelector('[class*="svgIconWrap"]');
         const _di = _neutralLink.querySelector('[class*="defaultIcon"]');
         const _ln = _neutralLink.querySelector('[class*="linkName"]');
         const _liveSvgWrap = _sw ? _extractClass(_sw.className, ["svgIconWrap"]) : "svgIconWrap___AMIqR";
         const _liveDefIcon = _di ? _extractClass(_di.className, ["defaultIcon", "mobile"]) : "defaultIcon___iiNis mobile___paLva";
         const _liveLinkName = _ln ? _extractClass(_ln.className, ["linkName"]) : "linkName___FoKha";
-        l.innerHTML = `<span class="${_liveSvgWrap}"><span class="${_liveDefIcon}">${GYM_LOG_ICON}</span></span>${_ln ? `<span class="${_liveLinkName}">Gym Log</span>` : "<span>Gym Log</span>"}`;
+        l3.innerHTML = `<span class="${_liveSvgWrap}"><span class="${_liveDefIcon}">${GYM_LOG_ICON}</span></span>${_ln ? `<span class="${_liveLinkName}">Gym Log</span>` : "<span>Gym Log</span>"}`;
       }
-      const p = n.closest(".swiper-slide");
-      if (p) {
-        const s = document.createElement("div");
-        s.className = cfg.slide || "swiper-slide slide___se7hj";
-        s.style.width = n.parentNode.style.width || "43.375px";
-        s.appendChild(c);
-        const _wr = n.parentNode.parentNode;
+      const p3 = n2.closest(".swiper-slide");
+      if (p3) {
+        const s3 = document.createElement("div");
+        s3.className = cfg.slide || "swiper-slide slide___se7hj";
+        s3.style.width = n2.parentNode.style.width || "43.375px";
+        s3.appendChild(c3);
+        const _wr = n2.parentNode.parentNode;
         if (_wr) {
-          _wr.insertBefore(s, n.parentNode.nextSibling);
+          _wr.insertBefore(s3, n2.parentNode.nextSibling);
           _wr.classList.add("bbgl-swiper-wr");
           if (_wr.parentNode) _wr.parentNode.classList.add("bbgl-swiper-cont");
-          if (!n.parentNode.style.width) {
+          if (!n2.parentNode.style.width) {
             let _woTimer = null;
             const _wo = new MutationObserver(() => {
-              if (n.parentNode.style.width) {
-                s.style.width = n.parentNode.style.width;
+              if (n2.parentNode.style.width) {
+                s3.style.width = n2.parentNode.style.width;
                 _wo.disconnect();
                 if (_woTimer) {
                   clearTimeout(_woTimer);
@@ -6862,7 +6873,7 @@ Please enter a new key to continue.`);
                 }
               }
             });
-            _wo.observe(n.parentNode, { attributes: true, attributeFilter: ["style"] });
+            _wo.observe(n2.parentNode, { attributes: true, attributeFilter: ["style"] });
             _woTimer = setTimeout(() => {
               _wo.disconnect();
               _woTimer = null;
@@ -6870,7 +6881,7 @@ Please enter a new key to continue.`);
           }
         }
       } else {
-        n.parentNode.insertBefore(c, n.nextSibling);
+        n2.parentNode.insertBefore(c3, n2.nextSibling);
       }
     });
     app.syncSidebarState();
@@ -6916,12 +6927,12 @@ Please enter a new key to continue.`);
   function onChangeDayStart(val) {
     userConfig.dayStartMode = val;
     saveConfig();
-    const s = app.getActiveHistory(), baseline = s.meta.baselineBreakdown || ZERO_BREAKDOWN, series = app.DataController.flattenAllSeries();
+    const s3 = app.getActiveHistory(), baseline = s3.meta.baselineBreakdown || ZERO_BREAKDOWN, series = app.DataController.flattenAllSeries();
     if (series.length > 0) {
       const rebuilt = app.DataController._rebuildFromSeries(series, baseline);
-      s.history = rebuilt.history;
-      s.today = rebuilt.today;
-      app.DataController.saveSmartHistory(s);
+      s3.history = rebuilt.history;
+      s3.today = rebuilt.today;
+      app.DataController.saveSmartHistory(s3);
     } else app.DataController.invalidate();
     resetSelectionState();
     app.renderPanelContent();
@@ -6938,7 +6949,7 @@ Please enter a new key to continue.`);
     const wr = dom.panel && dom.panel.querySelector(".bbgl-week-row");
     if (wr) {
       const wd = userConfig.weekStartMode === "mon" ? ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"] : ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
-      wr.innerHTML = wd.map((d) => `<span>${d}</span>`).join("");
+      wr.innerHTML = wd.map((d3) => `<span>${d3}</span>`).join("");
     }
     app.renderPanelContent();
     const tp = dom.topPanel;
@@ -6964,16 +6975,16 @@ Please enter a new key to continue.`);
     const pc = document.getElementById("bbgl-page-container");
     if (pc) pc.classList.toggle("bbgl-init-locked", lock);
   }
-  function handleGymClick(e) {
-    const b = e.target.closest("button");
-    if (!b) return;
-    const l = b.getAttribute("aria-label");
-    if (!l) return;
+  function handleGymClick(e3) {
+    const b2 = e3.target.closest("button");
+    if (!b2) return;
+    const l3 = b2.getAttribute("aria-label");
+    if (!l3) return;
     let id = null;
-    if (l === "Train strength") id = 5300;
-    else if (l === "Train defense") id = 5301;
-    else if (l === "Train speed") id = 5302;
-    else if (l === "Train dexterity") id = 5303;
+    if (l3 === "Train strength") id = 5300;
+    else if (l3 === "Train defense") id = 5301;
+    else if (l3 === "Train speed") id = 5302;
+    else if (l3 === "Train dexterity") id = 5303;
     if (id) {
       sessionStorage.setItem(KEYS.SESSION, "true");
       if (!runtime.trainDebouncers) runtime.trainDebouncers = {};
@@ -7020,7 +7031,7 @@ Please enter a new key to continue.`);
   app.handleGymClick = handleGymClick;
 
   // src/ui/templates.js
-  var TOOLTIPS = { ANIM: "<b>Toggle UI transitions and cosmetic effects</b><br><i>Disable to prioritize performance on slower devices.</i>", RATES: "<b>Display growth rate and efficiency metrics</b><br><i>Turn off for a minimalist view focused strictly on totals.</i>", DRUG_TRACKER: "<b>Choose the primary training drug that appears on the ledger.</b><br><i>People on SSL path may want to track LSD instead of Xanax usage.</i>", LOC: "<b>Choose where the Gym Log icon appears in your Torn UI</b><br><i>Select Sidebar if the Footer Tab is hidden or if you are using Chat 2.0.</i>", DAY_START: "<b>Anchor logs to UTC or your system clock</b><br><i>Syncs your ongoing training sessions with your real-world schedule.</i>", WEEK_START: "<b>Change your preferred starting day for the week</b><br><i>Adjusts the calendar layout and weekly performance metrics.</i>", BEST_GYM: "<b>Always train at your best unlocked gym</b><br><i>Pressing train switches you to the highest-tier gym for that stat.</i>", BEST_GYM_SPEC: "<b>Allow switching to specialist gyms</b><br><i>When off, auto-switch only considers standard gyms.</i>", BEST_GYM_UNPURCHASED: "<b>Allow switching to unpurchased gyms</b><br><i>When off, auto-switch only considers gyms you have already bought.</i>", API: "Custom API key required.<br><br><i>This script strictly requests 'battlestats' and 'log' data. Click the Create API Key button below to securely generate a key for this script. For maximum safety, you can edit this newly created key in your Torn API Settings to restrict its log access specifically to the 'Gym' category.<br><br>Your key is stored locally on your device only and is sent exclusively to api.torn.com.</i>", PASTE_CLIPBOARD: "Paste from Clipboard", AGREE_GATE: "Check the box to confirm you've read the disclosure", LOCKED: "Locked", LEDGER_VIEW: "Ledger", GRAPH_VIEW: "Graph", STICKERBOOK: "Stickerbook", ACHIEVEMENTS: "Achievements", COPY_SESSION: "Copy Session Data", ALL_TIME_SUMMARY: "All-Time Summary", YEARLY_SUMMARY: "Yearly Summary", MONTHLY_SUMMARY: "Monthly Summary", DEMO_EXIT: "Exit Demo Mode", DEMO_EXIT_HTML: "Exit Demo Mode<i>Stats shown here are for previewing the functions of the script only \u2014 they do not reflect realistic Torn growth.</i>", REFRESH_COOLDOWN: (remaining) => `Please wait ${remaining}s before refreshing the log again`, BACKFILL_RESUME_COOLDOWN: (t) => `Torn's daily row cap has been reached. Resume available in ${t}.`, BACKFILL_COMPLETE_ORIGIN: "Your full training history was reconstructed back to the very beginning.", BACKFILL_COMPLETE_EXHAUSTED: "Scan reached the end of the logs Torn still retains. Any older history is no longer available from Torn's servers.", CELL_DATE: (ds) => `Date: ${ds}` };
+  var TOOLTIPS = { ANIM: "<b>Toggle UI transitions and cosmetic effects</b><br><i>Disable to prioritize performance on slower devices.</i>", RATES: "<b>Display growth rate and efficiency metrics</b><br><i>Turn off for a minimalist view focused strictly on totals.</i>", DRUG_TRACKER: "<b>Choose the primary training drug that appears on the ledger.</b><br><i>People on SSL path may want to track LSD instead of Xanax usage.</i>", LOC: "<b>Choose where the Gym Log icon appears in your Torn UI</b><br><i>Select Sidebar if the Footer Tab is hidden or if you are using Chat 2.0.</i>", DAY_START: "<b>Anchor logs to UTC or your system clock</b><br><i>Syncs your ongoing training sessions with your real-world schedule.</i>", WEEK_START: "<b>Change your preferred starting day for the week</b><br><i>Adjusts the calendar layout and weekly performance metrics.</i>", BEST_GYM: "<b>Always train at your best unlocked gym</b><br><i>Pressing train switches you to the highest-tier gym for that stat.</i>", BEST_GYM_SPEC: "<b>Allow switching to specialist gyms</b><br><i>When off, auto-switch only considers standard gyms.</i>", BEST_GYM_UNPURCHASED: "<b>Allow switching to unpurchased gyms</b><br><i>When off, auto-switch only considers gyms you have already bought.</i>", API: "Custom API key required.<br><br><i>This script strictly requests 'battlestats' and 'log' data. Click the Create API Key button below to securely generate a key for this script. For maximum safety, you can edit this newly created key in your Torn API Settings to restrict its log access specifically to the 'Gym' category.<br><br>Your key is stored locally on your device only and is sent exclusively to api.torn.com.</i>", PASTE_CLIPBOARD: "Paste from Clipboard", AGREE_GATE: "Check the box to confirm you've read the disclosure", LOCKED: "Locked", LEDGER_VIEW: "Ledger", GRAPH_VIEW: "Graph", STICKERBOOK: "Stickerbook", ACHIEVEMENTS: "Achievements", COPY_SESSION: "Copy Session Data", ALL_TIME_SUMMARY: "All-Time Summary", YEARLY_SUMMARY: "Yearly Summary", MONTHLY_SUMMARY: "Monthly Summary", DEMO_EXIT: "Exit Demo Mode", DEMO_EXIT_HTML: "Exit Demo Mode<i>Stats shown here are for previewing the functions of the script only \u2014 they do not reflect realistic Torn growth.</i>", REFRESH_COOLDOWN: (remaining) => `Please wait ${remaining}s before refreshing the log again`, BACKFILL_RESUME_COOLDOWN: (t3) => `Torn's daily row cap has been reached. Resume available in ${t3}.`, BACKFILL_COMPLETE_ORIGIN: "Your full training history was reconstructed back to the very beginning.", BACKFILL_COMPLETE_EXHAUSTED: "Scan reached the end of the logs Torn still retains. Any older history is no longer available from Torn's servers.", CELL_DATE: (ds) => `Date: ${ds}` };
   async function populateWelcomeContent(wv) {
     let introHTML = app.DOC_ERROR_HTML, returningHTML = app.DOC_ERROR_HTML;
     try {
@@ -7028,7 +7039,7 @@ Please enter a new key to continue.`);
       const parts = raw.split("<!--RETURNING-->");
       introHTML = parts[0] || app.DOC_ERROR_HTML;
       returningHTML = parts[1] || app.DOC_ERROR_HTML;
-    } catch (e) {
+    } catch (e3) {
     }
     const introEl = wv.querySelector("#bbgl-welcome-intro-text");
     const returningEl = wv.querySelector("#bbgl-welcome-returning-text");
@@ -7044,23 +7055,23 @@ Please enter a new key to continue.`);
     return `<div class="close-settings-btn" title="Close Settings">${ICONS.CHECK}</div><div class="bbgl-settings-scroll-area">${app.buildSettingsFeaturesSection()}${app.buildSettingsLogFormatSection()}${app.buildSettingsDataSection()}${app.buildSettingsApiSection()}${app.buildSettingsInfoSection()}</div>`;
   }
   function buildEmptyLevelTrackSVG() {
-    const W = 500, H = 100;
+    const W3 = 500, H3 = 100;
     const padX = 8, padY = 18;
-    const slotW = W - 2 * padX;
-    const slotH = H - 2 * padY;
+    const slotW = W3 - 2 * padX;
+    const slotH = H3 - 2 * padY;
     const defs = `<defs><linearGradient id="lvl-housing" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#202020"/><stop offset=".4" stop-color="#363636"/><stop offset=".5" stop-color="#404040"/><stop offset=".6" stop-color="#363636"/><stop offset="1" stop-color="#181818"/></linearGradient><linearGradient id="lvl-recess-shadow" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#000" stop-opacity=".6"/><stop offset=".5" stop-color="#000" stop-opacity=".1"/><stop offset="1" stop-color="#000" stop-opacity="0"/></linearGradient><linearGradient id="lvl-recess-shine" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fff" stop-opacity="0"/><stop offset=".7" stop-color="#fff" stop-opacity="0"/><stop offset="1" stop-color="#fff" stop-opacity=".35"/></linearGradient></defs>`;
-    const f = (v) => v.toFixed(2);
-    let out = `<rect width="${W}" height="${H}" fill="url(#lvl-housing)"/>`;
+    const f4 = (v3) => v3.toFixed(2);
+    let out = `<rect width="${W3}" height="${H3}" fill="url(#lvl-housing)"/>`;
     const bx = padX, by = padY;
-    out += `<rect x="${f(bx)}" y="${by}" width="${f(slotW)}" height="${slotH}" fill="#000" fill-opacity=".5"/>`;
-    out += `<rect x="${f(bx)}" y="${by}" width="${f(slotW)}" height="${slotH}" fill="url(#lvl-recess-shadow)"/>`;
-    out += `<rect x="${f(bx)}" y="${by}" width="${f(slotW)}" height="3" fill="#000" fill-opacity=".6"/>`;
-    out += `<rect x="${f(bx)}" y="${f(by + slotH - 1.5)}" width="${f(slotW)}" height="1.5" fill="#fff" fill-opacity=".15"/>`;
-    return `<svg class="bbgl-level-svg" viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" xmlns="http://www.w3.org/2000/svg" style="position:absolute;top:0;left:0;width:100%;height:100%;z-index:1;display:block;">${defs}${out}</svg>`;
+    out += `<rect x="${f4(bx)}" y="${by}" width="${f4(slotW)}" height="${slotH}" fill="#000" fill-opacity=".5"/>`;
+    out += `<rect x="${f4(bx)}" y="${by}" width="${f4(slotW)}" height="${slotH}" fill="url(#lvl-recess-shadow)"/>`;
+    out += `<rect x="${f4(bx)}" y="${by}" width="${f4(slotW)}" height="3" fill="#000" fill-opacity=".6"/>`;
+    out += `<rect x="${f4(bx)}" y="${f4(by + slotH - 1.5)}" width="${f4(slotW)}" height="1.5" fill="#fff" fill-opacity=".15"/>`;
+    return `<svg class="bbgl-level-svg" viewBox="0 0 ${W3} ${H3}" preserveAspectRatio="none" xmlns="http://www.w3.org/2000/svg" style="position:absolute;top:0;left:0;width:100%;height:100%;z-index:1;display:block;">${defs}${out}</svg>`;
   }
   function getDashboardHTML() {
     const weekDays = userConfig.weekStartMode === "mon" ? ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"] : ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
-    const weekRowHTML = weekDays.map((d) => `<span>${d}</span>`).join("");
+    const weekRowHTML = weekDays.map((d3) => `<span>${d3}</span>`).join("");
     return `<div class="bbgl-header" id="bbgl-header-bar"><div class="bbgl-header-left">${ICONS.LOGO}<span class="bbgl-header-text"><span class="bbgl-short-title">Big Black Log</span><span class="bbgl-long-title">Big Black Gym Log</span></span></div><div class="bbgl-header-right"><span id="bbgl-demo-exit-btn" class="close-settings-btn bbgl-close-purple" style="display:${runtime.demoMode ? "flex" : "none"};" data-tooltip-html="${TOOLTIPS.DEMO_EXIT_HTML}"><span class="bbgl-demo-x-label">Demo</span>${ICONS.CLOSE}</span><span id="bbgl-settings-btn" class="bbgl-custom-icon">\u2699</span><span id="bbgl-close-btn" class="bbgl-native-icon">${ICONS.MINIMIZE}</span><span id="bbgl-pop-btn" class="bbgl-native-icon">${viewState.expanded ? ICONS.COMPRESS : ICONS.POPOUT}</span></div></div><div id="bbgl-content-wrapper"><div id="bbgl-top-panel"><div id="bbgl-tall-toggle">${viewState.isTall ? "\u2013" : "+"}</div><div id="bbgl-ledger-toggle" data-tooltip="${TOOLTIPS.LEDGER_VIEW}">${ICONS.LEDGER}</div><div id="bbgl-graph-toggle" data-tooltip="${TOOLTIPS.GRAPH_VIEW}">${ICONS.GRAPH}</div><div id="bbgl-achievements-toggle" data-tooltip="${TOOLTIPS.ACHIEVEMENTS}">${ICONS.ACHIEVEMENTS}</div><div id="bbgl-sticker-toggle" data-tooltip="${TOOLTIPS.STICKERBOOK}">${ICONS.STICKERBOOK}</div><div id="bbgl-item-counters"></div><div id="bbgl-copy-btn" class="copy-hist-btn" data-tooltip="${TOOLTIPS.COPY_SESSION}">${ICONS.CLIPBOARD}</div><div id="bbgl-sticker-title"></div><div class="ui-floating-label" id="bbgl-date-label">LOADING...</div><div class="ui-floating-summary" id="bbgl-summary-label"></div><div id="bbgl-ledger-view" class="ledger-content"></div><div id="bbgl-graph-container"><div class="g-hud"><div class="g-toggles"><div class="g-pill active" data-type="mode" data-val="values">Gains</div><div class="g-pill" data-type="mode" data-val="rates">Rates</div></div><div class="g-toggles"><div class="g-pill p-str active" data-type="stat" data-val="str">STR</div><div class="g-pill p-def" data-type="stat" data-val="def">DEF</div><div class="g-pill p-spd active" data-type="stat" data-val="spd">SPD</div><div class="g-pill p-dex" data-type="stat" data-val="dex">DEX</div><div class="g-pill p-tot" data-type="stat" data-val="total">TOT</div></div></div><svg id="bbgl-graph-svg"></svg></div><div id="bbgl-achievements-container" class="ledger-content"><div class="bbgl-ach-scroll"><div id="bbgl-ach-pages"></div></div></div><div id="bbgl-ach-footer" class="bbgl-ach-footer"><div class="bbgl-ach-footer-side bbgl-ach-footer-left"><button type="button" class="bbgl-ach-nav bbgl-ach-prev" aria-label="Previous achievements page">\u276E</button></div><div id="bbgl-ach-pageindicator"></div><div class="bbgl-ach-footer-side bbgl-ach-footer-right"><button type="button" class="bbgl-ach-nav bbgl-ach-next" aria-label="Next achievements page">\u276F</button></div></div><div id="bbgl-sticker-bg"></div><div id="bbgl-sticker-container"><div id="sticker-sponsor-btn" class="sticker-nav-btn disabled">\u276E</div><div id="sticker-prev-btn" class="sticker-nav-btn">\u276E</div><div id="sticker-next-btn" class="sticker-nav-btn">\u276F</div><div id="bbgl-sticker-grid"></div><div id="bbgl-sticker-pagination"></div></div><div class="glass-overlay"></div></div><div id="bbgl-bottom-panel"><div id="bbgl-demo-exit" style="display: ${runtime.demoMode ? "flex" : "none"};" data-tooltip="${TOOLTIPS.DEMO_EXIT}" data-tooltip-html="${TOOLTIPS.DEMO_EXIT_HTML}">DEMO MODE</div><div class="bbgl-header-wrapper"><div class="bbgl-month-header"><div class="title-group"><div class="title-stack"><div class="header-row header-row--alltime"><div class="stats-btn" id="all-time-btn">${ICONS.CHART}</div><div class="header-trigger" id="all-time-trigger">\u221E</div></div><div class="header-row header-row--year"><div class="stats-btn" id="year-stats-btn">${ICONS.CHART}</div><div class="header-trigger" id="year-trigger"></div><div id="bbgl-year-dropdown" class="bbgl-dropdown-menu"></div></div><div class="header-row header-row--month"><div class="stats-btn" id="month-stats-btn">${ICONS.CHART}</div><div class="header-trigger" id="month-trigger"></div><div id="bbgl-month-dropdown" class="bbgl-dropdown-menu"></div></div></div></div><button class="arrow-btn" id="prev-month-btn">\u276E</button><button class="arrow-btn" id="next-month-btn">\u276F</button></div><div id="bbgl-level-bg">${buildEmptyLevelTrackSVG()}</div><div id="bbgl-level-container"><div id="bbgl-level-flag-clip"><span id="bbgl-level-num">Lv 1</span></div><div id="bbgl-level-track"><div id="bbgl-level-fill"></div></div></div></div><div class="bbgl-grid-container"><div class="bbgl-week-row">${weekRowHTML}</div><div class="calendar-wrapper" id="swipe-area"><div id="bbgl-cal-container" class="bbgl-cal-container"></div></div></div></div><div id="bbgl-item-viewer"><div class="viewer-window"><div class="viewer-stage"><div class="viewer-pedestal" id="vi-pedestal-wrapper"><div class="viewer-obj" id="vi-obj-target"><div class="layer-front"></div><div class="layer-back"></div></div></div></div></div><div class="viewer-info-overlay"><div class="vi-name" id="vi-name-target">Item Name</div></div></div><div id="bbgl-settings-view">${getSettingsHTML()}</div><div id="bbgl-welcome-view"></div></div>`;
   }
   app.TOOLTIPS = TOOLTIPS;
@@ -7099,16 +7110,16 @@ Please enter a new key to continue.`);
     return `<div class="bbgl-modal-overlay" id="bbgl-privacy-modal"><div class="bbgl-modal-window"><div class="close-settings-btn bbgl-close-x" id="bbgl-privacy-close" title="Close">${ICONS.CLOSE}</div>${discSection}${footer}</div></div>`;
   }
   function closePrivacyModal() {
-    const m = document.getElementById("bbgl-privacy-modal");
-    if (m && m.parentNode) m.parentNode.removeChild(m);
+    const m3 = document.getElementById("bbgl-privacy-modal");
+    if (m3 && m3.parentNode) m3.parentNode.removeChild(m3);
   }
   function buildChangelogModalHTML() {
     const changelogSection = app.buildSection("BBGL Test Phase Changelog", `<div class="bbgl-modal-scrollbox" style="max-height:calc(68vh - 80px); min-height:300px;"><div id="bbgl-changelog-content" style="font-family:Arial,sans-serif; font-size:12px; color:#ccc; line-height:1.7;">${DOC_LOADING_HTML}</div></div>`, "margin-bottom:8px;");
     return `<div class="bbgl-modal-overlay" id="bbgl-changelog-modal"><div class="bbgl-modal-window"><div class="close-settings-btn bbgl-close-x" id="bbgl-changelog-close" title="Close">${ICONS.CLOSE}</div>${changelogSection}</div></div>`;
   }
   function closeChangelogModal() {
-    const m = document.getElementById("bbgl-changelog-modal");
-    if (m && m.parentNode) m.parentNode.removeChild(m);
+    const m3 = document.getElementById("bbgl-changelog-modal");
+    if (m3 && m3.parentNode) m3.parentNode.removeChild(m3);
   }
   async function openChangelogModal() {
     closeChangelogModal();
@@ -7119,14 +7130,14 @@ Please enter a new key to continue.`);
     localStorage.removeItem(KEYS.CHANGELOG_NOTIF);
     app.syncChangelogNotif(false);
     modal.querySelector("#bbgl-changelog-close").onclick = () => closeChangelogModal();
-    modal.onclick = (e) => {
-      if (e.target === modal) closeChangelogModal();
+    modal.onclick = (e3) => {
+      if (e3.target === modal) closeChangelogModal();
     };
     try {
       const changelogHTML = await fetchDoc("changelog");
       const inner = modal.querySelector("#bbgl-changelog-content");
       if (inner) inner.innerHTML = changelogHTML;
-    } catch (e) {
+    } catch (e3) {
       const inner = modal.querySelector("#bbgl-changelog-content");
       if (inner) inner.innerHTML = DOC_ERROR_HTML;
     }
@@ -7136,8 +7147,8 @@ Please enter a new key to continue.`);
     return `<div class="bbgl-modal-overlay" id="bbgl-feature-guide-modal"><div class="bbgl-modal-window"><div class="close-settings-btn bbgl-close-x" id="bbgl-feature-guide-close" title="Close">${ICONS.CLOSE}</div>${guideSection}</div></div>`;
   }
   function closeFeatureGuideModal() {
-    const m = document.getElementById("bbgl-feature-guide-modal");
-    if (m && m.parentNode) m.parentNode.removeChild(m);
+    const m3 = document.getElementById("bbgl-feature-guide-modal");
+    if (m3 && m3.parentNode) m3.parentNode.removeChild(m3);
   }
   function openFeatureGuideModal() {
     closeFeatureGuideModal();
@@ -7145,8 +7156,8 @@ Please enter a new key to continue.`);
     const modal = document.getElementById("bbgl-feature-guide-modal");
     if (!modal) return;
     modal.querySelector("#bbgl-feature-guide-close").onclick = () => closeFeatureGuideModal();
-    modal.onclick = (e) => {
-      if (e.target === modal) closeFeatureGuideModal();
+    modal.onclick = (e3) => {
+      if (e3.target === modal) closeFeatureGuideModal();
     };
   }
   async function openPrivacyModal() {
@@ -7156,8 +7167,8 @@ Please enter a new key to continue.`);
     const modal = document.getElementById("bbgl-privacy-modal");
     if (!modal) return;
     modal.querySelector("#bbgl-privacy-close").onclick = () => closePrivacyModal();
-    modal.onclick = (e) => {
-      if (e.target === modal) closePrivacyModal();
+    modal.onclick = (e3) => {
+      if (e3.target === modal) closePrivacyModal();
     };
     if (!reviewMode) {
       const agreeBtn = modal.querySelector("#bbgl-privacy-agree-btn"), agreeWrap = modal.querySelector(".bbgl-agree-wrap"), ackBox = modal.querySelector("#bbgl-privacy-ack");
@@ -7197,8 +7208,8 @@ Please enter a new key to continue.`);
       if (!container) return;
       container.querySelectorAll("[data-bbgl-doc]").forEach((link) => {
         link.style.cursor = "pointer";
-        link.onclick = async (e) => {
-          e.preventDefault();
+        link.onclick = async (e3) => {
+          e3.preventDefault();
           const name = link.getAttribute("data-bbgl-doc");
           if (!name) return;
           container.innerHTML = DOC_LOADING_HTML;
@@ -7217,7 +7228,7 @@ Please enter a new key to continue.`);
         disc.innerHTML = disclosureHTML;
         wireDocSwap(disc);
       }
-    } catch (e) {
+    } catch (e3) {
       if (disc) disc.innerHTML = DOC_ERROR_HTML;
     }
   }
@@ -7259,7 +7270,7 @@ Please enter a new key to continue.`);
       vt = "WEEK";
     }
     if (!sl) return { labels: [], trends: { str: [], def: [], spd: [], dex: [], total: [] }, viewType: vt, xParams: { min: 0, max: 0 } };
-    const isR = graphMode === "rates", labs = [], tr = { str: [], def: [], spd: [], dex: [], total: [] }, xp = { min: 0, max: 0 }, st = STAT_KEYS, tl = app.DataController.getTimeline(), h = app.getActiveHistory();
+    const isR = graphMode === "rates", labs = [], tr = { str: [], def: [], spd: [], dex: [], total: [] }, xp = { min: 0, max: 0 }, st = STAT_KEYS, tl = app.DataController.getTimeline(), h3 = app.getActiveHistory();
     let sr = { ...ZERO_BREAKDOWN, total: 0 }, startTs = 0;
     if (vt === "DAY") {
       const _p = sl.date.split("-");
@@ -7274,56 +7285,56 @@ Please enter a new key to continue.`);
       startTs = Formatter.parse(sl._dailyList[0].date).getTime();
     }
     const _histCut = sl.date || sl._dailyList?.[0]?.date || "";
-    const hist = tl.filter((d) => _histCut ? d.date < _histCut : (/* @__PURE__ */ new Date(d.date + "T00:00:00Z")).getTime() < startTs).reverse();
+    const hist = tl.filter((d3) => _histCut ? d3.date < _histCut : (/* @__PURE__ */ new Date(d3.date + "T00:00:00Z")).getTime() < startTs).reverse();
     if (_histCut) {
       const _prevDate = /* @__PURE__ */ new Date(_histCut + "T00:00:00Z");
       _prevDate.setUTCDate(_prevDate.getUTCDate() - 1);
       const _prevDateStr = _prevDate.toISOString().slice(0, 10);
-      st.forEach((s) => {
-        sr[s] = app.DataController.getHistoricalRate(_prevDateStr, s);
+      st.forEach((s3) => {
+        sr[s3] = app.DataController.getHistoricalRate(_prevDateStr, s3);
       });
     } else {
-      st.forEach((s) => {
-        sr[s] = app.DataController.getOriginRate(s);
+      st.forEach((s3) => {
+        sr[s3] = app.DataController.getOriginRate(s3);
       });
     }
-    sr.total = st.reduce((a, b) => a + (sr[b] || 0), 0);
-    const globalBaseline = h.meta && h.meta.baselineBreakdown || { ...ZERO_BREAKDOWN };
-    const _hv = (o) => o && (o.str || o.def || o.spd || o.dex);
-    const _updRates = (d, base) => {
+    sr.total = st.reduce((a3, b2) => a3 + (sr[b2] || 0), 0);
+    const globalBaseline = h3.meta && h3.meta.baselineBreakdown || { ...ZERO_BREAKDOWN };
+    const _hv = (o3) => o3 && (o3.str || o3.def || o3.spd || o3.dex);
+    const _updRates = (d3, base) => {
       let ur = { ...base };
-      const ser = d && d.series || [];
-      st.forEach((s) => {
-        for (let j = ser.length - 1; j >= 0; j--) {
-          const e = ser[j];
-          if (e.stat === s && e.cost > 0) {
-            ur[s] = e.rate;
+      const ser = d3 && d3.series || [];
+      st.forEach((s3) => {
+        for (let j4 = ser.length - 1; j4 >= 0; j4--) {
+          const e3 = ser[j4];
+          if (e3.stat === s3 && e3.cost > 0) {
+            ur[s3] = e3.rate;
             break;
           }
         }
       });
-      ur.total = st.reduce((a, s) => a + (ur[s] || 0), 0);
+      ur.total = st.reduce((a3, s3) => a3 + (ur[s3] || 0), 0);
       return ur;
     };
-    const _snapAt = (cutoffMs, d, baseVals, baseRates) => {
+    const _snapAt = (cutoffMs, d3, baseVals, baseRates) => {
       let vals = { ...baseVals }, rates = { ...baseRates };
-      if (d) {
-        const ser = d.series || [];
-        const dStart = d.startBreakdown || d.start;
+      if (d3) {
+        const ser = d3.series || [];
+        const dStart = d3.startBreakdown || d3.start;
         if (_hv(dStart)) vals = { ...dStart };
-        ser.filter((e) => e.ts * 1e3 <= cutoffMs).forEach((e) => {
-          vals[e.stat] = e.after;
+        ser.filter((e3) => e3.ts * 1e3 <= cutoffMs).forEach((e3) => {
+          vals[e3.stat] = e3.after;
         });
-        st.forEach((s) => {
-          for (let i = ser.length - 1; i >= 0; i--) {
-            const e = ser[i];
-            if (e.stat === s && e.cost > 0 && e.ts * 1e3 <= cutoffMs) {
-              rates[s] = e.rate;
+        st.forEach((s3) => {
+          for (let i3 = ser.length - 1; i3 >= 0; i3--) {
+            const e3 = ser[i3];
+            if (e3.stat === s3 && e3.cost > 0 && e3.ts * 1e3 <= cutoffMs) {
+              rates[s3] = e3.rate;
               break;
             }
           }
         });
-        rates.total = st.reduce((a, s) => a + (rates[s] || 0), 0);
+        rates.total = st.reduce((a3, s3) => a3 + (rates[s3] || 0), 0);
       }
       return { vals, rates };
     };
@@ -7331,60 +7342,60 @@ Please enter a new key to continue.`);
       const raw = app.DataController.getDateMap()[sl.date], start = startTs;
       xp.min = start;
       xp.max = start + 864e5;
-      for (let i = 0; i <= 24; i += 2) labs.push(`${i}:00`);
-      if (raw && raw.series) st.forEach((s) => {
-        if (sr[s] === 0) {
-          const fLog = raw.series.find((l) => l.stat === s);
-          if (fLog && fLog.cost > 0) sr[s] = fLog.rate;
+      for (let i3 = 0; i3 <= 24; i3 += 2) labs.push(`${i3}:00`);
+      if (raw && raw.series) st.forEach((s3) => {
+        if (sr[s3] === 0) {
+          const fLog = raw.series.find((l3) => l3.stat === s3);
+          if (fLog && fLog.cost > 0) sr[s3] = fLog.rate;
         }
       });
       const ser = raw && raw.series ? raw.series : [];
       const sSt = raw && (raw.startBreakdown || raw.start) ? raw.startBreakdown || raw.start : hist[0] && (hist[0].endBreakdown || hist[0].end) ? hist[0].endBreakdown || hist[0].end : globalBaseline;
       const getSt = (ts) => {
-        let r = { ...sSt };
-        ser.filter((s) => s.ts * 1e3 <= ts).forEach((s) => {
-          r[s.stat] = s.after;
+        let r4 = { ...sSt };
+        ser.filter((s3) => s3.ts * 1e3 <= ts).forEach((s3) => {
+          r4[s3.stat] = s3.after;
         });
-        return r;
+        return r4;
       };
       const getRt = (tsS, tsE) => {
-        const rel = ser.filter((s) => s.ts * 1e3 > tsS && s.ts * 1e3 <= tsE);
+        const rel = ser.filter((s3) => s3.ts * 1e3 > tsS && s3.ts * 1e3 <= tsE);
         if (rel.length === 0) return null;
-        let et = 0, g = { ...ZERO_BREAKDOWN, total: 0 }, cs = { ...ZERO_BREAKDOWN };
-        rel.forEach((s) => {
-          et += s.cost;
-          g[s.stat] += s.gain;
-          g.total += s.gain;
-          cs[s.stat] += s.cost;
+        let et = 0, g4 = { ...ZERO_BREAKDOWN, total: 0 }, cs = { ...ZERO_BREAKDOWN };
+        rel.forEach((s3) => {
+          et += s3.cost;
+          g4[s3.stat] += s3.gain;
+          g4.total += s3.gain;
+          cs[s3.stat] += s3.cost;
         });
-        return { str: cs.str > 0 ? g.str / cs.str * 150 : 0, def: cs.def > 0 ? g.def / cs.def * 150 : 0, spd: cs.spd > 0 ? g.spd / cs.spd * 150 : 0, dex: cs.dex > 0 ? g.dex / cs.dex * 150 : 0, total: et > 0 ? g.total / et * 150 : 0 };
+        return { str: cs.str > 0 ? g4.str / cs.str * 150 : 0, def: cs.def > 0 ? g4.def / cs.def * 150 : 0, spd: cs.spd > 0 ? g4.spd / cs.spd * 150 : 0, dex: cs.dex > 0 ? g4.dex / cs.dex * 150 : 0, total: et > 0 ? g4.total / et * 150 : 0 };
       };
       let lr = { ...sr }, now = Date.now();
       const BKT = 15 * 60 * 1e3;
       const sBkts = [];
       if (ser.length > 0) {
-        const sorted = ser.filter((s) => {
-          const t = s.ts * 1e3;
-          return t >= start && t <= start + 864e5;
-        }).sort((a, b) => a.ts - b.ts);
+        const sorted = ser.filter((s3) => {
+          const t3 = s3.ts * 1e3;
+          return t3 >= start && t3 <= start + 864e5;
+        }).sort((a3, b2) => a3.ts - b2.ts);
         let gS = -1, gL = -1;
-        sorted.forEach((s) => {
-          const t = s.ts * 1e3;
-          if (gS < 0 || t - gS > BKT) {
+        sorted.forEach((s3) => {
+          const t3 = s3.ts * 1e3;
+          if (gS < 0 || t3 - gS > BKT) {
             if (gL >= 0) sBkts.push(gL);
-            gS = t;
-            gL = t;
+            gS = t3;
+            gL = t3;
           } else {
-            gL = t;
+            gL = t3;
           }
         });
         if (gL >= 0) sBkts.push(gL);
       }
       const used = /* @__PURE__ */ new Set(), pts = [];
-      for (let i = 0; i <= 24; i += 2) {
-        const tick = start + i * 3600 * 1e3;
+      for (let i3 = 0; i3 <= 24; i3 += 2) {
+        const tick = start + i3 * 3600 * 1e3;
         if (isToday && tick > now) break;
-        const nb = sBkts.find((b) => !used.has(b) && Math.abs(b - tick) <= BKT);
+        const nb = sBkts.find((b2) => !used.has(b2) && Math.abs(b2 - tick) <= BKT);
         if (nb !== void 0) {
           used.add(nb);
           pts.push(nb);
@@ -7392,48 +7403,48 @@ Please enter a new key to continue.`);
           pts.push(tick);
         }
       }
-      sBkts.forEach((b) => {
-        if (!used.has(b)) pts.push(b);
+      sBkts.forEach((b2) => {
+        if (!used.has(b2)) pts.push(b2);
       });
       if (isToday) pts.push(now);
-      pts.sort((a, b) => a - b);
+      pts.sort((a3, b2) => a3 - b2);
       pts.forEach((pt) => {
         if (isR) {
           const rt = getRt(pt - BKT, pt);
           if (rt) {
-            st.forEach((s) => {
-              if (rt[s] > 0) lr[s] = rt[s];
+            st.forEach((s3) => {
+              if (rt[s3] > 0) lr[s3] = rt[s3];
             });
-            lr.total = st.reduce((a, s) => a + (lr[s] || 0), 0);
+            lr.total = st.reduce((a3, s3) => a3 + (lr[s3] || 0), 0);
           }
-          st.forEach((s) => tr[s].push({ x: pt, y: lr[s] }));
+          st.forEach((s3) => tr[s3].push({ x: pt, y: lr[s3] }));
           tr.total.push({ x: pt, y: lr.total });
         } else {
           const sn = getSt(pt);
-          st.forEach((s) => tr[s].push({ x: pt, y: sn[s] || 0 }));
+          st.forEach((s3) => tr[s3].push({ x: pt, y: sn[s3] || 0 }));
           tr.total.push({ x: pt, y: (sn.str || 0) + (sn.def || 0) + (sn.spd || 0) + (sn.dex || 0) });
         }
       });
     } else if (vt === "MONTH" || vt === "WEEK") {
-      const dl = sl._dailyList.sort((a, b) => a.date.localeCompare(b.date));
+      const dl = sl._dailyList.sort((a3, b2) => a3.date.localeCompare(b2.date));
       const byDate = {};
-      dl.forEach((d) => byDate[d.date] = d);
+      dl.forEach((d3) => byDate[d3.date] = d3);
       let runningRates = { ...sr };
       let curVals = { ...globalBaseline };
-      const _prePeriodDay = hist.find((d) => {
-        const e = d.endBreakdown || d.end;
-        return _hv(e);
+      const _prePeriodDay = hist.find((d3) => {
+        const e3 = d3.endBreakdown || d3.end;
+        return _hv(e3);
       });
       if (_prePeriodDay) curVals = { ..._prePeriodDay.endBreakdown || _prePeriodDay.end };
       else if (dl.length > 0) {
-        const f = dl[0].startBreakdown || dl[0].start;
-        if (_hv(f)) curVals = { ...f };
+        const f4 = dl[0].startBreakdown || dl[0].start;
+        if (_hv(f4)) curVals = { ...f4 };
       }
       const todayStr = Formatter.dateLogical();
       const nowMs = Date.now();
-      const _push = (x, vals, rates) => {
-        st.forEach((s) => tr[s].push({ x, y: isR ? rates[s] : vals[s] || 0 }));
-        tr.total.push({ x, y: isR ? rates.total : (vals.str || 0) + (vals.def || 0) + (vals.spd || 0) + (vals.dex || 0) });
+      const _push = (x3, vals, rates) => {
+        st.forEach((s3) => tr[s3].push({ x: x3, y: isR ? rates[s3] : vals[s3] || 0 }));
+        tr.total.push({ x: x3, y: isR ? rates.total : (vals.str || 0) + (vals.def || 0) + (vals.spd || 0) + (vals.dex || 0) });
       };
       if (vt === "WEEK") {
         xp.min = 0;
@@ -7444,36 +7455,36 @@ Please enter a new key to continue.`);
         const weekOffset = userConfig.weekStartMode === "mon" ? dayIdx === 0 ? 6 : dayIdx - 1 : dayIdx;
         const weekStart = new Date(fd);
         weekStart.setUTCDate(fd.getUTCDate() - weekOffset);
-        for (let i = 0; i < 7; i++) {
-          const d = new Date(weekStart);
-          d.setUTCDate(weekStart.getUTCDate() + i);
-          labs.push(Formatter.dateISO(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate()));
+        for (let i3 = 0; i3 < 7; i3++) {
+          const d3 = new Date(weekStart);
+          d3.setUTCDate(weekStart.getUTCDate() + i3);
+          labs.push(Formatter.dateISO(d3.getUTCFullYear(), d3.getUTCMonth(), d3.getUTCDate()));
         }
         let _wkHasData = hist.length > 0;
-        for (let i = 0; i < 7; i++) {
-          const dateStr = labs[i];
-          const d = byDate[dateStr];
+        for (let i3 = 0; i3 < 7; i3++) {
+          const dateStr = labs[i3];
+          const d3 = byDate[dateStr];
           const dayStart = TimeManager.dayStartTs(dateStr);
           if (dayStart > nowMs) break;
-          if (!d && !_wkHasData && dateStr !== todayStr) continue;
-          if (d) _wkHasData = true;
+          if (!d3 && !_wkHasData && dateStr !== todayStr) continue;
+          if (d3) _wkHasData = true;
           const middayTs = dayStart + 12 * 3600 * 1e3;
-          _push(i, curVals, runningRates);
+          _push(i3, curVals, runningRates);
           if (middayTs <= nowMs) {
-            const m = _snapAt(middayTs, d, curVals, runningRates);
-            _push(i + 0.5, m.vals, m.rates);
+            const m3 = _snapAt(middayTs, d3, curVals, runningRates);
+            _push(i3 + 0.5, m3.vals, m3.rates);
           }
-          if (d) {
+          if (d3) {
             if (dateStr === todayStr) {
-              const live = _snapAt(nowMs, d, curVals, runningRates);
+              const live = _snapAt(nowMs, d3, curVals, runningRates);
               curVals = live.vals;
               runningRates = live.rates;
-              const liveX = i + Math.min((nowMs - dayStart) / 864e5, 1);
+              const liveX = i3 + Math.min((nowMs - dayStart) / 864e5, 1);
               _push(liveX, live.vals, live.rates);
             } else {
-              const end = d.endBreakdown || d.end;
+              const end = d3.endBreakdown || d3.end;
               if (_hv(end)) curVals = { ...end };
-              runningRates = _updRates(d, runningRates);
+              runningRates = _updRates(d3, runningRates);
             }
           }
         }
@@ -7484,30 +7495,30 @@ Please enter a new key to continue.`);
         const dim = new Date(yForMonth, mIdx + 1, 0).getDate();
         xp.min = 1;
         xp.max = dim + 1;
-        for (let i = 1; i <= dim; i++) labs.push(String(i));
+        for (let i3 = 1; i3 <= dim; i3++) labs.push(String(i3));
         let _mHasData = hist.length > 0;
         for (let dayNum = 1; dayNum <= dim; dayNum++) {
           const dateStr = Formatter.dateISO(yForMonth, mIdx, dayNum);
           if (dateStr > todayStr) break;
-          const d = byDate[dateStr];
-          if (!d && !_mHasData && dateStr !== todayStr) continue;
-          if (d) _mHasData = true;
+          const d3 = byDate[dateStr];
+          if (!d3 && !_mHasData && dateStr !== todayStr) continue;
+          if (d3) _mHasData = true;
           _push(dayNum, curVals, runningRates);
           if (dateStr === todayStr) {
             if (!isR) {
-              const startV = d && (d.startBreakdown || d.start);
+              const startV = d3 && (d3.startBreakdown || d3.start);
               if (_hv(startV)) curVals = { ...startV };
             }
             const _dayStart = TimeManager.dayStartTs(dateStr);
             const _frac = Math.min((nowMs - _dayStart) / 864e5, 1);
-            const live = _snapAt(nowMs, d, curVals, runningRates);
+            const live = _snapAt(nowMs, d3, curVals, runningRates);
             if (_frac > 5e-3) _push(dayNum + _frac, live.vals, live.rates);
             curVals = live.vals;
             runningRates = live.rates;
-          } else if (d) {
-            if (isR) runningRates = _updRates(d, runningRates);
+          } else if (d3) {
+            if (isR) runningRates = _updRates(d3, runningRates);
             else {
-              const end = d.endBreakdown || d.end;
+              const end = d3.endBreakdown || d3.end;
               if (_hv(end)) curVals = { ...end };
             }
           }
@@ -7519,49 +7530,49 @@ Please enter a new key to continue.`);
       const yInt = parseInt(lbl), now = /* @__PURE__ */ new Date(), isCur = yInt === TimeManager.year(now), curM = TimeManager.month(now);
       xp.min = 0;
       xp.max = 12;
-      const dl = sl._dailyList.sort((a, b) => a.date.localeCompare(b.date));
+      const dl = sl._dailyList.sort((a3, b2) => a3.date.localeCompare(b2.date));
       let baseline = { ...globalBaseline };
-      const _preYearDay = hist.find((d) => {
-        const e = d.endBreakdown || d.end;
-        return _hv(e);
+      const _preYearDay = hist.find((d3) => {
+        const e3 = d3.endBreakdown || d3.end;
+        return _hv(e3);
       });
       if (_preYearDay) baseline = { ..._preYearDay.endBreakdown || _preYearDay.end };
       else if (dl.length > 0) {
-        const f = dl[0].startBreakdown || dl[0].start;
-        if (_hv(f)) baseline = { ...f };
+        const f4 = dl[0].startBreakdown || dl[0].start;
+        if (_hv(f4)) baseline = { ...f4 };
       }
       const getStatsAsOf = (dateStr) => {
-        const prev = dl.filter((d) => d.date < dateStr);
+        const prev = dl.filter((d3) => d3.date < dateStr);
         if (prev.length > 0) {
-          const l = prev[prev.length - 1];
-          return l.endBreakdown || l.end || baseline;
+          const l3 = prev[prev.length - 1];
+          return l3.endBreakdown || l3.end || baseline;
         }
         return baseline;
       };
       const getRateAsOf = (dateStr) => {
-        const allSer = dl.filter((d) => d.date < dateStr).flatMap((d) => d.series || []);
-        let r = { ...sr };
-        st.forEach((s) => {
-          for (let j = allSer.length - 1; j >= 0; j--) {
-            const e = allSer[j];
-            if (e.stat === s && e.cost > 0) {
-              r[s] = e.rate;
+        const allSer = dl.filter((d3) => d3.date < dateStr).flatMap((d3) => d3.series || []);
+        let r4 = { ...sr };
+        st.forEach((s3) => {
+          for (let j4 = allSer.length - 1; j4 >= 0; j4--) {
+            const e3 = allSer[j4];
+            if (e3.stat === s3 && e3.cost > 0) {
+              r4[s3] = e3.rate;
               break;
             }
           }
         });
-        r.total = st.reduce((a, s) => a + (r[s] || 0), 0);
-        return r;
+        r4.total = st.reduce((a3, s3) => a3 + (r4[s3] || 0), 0);
+        return r4;
       };
-      const _pushAsOf = (x, dateStr) => {
+      const _pushAsOf = (x3, dateStr) => {
         if (isR) {
-          const r = getRateAsOf(dateStr);
-          st.forEach((s) => tr[s].push({ x, y: r[s] }));
-          tr.total.push({ x, y: r.total });
+          const r4 = getRateAsOf(dateStr);
+          st.forEach((s3) => tr[s3].push({ x: x3, y: r4[s3] }));
+          tr.total.push({ x: x3, y: r4.total });
         } else {
-          const v = getStatsAsOf(dateStr);
-          st.forEach((s) => tr[s].push({ x, y: v[s] || 0 }));
-          tr.total.push({ x, y: (v.str || 0) + (v.def || 0) + (v.spd || 0) + (v.dex || 0) });
+          const v3 = getStatsAsOf(dateStr);
+          st.forEach((s3) => tr[s3].push({ x: x3, y: v3[s3] || 0 }));
+          tr.total.push({ x: x3, y: (v3.str || 0) + (v3.def || 0) + (v3.spd || 0) + (v3.dex || 0) });
         }
       };
       const firstLogDate = dl.length > 0 ? Formatter.parse(dl[0].date) : null;
@@ -7569,10 +7580,10 @@ Please enter a new key to continue.`);
       const firstLogDay = firstLogDate ? firstLogDate.getUTCDate() : 1;
       const skipFirstStart = firstLogDay > 15;
       const limit = isCur ? curM : 11;
-      for (let i = firstLogMonth; i <= limit; i++) {
-        if (!(i === firstLogMonth && skipFirstStart)) _pushAsOf(i, Formatter.dateISO(yInt, i, 1));
-        const mid15 = new Date(Date.UTC(yInt, i, 15));
-        if (!isCur || mid15.getTime() <= now.getTime()) _pushAsOf(i + 0.5, Formatter.dateISO(yInt, i, 15));
+      for (let i3 = firstLogMonth; i3 <= limit; i3++) {
+        if (!(i3 === firstLogMonth && skipFirstStart)) _pushAsOf(i3, Formatter.dateISO(yInt, i3, 1));
+        const mid15 = new Date(Date.UTC(yInt, i3, 15));
+        if (!isCur || mid15.getTime() <= now.getTime()) _pushAsOf(i3 + 0.5, Formatter.dateISO(yInt, i3, 15));
       }
       if (isCur) {
         const curDay = TimeManager.date(now);
@@ -7582,18 +7593,18 @@ Please enter a new key to continue.`);
         if (!isDup) {
           if (isR) {
             let liveRates = { ...sr };
-            const allSer = dl.flatMap((d) => d.series || []);
-            st.forEach((s) => {
-              for (let j = allSer.length - 1; j >= 0; j--) {
-                const e = allSer[j];
-                if (e.stat === s && e.cost > 0) {
-                  liveRates[s] = e.rate;
+            const allSer = dl.flatMap((d3) => d3.series || []);
+            st.forEach((s3) => {
+              for (let j4 = allSer.length - 1; j4 >= 0; j4--) {
+                const e3 = allSer[j4];
+                if (e3.stat === s3 && e3.cost > 0) {
+                  liveRates[s3] = e3.rate;
                   break;
                 }
               }
             });
-            liveRates.total = st.reduce((a, s) => a + (liveRates[s] || 0), 0);
-            st.forEach((s) => tr[s].push({ x: nowX, y: liveRates[s] }));
+            liveRates.total = st.reduce((a3, s3) => a3 + (liveRates[s3] || 0), 0);
+            st.forEach((s3) => tr[s3].push({ x: nowX, y: liveRates[s3] }));
             tr.total.push({ x: nowX, y: liveRates.total });
           } else {
             const todayRaw = app.DataController.getDateMap()[Formatter.dateLogical()];
@@ -7602,35 +7613,35 @@ Please enter a new key to continue.`);
               const ser = todayRaw.series || [];
               const base = todayRaw.startBreakdown || todayRaw.start || getStatsAsOf(Formatter.dateLogical());
               liveVals = { ...base };
-              ser.filter((e) => e.ts * 1e3 <= now.getTime()).forEach((e) => {
-                liveVals[e.stat] = e.after;
+              ser.filter((e3) => e3.ts * 1e3 <= now.getTime()).forEach((e3) => {
+                liveVals[e3.stat] = e3.after;
               });
             } else {
               liveVals = getStatsAsOf(Formatter.dateLogical());
               if (dl.length > 0) {
                 const last = dl[dl.length - 1];
-                const e = last.endBreakdown || last.end;
-                if (_hv(e)) liveVals = { ...e };
+                const e3 = last.endBreakdown || last.end;
+                if (_hv(e3)) liveVals = { ...e3 };
               }
             }
-            st.forEach((s) => tr[s].push({ x: nowX, y: liveVals[s] || 0 }));
+            st.forEach((s3) => tr[s3].push({ x: nowX, y: liveVals[s3] || 0 }));
             tr.total.push({ x: nowX, y: (liveVals.str || 0) + (liveVals.def || 0) + (liveVals.spd || 0) + (liveVals.dex || 0) });
           }
         }
       } else {
         const _yearEndStr = Formatter.dateISO(yInt + 1, 0, 1);
         if (isR) {
-          const r = getRateAsOf(_yearEndStr);
-          st.forEach((s) => tr[s].push({ x: 12, y: r[s] }));
-          tr.total.push({ x: 12, y: r.total });
+          const r4 = getRateAsOf(_yearEndStr);
+          st.forEach((s3) => tr[s3].push({ x: 12, y: r4[s3] }));
+          tr.total.push({ x: 12, y: r4.total });
         } else {
-          const v = getStatsAsOf(_yearEndStr);
-          st.forEach((s) => tr[s].push({ x: 12, y: v[s] || 0 }));
-          tr.total.push({ x: 12, y: (v.str || 0) + (v.def || 0) + (v.spd || 0) + (v.dex || 0) });
+          const v3 = getStatsAsOf(_yearEndStr);
+          st.forEach((s3) => tr[s3].push({ x: 12, y: v3[s3] || 0 }));
+          tr.total.push({ x: 12, y: (v3.str || 0) + (v3.def || 0) + (v3.spd || 0) + (v3.dex || 0) });
         }
       }
     } else if (vt === "ALL") {
-      const dl = sl._dailyList.sort((a, b) => a.date.localeCompare(b.date));
+      const dl = sl._dailyList.sort((a3, b2) => a3.date.localeCompare(b2.date));
       if (dl.length === 0) return { labels: [], trends: tr, viewType: "ALL_TIME", xParams: { min: 0, max: 0 } };
       const now = /* @__PURE__ */ new Date();
       const firstDate = Formatter.parse(dl[0].date);
@@ -7639,7 +7650,7 @@ Please enter a new key to continue.`);
         vt = "ALL_TIME";
         xp.min = 0;
         const byDate = {};
-        dl.forEach((d) => byDate[d.date] = d);
+        dl.forEach((d3) => byDate[d3.date] = d3);
         const todayStr = Formatter.dateLogical();
         const nowMs = Date.now();
         const ci = 1;
@@ -7647,45 +7658,45 @@ Please enter a new key to continue.`);
         let runningRates = { ...sr };
         let curVals = { ...globalBaseline };
         if (dl.length > 0) {
-          const f = dl[0].startBreakdown || dl[0].start;
-          if (_hv(f)) curVals = { ...f };
+          const f4 = dl[0].startBreakdown || dl[0].start;
+          if (_hv(f4)) curVals = { ...f4 };
         }
-        const _push = (x, vals, rates) => {
-          st.forEach((s) => tr[s].push({ x, y: isR ? rates[s] : vals[s] || 0 }));
-          tr.total.push({ x, y: isR ? rates.total : (vals.str || 0) + (vals.def || 0) + (vals.spd || 0) + (vals.dex || 0) });
+        const _push = (x3, vals, rates) => {
+          st.forEach((s3) => tr[s3].push({ x: x3, y: isR ? rates[s3] : vals[s3] || 0 }));
+          tr.total.push({ x: x3, y: isR ? rates.total : (vals.str || 0) + (vals.def || 0) + (vals.spd || 0) + (vals.dex || 0) });
         };
         const actualDates = [];
         let lastX = 0;
-        for (let i = 0; i <= daysElapsed; i++) {
+        for (let i3 = 0; i3 <= daysElapsed; i3++) {
           const dateObj = new Date(firstDate);
-          dateObj.setUTCDate(firstDate.getUTCDate() + i);
+          dateObj.setUTCDate(firstDate.getUTCDate() + i3);
           const dateStr = Formatter.dateISO(dateObj.getUTCFullYear(), dateObj.getUTCMonth(), dateObj.getUTCDate());
-          const d = byDate[dateStr];
+          const d3 = byDate[dateStr];
           const isToday2 = dateStr === todayStr;
-          if (i % ci === 0) {
-            const x = i / ci;
-            lastX = x;
+          if (i3 % ci === 0) {
+            const x3 = i3 / ci;
+            lastX = x3;
             actualDates.push(dateStr);
             _push(
-              x,
+              x3,
               curVals,
               runningRates
             );
             if (isToday2) {
-              if (!isR && d) {
-                const startV = d.startBreakdown || d.start;
+              if (!isR && d3) {
+                const startV = d3.startBreakdown || d3.start;
                 if (_hv(startV)) curVals = { ...startV };
               }
               const _dayStart = TimeManager.dayStartTs(dateStr);
               const _frac = Math.min((nowMs - _dayStart) / 864e5, 1);
-              const live = _snapAt(nowMs, d, curVals, runningRates);
-              const liveX = (i + _frac) / ci;
+              const live = _snapAt(nowMs, d3, curVals, runningRates);
+              const liveX = (i3 + _frac) / ci;
               if (_frac > 5e-3) _push(liveX, live.vals, live.rates);
               lastX = liveX;
-            } else if (d) {
-              if (isR) runningRates = _updRates(d, runningRates);
+            } else if (d3) {
+              if (isR) runningRates = _updRates(d3, runningRates);
               else {
-                const end = d.endBreakdown || d.end;
+                const end = d3.endBreakdown || d3.end;
                 if (_hv(end)) curVals = { ...end };
               }
             }
@@ -7693,14 +7704,14 @@ Please enter a new key to continue.`);
             if (isToday2) {
               const _dayStart = TimeManager.dayStartTs(dateStr);
               const _frac = Math.min((nowMs - _dayStart) / 864e5, 1);
-              const live = _snapAt(nowMs, d, curVals, runningRates);
-              const liveX = (i + _frac) / ci;
+              const live = _snapAt(nowMs, d3, curVals, runningRates);
+              const liveX = (i3 + _frac) / ci;
               _push(liveX, live.vals, live.rates);
               lastX = liveX;
-            } else if (d) {
-              if (isR) runningRates = _updRates(d, runningRates);
+            } else if (d3) {
+              if (isR) runningRates = _updRates(d3, runningRates);
               else {
-                const end = d.endBreakdown || d.end;
+                const end = d3.endBreakdown || d3.end;
                 if (_hv(end)) curVals = { ...end };
               }
             }
@@ -7710,22 +7721,22 @@ Please enter a new key to continue.`);
         const labelMeta = [];
         const secWidth = 1;
         const totalSections = Math.ceil(xp.max / secWidth);
-        for (let k = 0; k < totalSections; k++) {
-          const left = Math.max(k * secWidth, xp.min);
-          const right = Math.min((k + 1) * secWidth, xp.max);
+        for (let k3 = 0; k3 < totalSections; k3++) {
+          const left = Math.max(k3 * secWidth, xp.min);
+          const right = Math.min((k3 + 1) * secWidth, xp.max);
           if (right <= left) continue;
           const sectionRatio = (right - left) / secWidth;
           const cx = (left + right) / 2;
-          if (k === 0 && sectionRatio < 0.5) continue;
+          if (k3 === 0 && sectionRatio < 0.5) continue;
           const dObj = new Date(firstDate);
-          dObj.setUTCDate(firstDate.getUTCDate() + k * ci);
+          dObj.setUTCDate(firstDate.getUTCDate() + k3 * ci);
           labelMeta.push({ text: String(dObj.getUTCDate()), x: cx });
         }
         return { labels: [], trends: tr, viewType: vt, xParams: xp, anchorDate: firstDate, actualDates, tier, labelMeta };
       } else {
         vt = "ALL_TIME";
         const byDate = {};
-        dl.forEach((d) => byDate[d.date] = d);
+        dl.forEach((d3) => byDate[d3.date] = d3);
         const todayStr = Formatter.dateLogical();
         const nowMs = Date.now();
         const originY = firstDate.getUTCFullYear();
@@ -7757,32 +7768,32 @@ Please enter a new key to continue.`);
         let runningRates = { ...sr };
         let curVals = { ...globalBaseline };
         if (dl.length > 0) {
-          const f = dl[0].startBreakdown || dl[0].start;
-          if (_hv(f)) curVals = { ...f };
+          const f4 = dl[0].startBreakdown || dl[0].start;
+          if (_hv(f4)) curVals = { ...f4 };
         }
         const dateToX = (dObj) => {
-          const y = dObj.getUTCFullYear();
-          const m = dObj.getUTCMonth();
-          const d = dObj.getUTCDate();
-          const dim = new Date(Date.UTC(y, m + 1, 0)).getUTCDate();
-          return (y - originY) * 12 + (m - originM) + (d - 1) / dim;
+          const y3 = dObj.getUTCFullYear();
+          const m3 = dObj.getUTCMonth();
+          const d3 = dObj.getUTCDate();
+          const dim = new Date(Date.UTC(y3, m3 + 1, 0)).getUTCDate();
+          return (y3 - originY) * 12 + (m3 - originM) + (d3 - 1) / dim;
         };
         const dimOrigin = new Date(Date.UTC(originY, originM + 1, 0)).getUTCDate();
         const originX = (originD - 1) / dimOrigin;
         xp.min = originX;
         const advanceState = (fromIso, toIso) => {
-          const logs = dl.filter((d) => d.date > fromIso && d.date <= toIso);
-          logs.forEach((d) => {
-            if (isR) runningRates = _updRates(d, runningRates);
+          const logs = dl.filter((d3) => d3.date > fromIso && d3.date <= toIso);
+          logs.forEach((d3) => {
+            if (isR) runningRates = _updRates(d3, runningRates);
             else {
-              const end = d.endBreakdown || d.end;
+              const end = d3.endBreakdown || d3.end;
               if (_hv(end)) curVals = { ...end };
             }
           });
         };
-        const _push = (x, vals, rates) => {
-          st.forEach((s) => tr[s].push({ x, y: isR ? rates[s] : vals[s] || 0 }));
-          tr.total.push({ x, y: isR ? rates.total : (vals.str || 0) + (vals.def || 0) + (vals.spd || 0) + (vals.dex || 0) });
+        const _push = (x3, vals, rates) => {
+          st.forEach((s3) => tr[s3].push({ x: x3, y: isR ? rates[s3] : vals[s3] || 0 }));
+          tr.total.push({ x: x3, y: isR ? rates.total : (vals.str || 0) + (vals.def || 0) + (vals.spd || 0) + (vals.dex || 0) });
         };
         const actualDates = [];
         const originIso = Formatter.dateISO(originY, originM, originD);
@@ -7799,39 +7810,39 @@ Please enter a new key to continue.`);
         const scheduled = [];
         let tParts = tier.split("-");
         if (tParts[0] === "Mo") {
-          let m = originM, y = originY;
+          let m3 = originM, y3 = originY;
           while (true) {
             let pushDays = [];
             if (tier === "Mo-1-2d") {
-              const dim = new Date(Date.UTC(y, m + 1, 0)).getUTCDate();
-              for (let i = 1; i <= dim; i += 2) pushDays.push(i);
+              const dim = new Date(Date.UTC(y3, m3 + 1, 0)).getUTCDate();
+              for (let i3 = 1; i3 <= dim; i3 += 2) pushDays.push(i3);
             } else if (tier === "Mo-1-Wk") pushDays = [1, 8, 15, 22];
             else if (tier === "Mo-1-Bi") pushDays = [1, 15];
             else pushDays = [1];
             let stop = false;
             pushDays.forEach((day) => {
-              const d = new Date(Date.UTC(y, m, day));
-              if (d > now) {
+              const d3 = new Date(Date.UTC(y3, m3, day));
+              if (d3 > now) {
                 stop = true;
               } else {
-                if (d.getTime() > firstDate.getTime()) scheduled.push({ date: d, iso: Formatter.dateISO(y, m, day) });
+                if (d3.getTime() > firstDate.getTime()) scheduled.push({ date: d3, iso: Formatter.dateISO(y3, m3, day) });
               }
             });
             if (stop) break;
-            m++;
-            if (m > 11) {
-              m = 0;
-              y++;
+            m3++;
+            if (m3 > 11) {
+              m3 = 0;
+              y3++;
             }
           }
         } else {
           let targetMonths = tier === "Yr-Mo" ? [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11] : tier === "Yr-Bi" ? [0, 2, 4, 6, 8, 10] : [0, 6];
-          for (let y = originY; y <= nowY; y++) {
+          for (let y3 = originY; y3 <= nowY; y3++) {
             targetMonths.forEach((monthIdx) => {
-              const d = new Date(Date.UTC(y, monthIdx, 1));
-              if (d > now) return;
-              if (d.getTime() > firstDate.getTime()) scheduled.push({ date: d, iso: Formatter.dateISO(
-                y,
+              const d3 = new Date(Date.UTC(y3, monthIdx, 1));
+              if (d3 > now) return;
+              if (d3.getTime() > firstDate.getTime()) scheduled.push({ date: d3, iso: Formatter.dateISO(
+                y3,
                 monthIdx,
                 1
               ) });
@@ -7875,31 +7886,31 @@ Please enter a new key to continue.`);
         const labelMeta = [];
         if (tier.startsWith("Yr")) {
           const totalSections = Math.ceil((xp.max + originM) / 12);
-          for (let k = 0; k < totalSections; k++) {
-            const left = Math.max(k * 12 - originM, xp.min);
-            const right = Math.min((k + 1) * 12 - originM, xp.max);
+          for (let k3 = 0; k3 < totalSections; k3++) {
+            const left = Math.max(k3 * 12 - originM, xp.min);
+            const right = Math.min((k3 + 1) * 12 - originM, xp.max);
             if (right <= left) continue;
             const sectionRatio = (right - left) / 12;
             const cx = (left + right) / 2;
-            if (k === 0 && sectionRatio < 0.5) continue;
-            labelMeta.push({ text: String(originY + k), x: cx });
+            if (k3 === 0 && sectionRatio < 0.5) continue;
+            labelMeta.push({ text: String(originY + k3), x: cx });
           }
         } else {
           const totalSections = Math.ceil(xp.max / secWidth);
           let isFirstLabel = true;
-          for (let k = 0; k < totalSections; k++) {
-            const left = Math.max(k * secWidth, xp.min);
-            const right = Math.min((k + 1) * secWidth, xp.max);
+          for (let k3 = 0; k3 < totalSections; k3++) {
+            const left = Math.max(k3 * secWidth, xp.min);
+            const right = Math.min((k3 + 1) * secWidth, xp.max);
             if (right <= left) continue;
             const sectionRatio = (right - left) / secWidth;
             const cx = (left + right) / 2;
             const monthsFromOrigin = Math.floor(left);
             const totalM = originM + monthsFromOrigin;
-            const m = (totalM % 12 + 12) % 12;
+            const m3 = (totalM % 12 + 12) % 12;
             const currentY = originY + Math.floor(totalM / 12);
-            if (k === 0 && sectionRatio < 0.5) continue;
-            let text = CONSTANTS.MONTHS_SHORT[m];
-            if (isFirstLabel || m === 0) {
+            if (k3 === 0 && sectionRatio < 0.5) continue;
+            let text = CONSTANTS.MONTHS_SHORT[m3];
+            if (isFirstLabel || m3 === 0) {
               text += ` '${String(currentY).slice(-2)}`;
             }
             isFirstLabel = false;
@@ -7910,39 +7921,39 @@ Please enter a new key to continue.`);
       }
     }
     return { labels: labs, trends: tr, viewType: vt, xParams: xp, selectedMonth: vt === "MONTH" ? CONSTANTS.MONTHS.indexOf(lbl) : null, selectedYear: vt === "MONTH" ? year || (/* @__PURE__ */ new Date()).getUTCFullYear() : null };
-  }, _graphTooltipHeader(vt, p, i, arr, dat) {
-    const hhmm = (d) => `${String(TimeManager.hours(d)).padStart(2, "0")}:${String(TimeManager.minutes(d)).padStart(2, "0")}`;
+  }, _graphTooltipHeader(vt, p3, i3, arr, dat) {
+    const hhmm = (d3) => `${String(TimeManager.hours(d3)).padStart(2, "0")}:${String(TimeManager.minutes(d3)).padStart(2, "0")}`;
     const viewingToday = vt === "DAY" && (!calendarState.selectedLabel || calendarState.selectedLabel === Formatter.dateLogical());
-    const isLive = i === arr.length - 1 && (viewingToday || vt !== "DAY" && p.x % 1 !== 0);
-    const isArchivedEnd = i === arr.length - 1 && !isLive;
+    const isLive = i3 === arr.length - 1 && (viewingToday || vt !== "DAY" && p3.x % 1 !== 0);
+    const isArchivedEnd = i3 === arr.length - 1 && !isLive;
     if (isLive) return `Today \u2022 ${hhmm(/* @__PURE__ */ new Date())}`;
     if (isArchivedEnd) return "End of Period";
     if (vt === "DAY") {
-      const z = new Date(p.x);
-      if (viewingToday) return `Today \u2022 ${hhmm(z)}`;
-      return `${CONSTANTS.MONTHS_SHORT[TimeManager.month(z)]} ${String(TimeManager.date(z)).padStart(2, "0")} \u2022 ${hhmm(z)}`;
+      const z3 = new Date(p3.x);
+      if (viewingToday) return `Today \u2022 ${hhmm(z3)}`;
+      return `${CONSTANTS.MONTHS_SHORT[TimeManager.month(z3)]} ${String(TimeManager.date(z3)).padStart(2, "0")} \u2022 ${hhmm(z3)}`;
     }
     if (vt === "WEEK") {
-      const ds = dat.labels[Math.floor(p.x)];
+      const ds = dat.labels[Math.floor(p3.x)];
       if (!ds) return "End of Period";
-      const d = Formatter.parse(ds);
-      const dow = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"][d.getUTCDay()];
-      return `${CONSTANTS.MONTHS_SHORT[d.getUTCMonth()]} ${d.getUTCDate()} \u2022 ${dow}`;
+      const d3 = Formatter.parse(ds);
+      const dow = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"][d3.getUTCDay()];
+      return `${CONSTANTS.MONTHS_SHORT[d3.getUTCMonth()]} ${d3.getUTCDate()} \u2022 ${dow}`;
     }
     if (vt === "MONTH") {
-      const z = Math.floor(p.x);
+      const z3 = Math.floor(p3.x);
       const mIdx = dat.selectedMonth != null ? dat.selectedMonth : calendarState.month, year = dat.selectedYear != null ? dat.selectedYear : calendarState.year || (/* @__PURE__ */ new Date()).getUTCFullYear();
-      return `${CONSTANTS.MONTHS_SHORT[mIdx]} ${z} \u2022 ${year}`;
+      return `${CONSTANTS.MONTHS_SHORT[mIdx]} ${z3} \u2022 ${year}`;
     }
     if (vt === "ALL_TIME") {
-      if (dat.actualDates && dat.actualDates[i]) {
-        const dd = Formatter.parse(dat.actualDates[i]);
+      if (dat.actualDates && dat.actualDates[i3]) {
+        const dd = Formatter.parse(dat.actualDates[i3]);
         return `${CONSTANTS.MONTHS_SHORT[dd.getUTCMonth()]} ${dd.getUTCDate()} \u2022 ${dd.getUTCFullYear()}`;
       }
       return "Tooltip";
     }
     if (vt === "YEAR") {
-      const mIdx = Math.floor(p.x);
+      const mIdx = Math.floor(p3.x);
       const mName = CONSTANTS.MONTHS[mIdx] || "December";
       const year = calendarState.year || (/* @__PURE__ */ new Date()).getUTCFullYear();
       return `${mName} \u2022 ${year}`;
@@ -7972,36 +7983,36 @@ Please enter a new key to continue.`);
     const _cStyle = window.getComputedStyle(cont);
     const _padH = (parseFloat(_cStyle.paddingLeft) || 0) + (parseFloat(_cStyle.paddingRight) || 0);
     const _padV = (parseFloat(_cStyle.paddingTop) || 0) + (parseFloat(_cStyle.paddingBottom) || 0);
-    let w = Math.round(cont.clientWidth - _padH);
-    if (!(w > 0)) w = svg.clientWidth || cont.clientWidth;
+    let w3 = Math.round(cont.clientWidth - _padH);
+    if (!(w3 > 0)) w3 = svg.clientWidth || cont.clientWidth;
     const _hudEl = cont.querySelector(".g-hud");
     const _hudH = _hudEl ? Math.ceil(_hudEl.getBoundingClientRect().height) : 28;
-    let h = (cont.clientHeight > _hudH + _padV ? cont.clientHeight - _hudH - _padV : 0) || svg.clientHeight;
-    if (w <= 0 || h <= 0) {
+    let h3 = (cont.clientHeight > _hudH + _padV ? cont.clientHeight - _hudH - _padV : 0) || svg.clientHeight;
+    if (w3 <= 0 || h3 <= 0) {
       Perf.end("graphDraw");
       requestAnimationFrame(() => GraphController.draw());
       return;
     }
-    const cmp = w < 300;
+    const cmp = w3 < 300;
     const expandedPanel = !!cont.closest("#bbgl-panel.bbgl-expanded:not(.bbgl-mode-page)");
     const isPageMode = !!cont.closest("#bbgl-panel.bbgl-mode-page");
-    svg.setAttribute("viewBox", `0 0 ${w} ${h}`);
+    svg.setAttribute("viewBox", `0 0 ${w3} ${h3}`);
     let _yMin = Infinity, _yMax = -Infinity, _yHas = false;
-    graphState.activeStats.forEach((s) => {
-      if (tr[s] && tr[s].length > 0) {
+    graphState.activeStats.forEach((s3) => {
+      if (tr[s3] && tr[s3].length > 0) {
         _yHas = true;
-        tr[s].forEach((p) => {
-          if (!isFinite(p.y)) return;
-          if (p.y < _yMin) _yMin = p.y;
-          if (p.y > _yMax) _yMax = p.y;
+        tr[s3].forEach((p3) => {
+          if (!isFinite(p3.y)) return;
+          if (p3.y < _yMin) _yMin = p3.y;
+          if (p3.y > _yMax) _yMax = p3.y;
         });
       }
     });
     if (!_yHas || _yMin === Infinity) {
       _yMin = 0;
-      STAT_KEYS.forEach((s) => {
-        if (tr[s] && tr[s].length > 0) tr[s].forEach((p) => {
-          if (isFinite(p.y) && p.y > _yMax) _yMax = p.y;
+      STAT_KEYS.forEach((s3) => {
+        if (tr[s3] && tr[s3].length > 0) tr[s3].forEach((p3) => {
+          if (isFinite(p3.y) && p3.y > _yMax) _yMax = p3.y;
         });
       });
     }
@@ -8011,8 +8022,8 @@ Please enter a new key to continue.`);
     }
     let sc = GraphController._calculateNiceScale(_yMin, _yMax), fMin = sc.min, fMax = sc.max, step = sc.step, steps = Math.round((fMax - fMin) / step);
     const pL = [];
-    for (let i = 0; i <= steps; i++) pL.push(Formatter.axis(fMin + i * step));
-    const _yMaxStr = pL.reduce((a, b) => b.length > a.length ? b : a, pL[0] || "10");
+    for (let i3 = 0; i3 <= steps; i3++) pL.push(Formatter.axis(fMin + i3 * step));
+    const _yMaxStr = pL.reduce((a3, b2) => b2.length > a3.length ? b2 : a3, pL[0] || "10");
     const _yMT = document.createElementNS("http://www.w3.org/2000/svg", "text");
     _yMT.setAttribute("class", "g-text y-label");
     _yMT.style.cssText = "visibility:hidden;pointer-events:none;";
@@ -8020,7 +8031,7 @@ Please enter a new key to continue.`);
     _yMT.textContent = _yMaxStr;
     const _yFontPx = parseFloat(window.getComputedStyle(_yMT).fontSize) || (expandedPanel || cont.closest(".bbgl-mode-page") ? 11 : cmp ? 9 : 11);
     let _yLW = Math.ceil(_yMaxStr.length * _yFontPx * 0.4);
-    const _yCap = Math.max(20, Math.floor(w * 0.28) - 5);
+    const _yCap = Math.max(20, Math.floor(w3 * 0.28) - 5);
     if (_yLW > _yCap) _yLW = _yCap;
     svg.removeChild(_yMT);
     let xLabDrop;
@@ -8041,41 +8052,41 @@ Please enter a new key to continue.`);
     }
     const _topMar = isPageMode ? 6 : expandedPanel ? 8 : 6;
     let mar = { top: _topMar, bottom: Math.max(2, xLabDrop - 3), left: _yLW + 7, right: 5 };
-    const cw = w - mar.left - mar.right, ch = h - mar.top - mar.bottom;
+    const cw = w3 - mar.left - mar.right, ch = h3 - mar.top - mar.bottom;
     if (cw <= 0 || ch <= 0) {
       Perf.end("graphDraw");
       return;
     }
     const bottomAxisGap = expandedPanel ? 2 : isPageMode ? 1 : 0;
     const chPlot = Math.max(16, ch - bottomAxisGap);
-    const g = document.createElementNS("http://www.w3.org/2000/svg", "g");
-    g.setAttribute("transform", `translate(${mar.left}, ${mar.top})`);
+    const g4 = document.createElementNS("http://www.w3.org/2000/svg", "g");
+    g4.setAttribute("transform", `translate(${mar.left}, ${mar.top})`);
     let fr = fMax - fMin;
     if (fr <= 0) {
       fMax = fMin + 10;
       fr = 10;
     }
-    for (let i = 0; i <= steps; i++) {
-      const v = fMin + i * step, y = chPlot - (v - fMin) / fr * chPlot;
-      if (isNaN(y)) continue;
-      const l = document.createElementNS("http://www.w3.org/2000/svg", "line");
-      l.setAttribute("x1", 0);
-      l.setAttribute("x2", cw);
-      l.setAttribute("y1", y);
-      l.setAttribute("y2", y);
-      l.setAttribute("class", "g-axis");
-      g.appendChild(l);
-      const t = document.createElementNS("http://www.w3.org/2000/svg", "text");
-      t.setAttribute("x", -6);
-      t.setAttribute("y", expandedPanel ? y - 1 : y + 3);
-      t.setAttribute("class", "g-text y-label");
-      t.textContent = Formatter.axis(v);
-      g.appendChild(t);
+    for (let i3 = 0; i3 <= steps; i3++) {
+      const v3 = fMin + i3 * step, y3 = chPlot - (v3 - fMin) / fr * chPlot;
+      if (isNaN(y3)) continue;
+      const l3 = document.createElementNS("http://www.w3.org/2000/svg", "line");
+      l3.setAttribute("x1", 0);
+      l3.setAttribute("x2", cw);
+      l3.setAttribute("y1", y3);
+      l3.setAttribute("y2", y3);
+      l3.setAttribute("class", "g-axis");
+      g4.appendChild(l3);
+      const t3 = document.createElementNS("http://www.w3.org/2000/svg", "text");
+      t3.setAttribute("x", -6);
+      t3.setAttribute("y", expandedPanel ? y3 - 1 : y3 + 3);
+      t3.setAttribute("class", "g-text y-label");
+      t3.textContent = Formatter.axis(v3);
+      g4.appendChild(t3);
     }
-    const gx = (v) => {
-      const r = xp.max - xp.min;
-      return r === 0 ? 0 : (v - xp.min) / r * cw;
-    }, gy = (v) => chPlot - (v - fMin) / fr * chPlot;
+    const gx = (v3) => {
+      const r4 = xp.max - xp.min;
+      return r4 === 0 ? 0 : (v3 - xp.min) / r4 * cw;
+    }, gy = (v3) => chPlot - (v3 - fMin) / fr * chPlot;
     (function _drawTicks() {
       const _addTick = (tx) => {
         const tk = document.createElementNS("http://www.w3.org/2000/svg", "line");
@@ -8087,24 +8098,24 @@ Please enter a new key to continue.`);
           "class",
           "g-axis"
         );
-        g.appendChild(tk);
+        g4.appendChild(tk);
       };
       if (vt === "DAY") {
-        for (let i = 0; i <= 12; i++) _addTick(gx(xp.min + i * 72e5));
+        for (let i3 = 0; i3 <= 12; i3++) _addTick(gx(xp.min + i3 * 72e5));
       } else if (vt === "ALL_TIME") {
         if (dat.tier && dat.tier.startsWith("Mo")) {
           const sw = 1;
-          for (let n = Math.ceil(xp.min / sw); n * sw <= xp.max + 1e-3; n++) _addTick(gx(n * sw));
+          for (let n2 = Math.ceil(xp.min / sw); n2 * sw <= xp.max + 1e-3; n2++) _addTick(gx(n2 * sw));
         } else if (dat.tier && dat.tier.startsWith("Yr")) {
           const oM = dat.anchorDate ? dat.anchorDate.getUTCMonth() : 0;
-          for (let k = 1; k * 12 - oM <= xp.max + 1e-3; k++) _addTick(gx(k * 12 - oM));
+          for (let k3 = 1; k3 * 12 - oM <= xp.max + 1e-3; k3++) _addTick(gx(k3 * 12 - oM));
         } else {
-          const r = xp.max - xp.min;
-          for (let i = 0; i <= r; i++) _addTick(gx(xp.min + i));
+          const r4 = xp.max - xp.min;
+          for (let i3 = 0; i3 <= r4; i3++) _addTick(gx(xp.min + i3));
         }
       } else {
-        const r = xp.max - xp.min;
-        for (let i = 0; i <= r; i++) _addTick(gx(xp.min + i));
+        const r4 = xp.max - xp.min;
+        for (let i3 = 0; i3 <= r4; i3++) _addTick(gx(xp.min + i3));
       }
     })();
     const shouldSkipLbls = cmp && lbls.length >= 6 && !isPageMode;
@@ -8114,45 +8125,45 @@ Please enter a new key to continue.`);
       const _slotPx = cw / _xr;
       _monthPageXFs = Math.round(Math.max(7.25, Math.min(11, _slotPx / 1.35)) * 10) / 10;
     }
-    lbls.forEach((l, i) => {
-      let v = 0;
-      if (vt === "DAY") v = xp.min + i * 72e5 + 36e5;
-      else if (vt === "YEAR") v = i + 0.5;
-      else if (vt === "MONTH") v = i + 1.5;
-      else if (vt === "WEEK") v = i + 0.5;
-      else if (vt === "ALL_TIME") v = i;
-      if (v > xp.max) return;
-      const x = gx(v);
-      if ((vt === "MONTH" || vt === "ALL_TIME") && shouldSkipLbls && i % 2 !== 0) return;
-      if (vt === "YEAR" && shouldSkipLbls && i % 2 === 0) return;
-      const t = document.createElementNS("http://www.w3.org/2000/svg", "text");
+    lbls.forEach((l3, i3) => {
+      let v3 = 0;
+      if (vt === "DAY") v3 = xp.min + i3 * 72e5 + 36e5;
+      else if (vt === "YEAR") v3 = i3 + 0.5;
+      else if (vt === "MONTH") v3 = i3 + 1.5;
+      else if (vt === "WEEK") v3 = i3 + 0.5;
+      else if (vt === "ALL_TIME") v3 = i3;
+      if (v3 > xp.max) return;
+      const x3 = gx(v3);
+      if ((vt === "MONTH" || vt === "ALL_TIME") && shouldSkipLbls && i3 % 2 !== 0) return;
+      if (vt === "YEAR" && shouldSkipLbls && i3 % 2 === 0) return;
+      const t3 = document.createElementNS("http://www.w3.org/2000/svg", "text");
       const yp = chPlot + xLabDrop + 3;
-      t.setAttribute("x", x);
-      t.setAttribute("y", yp);
-      t.setAttribute("class", "g-text x-label");
-      let txt = l;
-      if (vt === "DAY" && cmp) txt = l.replace(":00", "");
+      t3.setAttribute("x", x3);
+      t3.setAttribute("y", yp);
+      t3.setAttribute("class", "g-text x-label");
+      let txt = l3;
+      if (vt === "DAY" && cmp) txt = l3.replace(":00", "");
       if (vt === "WEEK") {
-        const d = Formatter.parse(l);
+        const d3 = Formatter.parse(l3);
         const shortDays = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
         const fullDays = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
-        txt = cmp ? shortDays[d.getUTCDay()] : fullDays[d.getUTCDay()];
+        txt = cmp ? shortDays[d3.getUTCDay()] : fullDays[d3.getUTCDay()];
       }
-      if (vt === "ALL_TIME" && cmp && typeof l === "string" && l.indexOf(" ") !== -1) {
-        txt = l.split(" ")[1];
+      if (vt === "ALL_TIME" && cmp && typeof l3 === "string" && l3.indexOf(" ") !== -1) {
+        txt = l3.split(" ")[1];
       }
-      t.textContent = txt;
-      t.setAttribute("text-anchor", "middle");
+      t3.textContent = txt;
+      t3.setAttribute("text-anchor", "middle");
       if (_monthPageXFs != null && vt === "MONTH") {
-        t.style.fontSize = _monthPageXFs + "px";
-        if (_monthPageXFs < 9.5) t.style.letterSpacing = "0px";
+        t3.style.fontSize = _monthPageXFs + "px";
+        if (_monthPageXFs < 9.5) t3.style.letterSpacing = "0px";
       }
-      g.appendChild(t);
+      g4.appendChild(t3);
     });
     if (vt === "ALL_TIME" && dat.labelMeta) {
       const shouldSkipMeta = cmp && dat.labelMeta.length >= 6 && !isPageMode;
-      dat.labelMeta.forEach((meta, i) => {
-        if (shouldSkipMeta && i % 2 !== 0) return;
+      dat.labelMeta.forEach((meta, i3) => {
+        if (shouldSkipMeta && i3 % 2 !== 0) return;
         if (meta.x < xp.min || meta.x > xp.max) return;
         const lx = gx(meta.x);
         const lyp = chPlot + xLabDrop + 3;
@@ -8166,80 +8177,80 @@ Please enter a new key to continue.`);
           txt = txt.split(" ")[0];
         }
         lt.textContent = txt;
-        g.appendChild(lt);
+        g4.appendChild(lt);
       });
     }
-    graphState.activeStats.forEach((s) => {
-      if (!tr[s] || tr[s].length === 0) return;
-      const arr = tr[s], sty = arr[0].y, col = s === "total" ? CONSTANTS.COLORS.TOT : CONSTANTS.COLORS[s.toUpperCase()] || "#ffffff";
+    graphState.activeStats.forEach((s3) => {
+      if (!tr[s3] || tr[s3].length === 0) return;
+      const arr = tr[s3], sty = arr[0].y, col = s3 === "total" ? CONSTANTS.COLORS.TOT : CONSTANTS.COLORS[s3.toUpperCase()] || "#ffffff";
       let str = sty;
-      const vs = arr.find((p2) => p2.y > 0);
+      const vs = arr.find((p4) => p4.y > 0);
       if (vs) str = vs.y;
-      let d = "", _ps = false;
-      arr.forEach((p2) => {
-        const x = gx(p2.x), y = gy(p2.y);
-        if (!isFinite(x) || !isFinite(y)) {
+      let d3 = "", _ps = false;
+      arr.forEach((p4) => {
+        const x3 = gx(p4.x), y3 = gy(p4.y);
+        if (!isFinite(x3) || !isFinite(y3)) {
           _ps = false;
           return;
         }
         if (!_ps) {
-          d += `M ${x} ${y}`;
+          d3 += `M ${x3} ${y3}`;
           _ps = true;
-        } else d += ` L ${x} ${y}`;
+        } else d3 += ` L ${x3} ${y3}`;
       });
-      const p = document.createElementNS("http://www.w3.org/2000/svg", "path");
-      p.setAttribute("d", d);
-      p.setAttribute("stroke", col);
-      p.setAttribute("class", "g-path");
-      p.setAttribute("vector-effect", "non-scaling-stroke");
-      g.appendChild(p);
+      const p3 = document.createElementNS("http://www.w3.org/2000/svg", "path");
+      p3.setAttribute("d", d3);
+      p3.setAttribute("stroke", col);
+      p3.setAttribute("class", "g-path");
+      p3.setAttribute("vector-effect", "non-scaling-stroke");
+      g4.appendChild(p3);
       const dns = vt !== "YEAR" && arr.length > 50;
-      arr.forEach((p2, i) => {
-        const x = gx(p2.x), y = gy(p2.y), grp = document.createElementNS("http://www.w3.org/2000/svg", "g");
+      arr.forEach((p4, i3) => {
+        const x3 = gx(p4.x), y3 = gy(p4.y), grp = document.createElementNS("http://www.w3.org/2000/svg", "g");
         grp.setAttribute("class", "g-point-group");
-        grp.setAttribute("data-stat", s);
-        grp.setAttribute("data-cx", x);
-        grp.setAttribute("data-cy", y);
+        grp.setAttribute("data-stat", s3);
+        grp.setAttribute("data-cx", x3);
+        grp.setAttribute("data-cy", y3);
         const hit = document.createElementNS("http://www.w3.org/2000/svg", "circle");
-        hit.setAttribute("cx", x);
-        hit.setAttribute("cy", y);
+        hit.setAttribute("cx", x3);
+        hit.setAttribute("cy", y3);
         hit.setAttribute("r", 8);
         hit.setAttribute("fill", "transparent");
         grp.appendChild(hit);
-        if (!dns || i === arr.length - 1) {
+        if (!dns || i3 === arr.length - 1) {
           const dot = document.createElementNS("http://www.w3.org/2000/svg", "circle");
-          dot.setAttribute("cx", x);
-          dot.setAttribute("cy", y);
+          dot.setAttribute("cx", x3);
+          dot.setAttribute("cy", y3);
           dot.setAttribute("r", 4);
           dot.setAttribute("fill", col);
           dot.setAttribute("class", "g-point-visual");
           grp.appendChild(dot);
         }
-        let stt = s === "str" ? "STRENGTH" : s === "def" ? "DEFENSE" : s === "spd" ? "SPEED" : s === "dex" ? "DEXTERITY" : "TOTAL STATS", body = "";
-        const tl = GraphController._graphTooltipHeader(vt, p2, i, arr, dat);
+        let stt = s3 === "str" ? "STRENGTH" : s3 === "def" ? "DEFENSE" : s3 === "spd" ? "SPEED" : s3 === "dex" ? "DEXTERITY" : "TOTAL STATS", body = "";
+        const tl = GraphController._graphTooltipHeader(vt, p4, i3, arr, dat);
         let prevVal = sty;
         if (vt === "YEAR") {
-          if (i === 0) prevVal = p2.y;
-          else prevVal = arr[i - 1].y;
+          if (i3 === 0) prevVal = p4.y;
+          else prevVal = arr[i3 - 1].y;
         } else prevVal = sty;
         if (graphState.mode === "rates") {
-          const cr = p2.y, dl = cr - str, sg = dl >= 0 ? "+" : "", pc = str > 0 ? dl / str * 100 : 0;
+          const cr = p4.y, dl = cr - str, sg = dl >= 0 ? "+" : "", pc = str > 0 ? dl / str * 100 : 0;
           body = `<div class="tt-row"><span class="tt-label">Rate</span> <span class="tt-total">${cr.toLocaleString(void 0, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span></div><div class="tt-row"><span class="tt-label">Growth</span> <span style="color:${dl >= 0 ? CONSTANTS.COLORS.GAINS : "#ff5252"}; font-weight:bold;">${sg}${dl.toFixed(2)} <span style="font-size:10px; opacity:0.8;">(${sg}${pc.toFixed(1)}%)</span></span></div>`;
-        } else if (graphState.mode === "gains") body = `<div class="tt-row"><span class="tt-label">Gained</span> <span class="tt-val">+${Formatter.dual(p2.y)}</span></div>`;
+        } else if (graphState.mode === "gains") body = `<div class="tt-row"><span class="tt-label">Gained</span> <span class="tt-val">+${Formatter.dual(p4.y)}</span></div>`;
         else {
-          const cv = p2.y, gv = vt === "YEAR" && i === 0 ? 0 : cv - prevVal, gs = gv >= 0 ? "+" : "";
+          const cv = p4.y, gv = vt === "YEAR" && i3 === 0 ? 0 : cv - prevVal, gs = gv >= 0 ? "+" : "";
           body = `<div class="tt-row"><span class="tt-label">Total</span> <span class="tt-total">${Formatter.number(cv)}</span></div><div class="tt-row"><span class="tt-label">Gains</span> <span class="tt-val">${gs}${Formatter.number(gv)}</span></div>`;
         }
         grp.setAttribute("data-tooltip-html", `<div class="tt-header" style="border:none; margin-bottom:0; padding-bottom:0;">${tl}</div><div style="text-align:center; font-weight:bold; font-size:10px; color:${col}; margin-bottom:4px; letter-spacing:1px;">${stt}</div><div style="border-bottom:1px solid rgba(255,255,240,0.15); margin-bottom:5px;"></div>${body}`);
-        g.appendChild(grp);
+        g4.appendChild(grp);
       });
     });
-    svg.appendChild(g);
+    svg.appendChild(g4);
     GraphController._setupScrubbing(cont, svg, mar);
     Perf.end("graphDraw");
   }, _calculateNiceScale(min, max) {
     if (min === max) return min === 0 ? { min: 0, max: 10, step: 5 } : { min: Math.floor(min * 0.9), max: Math.ceil(max * 1.1), step: (Math.ceil(max * 1.1) - Math.floor(min * 0.9)) / 2 };
-    let r = max - min, rs = r / 4, exp = Math.floor(Math.log10(rs)), base = Math.pow(10, exp), frac = rs / base;
+    let r4 = max - min, rs = r4 / 4, exp = Math.floor(Math.log10(rs)), base = Math.pow(10, exp), frac = rs / base;
     let nf = frac <= 1 ? 1 : frac <= 2 ? 2 : frac <= 5 ? 5 : 10, step = nf * base;
     const _aM = Math.max(Math.abs(min), Math.abs(max)), _mD = _aM >= 1e12 ? 1e12 : _aM >= 1e9 ? 1e9 : _aM >= 1e6 ? 1e6 : _aM >= 1e3 ? 1e3 : 1;
     if (step < 0.1 * _mD) step = 0.1 * _mD;
@@ -8253,64 +8264,64 @@ Please enter a new key to continue.`);
     }
     if (gMax - max < (gMax - gMin) * 0.05) gMax += step;
     return { min: Math.max(0, gMin), max: gMax, step };
-  }, _setupScrubbing(c, s, m) {
+  }, _setupScrubbing(c3, s3, m3) {
     if (graphState.handlers.scrub) {
-      c.removeEventListener("mousemove", graphState.handlers.scrub);
-      c.removeEventListener("touchmove", graphState.handlers.scrub);
-      c.removeEventListener("mousedown", graphState.handlers.start);
-      c.removeEventListener("touchstart", graphState.handlers.start);
+      c3.removeEventListener("mousemove", graphState.handlers.scrub);
+      c3.removeEventListener("touchmove", graphState.handlers.scrub);
+      c3.removeEventListener("mousedown", graphState.handlers.start);
+      c3.removeEventListener("touchstart", graphState.handlers.start);
       window.removeEventListener("mouseup", graphState.handlers.end);
       window.removeEventListener("touchend", graphState.handlers.end);
-      c.removeEventListener("mouseleave", graphState.handlers.end);
+      c3.removeEventListener("mouseleave", graphState.handlers.end);
     }
-    const gp = (e) => {
-      const r = s.getBoundingClientRect(), vb = s.viewBox.baseVal, sx = vb.width / r.width, sy = vb.height / r.height;
-      let cx = e.clientX, cy = e.clientY;
-      if (e.type.includes("touch") && e.touches.length > 0) {
-        cx = e.touches[0].clientX;
-        cy = e.touches[0].clientY;
+    const gp = (e3) => {
+      const r4 = s3.getBoundingClientRect(), vb = s3.viewBox.baseVal, sx = vb.width / r4.width, sy = vb.height / r4.height;
+      let cx = e3.clientX, cy = e3.clientY;
+      if (e3.type.includes("touch") && e3.touches.length > 0) {
+        cx = e3.touches[0].clientX;
+        cy = e3.touches[0].clientY;
       }
-      return { x: (cx - r.left) * sx - m.left, y: (cy - r.top) * sy - m.top };
+      return { x: (cx - r4.left) * sx - m3.left, y: (cy - r4.top) * sy - m3.top };
     };
-    const f = (x, y, st = null) => {
-      const sl = st ? `.g-point-group[data-stat="${st}"]` : ".g-point-group", grs = c.querySelectorAll(sl);
+    const f4 = (x3, y3, st = null) => {
+      const sl = st ? `.g-point-group[data-stat="${st}"]` : ".g-point-group", grs = c3.querySelectorAll(sl);
       let min = Infinity, cl = null;
-      grs.forEach((g) => {
-        const gx = parseFloat(g.getAttribute("data-cx")), gy = parseFloat(g.getAttribute("data-cy")), d = Math.sqrt(Math.pow(gx - x, 2) + (st ? 0 : Math.pow(gy - y, 2)));
-        if (d < min) {
-          min = d;
-          cl = g;
+      grs.forEach((g4) => {
+        const gx = parseFloat(g4.getAttribute("data-cx")), gy = parseFloat(g4.getAttribute("data-cy")), d3 = Math.sqrt(Math.pow(gx - x3, 2) + (st ? 0 : Math.pow(gy - y3, 2)));
+        if (d3 < min) {
+          min = d3;
+          cl = g4;
         }
       });
       return { g: cl, d: min };
     };
-    const uh = (g) => {
-      c.querySelectorAll(".g-point-group.active").forEach((z) => z.classList.remove("active"));
-      g.classList.add("active");
-      app.TooltipController.show(g.getAttribute("data-tooltip-html"), g.getBoundingClientRect());
+    const uh = (g4) => {
+      c3.querySelectorAll(".g-point-group.active").forEach((z3) => z3.classList.remove("active"));
+      g4.classList.add("active");
+      app.TooltipController.show(g4.getAttribute("data-tooltip-html"), g4.getBoundingClientRect());
     };
     const ch = () => {
-      c.querySelectorAll(".g-point-group.active").forEach((z) => z.classList.remove("active"));
+      c3.querySelectorAll(".g-point-group.active").forEach((z3) => z3.classList.remove("active"));
       app.TooltipController.hide();
     };
-    const os = (e) => {
-      if (e.type === "touchstart" && e.target.closest(".g-hud")) return;
-      if (e.type === "touchstart") e.preventDefault();
-      const p = gp(e), cl = f(p.x, p.y);
+    const os = (e3) => {
+      if (e3.type === "touchstart" && e3.target.closest(".g-hud")) return;
+      if (e3.type === "touchstart") e3.preventDefault();
+      const p3 = gp(e3), cl = f4(p3.x, p3.y);
       if (cl.g && cl.d < 15) {
         graphState.isDragging = true;
         graphState.lockedStat = cl.g.getAttribute("data-stat");
         uh(cl.g);
       }
     };
-    const om = (e) => {
-      if (e.type === "touchmove") e.preventDefault();
-      const p = gp(e);
+    const om = (e3) => {
+      if (e3.type === "touchmove") e3.preventDefault();
+      const p3 = gp(e3);
       if (graphState.isDragging && graphState.lockedStat) {
-        const m2 = f(p.x, p.y, graphState.lockedStat);
-        if (m2.g) uh(m2.g);
+        const m4 = f4(p3.x, p3.y, graphState.lockedStat);
+        if (m4.g) uh(m4.g);
       } else {
-        const cl = f(p.x, p.y);
+        const cl = f4(p3.x, p3.y);
         if (cl.g && cl.d < 30) uh(cl.g);
         else ch();
       }
@@ -8320,34 +8331,34 @@ Please enter a new key to continue.`);
       graphState.lockedStat = null;
     };
     graphState.handlers = { start: os, scrub: om, end: oe };
-    c.addEventListener("mousedown", os);
-    c.addEventListener("mousemove", om);
+    c3.addEventListener("mousedown", os);
+    c3.addEventListener("mousemove", om);
     window.addEventListener("mouseup", oe);
-    c.addEventListener(
+    c3.addEventListener(
       "touchstart",
       os,
       { passive: false }
     );
-    c.addEventListener("touchmove", om, { passive: false });
+    c3.addEventListener("touchmove", om, { passive: false });
     window.addEventListener("touchend", oe);
-    c.addEventListener("mouseleave", ch);
+    c3.addEventListener("mouseleave", ch);
   }, setupControls() {
-    document.querySelectorAll(".g-pill").forEach((b) => {
-      b.onclick = (e) => {
-        e.stopPropagation();
-        const t = b.getAttribute("data-type"), v = b.getAttribute("data-val");
-        if (t === "mode") {
-          document.querySelectorAll('.g-pill[data-type="mode"]').forEach((x) => x.classList.remove("active"));
-          b.classList.add("active");
-          graphState.mode = v;
-          viewState.graphMode = v;
-        } else if (t === "stat") {
-          if (graphState.activeStats.includes(v)) {
-            graphState.activeStats = graphState.activeStats.filter((s) => s !== v);
-            b.classList.remove("active");
+    document.querySelectorAll(".g-pill").forEach((b2) => {
+      b2.onclick = (e3) => {
+        e3.stopPropagation();
+        const t3 = b2.getAttribute("data-type"), v3 = b2.getAttribute("data-val");
+        if (t3 === "mode") {
+          document.querySelectorAll('.g-pill[data-type="mode"]').forEach((x3) => x3.classList.remove("active"));
+          b2.classList.add("active");
+          graphState.mode = v3;
+          viewState.graphMode = v3;
+        } else if (t3 === "stat") {
+          if (graphState.activeStats.includes(v3)) {
+            graphState.activeStats = graphState.activeStats.filter((s3) => s3 !== v3);
+            b2.classList.remove("active");
           } else {
-            graphState.activeStats.push(v);
-            b.classList.add("active");
+            graphState.activeStats.push(v3);
+            b2.classList.add("active");
           }
           viewState.graphStats = graphState.activeStats;
         }
@@ -8360,13 +8371,13 @@ Please enter a new key to continue.`);
     });
     runtime.resizeObserver.observe(dom.graphContainer);
   }, restoreUi() {
-    document.querySelectorAll('.g-pill[data-type="mode"]').forEach((b) => {
-      if (b.getAttribute("data-val") === graphState.mode) b.classList.add("active");
-      else b.classList.remove("active");
+    document.querySelectorAll('.g-pill[data-type="mode"]').forEach((b2) => {
+      if (b2.getAttribute("data-val") === graphState.mode) b2.classList.add("active");
+      else b2.classList.remove("active");
     });
-    document.querySelectorAll('.g-pill[data-type="stat"]').forEach((b) => {
-      if (graphState.activeStats.includes(b.getAttribute("data-val"))) b.classList.add("active");
-      else b.classList.remove("active");
+    document.querySelectorAll('.g-pill[data-type="stat"]').forEach((b2) => {
+      if (graphState.activeStats.includes(b2.getAttribute("data-val"))) b2.classList.add("active");
+      else b2.classList.remove("active");
     });
   }, applyDefaultsIfNeeded() {
     if (viewState.graphStats) return;
@@ -8375,8 +8386,8 @@ Please enter a new key to continue.`);
       const statsTrainedInThatWeek = /* @__PURE__ */ new Set();
       const daysToCheck = [...historyCache.history || []];
       if (historyCache.today) daysToCheck.push(historyCache.today);
-      for (let i = daysToCheck.length - 1; i >= 0; i--) {
-        const day = daysToCheck[i];
+      for (let i3 = daysToCheck.length - 1; i3 >= 0; i3--) {
+        const day = daysToCheck[i3];
         const eSpent = day.eSpent || {};
         if (!(eSpent.total > 0)) continue;
         const dayWeekStart = getWeekKey(day.date);
@@ -8401,9 +8412,9 @@ Please enter a new key to continue.`);
   function loadStickerData() {
     const unlocked = runtime.demoMode ? 1 : app.DataController.getUnlockedCount() || 1;
     const it = [];
-    for (let i = 1; i <= 50; i++) {
-      const c = CUSTOM_STICKERS.find((s) => s.id === i);
-      if (c) it.push({ type: "image", ...c, unlocked: i <= unlocked });
+    for (let i3 = 1; i3 <= 50; i3++) {
+      const c3 = CUSTOM_STICKERS.find((s3) => s3.id === i3);
+      if (c3) it.push({ type: "image", ...c3, unlocked: i3 <= unlocked });
       else it.push(null);
     }
     runtime.stickerData = it;
@@ -8445,14 +8456,14 @@ Please enter a new key to continue.`);
         renderStickers();
       };
       dc.appendChild(sd);
-      for (let i = 0; i < tp; i++) {
-        const d = document.createElement("div");
-        d.className = `pg-dot ${i === runtime.currentStickerPage ? "active" : ""}`;
-        d.onclick = () => {
-          runtime.currentStickerPage = i;
+      for (let i3 = 0; i3 < tp; i3++) {
+        const d3 = document.createElement("div");
+        d3.className = `pg-dot ${i3 === runtime.currentStickerPage ? "active" : ""}`;
+        d3.onclick = () => {
+          runtime.currentStickerPage = i3;
           renderStickers();
         };
-        dc.appendChild(d);
+        dc.appendChild(d3);
       }
     }
     const start = runtime.currentStickerPage * 10, pi = runtime.stickerData.slice(start, start + 10);
@@ -8462,21 +8473,21 @@ Please enter a new key to continue.`);
     }
     let comingSoonDiv = document.getElementById("bbgl-coming-soon");
     if (runtime.currentStickerPage >= 2) {
-      for (let i = 0; i < 10; i++) runtime.stickerSlots[i].style.display = "none";
+      for (let i3 = 0; i3 < 10; i3++) runtime.stickerSlots[i3].style.display = "none";
       if (!comingSoonDiv) {
-        const g = document.getElementById("bbgl-sticker-container") || dom.stickerContainer;
-        if (g) {
+        const g4 = document.getElementById("bbgl-sticker-container") || dom.stickerContainer;
+        if (g4) {
           const cs = document.createElement("div");
           cs.id = "bbgl-coming-soon";
           cs.className = "bbgl-coming-soon";
           cs.innerHTML = "Cumming<br>Soon...";
-          g.appendChild(cs);
+          g4.appendChild(cs);
         }
       } else comingSoonDiv.style.display = "block";
     } else {
       if (comingSoonDiv) comingSoonDiv.style.display = "none";
-      for (let i = 0; i < 10; i++) {
-        const sl = runtime.stickerSlots[i], img = sl.querySelector(".sticker-img"), it = pi[i];
+      for (let i3 = 0; i3 < 10; i3++) {
+        const sl = runtime.stickerSlots[i3], img = sl.querySelector(".sticker-img"), it = pi[i3];
         sl.style.display = "";
         if (it) {
           sl.className = "sticker-slot active-slot";
@@ -8536,11 +8547,11 @@ Please enter a new key to continue.`);
       saveViewState();
     }
     app.TooltipController.hide();
-    const v = dom.itemViewer, bp = dom.bottomPanel, nm = dom.viName, ob = dom.viObj, lf = ob.querySelector(".layer-front"), lb = ob.querySelector(".layer-back"), st = document.querySelector(".viewer-stage");
+    const v3 = dom.itemViewer, bp = dom.bottomPanel, nm = dom.viName, ob = dom.viObj, lf = ob.querySelector(".layer-front"), lb = ob.querySelector(".layer-back"), st = document.querySelector(".viewer-stage");
     runtime.currentOpenedItemId = it.id;
     bp.style.setProperty("display", "none", "important");
-    v.classList.add("active");
-    v.style.setProperty("display", "flex", "important");
+    v3.classList.add("active");
+    v3.style.setProperty("display", "flex", "important");
     let ped = dom.viPedestal;
     if (!ped) {
       ped = document.createElement("div");
@@ -8586,10 +8597,10 @@ Please enter a new key to continue.`);
       cancelAnimationFrame(runtime.viewerLoopId);
       runtime.viewerLoopId = null;
     }
-    const v = dom.itemViewer, bp = dom.bottomPanel;
-    if (v) {
-      v.classList.remove("active");
-      v.style.setProperty("display", "none", "important");
+    const v3 = dom.itemViewer, bp = dom.bottomPanel;
+    if (v3) {
+      v3.classList.remove("active");
+      v3.style.setProperty("display", "none", "important");
     }
     if (bp) {
       bp.style.removeProperty("display");
@@ -8597,17 +8608,17 @@ Please enter a new key to continue.`);
     }
   }
   function setupStickerGrid() {
-    const g = dom.stickerGrid;
-    if (!g) return;
+    const g4 = dom.stickerGrid;
+    if (!g4) return;
     runtime.stickerSlots = [];
-    g.innerHTML = "";
-    for (let i = 0; i < 10; i++) {
-      const s = document.createElement("div"), m = document.createElement("img");
-      s.className = "sticker-slot";
-      m.className = "sticker-img";
-      s.appendChild(m);
-      g.appendChild(s);
-      runtime.stickerSlots.push(s);
+    g4.innerHTML = "";
+    for (let i3 = 0; i3 < 10; i3++) {
+      const s3 = document.createElement("div"), m3 = document.createElement("img");
+      s3.className = "sticker-slot";
+      m3.className = "sticker-img";
+      s3.appendChild(m3);
+      g4.appendChild(s3);
+      runtime.stickerSlots.push(s3);
     }
     const container = dom.stickerContainer;
     if (container && !document.getElementById("bbgl-sponsor-grid")) {
@@ -8615,10 +8626,10 @@ Please enter a new key to continue.`);
       sg.id = "bbgl-sponsor-grid";
       sg.style.display = "none";
       const pts = getSponsorBurstPoints();
-      for (let i = 0; i < 3; i++) {
+      for (let i3 = 0; i3 < 3; i3++) {
         const slot = document.createElement("div");
         slot.className = "sticker-slot sticker-slot-sponsor active-slot locked";
-        const labelText = i === 0 ? "Corleone Faction<br>Sticker Here ;)" : "Your Faction<br>Sticker Here";
+        const labelText = i3 === 0 ? "Corleone Faction<br>Sticker Here ;)" : "Your Faction<br>Sticker Here";
         slot.innerHTML = `<svg class="sponsor-sticker-svg" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg"><polygon points="${pts}" fill="#ffffff"/></svg><span class="sponsor-sticker-label">${labelText}</span>`;
         sg.appendChild(slot);
       }
@@ -8632,12 +8643,12 @@ Please enter a new key to continue.`);
   function getSponsorBurstPoints() {
     if (_sponsorBurstPoints) return _sponsorBurstPoints;
     const pts = [];
-    for (let i = 0; i < 20; i++) {
-      const angle = (i * 18 - 90) * Math.PI / 180;
-      const r = i % 2 === 0 ? 48 : 36;
-      const x = (50 + r * Math.cos(angle)).toFixed(2);
-      const y = (50 + r * Math.sin(angle)).toFixed(2);
-      pts.push(`${x},${y}`);
+    for (let i3 = 0; i3 < 20; i3++) {
+      const angle = (i3 * 18 - 90) * Math.PI / 180;
+      const r4 = i3 % 2 === 0 ? 48 : 36;
+      const x3 = (50 + r4 * Math.cos(angle)).toFixed(2);
+      const y3 = (50 + r4 * Math.sin(angle)).toFixed(2);
+      pts.push(`${x3},${y3}`);
     }
     _sponsorBurstPoints = pts.join(" ");
     return _sponsorBurstPoints;
@@ -8665,22 +8676,22 @@ Please enter a new key to continue.`);
         renderStickers();
       };
       dc.appendChild(sd);
-      for (let i = 0; i < tp; i++) {
-        const d = document.createElement("div");
-        d.className = "pg-dot";
-        d.onclick = () => {
-          runtime.currentStickerPage = i;
-          viewState.currentStickerPage = i;
+      for (let i3 = 0; i3 < tp; i3++) {
+        const d3 = document.createElement("div");
+        d3.className = "pg-dot";
+        d3.onclick = () => {
+          runtime.currentStickerPage = i3;
+          viewState.currentStickerPage = i3;
           saveViewState();
           renderStickers();
         };
-        dc.appendChild(d);
+        dc.appendChild(d3);
       }
     }
   }
-  function changeStickerPage(d) {
+  function changeStickerPage(d3) {
     if (!userConfig.animations) {
-      viewState.currentStickerPage += d;
+      viewState.currentStickerPage += d3;
       runtime.currentStickerPage = viewState.currentStickerPage;
       saveViewState();
       renderStickers();
@@ -8694,7 +8705,7 @@ Please enter a new key to continue.`);
       ghost.style.top = "0";
       ghost.style.left = "0";
       ghost.style.width = "100%";
-      ghost.style.animation = d > 0 ? "bbgl-slide-out-l 0.3s ease forwards" : "bbgl-slide-out-r 0.3s ease forwards";
+      ghost.style.animation = d3 > 0 ? "bbgl-slide-out-l 0.3s ease forwards" : "bbgl-slide-out-r 0.3s ease forwards";
       oldActive.parentElement.appendChild(ghost);
       const removeGhost = () => {
         if (ghost.parentElement) ghost.remove();
@@ -8710,7 +8721,7 @@ Please enter a new key to continue.`);
       bgGhost.style.top = "0";
       bgGhost.style.left = "0";
       bgGhost.style.width = "100%";
-      bgGhost.style.animation = d > 0 ? "bbgl-slide-out-l 0.3s ease forwards" : "bbgl-slide-out-r 0.3s ease forwards";
+      bgGhost.style.animation = d3 > 0 ? "bbgl-slide-out-l 0.3s ease forwards" : "bbgl-slide-out-r 0.3s ease forwards";
       bg.parentElement.appendChild(bgGhost);
       const removeBgGhost = () => {
         if (bgGhost.parentElement) bgGhost.remove();
@@ -8719,80 +8730,80 @@ Please enter a new key to continue.`);
       const bgGhostTimer = setTimeout(removeBgGhost, 400);
       bgGhost.addEventListener("animationend", () => clearTimeout(bgGhostTimer), { once: true });
     }
-    viewState.currentStickerPage += d;
+    viewState.currentStickerPage += d3;
     runtime.currentStickerPage = viewState.currentStickerPage;
     saveViewState();
     renderStickers();
     const newActive = runtime.currentStickerPage === -1 ? document.getElementById("bbgl-sponsor-grid") : dom.stickerGrid;
     if (newActive) {
-      newActive.style.animation = d > 0 ? "bbgl-slide-in-r 0.3s ease forwards" : "bbgl-slide-in-l 0.3s ease forwards";
+      newActive.style.animation = d3 > 0 ? "bbgl-slide-in-r 0.3s ease forwards" : "bbgl-slide-in-l 0.3s ease forwards";
       newActive.addEventListener("animationend", () => newActive.style.animation = "", { once: true });
     }
     if (bg) {
-      bg.style.animation = d > 0 ? "bbgl-slide-in-r 0.3s ease forwards" : "bbgl-slide-in-l 0.3s ease forwards";
+      bg.style.animation = d3 > 0 ? "bbgl-slide-in-r 0.3s ease forwards" : "bbgl-slide-in-l 0.3s ease forwards";
       bg.addEventListener("animationend", () => bg.style.animation = "", { once: true });
     }
   }
-  function closeDropdown(d) {
-    d.classList.remove("show");
-    d.style.position = "";
-    d.style.top = "";
-    d.style.left = "";
-    d.style.zIndex = "";
+  function closeDropdown(d3) {
+    d3.classList.remove("show");
+    d3.style.position = "";
+    d3.style.top = "";
+    d3.style.left = "";
+    d3.style.zIndex = "";
   }
-  function openDropdown(d, trigger) {
-    d.style.position = "fixed";
-    d.style.top = "0px";
-    d.style.left = "0px";
-    d.style.zIndex = "9999999";
-    d.classList.add("show");
-    const origin = d.getBoundingClientRect();
-    const r = trigger.getBoundingClientRect();
-    d.style.top = r.bottom - origin.top + 2 + "px";
-    d.style.left = r.left - origin.left + "px";
+  function openDropdown(d3, trigger) {
+    d3.style.position = "fixed";
+    d3.style.top = "0px";
+    d3.style.left = "0px";
+    d3.style.zIndex = "9999999";
+    d3.classList.add("show");
+    const origin = d3.getBoundingClientRect();
+    const r4 = trigger.getBoundingClientRect();
+    d3.style.top = r4.bottom - origin.top + 2 + "px";
+    d3.style.left = r4.left - origin.left + "px";
   }
   function toggleMonthDropdown() {
-    const d = dom.monthDropdown;
+    const d3 = dom.monthDropdown;
     closeDropdown(dom.yearDropdown);
-    d.innerHTML = "";
-    CONSTANTS.MONTHS_SHORT.forEach((m, i) => {
-      const x = document.createElement("div");
-      x.className = `drop-item ${i === calendarState.month ? "active" : ""}`;
-      x.textContent = m;
-      x.onclick = () => {
-        calendarState.month = i;
-        d.querySelectorAll(".drop-item").forEach((el) => el.classList.remove("active"));
-        x.classList.add("active");
-        closeDropdown(d);
+    d3.innerHTML = "";
+    CONSTANTS.MONTHS_SHORT.forEach((m3, i3) => {
+      const x3 = document.createElement("div");
+      x3.className = `drop-item ${i3 === calendarState.month ? "active" : ""}`;
+      x3.textContent = m3;
+      x3.onclick = () => {
+        calendarState.month = i3;
+        d3.querySelectorAll(".drop-item").forEach((el) => el.classList.remove("active"));
+        x3.classList.add("active");
+        closeDropdown(d3);
         app.renderPanelContent();
       };
-      d.appendChild(x);
+      d3.appendChild(x3);
     });
-    if (d.classList.contains("show")) closeDropdown(d);
-    else openDropdown(d, dom.monthTrigger);
+    if (d3.classList.contains("show")) closeDropdown(d3);
+    else openDropdown(d3, dom.monthTrigger);
   }
   function toggleYearDropdown() {
-    const d = dom.yearDropdown;
+    const d3 = dom.yearDropdown;
     closeDropdown(dom.monthDropdown);
-    d.innerHTML = "";
-    const s = app.getActiveHistory(), ys = /* @__PURE__ */ new Set();
-    s.history.forEach((z) => ys.add(parseInt(z.date.split("-")[0])));
-    if (s.today.date) ys.add(parseInt(s.today.date.split("-")[0]));
-    Array.from(ys).sort().reverse().forEach((y) => {
-      const x = document.createElement("div");
-      x.className = `drop-item ${y === calendarState.year ? "active" : ""}`;
-      x.textContent = y;
-      x.onclick = () => {
-        calendarState.year = y;
-        d.querySelectorAll(".drop-item").forEach((el) => el.classList.remove("active"));
-        x.classList.add("active");
-        closeDropdown(d);
+    d3.innerHTML = "";
+    const s3 = app.getActiveHistory(), ys = /* @__PURE__ */ new Set();
+    s3.history.forEach((z3) => ys.add(parseInt(z3.date.split("-")[0])));
+    if (s3.today.date) ys.add(parseInt(s3.today.date.split("-")[0]));
+    Array.from(ys).sort().reverse().forEach((y3) => {
+      const x3 = document.createElement("div");
+      x3.className = `drop-item ${y3 === calendarState.year ? "active" : ""}`;
+      x3.textContent = y3;
+      x3.onclick = () => {
+        calendarState.year = y3;
+        d3.querySelectorAll(".drop-item").forEach((el) => el.classList.remove("active"));
+        x3.classList.add("active");
+        closeDropdown(d3);
         app.renderPanelContent();
       };
-      d.appendChild(x);
+      d3.appendChild(x3);
     });
-    if (d.classList.contains("show")) closeDropdown(d);
-    else openDropdown(d, dom.yearTrigger);
+    if (d3.classList.contains("show")) closeDropdown(d3);
+    else openDropdown(d3, dom.yearTrigger);
   }
   function toggleStickerView() {
     const mp = dom.panel, tb = dom.tallToggle;
@@ -8805,8 +8816,8 @@ Please enter a new key to continue.`);
     app.switchView("stickers");
     setTimeout(() => {
       if (!runtime.stickerData.length) loadStickerData();
-      const i = runtime.stickerData.find((x) => x.id === (viewState.activeItemId || 1));
-      if (i) openItemViewer(i, true);
+      const i3 = runtime.stickerData.find((x3) => x3.id === (viewState.activeItemId || 1));
+      if (i3) openItemViewer(i3, true);
     }, 400);
     saveViewState();
   }
@@ -10348,7 +10359,7 @@ Please enter a new key to continue.`);
     app.updateFooterTooltip();
   }
   function renderPageMode() {
-    const H = `<div class="bbgl-native-header"><div class="bbgl-native-title"><span style="margin-left:8px;">Big Black Gym Log</span></div><div class="bbgl-native-links"><div id="bbgl-page-demo-exit" class="bbgl-native-link" style="display:${runtime.demoMode ? "flex" : "none"};"><span class="bbgl-demo-x-label">Demo</span>${ICONS.CLOSE}</div><div id="bbgl-page-settings" class="bbgl-native-link"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19.14 12.94c.04-.3.06-.61.06-.94 0-.32-.02-.64-.07-.94l2.03-1.58c.18-.14.23-.41.12-.61l-1.92-3.32c-.12-.22-.37-.29-.59-.22l-2.39.96c-.5-.38-1.03-.7-1.62-.94l-.36-2.54c-.04-.24-.24-.41-.48-.41h-3.84c-.24 0-.43.17-.47.41l-.36 2.54c-.59.24-1.13.57-1.62.94l-2.39-.96c-.22-.08-.47 0-.59.22L3.16 8.87c-.12.21-.08.47.12.61l2.03 1.58c-.05.3-.09.63-.09.94s.02.64.07.94l-2.03 1.58c-.18.14-.23.41-.12.61l1.92 3.32c.12.22.37.29.59.22l2.39-.96c.5.38 1.03.7 1.62.94l.36 2.54c.05.24.24.41.48.41h3.84c.24 0 .44-.17.47-.41l.36-2.54c.59-.24 1.13-.58 1.62-.94l2.39.96c.22.08.47 0 .59-.22l1.92-3.32c.12-.22.08-.47-.12-.61l-2.01-1.58zM12 15.6c-1.98 0-3.6-1.62-3.6-3.6s1.62-3.6 3.6-3.6 3.6 1.62 3.6 3.6-1.62 3.6-3.6 3.6z"/></svg>Settings</div></div></div>`, cw = document.querySelector(".content-wrapper");
+    const H3 = `<div class="bbgl-native-header"><div class="bbgl-native-title"><span style="margin-left:8px;">Big Black Gym Log</span></div><div class="bbgl-native-links"><div id="bbgl-page-demo-exit" class="bbgl-native-link" style="display:${runtime.demoMode ? "flex" : "none"};"><span class="bbgl-demo-x-label">Demo</span>${ICONS.CLOSE}</div><div id="bbgl-page-settings" class="bbgl-native-link"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19.14 12.94c.04-.3.06-.61.06-.94 0-.32-.02-.64-.07-.94l2.03-1.58c.18-.14.23-.41.12-.61l-1.92-3.32c-.12-.22-.37-.29-.59-.22l-2.39.96c-.5-.38-1.03-.7-1.62-.94l-.36-2.54c-.04-.24-.24-.41-.48-.41h-3.84c-.24 0-.43.17-.47.41l-.36 2.54c-.59.24-1.13.57-1.62.94l-2.39-.96c-.22-.08-.47 0-.59.22L3.16 8.87c-.12.21-.08.47.12.61l2.03 1.58c-.05.3-.09.63-.09.94s.02.64.07.94l-2.03 1.58c-.18.14-.23.41-.12.61l1.92 3.32c.12.22.37.29.59.22l2.39-.96c.5.38 1.03.7 1.62.94l.36 2.54c.05.24.24.41.48.41h3.84c.24 0 .44-.17.47-.41l.36-2.54c.59-.24 1.13-.58 1.62-.94l2.39.96c.22.08.47 0 .59-.22l1.92-3.32c.12-.22.08-.47-.12-.61l-2.01-1.58zM12 15.6c-1.98 0-3.6-1.62-3.6-3.6s1.62-3.6 3.6-3.6 3.6 1.62 3.6 3.6-1.62 3.6-3.6 3.6z"/></svg>Settings</div></div></div>`, cw = document.querySelector(".content-wrapper");
     if (!cw) return;
     window.scrollTo(0, 0);
     const pp = dom.panel;
@@ -10360,36 +10371,35 @@ Please enter a new key to continue.`);
     cw.innerHTML = "";
     const pc = document.createElement("div");
     pc.id = "bbgl-page-container";
-    pc.innerHTML = H;
+    pc.innerHTML = H3;
     const sb = pc.querySelector("#bbgl-page-settings");
     if (sb) sb.onclick = app.toggleSettingsView;
-    const p = document.createElement("div");
-    p.id = "bbgl-panel";
-    p.className = "bbgl-mode-page";
-    p.innerHTML = app.getDashboardHTML();
-    pc.appendChild(p);
+    const p3 = document.createElement("div");
+    p3.id = "bbgl-panel";
+    p3.className = "bbgl-mode-page";
+    pc.appendChild(p3);
     cw.appendChild(pc);
-    app.setupEventListeners(p);
+    app.mountDashboard(p3);
     const pdeb = pc.querySelector("#bbgl-page-demo-exit");
-    const demoBar = p.querySelector("#bbgl-demo-exit");
-    if (pdeb && demoBar) pdeb.onclick = (e) => {
-      e.stopPropagation();
-      demoBar.onclick(e);
+    const demoBar = p3.querySelector("#bbgl-demo-exit");
+    if (pdeb) pdeb.onclick = (e3) => {
+      e3.stopPropagation();
+      if (demoBar) demoBar.click();
     };
     app.restoreInternalState();
     app.renderPanelContent();
     if (dom.topPanel.classList.contains("viewing-graph")) setTimeout(app.GraphController.draw, 100);
   }
-  function handleStorageEvent(e) {
-    if (e.key === KEYS.STATE) {
+  function handleStorageEvent(e3) {
+    if (e3.key === KEYS.STATE) {
       try {
-        const ns = JSON.parse(e.newValue);
+        const ns = JSON.parse(e3.newValue);
         if (!ns) return;
         runtime.isSyncing = true;
         const openC = ns.isOpen !== viewState.isOpen, viewC = ns.subView !== viewState.subView, expandedC = ns.expanded !== viewState.expanded, tallC = ns.isTall !== viewState.isTall, stickerPC = ns.currentStickerPage !== viewState.currentStickerPage, labelC = ns.activeViewLabel !== viewState.activeViewLabel, calC = ns.calMonth !== viewState.calMonth || ns.calYear !== viewState.calYear, itemC = ns.activeItemId !== viewState.activeItemId, gMC = ns.graphMode !== viewState.graphMode, gSC = JSON.stringify(ns.graphStats) !== JSON.stringify(viewState.graphStats);
         setViewState(ns);
-        const p = dom.panel;
-        if (!p) {
+        const p3 = dom.panel;
+        if (!p3) {
           runtime.isSyncing = false;
           return;
         }
@@ -10397,9 +10407,9 @@ Please enter a new key to continue.`);
           runtime.isSyncing = false;
           return;
         }
-        if (!p.classList.contains("bbgl-mode-page") && openC) {
-          if (ns.isOpen && p.style.display === "none") app.togglePanel(false);
-          else if (!ns.isOpen && p.style.display !== "none") app.closePanel(null);
+        if (!p3.classList.contains("bbgl-mode-page") && openC) {
+          if (ns.isOpen && p3.style.display === "none") app.togglePanel(false);
+          else if (!ns.isOpen && p3.style.display !== "none") app.closePanel(null);
         }
         if (viewC) app.switchView(ns.subView);
         if (stickerPC) {
@@ -10414,11 +10424,11 @@ Please enter a new key to continue.`);
         }
         if (labelC) {
           if (ns.activeViewLabel) {
-            const s = app.getActiveHistory();
+            const s3 = app.getActiveHistory();
             let td = null;
             if (/^\d{4}-\d{2}-\d{2}$/.test(ns.activeViewLabel)) {
-              td = s.history.find((d) => d.date === ns.activeViewLabel);
-              if (!td && s.today.date === ns.activeViewLabel) td = s.today;
+              td = s3.history.find((d3) => d3.date === ns.activeViewLabel);
+              if (!td && s3.today.date === ns.activeViewLabel) td = s3.today;
               if (td) {
                 calendarState.selectedData = td;
                 calendarState.selectedLabel = ns.activeViewLabel;
@@ -10451,21 +10461,21 @@ Please enter a new key to continue.`);
           if (ns.calMonth !== void 0 && ns.calMonth !== null) calendarState.month = ns.calMonth;
           app.renderPanelContent();
         }
-        if (!p.classList.contains("bbgl-mode-page")) {
+        if (!p3.classList.contains("bbgl-mode-page")) {
           if (expandedC) {
             if (ns.expanded) {
-              p.classList.add("bbgl-expanded");
-              p.classList.remove("bbgl-compact");
+              p3.classList.add("bbgl-expanded");
+              p3.classList.remove("bbgl-compact");
             } else {
-              p.classList.remove("bbgl-expanded");
-              p.classList.add("bbgl-compact");
+              p3.classList.remove("bbgl-expanded");
+              p3.classList.add("bbgl-compact");
             }
             const pb = dom.popBtn;
             if (pb) pb.innerHTML = ns.expanded ? ICONS.COMPRESS : ICONS.POPOUT;
           }
           if (tallC) {
-            if (ns.isTall) p.classList.add("bbgl-tall");
-            else p.classList.remove("bbgl-tall");
+            if (ns.isTall) p3.classList.add("bbgl-tall");
+            else p3.classList.remove("bbgl-tall");
             const tb = dom.tallToggle;
             if (tb) tb.innerText = ns.isTall ? "\u2013" : "+";
           }
@@ -10475,11 +10485,11 @@ Please enter a new key to continue.`);
           const ti = ns.activeItemId ? Number(ns.activeItemId) : null;
           if (ti && ti !== runtime.currentOpenedItemId) {
             if (!runtime.stickerData.length) app.loadStickerData();
-            const i = runtime.stickerData.find((x) => x.id === ti);
-            if (i) {
+            const i3 = runtime.stickerData.find((x3) => x3.id === ti);
+            if (i3) {
               const delay = viewC && userConfig.animations ? 400 : 0;
-              if (delay) setTimeout(() => app.openItemViewer(i, false), delay);
-              else app.openItemViewer(i, false);
+              if (delay) setTimeout(() => app.openItemViewer(i3, false), delay);
+              else app.openItemViewer(i3, false);
             }
           } else if (!ti && runtime.currentOpenedItemId !== null) app.closeItemViewer(false);
         }
@@ -10487,10 +10497,11 @@ Please enter a new key to continue.`);
         Log.warn("Sync error", err);
       } finally {
         runtime.isSyncing = false;
+        if (typeof app.notifyUi === "function") app.notifyUi();
       }
-    } else if (e.key === KEYS.LAST_SYNC) app._syncChannel.onmessage({ data: { from: "storage_event" } });
-    else if (e.key === KEYS.DEMO) {
-      if (e.newValue === "1") {
+    } else if (e3.key === KEYS.LAST_SYNC) app._syncChannel.onmessage({ data: { from: "storage_event" } });
+    else if (e3.key === KEYS.DEMO) {
+      if (e3.newValue === "1") {
         if (!runtime.demoMode) app.enterDemo("external");
       } else if (runtime.demoMode) {
         const deb = dom.panel ? dom.panel.querySelector("#bbgl-demo-exit") : null;
@@ -10522,8 +10533,8 @@ Please enter a new key to continue.`);
         app.renderBackfillButton();
         app.renderScanOverlay();
         if (loaded && (historyCache.history.length > 0 || historyCache.meta && historyCache.meta.logStartDate) && !localStorage.getItem("bbgl_initialized") && !sessionStorage.getItem("bbgl_dev_onboarding")) localStorage.setItem("bbgl_initialized", "1");
-      } catch (e) {
-        Log.warn("IndexedDB boot failed, continuing with empty state", e);
+      } catch (e3) {
+        Log.warn("IndexedDB boot failed, continuing with empty state", e3);
       }
     }
     window.addEventListener("storage", handleStorageEvent);
@@ -10556,7 +10567,7 @@ Please enter a new key to continue.`);
       [150, 600, 1500].forEach((ms) => setTimeout(() => {
         try {
           app.handleDomMutation();
-        } catch (e) {
+        } catch (e3) {
         }
       }, ms));
     };
@@ -10564,9 +10575,9 @@ Please enter a new key to continue.`);
       const orig = history[name];
       if (typeof orig !== "function" || orig._bbglWrapped) return;
       const wrapped = function() {
-        const r = orig.apply(this, arguments);
+        const r4 = orig.apply(this, arguments);
         _bbglRecheckNav();
-        return r;
+        return r4;
       };
       wrapped._bbglWrapped = true;
       history[name] = wrapped;
@@ -10579,10 +10590,10 @@ Please enter a new key to continue.`);
     }
     app.TooltipController.init();
     let tRaf = null, tSup = 0;
-    const _onMouseMove = (e) => {
+    const _onMouseMove = (e3) => {
       if (tRaf || Date.now() < tSup) return;
       tRaf = requestAnimationFrame(() => {
-        app.TooltipController.handleHover(e);
+        app.TooltipController.handleHover(e3);
         tRaf = null;
       });
     };
@@ -10590,26 +10601,26 @@ Please enter a new key to continue.`);
     document.addEventListener("mousemove", _onMouseMove);
     let _tX = 0, _tY = 0, _tTimer = null, _scrubMode = false, _scrubMoveBound = null, _toolbarTipTimer = null;
     const _TOOLBAR_TOGGLE_IDS = /* @__PURE__ */ new Set(["bbgl-ledger-toggle", "bbgl-graph-toggle", "bbgl-achievements-toggle", "bbgl-sticker-toggle"]);
-    const _onScrubMove = (e) => {
+    const _onScrubMove = (e3) => {
       if (!_scrubMode) return;
-      if (e.cancelable) e.preventDefault();
-      const touch = e.touches[0];
+      if (e3.cancelable) e3.preventDefault();
+      const touch = e3.touches[0];
       const el = document.elementFromPoint(touch.clientX, touch.clientY);
-      const t = app.TooltipController.resolve(el);
-      const _sh = t ? t.getAttribute("data-tooltip-html") : null, _st = t ? t.getAttribute("data-tooltip") : null;
-      if (t && (_sh || _st)) {
-        if (app.TooltipController.currentTarget !== t) {
+      const t3 = app.TooltipController.resolve(el);
+      const _sh = t3 ? t3.getAttribute("data-tooltip-html") : null, _st = t3 ? t3.getAttribute("data-tooltip") : null;
+      if (t3 && (_sh || _st)) {
+        if (app.TooltipController.currentTarget !== t3) {
           if (app.TooltipController.currentTarget) {
             app.TooltipController.currentTarget.classList.remove("is-scrub-hovered");
             if (app.TooltipController.currentTarget.classList.contains("bbgl-day-cell") && !app.TooltipController.currentTarget.classList.contains("is-viewing")) app.TooltipController.currentTarget.classList.remove("shimmer-active");
           }
-          app.TooltipController.currentTarget = t;
-          t.classList.add("is-scrub-hovered");
-          if (t.classList.contains("bbgl-day-cell") && userConfig.animations) {
-            t.classList.add("shimmer-active");
-            if (t._buildShine) t._buildShine();
+          app.TooltipController.currentTarget = t3;
+          t3.classList.add("is-scrub-hovered");
+          if (t3.classList.contains("bbgl-day-cell") && userConfig.animations) {
+            t3.classList.add("shimmer-active");
+            if (t3._buildShine) t3._buildShine();
           }
-          app.TooltipController.show(_sh || '<div style="text-align:center; color:#ddd;">' + _st + "</div>", t.getBoundingClientRect());
+          app.TooltipController.show(_sh || '<div style="text-align:center; color:#ddd;">' + _st + "</div>", t3.getBoundingClientRect());
         }
       } else {
         if (app.TooltipController.currentTarget) {
@@ -10631,7 +10642,7 @@ Please enter a new key to continue.`);
     };
     document.addEventListener(
       "touchstart",
-      (e) => {
+      (e3) => {
         if (!document.body.classList.contains("is-touch-device")) {
           document.body.classList.add("is-touch-device");
           if (_mouseMoveBound) {
@@ -10639,49 +10650,49 @@ Please enter a new key to continue.`);
             _mouseMoveBound = false;
           }
         }
-        _tX = e.touches[0].clientX;
-        _tY = e.touches[0].clientY;
+        _tX = e3.touches[0].clientX;
+        _tY = e3.touches[0].clientY;
         _scrubMode = false;
         window._bbglScrubbing = false;
-        const t = app.TooltipController.resolve(e.target);
+        const t3 = app.TooltipController.resolve(e3.target);
         const _panel = dom.panel || document.getElementById("bbgl-page-container");
-        if (_panel && _panel.contains(e.target)) {
+        if (_panel && _panel.contains(e3.target)) {
           _tTimer = setTimeout(() => {
             _scrubMode = true;
             window._bbglScrubbing = true;
             _enterScrub();
-            if (t) {
-              app.TooltipController.currentTarget = t;
-              t.classList.add("is-scrub-hovered");
-              if (t.classList.contains("bbgl-day-cell") && userConfig.animations) {
-                t.classList.add("shimmer-active");
-                if (t._buildShine) t._buildShine();
+            if (t3) {
+              app.TooltipController.currentTarget = t3;
+              t3.classList.add("is-scrub-hovered");
+              if (t3.classList.contains("bbgl-day-cell") && userConfig.animations) {
+                t3.classList.add("shimmer-active");
+                if (t3._buildShine) t3._buildShine();
               }
-              const _th = t.getAttribute("data-tooltip-html"), _tt = t.getAttribute("data-tooltip");
-              if (_th || _tt) app.TooltipController.show(_th || '<div style="text-align:center; color:#ddd;">' + _tt + "</div>", t.getBoundingClientRect());
+              const _th = t3.getAttribute("data-tooltip-html"), _tt = t3.getAttribute("data-tooltip");
+              if (_th || _tt) app.TooltipController.show(_th || '<div style="text-align:center; color:#ddd;">' + _tt + "</div>", t3.getBoundingClientRect());
             }
           }, 400);
         }
       },
       { passive: true }
     );
-    document.addEventListener("touchmove", (e) => {
+    document.addEventListener("touchmove", (e3) => {
       if (_scrubMode) return;
       if (_tTimer) {
-        const dx = e.touches[0].clientX - _tX, dy = e.touches[0].clientY - _tY;
+        const dx = e3.touches[0].clientX - _tX, dy = e3.touches[0].clientY - _tY;
         if (Math.sqrt(dx * dx + dy * dy) > 10) {
           clearTimeout(_tTimer);
           _tTimer = null;
         }
       }
     }, { passive: true });
-    document.addEventListener("touchend", (e) => {
+    document.addEventListener("touchend", (e3) => {
       if (_tTimer) {
         clearTimeout(_tTimer);
         _tTimer = null;
       }
       if (_scrubMode) {
-        if (e.cancelable) e.preventDefault();
+        if (e3.cancelable) e3.preventDefault();
         if (app.TooltipController.currentTarget) {
           app.TooltipController.currentTarget.classList.remove("is-scrub-hovered");
           if (app.TooltipController.currentTarget.classList.contains("bbgl-day-cell") && !app.TooltipController.currentTarget.classList.contains("is-viewing")) app.TooltipController.currentTarget.classList.remove("shimmer-active");
@@ -10694,50 +10705,50 @@ Please enter a new key to continue.`);
         return;
       }
       _exitScrub();
-      const dx = e.changedTouches[0].clientX - _tX, dy = e.changedTouches[0].clientY - _tY;
+      const dx = e3.changedTouches[0].clientX - _tX, dy = e3.changedTouches[0].clientY - _tY;
       if (Math.sqrt(dx * dx + dy * dy) > 10) {
         if (app.TooltipController.currentTarget) app.TooltipController.hide();
         tSup = Date.now() + 500;
         return;
       }
-      const t = app.TooltipController.resolve(e.target);
-      if (t && (_TOOLBAR_TOGGLE_IDS.has(t.id) || t.id === "bbgl-gym-tab" && document.body.classList.contains("bbgl-page-mode-active"))) {
+      const t3 = app.TooltipController.resolve(e3.target);
+      if (t3 && (_TOOLBAR_TOGGLE_IDS.has(t3.id) || t3.id === "bbgl-gym-tab" && document.body.classList.contains("bbgl-page-mode-active"))) {
         if (_toolbarTipTimer) {
           clearTimeout(_toolbarTipTimer);
           _toolbarTipTimer = null;
         }
-        const txt = t.getAttribute("data-tooltip"), h = t.getAttribute("data-tooltip-html");
-        if (h || txt) {
-          app.TooltipController.currentTarget = t;
-          app.TooltipController.show(h || '<div style="text-align:center; color:#ddd;">' + txt + "</div>", t.getBoundingClientRect());
+        const txt = t3.getAttribute("data-tooltip"), h3 = t3.getAttribute("data-tooltip-html");
+        if (h3 || txt) {
+          app.TooltipController.currentTarget = t3;
+          app.TooltipController.show(h3 || '<div style="text-align:center; color:#ddd;">' + txt + "</div>", t3.getBoundingClientRect());
           _toolbarTipTimer = setTimeout(() => {
             _toolbarTipTimer = null;
-            if (app.TooltipController.currentTarget === t) app.TooltipController.hide();
+            if (app.TooltipController.currentTarget === t3) app.TooltipController.hide();
           }, 500);
         }
-      } else if (t && t.id !== "bbgl-gym-tab") {
-        const h = t.getAttribute("data-tooltip-html"), txt = t.getAttribute("data-tooltip");
-        if (h) {
-          if (app.TooltipController.currentTarget === t) app.TooltipController.hide();
+      } else if (t3 && t3.id !== "bbgl-gym-tab") {
+        const h3 = t3.getAttribute("data-tooltip-html"), txt = t3.getAttribute("data-tooltip");
+        if (h3) {
+          if (app.TooltipController.currentTarget === t3) app.TooltipController.hide();
         } else if (txt) {
-          if (app.TooltipController.currentTarget === t) app.TooltipController.hide();
+          if (app.TooltipController.currentTarget === t3) app.TooltipController.hide();
           else {
-            app.TooltipController.currentTarget = t;
-            app.TooltipController.show('<div style="text-align:center; color:#ddd;">' + txt + "</div>", t.getBoundingClientRect());
+            app.TooltipController.currentTarget = t3;
+            app.TooltipController.show('<div style="text-align:center; color:#ddd;">' + txt + "</div>", t3.getBoundingClientRect());
           }
         }
       } else if (app.TooltipController.currentTarget) app.TooltipController.hide();
       tSup = Date.now() + 500;
     }, { passive: false });
-    document.addEventListener("click", function(e) {
-      if (e.target.closest("#bbgl-gym-tab")) {
-        e.preventDefault();
-        e.stopPropagation();
+    document.addEventListener("click", function(e3) {
+      if (e3.target.closest("#bbgl-gym-tab")) {
+        e3.preventDefault();
+        e3.stopPropagation();
         app.togglePanel(true);
         return;
       }
-      if (app.BestGymController.handleTrainClick(e)) return;
-      app.handleGymClick(e);
+      if (app.BestGymController.handleTrainClick(e3)) return;
+      app.handleGymClick(e3);
     }, true);
     app.handleDomMutation();
     if (localStorage.getItem(KEYS.CHANGELOG_NOTIF) === "1") app.syncChangelogNotif(true);
@@ -10786,33 +10797,33 @@ Please enter a new key to continue.`);
       if (needsNotesBtn()) Promise.resolve().then(() => app.injectFooterButton(el));
       maybeUninstall();
     }
-    function check(n) {
-      if (!_hA || !n || n.nodeType !== 1) return;
+    function check(n2) {
+      if (!_hA || !n2 || n2.nodeType !== 1) return;
       try {
         const wantNav = needsNavGym() && !_navGymDone, wantNotes = needsNotesBtn() && !_notesBtnDone;
         if (!wantNav && !wantNotes) return;
-        if (wantNav && n.id === "nav-gym") handleNavGym();
-        if (wantNotes && n.id === "notes_panel_button") handleNotesBtn(n);
-        if (!n.firstElementChild) return;
+        if (wantNav && n2.id === "nav-gym") handleNavGym();
+        if (wantNotes && n2.id === "notes_panel_button") handleNotesBtn(n2);
+        if (!n2.firstElementChild) return;
         const stillWantNav = needsNavGym() && !_navGymDone, stillWantNotes = needsNotesBtn() && !_notesBtnDone;
         if (!stillWantNav && !stillWantNotes) return;
-        if (n.id && !n.id.startsWith("nav-") && n.id !== "sidebar") return;
+        if (n2.id && !n2.id.startsWith("nav-") && n2.id !== "sidebar") return;
         const sel = stillWantNav && stillWantNotes ? "#nav-gym, #notes_panel_button" : stillWantNav ? "#nav-gym" : "#notes_panel_button";
-        const hit = n.querySelector(sel);
+        const hit = n2.querySelector(sel);
         if (!hit) return;
         if (hit.id === "nav-gym") handleNavGym();
         else if (hit.id === "notes_panel_button") handleNotesBtn(hit);
-      } catch (e) {
+      } catch (e3) {
       }
     }
-    Node.prototype.insertBefore = function(n, r) {
-      const res = _oI.call(this, n, r);
-      check(n);
+    Node.prototype.insertBefore = function(n2, r4) {
+      const res = _oI.call(this, n2, r4);
+      check(n2);
       return res;
     };
-    Node.prototype.appendChild = function(n) {
-      const res = _oA.call(this, n);
-      check(n);
+    Node.prototype.appendChild = function(n2) {
+      const res = _oA.call(this, n2);
+      check(n2);
       return res;
     };
     const startCountdown = () => {
@@ -10848,14 +10859,14 @@ Please enter a new key to continue.`);
   var _scanOverlayTimer = null;
   var _scanOverlayKey = null;
   var _scanCancelConfirm = false;
-  function updateScanOverlayCount(n) {
+  function updateScanOverlayCount(n2) {
     const el = document.querySelector("#bbgl-scan-count");
-    if (el) el.textContent = String(n);
+    if (el) el.textContent = String(n2);
   }
   function currentScanState() {
     if (runtime.demoMode) return { key: null, ds: null };
-    const s = app.getActiveHistory();
-    const ds = s && s.meta && s.meta.backfill;
+    const s3 = app.getActiveHistory();
+    const ds = s3 && s3.meta && s3.meta.backfill;
     if (!ds) return { key: null, ds: null };
     const lockFresh = ds.lock && Date.now() - ds.lock < BACKFILL.LOCK_STALE_MS;
     let key = null;
@@ -10905,15 +10916,15 @@ Please enter a new key to continue.`);
     const pause = el.querySelector("#bbgl-scan-pause");
     if (pause) pause.onclick = () => {
       runtime.backfillAbort = "pause";
-      const t = el.querySelector(".bbgl-scan-title");
-      if (t) t.textContent = "Pausing\u2026";
+      const t3 = el.querySelector(".bbgl-scan-title");
+      if (t3) t3.textContent = "Pausing\u2026";
     };
     const yes = el.querySelector("#bbgl-scan-confirm-yes");
     if (yes) yes.onclick = () => {
       runtime.backfillAbort = "cancel";
       _scanCancelConfirm = false;
-      const t = el.querySelector(".bbgl-scan-title");
-      if (t) t.textContent = "Discarding\u2026";
+      const t3 = el.querySelector(".bbgl-scan-title");
+      if (t3) t3.textContent = "Discarding\u2026";
     };
     const no = el.querySelector("#bbgl-scan-confirm-no");
     if (no) no.onclick = () => {
@@ -10982,150 +10993,40 @@ Please enter a new key to continue.`);
   function setupEventListeners(root) {
     app.cacheDOM(root);
     const get = (id) => root.querySelector("#" + id);
-    const hb = get("bbgl-header-bar");
-    if (hb) hb.onclick = (e) => {
-      if (e.target.closest(".bbgl-custom-icon") || e.target.closest("#bbgl-demo-exit-btn") || e.target.closest("#bbgl-pop-btn") || e.target.closest("#bbgl-demo-exit")) return;
-      app.closePanel();
-    };
     const atBtn = get("all-time-btn");
-    if (atBtn) atBtn.onclick = (e) => {
-      e.stopPropagation();
+    if (atBtn) atBtn.onclick = (e3) => {
+      e3.stopPropagation();
       app.calcAllTimeStats();
     };
-    const cb = get("bbgl-close-btn");
-    if (cb) cb.onclick = () => app.closePanel();
-    const sb = get("bbgl-settings-btn");
-    if (sb) sb.onclick = app.toggleSettingsView;
     const csb = root.querySelector("#bbgl-settings-view .close-settings-btn");
     if (csb) csb.onclick = app.toggleSettingsView;
-    const debBtn = get("bbgl-demo-exit-btn"), deb = get("bbgl-demo-exit");
-    if (deb) deb.onclick = (e) => {
-      e.stopPropagation();
-      localStorage.removeItem(KEYS.DEMO);
-      runtime.demoMode = false;
-      runtime.demoHistory = null;
-      runtime.stickerData = [];
-      setHistoryCache(null);
-      app.DataController.invalidate();
-      app.DBManager.loadHistory().then((loaded) => {
-        app.DataController.hydrate(loaded);
-        if (userConfig.apiKey) {
-          app.startBackgroundSync();
-        }
-      }).catch((e2) => {
-        if (userConfig.apiKey) {
-          app.startBackgroundSync();
-        }
-      }).finally(() => app.snapLevelBar());
-      calendarState.selectedData = null;
-      calendarState.selectedLabel = Formatter.dateLogical();
-      viewState.activeViewLabel = null;
-      deb.style.display = "none";
-      if (debBtn) debBtn.style.display = "none";
-      const pdeb = document.getElementById("bbgl-page-demo-exit");
-      if (pdeb) pdeb.style.display = "none";
-      if (window.TooltipController) window.TooltipController.hide();
-      app.refreshInitLock();
-      app.refreshDemoMasks();
-      if (runtime.realReturnView) {
-        runtime.returnView = runtime.realReturnView;
-        runtime.realReturnView = null;
-      }
-      const isInit = !!localStorage.getItem("bbgl_initialized");
-      if (isInit) {
-        app.switchView("settings");
-      } else {
-        app.switchView("welcome", true);
-        app.openPrivacyModal();
-      }
-    };
-    if (debBtn) debBtn.onclick = deb ? deb.onclick : null;
-    const pb = get("bbgl-pop-btn");
-    if (pb) pb.onclick = (e) => {
-      e.stopPropagation();
-      if (dom.panel.classList.contains("bbgl-mode-page")) return;
-      const p = dom.panel;
-      const animate = userConfig.animations && !p.classList.contains("bbgl-no-animations");
-      if (animate) app.markPanelResizing(p);
-      viewState.expanded = !viewState.expanded;
-      if (viewState.expanded) {
-        p.classList.add("bbgl-expanded");
-        p.classList.remove("bbgl-compact");
-        pb.innerHTML = ICONS.COMPRESS;
-      } else {
-        p.classList.remove("bbgl-expanded");
-        p.classList.add("bbgl-compact");
-        pb.innerHTML = ICONS.POPOUT;
-      }
-      saveViewState();
-      app.handleLayout();
-      app.renderPanelContent();
-      if (dom.topPanel.classList.contains("viewing-graph")) {
-        app.GraphController.draw();
-        setTimeout(app.GraphController.draw, 320);
-      }
-      if (dom.topPanel.classList.contains("viewing-achievements")) {
-        setTimeout(app.resizeAchLockedPage, 320);
-      }
-    };
-    const tt = get("bbgl-tall-toggle");
-    if (tt) tt.onclick = app.toggleTall;
-    const lt = get("bbgl-ledger-toggle");
-    if (lt) lt.onclick = app.toggleLedgerView;
-    const cpb = dom.copyBtn;
-    if (cpb) cpb.onclick = (e) => {
-      e.stopPropagation();
-      const cs = runtime.currentStats;
-      if (!cs) return;
-      const { sl, s } = cs;
-      const txt = app.buildSessionText(sl, s, ["str", "def", "spd", "dex"]);
-      navigator.clipboard.writeText(txt).then(() => {
-        const cols = dom.ledgerView ? Array.from(dom.ledgerView.querySelectorAll(".stat-column")) : [];
-        if (cols.length) app.flashCopied(cols);
-        const oH = cpb.innerHTML, oC = cpb.style.color;
-        cpb.innerHTML = ICONS.CHECK;
-        cpb.style.color = "#69f0ae";
-        cpb.style.opacity = "1";
-        setTimeout(() => {
-          cpb.innerHTML = oH;
-          cpb.style.color = oC;
-          cpb.style.opacity = "";
-        }, 1e3);
-      });
-    };
     if (dom.ledgerView) {
-      dom.ledgerView.addEventListener("click", (e) => {
-        const label = e.target.closest(".bbgl-copy-label");
+      dom.ledgerView.addEventListener("click", (e3) => {
+        const label = e3.target.closest(".bbgl-copy-label");
         if (!label) return;
         const col = label.closest(".stat-column");
         if (!col) return;
-        const k = col.getAttribute("data-copy-stat");
-        if (!k) return;
+        const k3 = col.getAttribute("data-copy-stat");
+        if (!k3) return;
         const cs = runtime.currentStats;
         if (!cs) return;
-        const { sl, s } = cs;
-        if (!s[k]) return;
-        const txt = app.buildSessionText(sl, s, [k]);
+        const { sl, s: s3 } = cs;
+        if (!s3[k3]) return;
+        const txt = app.buildSessionText(sl, s3, [k3]);
         navigator.clipboard.writeText(txt).then(() => app.flashCopied(col));
       });
     }
-    const gt = get("bbgl-graph-toggle");
-    if (gt) gt.onclick = app.toggleGraphView;
-    const act = get("bbgl-achievements-toggle");
-    if (act) act.onclick = app.toggleAchievementsView;
-    const st = get("bbgl-sticker-toggle");
-    if (st) st.onclick = app.toggleStickerView;
     const sp = get("sticker-prev-btn"), sn = get("sticker-next-btn"), ssp = get("sticker-sponsor-btn");
-    if (sp) sp.onclick = (e) => {
-      e.stopPropagation();
+    if (sp) sp.onclick = (e3) => {
+      e3.stopPropagation();
       if (runtime.currentStickerPage > 0) app.changeStickerPage(-1);
     };
-    if (sn) sn.onclick = (e) => {
-      e.stopPropagation();
+    if (sn) sn.onclick = (e3) => {
+      e3.stopPropagation();
       if (runtime.currentStickerPage < Math.ceil((runtime.stickerData.length || 0) / 10) - 1) app.changeStickerPage(1);
     };
-    if (ssp) ssp.onclick = (e) => {
-      e.stopPropagation();
+    if (ssp) ssp.onclick = (e3) => {
+      e3.stopPropagation();
       if (ssp.classList.contains("disabled")) return;
       if (runtime.currentStickerPage === 0) app.changeStickerPage(-1);
     };
@@ -11134,23 +11035,23 @@ Please enter a new key to continue.`);
     const nm = get("next-month-btn");
     if (nm) nm.onclick = () => app.changeMonth(1);
     const mt = get("month-trigger");
-    if (mt) mt.onclick = (e) => {
-      e.stopPropagation();
+    if (mt) mt.onclick = (e3) => {
+      e3.stopPropagation();
       app.toggleMonthDropdown();
     };
     const yt = get("year-trigger");
-    if (yt) yt.onclick = (e) => {
-      e.stopPropagation();
+    if (yt) yt.onclick = (e3) => {
+      e3.stopPropagation();
       app.toggleYearDropdown();
     };
     const ms = get("month-stats-btn");
-    if (ms) ms.onclick = (e) => {
-      e.stopPropagation();
+    if (ms) ms.onclick = (e3) => {
+      e3.stopPropagation();
       app.calcPeriodStats("month");
     };
     const ys = get("year-stats-btn");
-    if (ys) ys.onclick = (e) => {
-      e.stopPropagation();
+    if (ys) ys.onclick = (e3) => {
+      e3.stopPropagation();
       app.calcPeriodStats("year");
     };
     const at = get("set-anim-toggle");
@@ -11241,30 +11142,30 @@ Please enter a new key to continue.`);
     const ai = get("set-api-key"), ap = get("set-api-paste");
     if (ap && ai) ap.onclick = async () => {
       try {
-        const t = await navigator.clipboard.readText();
-        if (t) ai.value = t.trim();
-      } catch (e) {
+        const t3 = await navigator.clipboard.readText();
+        if (t3) ai.value = t3.trim();
+      } catch (e3) {
         bbglError(MSG_CLIPBOARD_DENIED);
       }
     };
     const ub = get("updt-settings-btn");
     if (ub && ai) ub.onclick = async function() {
       this.blur();
-      const v = ai.value.trim();
-      if (!/^[a-zA-Z0-9]{16}$/.test(v)) {
+      const v3 = ai.value.trim();
+      if (!/^[a-zA-Z0-9]{16}$/.test(v3)) {
         bbglError(MSG_KEY_FORMAT_INVALID);
         return;
       }
       const ot = ub.innerText;
       ub.innerText = "VERIFYING...";
       try {
-        const res = await fetch(`https://api.torn.com/user/?selections=battlestats,log&log=5300&key=${v}`), data = await res.json();
+        const res = await fetch(`https://api.torn.com/user/?selections=battlestats,log&log=5300&key=${v3}`), data = await res.json();
         if (data.error) {
           bbglError(`Key Verification Failed: ${tornKeyErrorText(data)}`);
           ub.innerText = ot;
           return;
         }
-        userConfig.apiKey = v;
+        userConfig.apiKey = v3;
         saveConfig();
         ub.style.transition = "all 0.2s";
         ub.style.color = "#69f0ae";
@@ -11279,7 +11180,7 @@ Please enter a new key to continue.`);
           },
           2e3
         );
-      } catch (e) {
+      } catch (e3) {
         bbglError(MSG_KEY_NETWORK_ERROR);
         ub.innerText = ot;
       }
@@ -11330,7 +11231,7 @@ Please enter a new key to continue.`);
       get("import-file").click();
     };
     const iF = get("import-file");
-    if (iF) iF.onchange = (e) => app.importData(e.target.files[0]);
+    if (iF) iF.onchange = (e3) => app.importData(e3.target.files[0]);
     app.renderBackfillButton();
     app.renderScanOverlay();
     const clb = get("clear-btn");
@@ -11352,8 +11253,8 @@ Please enter a new key to continue.`);
     if (sdemo) sdemo.onclick = function() {
       this.blur();
       if (runtime.demoMode) {
-        const deb2 = document.getElementById("bbgl-demo-exit");
-        if (deb2) deb2.click();
+        const deb = document.getElementById("bbgl-demo-exit");
+        if (deb) deb.click();
       } else {
         app.enterDemoFromSettings();
       }
@@ -11366,26 +11267,26 @@ Please enter a new key to continue.`);
     const sa = get("swipe-area");
     if (sa) {
       let _sX = 0, _sY = 0;
-      sa.addEventListener("touchstart", (e) => {
-        _sX = e.touches[0].clientX;
-        _sY = e.touches[0].clientY;
+      sa.addEventListener("touchstart", (e3) => {
+        _sX = e3.touches[0].clientX;
+        _sY = e3.touches[0].clientY;
       }, { passive: true });
-      sa.addEventListener("touchend", (e) => {
+      sa.addEventListener("touchend", (e3) => {
         if (window._bbglScrubbing) return;
-        const dx = e.changedTouches[0].clientX - _sX, dy = e.changedTouches[0].clientY - _sY;
+        const dx = e3.changedTouches[0].clientX - _sX, dy = e3.changedTouches[0].clientY - _sY;
         if (Math.abs(dx) > 50 && Math.abs(dx) > Math.abs(dy) * 1.5) app.changeMonth(dx < 0 ? 1 : -1);
       }, { passive: true });
     }
     const sgSwipe = get("bbgl-sticker-container");
     if (sgSwipe) {
       let _sgX = 0, _sgY = 0;
-      sgSwipe.addEventListener("touchstart", (e) => {
-        _sgX = e.touches[0].clientX;
-        _sgY = e.touches[0].clientY;
+      sgSwipe.addEventListener("touchstart", (e3) => {
+        _sgX = e3.touches[0].clientX;
+        _sgY = e3.touches[0].clientY;
       }, { passive: true });
-      sgSwipe.addEventListener("touchend", (e) => {
+      sgSwipe.addEventListener("touchend", (e3) => {
         if (window._bbglScrubbing) return;
-        const dx = e.changedTouches[0].clientX - _sgX, dy = e.changedTouches[0].clientY - _sgY;
+        const dx = e3.changedTouches[0].clientX - _sgX, dy = e3.changedTouches[0].clientY - _sgY;
         if (Math.abs(dx) > 40 && Math.abs(dx) > Math.abs(dy) * 1.5) {
           const dir = dx < 0 ? 1 : -1, maxP = Math.ceil((runtime.stickerData.length || 0) / 10) - 1;
           if (dir < 0 && runtime.currentStickerPage > -1 || dir > 0 && runtime.currentStickerPage < maxP) app.changeStickerPage(dir);
@@ -11397,30 +11298,30 @@ Please enter a new key to continue.`);
     app.refreshInitLock();
     const achPrev = get("bbgl-achievements-container") ? root.querySelector(".bbgl-ach-prev") : null;
     const achNext = get("bbgl-achievements-container") ? root.querySelector(".bbgl-ach-next") : null;
-    if (achPrev) achPrev.onclick = (e) => {
-      e.stopPropagation();
+    if (achPrev) achPrev.onclick = (e3) => {
+      e3.stopPropagation();
       app.gotoAchievementsPage(-1);
     };
-    if (achNext) achNext.onclick = (e) => {
-      e.stopPropagation();
+    if (achNext) achNext.onclick = (e3) => {
+      e3.stopPropagation();
       app.gotoAchievementsPage(1);
     };
     const achContainer = get("bbgl-achievements-container");
     if (achContainer) {
       let _achX = 0, _achY = 0;
-      achContainer.addEventListener("touchstart", (e) => {
-        _achX = e.touches[0].clientX;
-        _achY = e.touches[0].clientY;
+      achContainer.addEventListener("touchstart", (e3) => {
+        _achX = e3.touches[0].clientX;
+        _achY = e3.touches[0].clientY;
       }, { passive: true });
-      achContainer.addEventListener("touchend", (e) => {
+      achContainer.addEventListener("touchend", (e3) => {
         if (window._bbglScrubbing) return;
-        const dx = e.changedTouches[0].clientX - _achX, dy = e.changedTouches[0].clientY - _achY;
+        const dx = e3.changedTouches[0].clientX - _achX, dy = e3.changedTouches[0].clientY - _achY;
         if (Math.abs(dx) > 40 && Math.abs(dx) > Math.abs(dy) * 1.5) {
           app.gotoAchievementsPage(dx < 0 ? 1 : -1);
         }
       }, { passive: true });
-      achContainer.addEventListener("click", (e) => {
-        const swOpt = e.target.closest(".bbgl-enh-sw-opt");
+      achContainer.addEventListener("click", (e3) => {
+        const swOpt = e3.target.closest(".bbgl-enh-sw-opt");
         if (swOpt) {
           const toSelected = swOpt.dataset.mode === "selected";
           if (toSelected !== !!viewState.achEnhPeriodMode) {
@@ -11430,27 +11331,927 @@ Please enter a new key to continue.`);
           }
           return;
         }
-        const colHeader = e.target.closest(".bbgl-ach-col-copy");
+        const colHeader = e3.target.closest(".bbgl-ach-col-copy");
         if (colHeader) {
           app.handleAchCopy(colHeader);
           return;
         }
-        const statCell = e.target.closest(".bbgl-ach-stat-cell");
+        const statCell = e3.target.closest(".bbgl-ach-stat-cell");
         if (statCell) {
           app.handleAchCopy(statCell);
           return;
         }
-        const group = e.target.closest(".bbgl-ach-hh-group");
+        const group = e3.target.closest(".bbgl-ach-hh-group");
         if (group) {
           app.handleAchCopy(group);
           return;
         }
-        const row = e.target.closest(".bbgl-ach-section-title, .bbgl-ach-subsection-title, .bbgl-ach-row");
+        const row = e3.target.closest(".bbgl-ach-section-title, .bbgl-ach-subsection-title, .bbgl-ach-row");
         if (row) app.handleAchCopy(row);
       });
     }
   }
   app.setupEventListeners = setupEventListeners;
+
+  // node_modules/preact/dist/preact.module.js
+  var n;
+  var l;
+  var u;
+  var t;
+  var i;
+  var r;
+  var o;
+  var e;
+  var f;
+  var c;
+  var a;
+  var s;
+  var h;
+  var p;
+  var v;
+  var y;
+  var d = {};
+  var w = [];
+  var _ = /acit|ex(?:s|g|n|p|$)|rph|grid|ows|mnc|ntw|ine[ch]|zoo|^ord|itera/i;
+  var g = Array.isArray;
+  function m(n2, l3) {
+    for (var u4 in l3) n2[u4] = l3[u4];
+    return n2;
+  }
+  function b(n2) {
+    n2 && n2.parentNode && n2.parentNode.removeChild(n2);
+  }
+  function k(l3, u4, t3) {
+    var i3, r4, o3, e3 = {};
+    for (o3 in u4) "key" == o3 ? i3 = u4[o3] : "ref" == o3 ? r4 = u4[o3] : e3[o3] = u4[o3];
+    if (arguments.length > 2 && (e3.children = arguments.length > 3 ? n.call(arguments, 2) : t3), "function" == typeof l3 && null != l3.defaultProps) for (o3 in l3.defaultProps) void 0 === e3[o3] && (e3[o3] = l3.defaultProps[o3]);
+    return x(l3, e3, i3, r4, null);
+  }
+  function x(n2, t3, i3, r4, o3) {
+    var e3 = { type: n2, props: t3, key: i3, ref: r4, __k: null, __: null, __b: 0, __e: null, __c: null, constructor: void 0, __v: null == o3 ? ++u : o3, __i: -1, __u: 0 };
+    return null == o3 && null != l.vnode && l.vnode(e3), e3;
+  }
+  function S(n2) {
+    return n2.children;
+  }
+  function C(n2, l3) {
+    this.props = n2, this.context = l3;
+  }
+  function $(n2, l3) {
+    if (null == l3) return n2.__ ? $(n2.__, n2.__i + 1) : null;
+    for (var u4; l3 < n2.__k.length; l3++) if (null != (u4 = n2.__k[l3]) && null != u4.__e) return u4.__e;
+    return "function" == typeof n2.type ? $(n2) : null;
+  }
+  function I(n2) {
+    if (n2.__P && n2.__d) {
+      var u4 = n2.__v, t3 = u4.__e, i3 = [], r4 = [], o3 = m({}, u4);
+      o3.__v = u4.__v + 1, l.vnode && l.vnode(o3), q(n2.__P, o3, u4, n2.__n, n2.__P.namespaceURI, 32 & u4.__u ? [t3] : null, i3, null == t3 ? $(u4) : t3, !!(32 & u4.__u), r4), o3.__v = u4.__v, o3.__.__k[o3.__i] = o3, D(i3, o3, r4), u4.__e = u4.__ = null, o3.__e != t3 && P(o3);
+    }
+  }
+  function P(n2) {
+    if (null != (n2 = n2.__) && null != n2.__c) return n2.__e = n2.__c.base = null, n2.__k.some(function(l3) {
+      if (null != l3 && null != l3.__e) return n2.__e = n2.__c.base = l3.__e;
+    }), P(n2);
+  }
+  function A(n2) {
+    (!n2.__d && (n2.__d = true) && i.push(n2) && !H.__r++ || r != l.debounceRendering) && ((r = l.debounceRendering) || o)(H);
+  }
+  function H() {
+    try {
+      for (var n2, l3 = 1; i.length; ) i.length > l3 && i.sort(e), n2 = i.shift(), l3 = i.length, I(n2);
+    } finally {
+      i.length = H.__r = 0;
+    }
+  }
+  function L(n2, l3, u4, t3, i3, r4, o3, e3, f4, c3, a3) {
+    var s3, h3, p3, v3, y3, _3, g4 = t3 && t3.__k || w, m3 = l3.length;
+    for (f4 = T(u4, l3, g4, f4, m3), s3 = 0; s3 < m3; s3++) null != (p3 = u4.__k[s3]) && (h3 = -1 != p3.__i && g4[p3.__i] || d, p3.__i = s3, _3 = q(n2, p3, h3, i3, r4, o3, e3, f4, c3, a3), v3 = p3.__e, p3.ref && h3.ref != p3.ref && (h3.ref && J(h3.ref, null, p3), a3.push(p3.ref, p3.__c || v3, p3)), null == y3 && null != v3 && (y3 = v3), 4 & p3.__u ? (f4 = j(p3, f4, n2), h3.__e && (h3.__e = null)) : "function" == typeof p3.type && void 0 !== _3 ? f4 = _3 : v3 && (f4 = v3.nextSibling), p3.__u &= -7);
+    return u4.__e = y3, f4;
+  }
+  function T(n2, l3, u4, t3, i3) {
+    var r4, o3, e3, f4, c3, a3 = u4.length, s3 = a3, h3 = 0;
+    for (n2.__k = new Array(i3), r4 = 0; r4 < i3; r4++) null != (o3 = l3[r4]) && "boolean" != typeof o3 && "function" != typeof o3 ? ("string" == typeof o3 || "number" == typeof o3 || "bigint" == typeof o3 || o3.constructor == String ? o3 = n2.__k[r4] = x(null, o3, null, null, null) : g(o3) ? o3 = n2.__k[r4] = x(S, { children: o3 }, null, null, null) : void 0 === o3.constructor && o3.__b > 0 ? o3 = n2.__k[r4] = x(o3.type, o3.props, o3.key, o3.ref ? o3.ref : null, o3.__v) : n2.__k[r4] = o3, f4 = r4 + h3, o3.__ = n2, o3.__b = n2.__b + 1, e3 = null, -1 != (c3 = o3.__i = O(o3, u4, f4, s3)) && (s3--, (e3 = u4[c3]) && (e3.__u |= 2)), null == e3 || null == e3.__v ? (-1 == c3 && (i3 > a3 ? h3-- : i3 < a3 && h3++), "function" != typeof o3.type && (o3.__u |= 4)) : c3 != f4 && (c3 == f4 - 1 ? h3-- : c3 == f4 + 1 ? h3++ : (c3 > f4 ? h3-- : h3++, o3.__u |= 4))) : n2.__k[r4] = null;
+    if (s3) for (r4 = 0; r4 < a3; r4++) null != (e3 = u4[r4]) && 0 == (2 & e3.__u) && (e3.__e == t3 && (t3 = $(e3)), K(e3, e3));
+    return t3;
+  }
+  function j(n2, l3, u4) {
+    var t3, i3;
+    if ("function" == typeof n2.type) {
+      for (t3 = n2.__k, i3 = 0; t3 && i3 < t3.length; i3++) t3[i3] && (t3[i3].__ = n2, l3 = j(t3[i3], l3, u4));
+      return l3;
+    }
+    n2.__e != l3 && (l3 && n2.type && !l3.parentNode && (l3 = $(n2)), l3 = u4.insertBefore(n2.__e, l3 || null));
+    do {
+      l3 = l3 && l3.nextSibling;
+    } while (null != l3 && 8 == l3.nodeType);
+    return l3;
+  }
+  function F(n2, l3) {
+    return l3 = l3 || [], null == n2 || "boolean" == typeof n2 || (g(n2) ? n2.some(function(n3) {
+      F(n3, l3);
+    }) : l3.push(n2)), l3;
+  }
+  function O(n2, l3, u4, t3) {
+    var i3, r4, o3, e3 = n2.key, f4 = n2.type, c3 = l3[u4], a3 = null != c3 && 0 == (2 & c3.__u);
+    if (null === c3 && null == e3 || a3 && e3 == c3.key && f4 == c3.type) return u4;
+    if (t3 > (a3 ? 1 : 0)) {
+      for (i3 = u4 - 1, r4 = u4 + 1; i3 >= 0 || r4 < l3.length; ) if (null != (c3 = l3[o3 = i3 >= 0 ? i3-- : r4++]) && 0 == (2 & c3.__u) && e3 == c3.key && f4 == c3.type) return o3;
+    }
+    return -1;
+  }
+  function z(n2, l3, u4) {
+    "-" == l3[0] ? n2.setProperty(l3, null == u4 ? "" : u4) : n2[l3] = null == u4 ? "" : "number" != typeof u4 || _.test(l3) ? u4 : u4 + "px";
+  }
+  function N(n2, l3, u4, t3, i3) {
+    var r4, o3;
+    n: if ("style" == l3) if ("string" == typeof u4) n2.style.cssText = u4;
+    else {
+      if ("string" == typeof t3 && (n2.style.cssText = t3 = ""), t3) for (l3 in t3) u4 && l3 in u4 || z(n2.style, l3, "");
+      if (u4) for (l3 in u4) t3 && u4[l3] == t3[l3] || z(n2.style, l3, u4[l3]);
+    }
+    else if ("o" == l3[0] && "n" == l3[1]) r4 = l3 != (l3 = l3.replace(s, "$1")), o3 = l3.toLowerCase(), l3 = o3 in n2 || "onFocusOut" == l3 || "onFocusIn" == l3 ? o3.slice(2) : l3.slice(2), n2.l || (n2.l = {}), n2.l[l3 + r4] = u4, u4 ? t3 ? u4[a] = t3[a] : (u4[a] = h, n2.addEventListener(l3, r4 ? v : p, r4)) : n2.removeEventListener(l3, r4 ? v : p, r4);
+    else {
+      if ("http://www.w3.org/2000/svg" == i3) l3 = l3.replace(/xlink(H|:h)/, "h").replace(/sName$/, "s");
+      else if ("width" != l3 && "height" != l3 && "href" != l3 && "list" != l3 && "form" != l3 && "tabIndex" != l3 && "download" != l3 && "rowSpan" != l3 && "colSpan" != l3 && "role" != l3 && "popover" != l3 && l3 in n2) try {
+        n2[l3] = null == u4 ? "" : u4;
+        break n;
+      } catch (n3) {
+      }
+      "function" == typeof u4 || (null == u4 || false === u4 && "-" != l3[4] ? n2.removeAttribute(l3) : n2.setAttribute(l3, "popover" == l3 && 1 == u4 ? "" : u4));
+    }
+  }
+  function V(n2) {
+    return function(u4) {
+      if (this.l) {
+        var t3 = this.l[u4.type + n2];
+        if (null == u4[c]) u4[c] = h++;
+        else if (u4[c] < t3[a]) return;
+        return t3(l.event ? l.event(u4) : u4);
+      }
+    };
+  }
+  function q(n2, u4, t3, i3, r4, o3, e3, f4, c3, a3) {
+    var s3, h3, p3, v3, y3, d3, _3, k3, x3, M3, I2, P4, A4, H3, T4, j4, F3 = u4.type;
+    if (void 0 !== u4.constructor) return null;
+    128 & t3.__u && (c3 = !!(32 & t3.__u), o3 = [f4 = u4.__e = t3.__e]), (s3 = l.__b) && s3(u4);
+    n: if ("function" == typeof F3) {
+      h3 = e3.length;
+      try {
+        if (x3 = u4.props, M3 = F3.prototype && F3.prototype.render, I2 = (s3 = F3.contextType) && i3[s3.__c], P4 = s3 ? I2 ? I2.props.value : s3.__ : i3, t3.__c ? k3 = (p3 = u4.__c = t3.__c).__ = p3.__E : (M3 ? u4.__c = p3 = new F3(x3, P4) : (u4.__c = p3 = new C(x3, P4), p3.constructor = F3, p3.render = Q), I2 && I2.sub(p3), p3.state || (p3.state = {}), p3.__n = i3, v3 = p3.__d = true, p3.__h = [], p3._sb = []), M3 && null == p3.__s && (p3.__s = p3.state), M3 && null != F3.getDerivedStateFromProps && (p3.__s == p3.state && (p3.__s = m({}, p3.__s)), m(p3.__s, F3.getDerivedStateFromProps(x3, p3.__s))), y3 = p3.props, d3 = p3.state, p3.__v = u4, v3) M3 && null == F3.getDerivedStateFromProps && null != p3.componentWillMount && p3.componentWillMount(), M3 && null != p3.componentDidMount && p3.__h.push(p3.componentDidMount);
+        else {
+          if (M3 && null == F3.getDerivedStateFromProps && x3 !== y3 && null != p3.componentWillReceiveProps && p3.componentWillReceiveProps(x3, P4), u4.__v == t3.__v || !p3.__e && null != p3.shouldComponentUpdate && false === p3.shouldComponentUpdate(x3, p3.__s, P4)) {
+            u4.__v != t3.__v && (p3.props = x3, p3.state = p3.__s, p3.__d = false), u4.__e = t3.__e, u4.__k = t3.__k, u4.__k.some(function(n3) {
+              n3 && (n3.__ = u4);
+            }), w.push.apply(p3.__h, p3._sb), p3._sb = [], p3.__h.length && e3.push(p3), f4 = $(t3);
+            break n;
+          }
+          null != p3.componentWillUpdate && p3.componentWillUpdate(x3, p3.__s, P4), M3 && null != p3.componentDidUpdate && p3.__h.push(function() {
+            p3.componentDidUpdate(y3, d3, _3);
+          });
+        }
+        if (p3.context = P4, p3.props = x3, p3.__P = n2, p3.__e = false, A4 = l.__r, H3 = 0, M3) p3.state = p3.__s, p3.__d = false, A4 && A4(u4), s3 = p3.render(p3.props, p3.state, p3.context), w.push.apply(p3.__h, p3._sb), p3._sb = [];
+        else do {
+          p3.__d = false, A4 && A4(u4), s3 = p3.render(p3.props, p3.state, p3.context), p3.state = p3.__s;
+        } while (p3.__d && ++H3 < 25);
+        p3.state = p3.__s, null != p3.getChildContext && (i3 = m(m({}, i3), p3.getChildContext())), M3 && !v3 && null != p3.getSnapshotBeforeUpdate && (_3 = p3.getSnapshotBeforeUpdate(y3, d3)), T4 = null != s3 && s3.type === S && null == s3.key ? E(s3.props.children) : s3, f4 = L(n2, g(T4) ? T4 : [T4], u4, t3, i3, r4, o3, e3, f4, c3, a3), p3.base = u4.__e, u4.__u &= -161, p3.__h.length && e3.push(p3), k3 && (p3.__E = p3.__ = null);
+      } catch (n3) {
+        if (e3.length = h3, u4.__v = null, c3 || null != o3) {
+          if (n3.then) {
+            for (u4.__u |= c3 ? 160 : 128; f4 && 8 == f4.nodeType && f4.nextSibling; ) f4 = f4.nextSibling;
+            null != o3 && (o3[o3.indexOf(f4)] = null), u4.__e = f4;
+          } else if (null != o3) for (j4 = o3.length; j4--; ) b(o3[j4]);
+        } else u4.__e = t3.__e;
+        null == u4.__k && (u4.__k = t3.__k || []), n3.then || B(u4), l.__e(n3, u4, t3);
+      }
+    } else null == o3 && u4.__v == t3.__v ? (u4.__k = t3.__k, u4.__e = t3.__e) : f4 = u4.__e = G(t3.__e, u4, t3, i3, r4, o3, e3, c3, a3);
+    return (s3 = l.diffed) && s3(u4), 128 & u4.__u ? void 0 : f4;
+  }
+  function B(n2) {
+    n2 && (n2.__c && (n2.__c.__e = true), n2.__k && n2.__k.some(B));
+  }
+  function D(n2, u4, t3) {
+    for (var i3 = 0; i3 < t3.length; i3++) J(t3[i3], t3[++i3], t3[++i3]);
+    l.__c && l.__c(u4, n2), n2.some(function(u5) {
+      try {
+        n2 = u5.__h, u5.__h = [], n2.some(function(n3) {
+          n3.call(u5);
+        });
+      } catch (n3) {
+        l.__e(n3, u5.__v);
+      }
+    });
+  }
+  function E(n2) {
+    return "object" != typeof n2 || null == n2 || n2.__b > 0 ? n2 : g(n2) ? n2.map(E) : void 0 !== n2.constructor ? null : m({}, n2);
+  }
+  function G(u4, t3, i3, r4, o3, e3, f4, c3, a3) {
+    var s3, h3, p3, v3, y3, w3, _3, m3 = i3.props || d, k3 = t3.props, x3 = t3.type;
+    if ("svg" == x3 ? o3 = "http://www.w3.org/2000/svg" : "math" == x3 ? o3 = "http://www.w3.org/1998/Math/MathML" : o3 || (o3 = "http://www.w3.org/1999/xhtml"), null != e3) {
+      for (s3 = 0; s3 < e3.length; s3++) if ((y3 = e3[s3]) && "setAttribute" in y3 == !!x3 && (x3 ? y3.localName == x3 : 3 == y3.nodeType)) {
+        u4 = y3, e3[s3] = null;
+        break;
+      }
+    }
+    if (null == u4) {
+      if (null == x3) return document.createTextNode(k3);
+      u4 = document.createElementNS(o3, x3, k3.is && k3), c3 && (l.__m && l.__m(t3, e3), c3 = false), e3 = null;
+    }
+    if (null == x3) m3 === k3 || c3 && u4.data == k3 || (u4.data = k3);
+    else {
+      if (e3 = "textarea" == x3 && null != k3.defaultValue ? null : e3 && n.call(u4.childNodes), !c3 && null != e3) for (m3 = {}, s3 = 0; s3 < u4.attributes.length; s3++) m3[(y3 = u4.attributes[s3]).name] = y3.value;
+      for (s3 in m3) y3 = m3[s3], "dangerouslySetInnerHTML" == s3 ? p3 = y3 : "children" == s3 || s3 in k3 || "value" == s3 && "defaultValue" in k3 || "checked" == s3 && "defaultChecked" in k3 || N(u4, s3, null, y3, o3);
+      for (s3 in k3) y3 = k3[s3], "children" == s3 ? v3 = y3 : "dangerouslySetInnerHTML" == s3 ? h3 = y3 : "value" == s3 ? w3 = y3 : "checked" == s3 ? _3 = y3 : c3 && "function" != typeof y3 || m3[s3] === y3 || N(u4, s3, y3, m3[s3], o3);
+      if (h3) c3 || p3 && (h3.__html == p3.__html || h3.__html == u4.innerHTML) || (u4.innerHTML = h3.__html), t3.__k = [];
+      else if (p3 && (u4.innerHTML = ""), L("template" == t3.type ? u4.content : u4, g(v3) ? v3 : [v3], t3, i3, r4, "foreignObject" == x3 ? "http://www.w3.org/1999/xhtml" : o3, e3, f4, e3 ? e3[0] : i3.__k && $(i3, 0), c3, a3), null != e3) for (s3 = e3.length; s3--; ) b(e3[s3]);
+      c3 && "textarea" != x3 || (s3 = "value", "progress" == x3 && null == w3 ? u4.removeAttribute("value") : null != w3 && (w3 !== u4[s3] || "progress" == x3 && !w3 || "option" == x3 && w3 != m3[s3]) && N(u4, s3, w3, m3[s3], o3), s3 = "checked", null != _3 && _3 != u4[s3] && N(u4, s3, _3, m3[s3], o3));
+    }
+    return u4;
+  }
+  function J(n2, u4, t3) {
+    try {
+      if ("function" == typeof n2) {
+        var i3 = "function" == typeof n2.__u;
+        i3 && n2.__u(), i3 && null == u4 || (n2.__u = n2(u4));
+      } else n2.current = u4;
+    } catch (n3) {
+      l.__e(n3, t3);
+    }
+  }
+  function K(n2, u4, t3) {
+    var i3, r4;
+    if (l.unmount && l.unmount(n2), (i3 = n2.ref) && (i3.current && i3.current != n2.__e || J(i3, null, u4)), null != (i3 = n2.__c)) {
+      if (i3.componentWillUnmount) try {
+        i3.componentWillUnmount();
+      } catch (n3) {
+        l.__e(n3, u4);
+      }
+      i3.base = i3.__P = i3.__n = null;
+    }
+    if (i3 = n2.__k) for (r4 = 0; r4 < i3.length; r4++) i3[r4] && K(i3[r4], u4, t3 || "function" != typeof n2.type);
+    t3 || b(n2.__e), n2.__c = n2.__ = n2.__e = void 0;
+  }
+  function Q(n2, l3, u4) {
+    return this.constructor(n2, u4);
+  }
+  function R(u4, t3, i3) {
+    var r4, o3, e3, f4;
+    t3 == document && (t3 = document.documentElement), l.__ && l.__(u4, t3), o3 = (r4 = "function" == typeof i3) ? null : i3 && i3.__k || t3.__k, e3 = [], f4 = [], q(t3, u4 = (!r4 && i3 || t3).__k = k(S, null, [u4]), o3 || d, d, t3.namespaceURI, !r4 && i3 ? [i3] : o3 ? null : t3.firstChild ? n.call(t3.childNodes) : null, e3, !r4 && i3 ? i3 : o3 ? o3.__e : t3.firstChild, r4, f4), D(e3, u4, f4), u4.props.children = null;
+  }
+  n = w.slice, l = { __e: function(n2, l3, u4, t3) {
+    for (var i3, r4, o3; l3 = l3.__; ) if ((i3 = l3.__c) && !i3.__) try {
+      if ((r4 = i3.constructor) && null != r4.getDerivedStateFromError && (i3.setState(r4.getDerivedStateFromError(n2)), o3 = i3.__d), null != i3.componentDidCatch && (i3.componentDidCatch(n2, t3 || {}), o3 = i3.__d), o3) return i3.__E = i3;
+    } catch (l4) {
+      n2 = l4;
+    }
+    throw n2;
+  } }, u = 0, t = function(n2) {
+    return null != n2 && void 0 === n2.constructor;
+  }, C.prototype.setState = function(n2, l3) {
+    var u4;
+    u4 = null != this.__s && this.__s != this.state ? this.__s : this.__s = m({}, this.state), "function" == typeof n2 && (n2 = n2(m({}, u4), this.props)), n2 && m(u4, n2), null != n2 && this.__v && (l3 && this._sb.push(l3), A(this));
+  }, C.prototype.forceUpdate = function(n2) {
+    this.__v && (this.__e = true, n2 && this.__h.push(n2), A(this));
+  }, C.prototype.render = S, i = [], o = "function" == typeof Promise ? Promise.prototype.then.bind(Promise.resolve()) : setTimeout, e = function(n2, l3) {
+    return n2.__v.__b - l3.__v.__b;
+  }, H.__r = 0, f = Math.random().toString(8), c = "__d" + f, a = "__a" + f, s = /(PointerCapture)$|Capture$/i, h = 0, p = V(false), v = V(true), y = 0;
+
+  // node_modules/preact/jsx-runtime/dist/jsxRuntime.module.js
+  var f2 = 0;
+  function u2(e3, t3, n2, o3, i3, u4) {
+    t3 || (t3 = {});
+    var a3, c3, p3 = t3;
+    if ("ref" in p3) for (c3 in p3 = {}, t3) "ref" == c3 ? a3 = t3[c3] : p3[c3] = t3[c3];
+    var l3 = { type: e3, props: p3, key: n2, ref: a3, __k: null, __: null, __b: 0, __e: null, __c: null, constructor: void 0, __v: --f2, __i: -1, __u: 0, __source: i3, __self: u4 };
+    if ("function" == typeof e3 && (a3 = e3.defaultProps)) for (c3 in a3) void 0 === p3[c3] && (p3[c3] = a3[c3]);
+    return l.vnode && l.vnode(l3), l3;
+  }
+
+  // src/ui/preact/html.tsx
+  function Raw({ html }) {
+    return /* @__PURE__ */ u2("span", { style: { display: "contents" }, dangerouslySetInnerHTML: { __html: html } });
+  }
+
+  // node_modules/preact/hooks/dist/hooks.module.js
+  var t2;
+  var r3;
+  var u3;
+  var i2;
+  var o2 = 0;
+  var f3 = [];
+  var c2 = l;
+  var e2 = c2.__b;
+  var a2 = c2.__r;
+  var v2 = c2.diffed;
+  var l2 = c2.__c;
+  var m2 = c2.unmount;
+  var p2 = c2.__;
+  function s2(n2, t3) {
+    c2.__h && c2.__h(r3, n2, o2 || t3), o2 = 0;
+    var u4 = r3.__H || (r3.__H = { __: [], __h: [] });
+    return n2 >= u4.__.length && u4.__.push({}), u4.__[n2];
+  }
+  function d2(n2) {
+    return o2 = 1, y2(D2, n2);
+  }
+  function y2(n2, u4, i3) {
+    var o3 = s2(t2++, 2);
+    if (o3.t = n2, !o3.__c && (o3.__ = [i3 ? i3(u4) : D2(void 0, u4), function(n3) {
+      var t3 = o3.__N ? o3.__N[0] : o3.__[0], r4 = o3.t(t3, n3);
+      t3 !== r4 && (o3.__N = [r4, o3.__[1]], o3.__c.setState({}));
+    }], o3.__c = r3, !r3.__f)) {
+      var f4 = function(n3, t3, r4) {
+        if (!o3.__c.__H) return true;
+        var u5 = false, i4 = o3.__c.props !== n3;
+        if (o3.__c.__H.__.some(function(n4) {
+          if (n4.__N) {
+            u5 = true;
+            var t4 = n4.__[0];
+            n4.__ = n4.__N, n4.__N = void 0, t4 !== n4.__[0] && (i4 = true);
+          }
+        }), c3) {
+          var f5 = c3.call(this, n3, t3, r4);
+          return u5 ? f5 || i4 : f5;
+        }
+        return !u5 || i4;
+      };
+      r3.__f = true;
+      var c3 = r3.shouldComponentUpdate, e3 = r3.componentWillUpdate;
+      r3.componentWillUpdate = function(n3, t3, r4) {
+        if (this.__e) {
+          var u5 = c3;
+          c3 = void 0, f4(n3, t3, r4), c3 = u5;
+        }
+        e3 && e3.call(this, n3, t3, r4);
+      }, r3.shouldComponentUpdate = f4;
+    }
+    return o3.__N || o3.__;
+  }
+  function h2(n2, u4) {
+    var i3 = s2(t2++, 3);
+    !c2.__s && C2(i3.__H, u4) && (i3.__ = n2, i3.u = u4, r3.__H.__h.push(i3));
+  }
+  function j2() {
+    for (var n2; n2 = f3.shift(); ) {
+      var t3 = n2.__H;
+      if (n2.__P && t3) try {
+        t3.__h.some(z2), t3.__h.some(B2), t3.__h = [];
+      } catch (r4) {
+        t3.__h = [], c2.__e(r4, n2.__v);
+      }
+    }
+  }
+  c2.__b = function(n2) {
+    r3 = null, e2 && e2(n2);
+  }, c2.__ = function(n2, t3) {
+    n2 && t3.__k && t3.__k.__m && (n2.__m = t3.__k.__m), p2 && p2(n2, t3);
+  }, c2.__r = function(n2) {
+    a2 && a2(n2), t2 = 0;
+    var i3 = (r3 = n2.__c).__H;
+    i3 && (u3 === r3 ? (i3.__h = [], r3.__h = [], i3.__.some(function(n3) {
+      n3.__N && (n3.__ = n3.__N), n3.u = n3.__N = void 0;
+    })) : (i3.__h.some(z2), i3.__h.some(B2), i3.__h = [], t2 = 0)), u3 = r3;
+  }, c2.diffed = function(n2) {
+    v2 && v2(n2);
+    var t3 = n2.__c;
+    t3 && t3.__H && (t3.__H.__h.length && (1 !== f3.push(t3) && i2 === c2.requestAnimationFrame || ((i2 = c2.requestAnimationFrame) || w2)(j2)), t3.__H.__.some(function(n3) {
+      n3.u && (n3.__H = n3.u, n3.u = void 0);
+    })), u3 = r3 = null;
+  }, c2.__c = function(n2, t3) {
+    t3.some(function(n3) {
+      try {
+        n3.__h.some(z2), n3.__h = n3.__h.filter(function(n4) {
+          return !n4.__ || B2(n4);
+        });
+      } catch (r4) {
+        t3.some(function(n4) {
+          n4.__h && (n4.__h = []);
+        }), t3 = [], c2.__e(r4, n3.__v);
+      }
+    }), l2 && l2(n2, t3);
+  }, c2.unmount = function(n2) {
+    m2 && m2(n2);
+    var t3, r4 = n2.__c;
+    r4 && r4.__H && (r4.__H.__.some(function(n3) {
+      try {
+        z2(n3);
+      } catch (n4) {
+        t3 = n4;
+      }
+    }), r4.__H = void 0, t3 && c2.__e(t3, r4.__v));
+  };
+  var k2 = "function" == typeof requestAnimationFrame;
+  function w2(n2) {
+    var t3, r4 = function() {
+      clearTimeout(u4), k2 && cancelAnimationFrame(t3), setTimeout(n2);
+    }, u4 = setTimeout(r4, 35);
+    k2 && (t3 = requestAnimationFrame(r4));
+  }
+  function z2(n2) {
+    var t3 = r3, u4 = n2.__c;
+    "function" == typeof u4 && (n2.__c = void 0, u4()), r3 = t3;
+  }
+  function B2(n2) {
+    var t3 = r3;
+    n2.__c = n2.__(), r3 = t3;
+  }
+  function C2(n2, t3) {
+    return !n2 || n2.length !== t3.length || t3.some(function(t4, r4) {
+      return t4 !== n2[r4];
+    });
+  }
+  function D2(n2, t3) {
+    return "function" == typeof t3 ? t3(n2) : t3;
+  }
+
+  // node_modules/preact/compat/dist/compat.module.js
+  function g3(n2, t3) {
+    for (var e3 in t3) n2[e3] = t3[e3];
+    return n2;
+  }
+  function E2(n2, t3) {
+    for (var e3 in n2) if ("__source" !== e3 && !(e3 in t3)) return true;
+    for (var r4 in t3) if ("__source" !== r4 && n2[r4] !== t3[r4]) return true;
+    return false;
+  }
+  function M2(n2, t3) {
+    this.props = n2, this.context = t3;
+  }
+  function N2(n2, e3) {
+    function r4(n3) {
+      var t3 = this.props.ref;
+      return t3 != n3.ref && t3 && ("function" == typeof t3 ? t3(null) : t3.current = null), e3 ? !e3(this.props, n3) || t3 != n3.ref : E2(this.props, n3);
+    }
+    function u4(e4) {
+      return this.shouldComponentUpdate = r4, k(n2, e4);
+    }
+    return u4.displayName = "Memo(" + (n2.displayName || n2.name) + ")", u4.__f = u4.prototype.isReactComponent = true, u4.type = n2, u4;
+  }
+  (M2.prototype = new C()).isPureReactComponent = true, M2.prototype.shouldComponentUpdate = function(n2, t3) {
+    return E2(this.props, n2) || E2(this.state, t3);
+  };
+  var T3 = l.__b;
+  l.__b = function(n2) {
+    n2.type && n2.type.__f && n2.ref && (n2.props.ref = n2.ref, n2.ref = null), T3 && T3(n2);
+  };
+  var A3 = "undefined" != typeof Symbol && Symbol.for && /* @__PURE__ */ Symbol.for("react.forward_ref") || 3911;
+  var O2 = l.__e;
+  l.__e = function(n2, t3, e3, r4) {
+    if (n2.then) {
+      for (var u4, o3 = t3; o3 = o3.__; ) if ((u4 = o3.__c) && u4.__c) return null == t3.__e && (t3.__e = e3.__e, t3.__k = e3.__k || []), u4.__c(n2, t3);
+    }
+    O2(n2, t3, e3, r4);
+  };
+  var U2 = l.unmount;
+  function V2(n2, t3, e3) {
+    return n2 && (n2.__c && n2.__c.__H && (n2.__c.__H.__.forEach(function(n3) {
+      "function" == typeof n3.__c && n3.__c();
+    }), n2.__c.__H = null), null != (n2 = g3({}, n2)).__c && (n2.__c.__P === e3 && (n2.__c.__P = t3), n2.__c.__e = true, n2.__c = null), n2.__k = n2.__k && n2.__k.map(function(n3) {
+      return V2(n3, t3, e3);
+    })), n2;
+  }
+  function W2(n2, t3, e3) {
+    return n2 && e3 && (n2.__v = null, n2.__k = n2.__k && n2.__k.map(function(n3) {
+      return W2(n3, t3, e3);
+    }), n2.__c && n2.__c.__P === t3 && (n2.__e && e3.appendChild(n2.__e), n2.__c.__e = true, n2.__c.__P = e3)), n2;
+  }
+  function P3() {
+    this.__u = 0, this.o = null, this.__b = null;
+  }
+  function j3(n2) {
+    var t3 = n2.__ && n2.__.__c;
+    return t3 && t3.__a && t3.__a(n2);
+  }
+  function B3() {
+    this.i = null, this.l = null;
+  }
+  l.unmount = function(n2) {
+    var t3 = n2.__c;
+    t3 && (t3.__z = true), t3 && t3.__R && t3.__R(), t3 && 32 & n2.__u && (n2.type = null), U2 && U2(n2);
+  }, (P3.prototype = new C()).__c = function(n2, t3) {
+    var e3 = t3.__c, r4 = this;
+    null == r4.o && (r4.o = []), r4.o.push(e3);
+    var u4 = j3(r4.__v), o3 = false, i3 = function() {
+      o3 || r4.__z || (o3 = true, e3.__R = null, u4 ? u4(f4) : f4());
+    };
+    e3.__R = i3;
+    var l3 = e3.__P;
+    e3.__P = null;
+    var f4 = function() {
+      if (!--r4.__u) {
+        if (r4.state.__a) {
+          var n3 = r4.state.__a;
+          r4.__v.__k[0] = W2(n3, n3.__c.__P, n3.__c.__O);
+        }
+        var t4;
+        for (r4.setState({ __a: r4.__b = null }); t4 = r4.o.pop(); ) t4.__P = l3, t4.forceUpdate();
+      }
+    };
+    r4.__u++ || 32 & t3.__u || r4.setState({ __a: r4.__b = r4.__v.__k[0] }), n2.then(i3, i3);
+  }, P3.prototype.componentWillUnmount = function() {
+    this.o = [];
+  }, P3.prototype.render = function(n2, e3) {
+    if (this.__b) {
+      if (this.__v.__k) {
+        var r4 = document.createElement("div"), o3 = this.__v.__k[0].__c;
+        this.__v.__k[0] = V2(this.__b, r4, o3.__O = o3.__P);
+      }
+      this.__b = null;
+    }
+    var i3 = e3.__a && k(S, null, n2.fallback);
+    return i3 && (i3.__u &= -33), [k(S, null, e3.__a ? null : n2.children), i3];
+  };
+  var H2 = function(n2, t3, e3) {
+    if (++e3[1] === e3[0] && n2.l.delete(t3), n2.props.revealOrder && ("t" !== n2.props.revealOrder[0] || !n2.l.size)) for (e3 = n2.i; e3; ) {
+      for (; e3.length > 3; ) e3.pop()();
+      if (e3[1] < e3[0]) break;
+      n2.i = e3 = e3[2];
+    }
+  };
+  (B3.prototype = new C()).__a = function(n2) {
+    var t3 = this, e3 = j3(t3.__v), r4 = t3.l.get(n2);
+    return r4[0]++, function(u4) {
+      var o3 = function() {
+        t3.props.revealOrder ? (r4.push(u4), H2(t3, n2, r4)) : u4();
+      };
+      e3 ? e3(o3) : o3();
+    };
+  }, B3.prototype.render = function(n2) {
+    this.i = null, this.l = /* @__PURE__ */ new Map();
+    var t3 = F(n2.children);
+    n2.revealOrder && "b" === n2.revealOrder[0] && t3.reverse();
+    for (var e3 = t3.length; e3--; ) this.l.set(t3[e3], this.i = [1, 0, this.i]);
+    return n2.children;
+  }, B3.prototype.componentDidUpdate = B3.prototype.componentDidMount = function() {
+    var n2 = this;
+    this.l.forEach(function(t3, e3) {
+      H2(n2, e3, t3);
+    });
+  };
+  var q3 = "undefined" != typeof Symbol && Symbol.for && /* @__PURE__ */ Symbol.for("react.element") || 60103;
+  var G2 = /^(?:accent|alignment|arabic|baseline|cap|clip(?!PathU)|color|dominant|fill|flood|font|glyph(?!R)|horiz|image(!S)|letter|lighting|marker(?!H|W|U)|overline|paint|pointer|shape|stop|strikethrough|stroke|text(?!L)|transform|underline|unicode|units|v|vector|vert|word|writing|x(?!C))[A-Z]/;
+  var J2 = /^on(Ani|Tra|Tou|BeforeInp|Compo)/;
+  var K2 = /[A-Z0-9]/g;
+  var Q2 = "undefined" != typeof document;
+  var X2 = function(n2) {
+    return ("undefined" != typeof Symbol && "symbol" == typeof /* @__PURE__ */ Symbol() ? /fil|che|rad/ : /fil|che|ra/).test(n2);
+  };
+  C.prototype.isReactComponent = true, ["componentWillMount", "componentWillReceiveProps", "componentWillUpdate"].forEach(function(t3) {
+    Object.defineProperty(C.prototype, t3, { configurable: true, get: function() {
+      return this["UNSAFE_" + t3];
+    }, set: function(n2) {
+      Object.defineProperty(this, t3, { configurable: true, writable: true, value: n2 });
+    } });
+  });
+  var en = l.event;
+  l.event = function(n2) {
+    return en && (n2 = en(n2)), n2.persist = function() {
+    }, n2.isPropagationStopped = function() {
+      return this.cancelBubble;
+    }, n2.isDefaultPrevented = function() {
+      return this.defaultPrevented;
+    }, n2.nativeEvent = n2;
+  };
+  var rn;
+  var un = { configurable: true, get: function() {
+    return this.class;
+  } };
+  var on = l.vnode;
+  l.vnode = function(n2) {
+    "string" == typeof n2.type && (function(n3) {
+      var t3 = n3.props, e3 = n3.type, u4 = {}, o3 = -1 == e3.indexOf("-");
+      for (var i3 in t3) {
+        var l3 = t3[i3];
+        if (!("value" === i3 && "defaultValue" in t3 && null == l3 || Q2 && "children" === i3 && "noscript" === e3 || "class" === i3 || "className" === i3)) {
+          var f4 = i3.toLowerCase();
+          "defaultValue" === i3 && "value" in t3 && null == t3.value ? i3 = "value" : "download" === i3 && true === l3 ? l3 = "" : "translate" === f4 && "no" === l3 ? l3 = false : "o" === f4[0] && "n" === f4[1] ? "ondoubleclick" === f4 ? i3 = "ondblclick" : "onchange" !== f4 || "input" !== e3 && "textarea" !== e3 || X2(t3.type) ? "onfocus" === f4 ? i3 = "onfocusin" : "onblur" === f4 ? i3 = "onfocusout" : J2.test(i3) && (i3 = f4) : f4 = i3 = "oninput" : o3 && G2.test(i3) ? i3 = i3.replace(K2, "-$&").toLowerCase() : null === l3 && (l3 = void 0), "oninput" === f4 && u4[i3 = f4] && (i3 = "oninputCapture"), u4[i3] = l3;
+        }
+      }
+      "select" == e3 && (u4.multiple && Array.isArray(u4.value) && (u4.value = F(t3.children).forEach(function(n4) {
+        n4.props.selected = -1 != u4.value.indexOf(n4.props.value);
+      })), null != u4.defaultValue && (u4.value = F(t3.children).forEach(function(n4) {
+        n4.props.selected = u4.multiple ? -1 != u4.defaultValue.indexOf(n4.props.value) : u4.defaultValue == n4.props.value;
+      }))), t3.class && !t3.className ? (u4.class = t3.class, Object.defineProperty(u4, "className", un)) : t3.className && (u4.class = u4.className = t3.className), n3.props = u4;
+    })(n2), n2.$$typeof = q3, on && on(n2);
+  };
+  var ln = l.__r;
+  l.__r = function(n2) {
+    ln && ln(n2), rn = n2.__c;
+  };
+  var fn = l.diffed;
+  l.diffed = function(n2) {
+    fn && fn(n2);
+    var t3 = n2.props, e3 = n2.__e;
+    null != e3 && "textarea" === n2.type && "value" in t3 && t3.value !== e3.value && (e3.value = null == t3.value ? "" : t3.value), rn = null;
+  };
+
+  // src/ui/preact/Island.tsx
+  function IslandInner(props) {
+    const style = props.contents ? { display: "contents" } : void 0;
+    if (props.html !== void 0) {
+      return /* @__PURE__ */ u2("div", { id: props.id, class: props.class, style, dangerouslySetInnerHTML: { __html: props.html } });
+    }
+    return /* @__PURE__ */ u2("div", { id: props.id, class: props.class, style, children: props.children });
+  }
+  var Island = N2(IslandInner, () => true);
+
+  // src/ui/preact/store.ts
+  var listeners = /* @__PURE__ */ new Set();
+  function notifyUi() {
+    listeners.forEach((fn2) => fn2());
+  }
+  function subscribeUi(fn2) {
+    listeners.add(fn2);
+    return () => {
+      listeners.delete(fn2);
+    };
+  }
+  function useUiTick() {
+    const [tick, setTick] = d2(0);
+    h2(() => subscribeUi(() => setTick((n2) => n2 + 1)), []);
+    return tick;
+  }
+  setUiNotifier(notifyUi);
+  app.notifyUi = notifyUi;
+
+  // src/ui/preact/chrome.ts
+  function onHeaderClick(e3) {
+    const t3 = e3.target;
+    if (!t3) return;
+    if (t3.closest(".bbgl-custom-icon") || t3.closest("#bbgl-demo-exit-btn") || t3.closest("#bbgl-pop-btn") || t3.closest("#bbgl-demo-exit")) return;
+    app.closePanel();
+  }
+  function onPopoutClick(e3) {
+    e3.stopPropagation();
+    if (!dom.panel || dom.panel.classList.contains("bbgl-mode-page")) return;
+    const p3 = dom.panel;
+    const animate = userConfig.animations && !p3.classList.contains("bbgl-no-animations");
+    if (animate) app.markPanelResizing(p3);
+    viewState.expanded = !viewState.expanded;
+    if (viewState.expanded) {
+      p3.classList.add("bbgl-expanded");
+      p3.classList.remove("bbgl-compact");
+    } else {
+      p3.classList.remove("bbgl-expanded");
+      p3.classList.add("bbgl-compact");
+    }
+    saveViewState();
+    app.handleLayout();
+    app.renderPanelContent();
+    if (dom.topPanel && dom.topPanel.classList.contains("viewing-graph")) {
+      app.GraphController.draw();
+      setTimeout(app.GraphController.draw, 320);
+    }
+    if (dom.topPanel && dom.topPanel.classList.contains("viewing-achievements")) {
+      setTimeout(app.resizeAchLockedPage, 320);
+    }
+  }
+  function onCopySession(e3) {
+    e3.stopPropagation();
+    const cs = runtime.currentStats;
+    if (!cs) return;
+    const { sl, s: s3 } = cs;
+    const txt = app.buildSessionText(sl, s3, ["str", "def", "spd", "dex"]);
+    const cpb = dom.panel?.querySelector("#bbgl-copy-btn") || dom.copyBtn;
+    navigator.clipboard.writeText(txt).then(() => {
+      const cols = dom.ledgerView ? Array.from(dom.ledgerView.querySelectorAll(".stat-column")) : [];
+      if (cols.length) app.flashCopied(cols);
+      if (!cpb) return;
+      const oH = cpb.innerHTML, oC = cpb.style.color;
+      cpb.innerHTML = ICONS.CHECK;
+      cpb.style.color = "#69f0ae";
+      cpb.style.opacity = "1";
+      setTimeout(() => {
+        cpb.innerHTML = oH;
+        cpb.style.color = oC;
+        cpb.style.opacity = "";
+      }, 1e3);
+    });
+  }
+  function onDemoExit(e3) {
+    e3.stopPropagation();
+    localStorage.removeItem(KEYS.DEMO);
+    runtime.demoMode = false;
+    runtime.demoHistory = null;
+    runtime.stickerData = [];
+    setHistoryCache(null);
+    app.DataController.invalidate();
+    app.DBManager.loadHistory().then((loaded) => {
+      app.DataController.hydrate(loaded);
+      if (userConfig.apiKey) app.startBackgroundSync();
+    }).catch(() => {
+      if (userConfig.apiKey) app.startBackgroundSync();
+    }).finally(() => app.snapLevelBar());
+    calendarState.selectedData = null;
+    calendarState.selectedLabel = Formatter.dateLogical();
+    viewState.activeViewLabel = null;
+    const tip = window.TooltipController;
+    if (tip) tip.hide();
+    app.refreshInitLock();
+    app.refreshDemoMasks();
+    if (typeof runtime.realReturnView === "string") {
+      runtime.returnView = runtime.realReturnView;
+      runtime.realReturnView = null;
+    }
+    const pdeb = document.getElementById("bbgl-page-demo-exit");
+    if (pdeb) pdeb.style.display = "none";
+    const isInit = !!localStorage.getItem("bbgl_initialized");
+    if (isInit) app.switchView("settings");
+    else {
+      app.switchView("welcome", true);
+      app.openPrivacyModal();
+    }
+    saveConfig();
+  }
+
+  // src/ui/preact/Dashboard.tsx
+  var WEEK_MON = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+  var WEEK_SUN = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+  function Header() {
+    return /* @__PURE__ */ u2("div", { class: "bbgl-header", id: "bbgl-header-bar", onClick: onHeaderClick, children: [
+      /* @__PURE__ */ u2("div", { class: "bbgl-header-left", children: [
+        /* @__PURE__ */ u2(Raw, { html: ICONS.LOGO }),
+        /* @__PURE__ */ u2("span", { class: "bbgl-header-text", children: [
+          /* @__PURE__ */ u2("span", { class: "bbgl-short-title", children: "Big Black Log" }),
+          /* @__PURE__ */ u2("span", { class: "bbgl-long-title", children: "Big Black Gym Log" })
+        ] })
+      ] }),
+      /* @__PURE__ */ u2("div", { class: "bbgl-header-right", children: [
+        /* @__PURE__ */ u2(
+          "span",
+          {
+            id: "bbgl-demo-exit-btn",
+            class: "close-settings-btn bbgl-close-purple",
+            style: { display: runtime.demoMode ? "flex" : "none" },
+            "data-tooltip-html": TOOLTIPS.DEMO_EXIT_HTML,
+            onClick: onDemoExit,
+            children: [
+              /* @__PURE__ */ u2("span", { class: "bbgl-demo-x-label", children: "Demo" }),
+              /* @__PURE__ */ u2(Raw, { html: ICONS.CLOSE })
+            ]
+          }
+        ),
+        /* @__PURE__ */ u2("span", { id: "bbgl-settings-btn", class: "bbgl-custom-icon", onClick: (e3) => app.toggleSettingsView(e3), children: "\u2699" }),
+        /* @__PURE__ */ u2("span", { id: "bbgl-close-btn", class: "bbgl-native-icon", onClick: () => app.closePanel(), children: /* @__PURE__ */ u2(Raw, { html: ICONS.MINIMIZE }) }),
+        /* @__PURE__ */ u2("span", { id: "bbgl-pop-btn", class: "bbgl-native-icon", onClick: onPopoutClick, children: /* @__PURE__ */ u2(Raw, { html: viewState.expanded ? ICONS.COMPRESS : ICONS.POPOUT }) })
+      ] })
+    ] });
+  }
+  function GraphHud() {
+    return /* @__PURE__ */ u2("div", { id: "bbgl-graph-container", children: [
+      /* @__PURE__ */ u2("div", { class: "g-hud", children: [
+        /* @__PURE__ */ u2("div", { class: "g-toggles", children: [
+          /* @__PURE__ */ u2("div", { class: "g-pill active", "data-type": "mode", "data-val": "values", children: "Gains" }),
+          /* @__PURE__ */ u2("div", { class: "g-pill", "data-type": "mode", "data-val": "rates", children: "Rates" })
+        ] }),
+        /* @__PURE__ */ u2("div", { class: "g-toggles", children: [
+          /* @__PURE__ */ u2("div", { class: "g-pill p-str active", "data-type": "stat", "data-val": "str", children: "STR" }),
+          /* @__PURE__ */ u2("div", { class: "g-pill p-def", "data-type": "stat", "data-val": "def", children: "DEF" }),
+          /* @__PURE__ */ u2("div", { class: "g-pill p-spd active", "data-type": "stat", "data-val": "spd", children: "SPD" }),
+          /* @__PURE__ */ u2("div", { class: "g-pill p-dex", "data-type": "stat", "data-val": "dex", children: "DEX" }),
+          /* @__PURE__ */ u2("div", { class: "g-pill p-tot", "data-type": "stat", "data-val": "total", children: "TOT" })
+        ] })
+      ] }),
+      /* @__PURE__ */ u2("svg", { id: "bbgl-graph-svg" })
+    ] });
+  }
+  function AchievementsChrome() {
+    return /* @__PURE__ */ u2(S, { children: [
+      /* @__PURE__ */ u2("div", { id: "bbgl-achievements-container", class: "ledger-content", children: /* @__PURE__ */ u2("div", { class: "bbgl-ach-scroll", children: /* @__PURE__ */ u2("div", { id: "bbgl-ach-pages" }) }) }),
+      /* @__PURE__ */ u2("div", { id: "bbgl-ach-footer", class: "bbgl-ach-footer", children: [
+        /* @__PURE__ */ u2("div", { class: "bbgl-ach-footer-side bbgl-ach-footer-left", children: /* @__PURE__ */ u2("button", { type: "button", class: "bbgl-ach-nav bbgl-ach-prev", "aria-label": "Previous achievements page", children: "\u276E" }) }),
+        /* @__PURE__ */ u2("div", { id: "bbgl-ach-pageindicator" }),
+        /* @__PURE__ */ u2("div", { class: "bbgl-ach-footer-side bbgl-ach-footer-right", children: /* @__PURE__ */ u2("button", { type: "button", class: "bbgl-ach-nav bbgl-ach-next", "aria-label": "Next achievements page", children: "\u276F" }) })
+      ] })
+    ] });
+  }
+  function StickerChrome() {
+    return /* @__PURE__ */ u2(S, { children: [
+      /* @__PURE__ */ u2("div", { id: "bbgl-sticker-bg" }),
+      /* @__PURE__ */ u2("div", { id: "bbgl-sticker-container", children: [
+        /* @__PURE__ */ u2("div", { id: "sticker-sponsor-btn", class: "sticker-nav-btn disabled", children: "\u276E" }),
+        /* @__PURE__ */ u2("div", { id: "sticker-prev-btn", class: "sticker-nav-btn", children: "\u276E" }),
+        /* @__PURE__ */ u2("div", { id: "sticker-next-btn", class: "sticker-nav-btn", children: "\u276F" }),
+        /* @__PURE__ */ u2("div", { id: "bbgl-sticker-grid" }),
+        /* @__PURE__ */ u2("div", { id: "bbgl-sticker-pagination" })
+      ] })
+    ] });
+  }
+  function TopPanel() {
+    const sub = viewState.subView;
+    const overlay = sub === "settings" || sub === "welcome";
+    const cls = [
+      sub === "graph" ? "viewing-graph" : "",
+      sub === "stickers" ? "viewing-stickers" : "",
+      sub === "achievements" ? "viewing-achievements" : ""
+    ].filter(Boolean).join(" ");
+    return /* @__PURE__ */ u2("div", { id: "bbgl-top-panel", class: cls, style: { display: overlay ? "none" : "flex" }, children: [
+      /* @__PURE__ */ u2("div", { id: "bbgl-tall-toggle", onClick: () => app.toggleTall(), children: viewState.isTall ? "\u2013" : "+" }),
+      /* @__PURE__ */ u2("div", { id: "bbgl-ledger-toggle", "data-tooltip": TOOLTIPS.LEDGER_VIEW, onClick: () => app.toggleLedgerView(), children: /* @__PURE__ */ u2(Raw, { html: ICONS.LEDGER }) }),
+      /* @__PURE__ */ u2("div", { id: "bbgl-graph-toggle", "data-tooltip": TOOLTIPS.GRAPH_VIEW, onClick: () => app.toggleGraphView(), children: /* @__PURE__ */ u2(Raw, { html: ICONS.GRAPH }) }),
+      /* @__PURE__ */ u2("div", { id: "bbgl-achievements-toggle", "data-tooltip": TOOLTIPS.ACHIEVEMENTS, onClick: () => app.toggleAchievementsView(), children: /* @__PURE__ */ u2(Raw, { html: ICONS.ACHIEVEMENTS }) }),
+      /* @__PURE__ */ u2("div", { id: "bbgl-sticker-toggle", "data-tooltip": TOOLTIPS.STICKERBOOK, onClick: () => app.toggleStickerView(), children: /* @__PURE__ */ u2(Raw, { html: ICONS.STICKERBOOK }) }),
+      /* @__PURE__ */ u2(Island, { id: "bbgl-item-counters" }),
+      /* @__PURE__ */ u2("div", { id: "bbgl-copy-btn", class: "copy-hist-btn", "data-tooltip": TOOLTIPS.COPY_SESSION, onClick: onCopySession, children: /* @__PURE__ */ u2(Raw, { html: ICONS.CLIPBOARD }) }),
+      /* @__PURE__ */ u2(Island, { id: "bbgl-sticker-title" }),
+      /* @__PURE__ */ u2(Island, { id: "bbgl-date-label", class: "ui-floating-label", children: "LOADING..." }),
+      /* @__PURE__ */ u2(Island, { id: "bbgl-summary-label", class: "ui-floating-summary" }),
+      /* @__PURE__ */ u2(Island, { id: "bbgl-ledger-view", class: "ledger-content" }),
+      /* @__PURE__ */ u2(Island, { contents: true, children: /* @__PURE__ */ u2(GraphHud, {}) }),
+      /* @__PURE__ */ u2(Island, { contents: true, children: /* @__PURE__ */ u2(AchievementsChrome, {}) }),
+      /* @__PURE__ */ u2(Island, { contents: true, children: /* @__PURE__ */ u2(StickerChrome, {}) }),
+      /* @__PURE__ */ u2("div", { class: "glass-overlay" })
+    ] });
+  }
+  function BottomPanel() {
+    const weekDays = userConfig.weekStartMode === "mon" ? WEEK_MON : WEEK_SUN;
+    const overlay = viewState.subView === "settings" || viewState.subView === "welcome";
+    const hideForViewer = viewState.subView === "stickers" && viewState.activeItemId;
+    return /* @__PURE__ */ u2(
+      "div",
+      {
+        id: "bbgl-bottom-panel",
+        style: overlay || hideForViewer ? { display: "none" } : void 0,
+        children: [
+          /* @__PURE__ */ u2(
+            "div",
+            {
+              id: "bbgl-demo-exit",
+              style: { display: runtime.demoMode ? "flex" : "none" },
+              "data-tooltip": TOOLTIPS.DEMO_EXIT,
+              "data-tooltip-html": TOOLTIPS.DEMO_EXIT_HTML,
+              onClick: onDemoExit,
+              children: "DEMO MODE"
+            }
+          ),
+          /* @__PURE__ */ u2(Island, { contents: true, children: /* @__PURE__ */ u2("div", { class: "bbgl-header-wrapper", children: [
+            /* @__PURE__ */ u2("div", { class: "bbgl-month-header", children: [
+              /* @__PURE__ */ u2("div", { class: "title-group", children: /* @__PURE__ */ u2("div", { class: "title-stack", children: [
+                /* @__PURE__ */ u2("div", { class: "header-row header-row--alltime", children: [
+                  /* @__PURE__ */ u2("div", { class: "stats-btn", id: "all-time-btn", children: /* @__PURE__ */ u2(Raw, { html: ICONS.CHART }) }),
+                  /* @__PURE__ */ u2("div", { class: "header-trigger", id: "all-time-trigger", children: "\u221E" })
+                ] }),
+                /* @__PURE__ */ u2("div", { class: "header-row header-row--year", children: [
+                  /* @__PURE__ */ u2("div", { class: "stats-btn", id: "year-stats-btn", children: /* @__PURE__ */ u2(Raw, { html: ICONS.CHART }) }),
+                  /* @__PURE__ */ u2("div", { class: "header-trigger", id: "year-trigger" }),
+                  /* @__PURE__ */ u2("div", { id: "bbgl-year-dropdown", class: "bbgl-dropdown-menu" })
+                ] }),
+                /* @__PURE__ */ u2("div", { class: "header-row header-row--month", children: [
+                  /* @__PURE__ */ u2("div", { class: "stats-btn", id: "month-stats-btn", children: /* @__PURE__ */ u2(Raw, { html: ICONS.CHART }) }),
+                  /* @__PURE__ */ u2("div", { class: "header-trigger", id: "month-trigger" }),
+                  /* @__PURE__ */ u2("div", { id: "bbgl-month-dropdown", class: "bbgl-dropdown-menu" })
+                ] })
+              ] }) }),
+              /* @__PURE__ */ u2("button", { class: "arrow-btn", id: "prev-month-btn", children: "\u276E" }),
+              /* @__PURE__ */ u2("button", { class: "arrow-btn", id: "next-month-btn", children: "\u276F" })
+            ] }),
+            /* @__PURE__ */ u2("div", { id: "bbgl-level-bg", dangerouslySetInnerHTML: { __html: buildEmptyLevelTrackSVG() } }),
+            /* @__PURE__ */ u2("div", { id: "bbgl-level-container", children: [
+              /* @__PURE__ */ u2("div", { id: "bbgl-level-flag-clip", children: /* @__PURE__ */ u2("span", { id: "bbgl-level-num", children: "Lv 1" }) }),
+              /* @__PURE__ */ u2("div", { id: "bbgl-level-track", children: /* @__PURE__ */ u2("div", { id: "bbgl-level-fill" }) })
+            ] })
+          ] }) }),
+          /* @__PURE__ */ u2("div", { class: "bbgl-grid-container", children: [
+            /* @__PURE__ */ u2("div", { class: "bbgl-week-row", children: weekDays.map((d3) => /* @__PURE__ */ u2("span", { children: d3 }, d3)) }),
+            /* @__PURE__ */ u2("div", { class: "calendar-wrapper", id: "swipe-area", children: /* @__PURE__ */ u2(Island, { id: "bbgl-cal-container", class: "bbgl-cal-container" }) })
+          ] })
+        ]
+      }
+    );
+  }
+  function ItemViewer() {
+    return /* @__PURE__ */ u2(Island, { contents: true, children: /* @__PURE__ */ u2("div", { id: "bbgl-item-viewer", children: [
+      /* @__PURE__ */ u2("div", { class: "viewer-window", children: /* @__PURE__ */ u2("div", { class: "viewer-stage", children: /* @__PURE__ */ u2("div", { class: "viewer-pedestal", id: "vi-pedestal-wrapper", children: /* @__PURE__ */ u2("div", { class: "viewer-obj", id: "vi-obj-target", children: [
+        /* @__PURE__ */ u2("div", { class: "layer-front" }),
+        /* @__PURE__ */ u2("div", { class: "layer-back" })
+      ] }) }) }) }),
+      /* @__PURE__ */ u2("div", { class: "viewer-info-overlay", children: /* @__PURE__ */ u2("div", { class: "vi-name", id: "vi-name-target", children: "Item Name" }) })
+    ] }) });
+  }
+  function Dashboard() {
+    useUiTick();
+    const sub = viewState.subView;
+    return /* @__PURE__ */ u2(S, { children: [
+      /* @__PURE__ */ u2(Header, {}),
+      /* @__PURE__ */ u2("div", { id: "bbgl-content-wrapper", children: [
+        /* @__PURE__ */ u2(TopPanel, {}),
+        /* @__PURE__ */ u2(BottomPanel, {}),
+        /* @__PURE__ */ u2(ItemViewer, {}),
+        /* @__PURE__ */ u2("div", { id: "bbgl-settings-view", class: sub === "settings" ? "active-view" : "", children: /* @__PURE__ */ u2(Island, { id: "bbgl-settings-inner", contents: true, html: getSettingsHTML() }) }),
+        /* @__PURE__ */ u2("div", { id: "bbgl-welcome-view", class: sub === "welcome" ? "active-view" : "", children: /* @__PURE__ */ u2(Island, { id: "bbgl-welcome-inner", contents: true }) })
+      ] })
+    ] });
+  }
+
+  // src/ui/preact/mount.tsx
+  function mountDashboard(panel) {
+    R(/* @__PURE__ */ u2(Dashboard, {}), panel);
+    if (typeof app.setupEventListeners === "function") app.setupEventListeners(panel);
+  }
+  function unmountDashboard(panel) {
+    R(null, panel);
+  }
+  app.mountDashboard = mountDashboard;
+  app.unmountDashboard = unmountDashboard;
 
   // src/boot/boot.ts
   function boot() {

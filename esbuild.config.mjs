@@ -14,6 +14,8 @@ const options = {
   format: 'iife',
   target: 'es2020',
   platform: 'browser',
+  jsx: 'automatic',
+  jsxImportSource: 'preact',
   banner: { js: banner },
   loader: {
     '.css': 'text',

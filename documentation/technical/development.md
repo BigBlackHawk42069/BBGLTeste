@@ -10,10 +10,10 @@ From [`package.json`](../../package.json):
 |---|---|
 | `npm run build` | `node esbuild.config.mjs` → overwrite repo-root `BigBlackGymLog.js` |
 | `npm run dev` | same config with `--watch` (reload Tampermonkey / Violentmonkey from the file) |
-| `npm run typecheck` | `tsc --noEmit` on `src/**/*.ts` and `src/**/*.d.ts` (extracted `.js` is **not** typechecked) |
+| `npm run typecheck` | `tsc --noEmit` on `src/**/*.ts`, `src/**/*.tsx`, and `src/**/*.d.ts` (extracted `.js` is **not** typechecked) |
 | `npm test` | `node --test --experimental-strip-types` on `src/**/*.test.ts` |
 
-DevDependencies only: `typescript`, `esbuild`. Do not add a runtime package without an explicit decision. Do not add a test runner — `node:test` is enough.
+Runtime (bundled into the IIFE): `preact`. DevDependencies: `typescript`, `esbuild`. Do not add another runtime package without an explicit decision. Do not add a test runner — `node:test` is enough.
 
 ## esbuild
 
@@ -27,6 +27,8 @@ DevDependencies only: `typescript`, `esbuild`. Do not add a runtime package with
   format: 'iife',
   target: 'es2020',
   platform: 'browser',
+  jsx: 'automatic',
+  jsxImportSource: 'preact',
   banner: { js: contents of userscript.meta.js + newline },
   loader: { '.css': 'text', '.html': 'text' },
   legalComments: 'none'

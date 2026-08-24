@@ -51,7 +51,7 @@ Current import list (order is dependency-friendly, not alphabetical):
 - Hash contains `gymlog` → page mode (`renderPageMode`), maybe open changelog after 400ms
 - Else → tear down `#bbgl-page-container`, restore panel or reset selection
 
-`renderPageMode` wipes Torn `.content-wrapper`, injects the native header + dashboard, `setupEventListeners(p)`, `restoreInternalState`, `renderPanelContent`. Settings gear in the native header calls `toggleSettingsView`.
+`renderPageMode` wipes Torn `.content-wrapper`, injects the native header + dashboard, `mountDashboard(p)` (which calls `setupEventListeners`), `restoreInternalState`, `renderPanelContent`. Settings gear in the native header calls `toggleSettingsView`. Page demo-exit forwards `.click()` to `#bbgl-demo-exit`.
 
 ## Multi-tab view sync
 
@@ -59,7 +59,7 @@ Current import list (order is dependency-friendly, not alphabetical):
 
 | Key | Action |
 |---|---|
-| `KEYS.STATE` | `setViewState`, toggle panel/view/graph/stickers/calendar/tall/expanded to match. `runtime.isSyncing = true` so we do not echo. |
+| `KEYS.STATE` | `setViewState`, toggle panel/view/graph/stickers/calendar/tall/expanded to match. `runtime.isSyncing = true` so we do not echo. `notifyUi()` in `finally` so Preact chrome matches. |
 | `KEYS.LAST_SYNC` | synthesize `_syncChannel.onmessage` |
 | `KEYS.DEMO` | enter or click-exit demo |
 

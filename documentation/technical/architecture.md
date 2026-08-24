@@ -18,7 +18,7 @@ Tampermonkey updates from that raw URL. Changing the published path, converting 
 | [`BigBlackGymLog.js`](../../BigBlackGymLog.js) | **Published artifact** — tracked in git |
 | [`UserDocs/`](../../UserDocs/) | HTML fetched at runtime (not bundled) |
 
-There are **no runtime npm packages**. Dev-only: `typescript`, `esbuild`. Tests use Node's built-in `node:test`.
+The only **runtime** npm package is `preact` (bundled into the IIFE). Dev-only: `typescript`, `esbuild`. Tests use Node's built-in `node:test`.
 
 ## Boot path
 
@@ -57,13 +57,15 @@ export function boot() {
 
 ## Layering
 
-Keep today's mutation style. There is **no store and no framework**. Shared mutables live in [`src/core/state.ts`](../../src/core/state.ts) and keep object identity so call sites do not need a store.
+Shared mutables live in [`src/core/state.ts`](../../src/core/state.ts) and keep object identity so call sites do not need a store.
+
+The **panel chrome** is a Preact tree in [`src/ui/preact/`](../../src/ui/preact/) (`mountDashboard` → same IDs/classes as before). `saveViewState` / `saveConfig` call `pingUi()` so header, toolbar, and view classes re-render. Vanilla-filled hosts are wrapped in `Island` (`memo` that never updates). Do **not** call `render()` a second time on the panel — that remounts and wipes islands. Torn chrome (sidebar, footer, Best Gym) stays vanilla.
 
 ```
 core/     constants, state, log          → imports nothing above itself
 domain/   time, capsules, leveling, day, history, demo
 data/     db, sanitize, torn-api, sync, backfill, wars, import-export
-ui/       styles, templates, panel, calendar, ledger, graph, stickers, …
+ui/       preact shell, styles, templates, panel, calendar, ledger, graph, stickers, …
 boot/     events, init, boot             → may import everything
 ```
 
@@ -178,8 +180,8 @@ When you add a new cross-file function:
 ## What we will not do
 
 - No Node HTTP server or backend
-- No React/Vue
-- No new runtime packages without an explicit decision
+- No React/Vue. **Preact** is the one allowed UI runtime (panel chrome + frozen islands; bundled into the IIFE)
+- No additional runtime packages without an explicit decision
 - No storage-key or IndexedDB schema migration unless you also bump `WIPE_BELOW_VERSION` and accept wiping users
 - No bundling `UserDocs` or sticker/calendar CDN images
 - Edit `src/` and rebuild. Do not paste the built `BigBlackGymLog.js` back over source.

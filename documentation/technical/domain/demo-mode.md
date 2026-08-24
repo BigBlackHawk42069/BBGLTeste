@@ -9,7 +9,7 @@ Demo mode lets a user click through calendar, ledger, graph, stickers, and achie
 - Enter: `localStorage[KEYS.DEMO] = '1'`, `runtime.demoMode = true`, `runtime.demoHistory = null`, `setHistoryCache(null)`, `DataController.invalidate()`.
 - `hydratePersistedState` re-enters on load if the key is still `'1'`.
 - Other tabs see a `storage` event on `KEYS.DEMO` and call `enterDemo('external')` or click the demo-exit control.
-- Exit: the `#bbgl-demo-exit` handler in `setupEventListeners` removes the key, reloads real history via `DBManager.loadHistory()`, optionally restarts background sync.
+- Exit: `onDemoExit` in `src/ui/preact/chrome.ts` (header + demo bar; page-mode `#bbgl-page-demo-exit` forwards a `.click()` to `#bbgl-demo-exit`) removes the key, reloads real history via `DBManager.loadHistory()`, optionally restarts background sync.
 
 ## Synthetic year
 

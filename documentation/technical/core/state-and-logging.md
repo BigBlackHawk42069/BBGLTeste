@@ -65,7 +65,7 @@ Load rules:
 - session `KEYS.DEV_MODE === 'true'` → `runtime.devMode = true`
 - If no `calYear`, seed calendar from `dayStartMode`
 
-`saveViewState()` no-ops while `runtime.isSyncing` so a storage-event apply does not echo back and fight the other tab.
+`saveViewState()` skips writing `KEYS.STATE` while `runtime.isSyncing` so a storage-event apply does not echo back and fight the other tab. It still calls `pingUi()` so Preact chrome matches the applied `viewState`. `saveConfig()` always `pingUi()`s.
 
 `saveConfig()` writes a **partial** object (only defined allowed keys) so a half-initialized config cannot wipe the API key with `undefined`.
 

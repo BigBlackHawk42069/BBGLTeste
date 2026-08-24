@@ -144,6 +144,7 @@ export interface RuntimeState {
   currentOpenedItemId: number | null;
   lastFrameTime: number;
   returnView: string | null;
+  realReturnView?: string | null;
   layoutRafId: number | null;
   currentStats: unknown;
   demoMode: boolean;
