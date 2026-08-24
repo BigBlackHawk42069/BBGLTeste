@@ -1,7 +1,4 @@
 import { app } from '../app-context.js';
-import { CUSTOM_STICKERS, PAGE_TITLES, cdnize } from '../ui/assets.ts';
-import { ASSETS, ICONS } from '../ui/icons.ts';
-import { injectStyles } from '../ui/styles.ts';
 import {
   ACH_FMT, BACKFILL, BACKFILL_GROUP_KEYS, BACKFILL_GROUP_OF, BACKFILL_GROUPS,
   BASE_DOCS_URL, BBGL_ERROR_CODE, BS_STAT_ROWS, compareVersions, CONSTANTS, ECAN_LOG, ECSTASY_LOG, ENERGY_LOGS, ENERGY_PARAM,
@@ -11,17 +8,13 @@ import {
   TORN_KEY_ERROR_MAP, TRAIN_ENERGY_PARAM, TRAIN_LOGS, WIPE_BELOW_VERSION, XANAX_LOG, XANAX_OD_LOG, ZERO_BREAKDOWN,
   bbglError, tornKeyErrorText
 } from '../core/constants.ts';
-import { Log, Perf, isDevMode } from '../core/log.ts';
+import { Log, Perf } from '../core/log.ts';
 import {
   ALLOWED_CONFIG_KEYS, TAB_ID, calendarState, dom, graphState, historyCache, lastButtonLocation, layoutObservers,
   refreshClickLog, runtime, saveConfig, saveViewState, setHistoryCache, setLastButtonLocation, setTopCeiling, setViewState,
   topCeilingCache, topCeilingTs, userConfig, viewState
 } from '../core/state.ts';
 import { Formatter, TimeManager, getISOWeek, getWeekKey } from '../domain/time.ts';
-import { classifyDay, computeWeekCapsules, computeWeekCompletion, placeCapsuleUnit } from '../domain/capsules.ts';
-import { atrophyTitle, calculateLevelProgress, computeDailyLevelExp, computeLevelExpCost } from '../domain/leveling.ts';
-import { findHappyJumps, initializeDayObject, normalizeApiLogs, sumStats } from '../domain/day.ts';
-
 
 const TooltipController = { el: null, arrow: null, currentTarget: null, init() { if (this.el) return; this.el = document.createElement('div'); this.el.id = 'bbgl-tooltip'; this.arrow = document.createElement('div'); this.arrow.id = 'bbgl-tooltip-arrow'; this.el.appendChild(this.arrow); document.body.appendChild(this.el); }, hide() { if (this.el) { this.el.style.display = 'none'; this.currentTarget = null; } }, show(html, rect, forceSide) { if (!this.el) this.init(); this.el.innerHTML = html; this.el.appendChild(this.arrow); this.el.style.display = 'block'; this.el.className = ''; const ttRect = this.el.getBoundingClientRect(), pad = 12, view = { w: window.innerWidth, h: window.innerHeight }; let side = 'top'; const fitsTop = rect.top - ttRect.height - pad >= 0, fitsBot = rect.bottom + ttRect.height + pad <= view.h; if (forceSide) side = forceSide;else if (fitsTop) side = 'top';else if (fitsBot) side = 'bottom';else side = 'left'; let x = 0, y = 0; if (side === 'top') { x = rect.left + rect.width / 2 - ttRect.width / 2; y = rect.top - ttRect.height - pad; } else if (side === 'bottom') { x = rect.left + rect.width / 2 - ttRect.width / 2; y = rect.bottom + pad; } else { x = rect.left - ttRect.width - pad; y = rect.top + rect.height / 2 - ttRect.height / 2; } if (x < 5) x = 5; if (x + ttRect.width > view.w - 5) x = view.w - ttRect.width - 5; if (y < 5) y = 5; if (y + ttRect.height > view.h - 5) y = view.h - ttRect.height - 5; this.el.style.left = x + 'px'; this.el.style.top = y + 'px'; this.el.classList.add('pos-' + side); this.arrow.style.marginLeft = ''; this.arrow.style.marginTop = ''; }, resolve(target) { return target.closest('[data-tooltip], [data-tooltip-html]'); }, handleHover(e) { const t = this.resolve(e.target); if (!t) { if (this.currentTarget) this.hide(); return; } if (this.currentTarget === t) return; this.currentTarget = t; const h = t.getAttribute('data-tooltip-html'), txt = t.getAttribute('data-tooltip'); const side = t.getAttribute('data-tooltip-side') || undefined; const anchorSel = t.getAttribute('data-tooltip-anchor'); let rect; if (anchorSel) { const anchor = t.closest('.bbgl-weekly-anchor')?.querySelector(anchorSel); if (anchor) { const r = anchor.getBoundingClientRect(); const activeH = parseFloat(getComputedStyle(anchor).getPropertyValue('--bbgl-handle-active-h')) || 32; rect = { left: r.left, width: r.width, bottom: r.bottom, top: r.bottom - activeH, height: activeH }; } else { rect = t.getBoundingClientRect(); } } else { rect = t.getBoundingClientRect(); } if (h) this.show(h, rect, side);else if (txt) this.show('<div style="text-align:center; color:#ddd;">' + txt + '</div>', t.getBoundingClientRect(), side);else this.hide(); } };
 

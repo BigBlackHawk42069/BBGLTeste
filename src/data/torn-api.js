@@ -1,6 +1,4 @@
 import { app } from '../app-context.js';
-import { CUSTOM_STICKERS, PAGE_TITLES, cdnize } from '../ui/assets.ts';
-import { ASSETS, ICONS } from '../ui/icons.ts';
 import {
   ACH_FMT, BACKFILL, BACKFILL_GROUP_KEYS, BACKFILL_GROUP_OF, BACKFILL_GROUPS,
   BASE_DOCS_URL, BBGL_ERROR_CODE, BS_STAT_ROWS, compareVersions, CONSTANTS, ECAN_LOG, ECSTASY_LOG, ENERGY_LOGS, ENERGY_PARAM,
@@ -10,17 +8,13 @@ import {
   TORN_KEY_ERROR_MAP, TRAIN_ENERGY_PARAM, TRAIN_LOGS, WIPE_BELOW_VERSION, XANAX_LOG, XANAX_OD_LOG, ZERO_BREAKDOWN,
   bbglError, tornKeyErrorText
 } from '../core/constants.ts';
-import { Log, Perf, isDevMode } from '../core/log.ts';
+import { Log, Perf } from '../core/log.ts';
 import {
   ALLOWED_CONFIG_KEYS, TAB_ID, calendarState, dom, graphState, historyCache, lastButtonLocation, layoutObservers,
   refreshClickLog, runtime, saveConfig, saveViewState, setHistoryCache, setLastButtonLocation, setTopCeiling, setViewState,
   topCeilingCache, topCeilingTs, userConfig, viewState
 } from '../core/state.ts';
 import { Formatter, TimeManager, getISOWeek, getWeekKey } from '../domain/time.ts';
-import { classifyDay, computeWeekCapsules, computeWeekCompletion, placeCapsuleUnit } from '../domain/capsules.ts';
-import { atrophyTitle, calculateLevelProgress, computeDailyLevelExp, computeLevelExpCost } from '../domain/leveling.ts';
-import { findHappyJumps, initializeDayObject, normalizeApiLogs, sumStats } from '../domain/day.ts';
-
 
 function resetRefreshBtn(btn) { if (!btn) return; if (btn.dataset.timerId) { clearTimeout(btn.dataset.timerId); delete btn.dataset.timerId; } btn.style.color = ""; btn.style.opacity = "1"; if (btn.dataset.originalText) { btn.innerText = btn.dataset.originalText; delete btn.dataset.originalText; } }
 

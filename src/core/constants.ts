@@ -56,7 +56,7 @@ export const ITEM_LOG_META: Record<number, ItemLogMeta> = {
 export const ITEM_GROUP_LABELS = { energy: 'Energy Items', stat: 'Stat Items', happy: 'Happy Items', od: 'OD Items' } as const;
 
 export const ITEM_LOGS = Object.keys(ITEM_LOG_META).map(Number);
-export const itemLogsByGroup = (g: ItemLogMeta['group']) => ITEM_LOGS.filter(id => ITEM_LOG_META[id].group === g);
+const itemLogsByGroup = (g: ItemLogMeta['group']) => ITEM_LOGS.filter(id => ITEM_LOG_META[id].group === g);
 export const TRAIN_LOGS = [5300, 5301, 5302, 5303];
 export const ENERGY_LOGS = itemLogsByGroup('energy');
 export const STAT_LOGS = itemLogsByGroup('stat');

@@ -1,7 +1,5 @@
 import { app } from '../app-context.js';
-import { CUSTOM_STICKERS, PAGE_TITLES, cdnize } from '../ui/assets.ts';
-import { ASSETS, ICONS } from '../ui/icons.ts';
-import { injectStyles } from '../ui/styles.ts';
+import { ICONS } from '../ui/icons.ts';
 import {
   ACH_FMT, BACKFILL, BACKFILL_GROUP_KEYS, BACKFILL_GROUP_OF, BACKFILL_GROUPS,
   BASE_DOCS_URL, BBGL_ERROR_CODE, BS_STAT_ROWS, compareVersions, CONSTANTS, ECAN_LOG, ECSTASY_LOG, ENERGY_LOGS, ENERGY_PARAM,
@@ -11,17 +9,13 @@ import {
   TORN_KEY_ERROR_MAP, TRAIN_ENERGY_PARAM, TRAIN_LOGS, WIPE_BELOW_VERSION, XANAX_LOG, XANAX_OD_LOG, ZERO_BREAKDOWN,
   bbglError, tornKeyErrorText
 } from '../core/constants.ts';
-import { Log, Perf, isDevMode } from '../core/log.ts';
+import { Log, Perf } from '../core/log.ts';
 import {
   ALLOWED_CONFIG_KEYS, TAB_ID, calendarState, dom, graphState, historyCache, lastButtonLocation, layoutObservers,
   refreshClickLog, runtime, saveConfig, saveViewState, setHistoryCache, setLastButtonLocation, setTopCeiling, setViewState,
   topCeilingCache, topCeilingTs, userConfig, viewState
 } from '../core/state.ts';
 import { Formatter, TimeManager, getISOWeek, getWeekKey } from '../domain/time.ts';
-import { classifyDay, computeWeekCapsules, computeWeekCompletion, placeCapsuleUnit } from '../domain/capsules.ts';
-import { atrophyTitle, calculateLevelProgress, computeDailyLevelExp, computeLevelExpCost } from '../domain/leveling.ts';
-import { findHappyJumps, initializeDayObject, normalizeApiLogs, sumStats } from '../domain/day.ts';
-
 
 const TOOLTIPS = { ANIM: "<b>Toggle UI transitions and cosmetic effects</b><br><i>Disable to prioritize performance on slower devices.</i>", RATES: "<b>Display growth rate and efficiency metrics</b><br><i>Turn off for a minimalist view focused strictly on totals.</i>", DRUG_TRACKER: "<b>Choose the primary training drug that appears on the ledger.</b><br><i>People on SSL path may want to track LSD instead of Xanax usage.</i>", LOC: "<b>Choose where the Gym Log icon appears in your Torn UI</b><br><i>Select Sidebar if the Footer Tab is hidden or if you are using Chat 2.0.</i>", DAY_START: "<b>Anchor logs to UTC or your system clock</b><br><i>Syncs your ongoing training sessions with your real-world schedule.</i>", WEEK_START: "<b>Change your preferred starting day for the week</b><br><i>Adjusts the calendar layout and weekly performance metrics.</i>", BEST_GYM: "<b>Always train at your best unlocked gym</b><br><i>Pressing train switches you to the highest-tier gym for that stat.</i>", BEST_GYM_SPEC: "<b>Allow switching to specialist gyms</b><br><i>When off, auto-switch only considers standard gyms.</i>", BEST_GYM_UNPURCHASED: "<b>Allow switching to unpurchased gyms</b><br><i>When off, auto-switch only considers gyms you have already bought.</i>", API: "Custom API key required.<br><br><i>This script strictly requests 'battlestats' and 'log' data. Click the Create API Key button below to securely generate a key for this script. For maximum safety, you can edit this newly created key in your Torn API Settings to restrict its log access specifically to the 'Gym' category.<br><br>Your key is stored locally on your device only and is sent exclusively to api.torn.com.</i>", PASTE_CLIPBOARD: "Paste from Clipboard", AGREE_GATE: "Check the box to confirm you've read the disclosure", LOCKED: "Locked", LEDGER_VIEW: "Ledger", GRAPH_VIEW: "Graph", STICKERBOOK: "Stickerbook", ACHIEVEMENTS: "Achievements", COPY_SESSION: "Copy Session Data", ALL_TIME_SUMMARY: "All-Time Summary", YEARLY_SUMMARY: "Yearly Summary", MONTHLY_SUMMARY: "Monthly Summary", DEMO_EXIT: "Exit Demo Mode", DEMO_EXIT_HTML: "Exit Demo Mode<i>Stats shown here are for previewing the functions of the script only — they do not reflect realistic Torn growth.</i>", REFRESH_COOLDOWN: remaining => `Please wait ${remaining}s before refreshing the log again`, BACKFILL_RESUME_COOLDOWN: t => `Torn's daily row cap has been reached. Resume available in ${t}.`, BACKFILL_COMPLETE_ORIGIN: "Your full training history was reconstructed back to the very beginning.", BACKFILL_COMPLETE_EXHAUSTED: "Scan reached the end of the logs Torn still retains. Any older history is no longer available from Torn's servers.", CELL_DATE: ds => `Date: ${ds}` };
 

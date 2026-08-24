@@ -1,7 +1,5 @@
 import { app } from '../app-context.js';
-import { CUSTOM_STICKERS, PAGE_TITLES, cdnize } from '../ui/assets.ts';
-import { ASSETS, ICONS } from '../ui/icons.ts';
-import { injectStyles } from '../ui/styles.ts';
+import { ICONS } from '../ui/icons.ts';
 import {
   ACH_FMT, BACKFILL, BACKFILL_GROUP_KEYS, BACKFILL_GROUP_OF, BACKFILL_GROUPS,
   BASE_DOCS_URL, BBGL_ERROR_CODE, BS_STAT_ROWS, compareVersions, CONSTANTS, ECAN_LOG, ECSTASY_LOG, ENERGY_LOGS, ENERGY_PARAM,
@@ -11,16 +9,16 @@ import {
   TORN_KEY_ERROR_MAP, TRAIN_ENERGY_PARAM, TRAIN_LOGS, WIPE_BELOW_VERSION, XANAX_LOG, XANAX_OD_LOG, ZERO_BREAKDOWN,
   bbglError, tornKeyErrorText
 } from '../core/constants.ts';
-import { Log, Perf, isDevMode } from '../core/log.ts';
+import { Log, Perf } from '../core/log.ts';
 import {
   ALLOWED_CONFIG_KEYS, TAB_ID, calendarState, dom, graphState, historyCache, lastButtonLocation, layoutObservers,
   refreshClickLog, runtime, saveConfig, saveViewState, setHistoryCache, setLastButtonLocation, setTopCeiling, setViewState,
   topCeilingCache, topCeilingTs, userConfig, viewState
 } from '../core/state.ts';
 import { Formatter, TimeManager, getISOWeek, getWeekKey } from '../domain/time.ts';
-import { classifyDay, computeWeekCapsules, computeWeekCompletion, placeCapsuleUnit } from '../domain/capsules.ts';
-import { atrophyTitle, calculateLevelProgress, computeDailyLevelExp, computeLevelExpCost } from '../domain/leveling.ts';
-import { findHappyJumps, initializeDayObject, normalizeApiLogs, sumStats } from '../domain/day.ts';
+import { computeWeekCompletion } from '../domain/capsules.ts';
+import { atrophyTitle, calculateLevelProgress, computeDailyLevelExp } from '../domain/leveling.ts';
+import { findHappyJumps } from '../domain/day.ts';
 
 
 function injectWeeklyBar(cont, batch) { const sl = app.DataController.getSlice('CUSTOM', batch.map(w => w.data).filter(d => d)); sl.label = `Week ${getISOWeek(batch[0].date)}`; sl._weekStart = batch[0].date; sl._weekEnd = batch[batch.length - 1].date; if (sl._dailyList.length === 0) return; const { hjDaySet } = app.DataController.getHappyJumpData(); const _wk = getWeekKey(sl._dailyList[0].date); const anchor = document.createElement('div'); anchor.className = 'bbgl-weekly-anchor'; const tr = document.createElement('div'); tr.className = 'bbgl-weekly-track'; tr.dataset.label = sl.label; tr.onclick = e => { e.stopPropagation(); app.openHistory(sl, sl.label); }; if (calendarState.selectedLabel === sl.label) tr.classList.add('is-viewing'); const installWeekKey = runtime.demoMode ? null : app.getInstallWeekKey(); const addCenterTab = slice => { const tab = document.createElement('div'); tab.className = 'bbgl-bar-handle'; tab.dataset.pos = 'start'; const tooltipHtml = app.generateRichTooltip(slice); tab.setAttribute('data-tooltip-html', tooltipHtml); tab.setAttribute('data-tooltip-anchor', '.bbgl-bar-handle'); tr.setAttribute('data-tooltip-html', tooltipHtml); tr.setAttribute('data-tooltip-anchor', '.bbgl-bar-handle'); tab.onclick = e => { e.stopPropagation(); app.openHistory(slice, slice.label); }; tab.addEventListener('mouseenter', () => tr.classList.add('is-scrub-hovered')); tab.addEventListener('mouseleave', () => tr.classList.remove('is-scrub-hovered')); tab.innerHTML = app.buildChartSVG(slice); anchor.appendChild(tab); }; if (installWeekKey && _wk < installWeekKey) { tr.innerHTML = app.buildCapsuleBar(['silver', 'silver', 'silver', 'silver', 'silver'], false, false); anchor.appendChild(tr); addCenterTab(sl); cont.appendChild(anchor); if (viewState.activeViewLabel === sl.label && calendarState.selectedLabel !== sl.label) runtime._pendingHistoryRestore = { sl, label: sl.label }; return; } const { capsules, isCompleted } = computeWeekCompletion(sl._dailyList, hjDaySet); if (isCompleted) tr.classList.add('track-polished'); tr.innerHTML = app.buildCapsuleBar(capsules, isCompleted, isCompleted && userConfig.animations); anchor.appendChild(tr); addCenterTab(sl); cont.appendChild(anchor); if (viewState.activeViewLabel === sl.label && calendarState.selectedLabel !== sl.label) runtime._pendingHistoryRestore = { sl, label: sl.label }; }

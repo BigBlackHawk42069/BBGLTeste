@@ -1,7 +1,4 @@
 import { app } from '../app-context.js';
-import { CUSTOM_STICKERS, PAGE_TITLES, cdnize } from '../ui/assets.ts';
-import { ASSETS, ICONS } from '../ui/icons.ts';
-import { injectStyles } from '../ui/styles.ts';
 import {
   ACH_FMT, BACKFILL, BACKFILL_GROUP_KEYS, BACKFILL_GROUP_OF, BACKFILL_GROUPS,
   BASE_DOCS_URL, BBGL_ERROR_CODE, BS_STAT_ROWS, compareVersions, CONSTANTS, ECAN_LOG, ECSTASY_LOG, ENERGY_LOGS, ENERGY_PARAM,
@@ -11,17 +8,13 @@ import {
   TORN_KEY_ERROR_MAP, TRAIN_ENERGY_PARAM, TRAIN_LOGS, WIPE_BELOW_VERSION, XANAX_LOG, XANAX_OD_LOG, ZERO_BREAKDOWN,
   bbglError, tornKeyErrorText
 } from '../core/constants.ts';
-import { Log, Perf, isDevMode } from '../core/log.ts';
+import { Log, Perf } from '../core/log.ts';
 import {
   ALLOWED_CONFIG_KEYS, TAB_ID, calendarState, dom, graphState, historyCache, lastButtonLocation, layoutObservers,
   refreshClickLog, runtime, saveConfig, saveViewState, setHistoryCache, setLastButtonLocation, setTopCeiling, setViewState,
   topCeilingCache, topCeilingTs, userConfig, viewState
 } from '../core/state.ts';
 import { Formatter, TimeManager, getISOWeek, getWeekKey } from '../domain/time.ts';
-import { classifyDay, computeWeekCapsules, computeWeekCompletion, placeCapsuleUnit } from '../domain/capsules.ts';
-import { atrophyTitle, calculateLevelProgress, computeDailyLevelExp, computeLevelExpCost } from '../domain/leveling.ts';
-import { findHappyJumps, initializeDayObject, normalizeApiLogs, sumStats } from '../domain/day.ts';
-
 
 function buildSessionText(sl, s, keys) { const statEmoji = { str: '💪', def: '🛡️', spd: '🎯', dex: '🤺' }; const statNames = { str: 'Strength', def: 'Defense', spd: 'Speed', dex: 'Dexterity' }; let ds = ''; if (sl._dailyList && sl._dailyList.length > 1) ds = `${Formatter.dateFull(sl._dailyList[0].date)} - ${Formatter.dateFull(sl._dailyList[sl._dailyList.length - 1].date)}`;else ds = Formatter.dateFull(sl.date); const isSingle = keys.length === 1; const eCost = isSingle ? s[keys[0]].cost : s.total.cost; const eTxt = eCost > 0 ? `⚡${Formatter.number(eCost)} E` : '🛌 I was a lazy POS.'; const statLines = keys.filter(k => s[k].gain > 0 || s[k].cost > 0).map(k => `${statEmoji[k]}${statNames[k]}: +${Formatter.achAbbr(s[k].gain, ACH_FMT.gains)} (${Formatter.achAbbr(s[k].start, ACH_FMT.gains)} \u2192 ${Formatter.achAbbr(s[k].end, ACH_FMT.gains)})`); return ['👑BBGymLog', `${ds} |${eTxt}`, ...statLines].join('\n'); }
 

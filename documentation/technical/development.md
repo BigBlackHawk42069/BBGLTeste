@@ -58,16 +58,6 @@ When you change a pure function, add/adjust a test in the matching file. When yo
 
 There is no headless Torn login in this repo.
 
-## Extract scripts (one-shot, not runtime)
-
-[`scripts/`](../../scripts/) contains the mechanical extractors used to leave the single IIFE:
-
-- `extract-legacy.mjs` — **do not run against the built artifact**
-- `extract-phase1.mjs` / `extract-phase2.mjs` / `extract-remaining.mjs`
-- `fix-app-refs.mjs`
-
-They are historical. New work is normal edits under `src/`. Re-running them will mis-classify functions and drop `installDomHooks`-class statements again.
-
 ## `.gitignore`
 
 Ignores `node_modules`, `/Dev`, editor metadata. **`BigBlackGymLog.js` is tracked** on purpose (update URL).

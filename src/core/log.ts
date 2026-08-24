@@ -6,10 +6,6 @@ export function setDevChecker(fn: () => boolean): void {
   _isDev = fn;
 }
 
-export function isDevMode(): boolean {
-  return _isDev();
-}
-
 const badge = ['%c BBGL %c', 'background:#6a1b9a;color:#fff;font-weight:700;border-radius:3px 0 0 3px;padding:2px 6px;', 'color:#999;'];
 
 export const Log = {

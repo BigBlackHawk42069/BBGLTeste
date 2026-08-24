@@ -1,7 +1,4 @@
 import { app } from '../app-context.js';
-import { CUSTOM_STICKERS, PAGE_TITLES, cdnize } from '../ui/assets.ts';
-import { ASSETS, ICONS } from '../ui/icons.ts';
-import { injectStyles } from '../ui/styles.ts';
 import {
   ACH_FMT, BACKFILL, BACKFILL_GROUP_KEYS, BACKFILL_GROUP_OF, BACKFILL_GROUPS,
   BASE_DOCS_URL, BBGL_ERROR_CODE, BS_STAT_ROWS, compareVersions, CONSTANTS, ECAN_LOG, ECSTASY_LOG, ENERGY_LOGS, ENERGY_PARAM,
@@ -11,16 +8,14 @@ import {
   TORN_KEY_ERROR_MAP, TRAIN_ENERGY_PARAM, TRAIN_LOGS, WIPE_BELOW_VERSION, XANAX_LOG, XANAX_OD_LOG, ZERO_BREAKDOWN,
   bbglError, tornKeyErrorText
 } from '../core/constants.ts';
-import { Log, Perf, isDevMode } from '../core/log.ts';
+import { Log, Perf } from '../core/log.ts';
 import {
   ALLOWED_CONFIG_KEYS, TAB_ID, calendarState, dom, graphState, historyCache, lastButtonLocation, layoutObservers,
   refreshClickLog, runtime, saveConfig, saveViewState, setHistoryCache, setLastButtonLocation, setTopCeiling, setViewState,
   topCeilingCache, topCeilingTs, userConfig, viewState
 } from '../core/state.ts';
 import { Formatter, TimeManager, getISOWeek, getWeekKey } from '../domain/time.ts';
-import { classifyDay, computeWeekCapsules, computeWeekCompletion, placeCapsuleUnit } from '../domain/capsules.ts';
-import { atrophyTitle, calculateLevelProgress, computeDailyLevelExp, computeLevelExpCost } from '../domain/leveling.ts';
-import { findHappyJumps, initializeDayObject, normalizeApiLogs, sumStats } from '../domain/day.ts';
+import { calculateLevelProgress, computeLevelExpCost } from '../domain/leveling.ts';
 
 
 function renderPanelContent() { const s = app.getActiveHistory(), dm = app.DataController.getDateMap(), tk = Formatter.dateLogical(); if ((s.today.startTotal > 0 || s.today.date) && !dm[tk]) dm[tk] = s.today; const c = dom.calContainer; if (!c) return; Perf.start('renderPanel'); c.innerHTML = ''; const y = calendarState.year, m = calendarState.month, yt = dom.yearTrigger; dom.monthTrigger.textContent = CONSTANTS.MONTHS[m]; yt.textContent = y; yt.classList.remove('disabled'); let f = new Date(y, m, 1), start = f.getDay(); if (start === -1) start = 6; if (userConfig.weekStartMode === 'mon') start = start === 0 ? 6 : start - 1; const dim = new Date(y, m + 1, 0).getDate(), dipm = new Date(y, m, 0).getDate(); let pm = m - 1, py = y; if (pm < 0) { pm = 11; py--; } let cells = []; for (let i = 0; i < start; i++) cells.push({ y: py, m: pm, d: dipm - start + i + 1, g: true }); for (let d = 1; d <= dim; d++) cells.push({ y: y, m: m, d: d, g: false }); let rem = 7 - cells.length % 7; if (rem < 7 && rem > 0) { let nm = m + 1, ny = y; if (nm > 11) { nm = 0; ny++; } for (let i = 1; i <= rem; i++) cells.push({ y: ny, m: nm, d: i, g: true }); } calendarState.visibleCells = cells.map(z => Formatter.dateISO(z.y, z.m, z.d)); c.style.setProperty('--total-rows', 6); c.style.setProperty('--bg-url', `url(${app.CAL_IMG_BASE}cal-grid-futr.jpg)`); const todayStr = Formatter.dateLogical(); const frag = document.createDocumentFragment(); let batch = [], ridx = 0; cells.forEach(function tickCalendarCell(z) { const ds = Formatter.dateISO(z.y, z.m, z.d), d = dm[ds] || null; batch.push({ ...z, p: d }); if (batch.length === 7) { const rd = document.createElement('div'), last = batch[6], weekEndStr = Formatter.dateISO(last.y, last.m, last.d), isArch = weekEndStr < todayStr; rd.className = 'bbgl-row-slice' + (isArch ? ' bbgl-row-archived' : ''); rd.style.setProperty('--row-idx', ridx); if (isArch) rd.style.setProperty('--bg-url', `url(${app.CAL_IMG_BASE}cal-grid-past.jpg)`); let wdb = []; batch.forEach(function tickWeekCell(i, cIdx) { app.renderCell(rd, i.y, i.m, i.d, i.g, ridx, cIdx); wdb.push({ date: Formatter.dateISO(i.y, i.m, i.d), data: i.p }); }); frag.appendChild(rd); app.injectWeeklyBar(frag, wdb); batch = []; ridx++; } }); c.appendChild(frag); if (runtime._pendingHistoryRestore) { const { sl, label } = runtime._pendingHistoryRestore; runtime._pendingHistoryRestore = null; openHistory(sl, label); } const tp = dom.topPanel; if (tp) { if (tp.classList.contains('viewing-graph')) app.GraphController.draw();else if (tp.classList.contains('viewing-stickers')) app.renderStickers();else if (tp.classList.contains('viewing-achievements')) app.renderAchievements(); } if (!calendarState.selectedData) app.renderStats(app.DataController.getSlice('DAY', Formatter.dateLogical()), Formatter.dateLogical());else app.renderStats(calendarState.selectedData, calendarState.selectedLabel); Perf.end('renderPanel'); updateLevelBar(); app.updateSummaryCharts(); }

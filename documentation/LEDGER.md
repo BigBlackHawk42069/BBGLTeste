@@ -145,4 +145,3 @@ When marking an item as **[X]**, **[P]**, or **[!]**, you must provide the link/
   - [x] Scripts: `npm run build`, `npm run dev`, `npm run typecheck`, `npm test`
   - [x] esbuild IIFE + `userscript.meta.js` banner
   - [x] `node:test` coverage (capsules, leveling, day, rebuild/reconcile)
-  - [x] One-shot extract scripts under `scripts/` (not part of the runtime)

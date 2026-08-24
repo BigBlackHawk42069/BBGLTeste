@@ -1,7 +1,6 @@
 import { app } from '../app-context.js';
-import { CUSTOM_STICKERS, PAGE_TITLES, cdnize } from '../ui/assets.ts';
-import { ASSETS, ICONS } from '../ui/icons.ts';
-import { injectStyles } from '../ui/styles.ts';
+import { cdnize } from '../ui/assets.ts';
+import { ICONS } from '../ui/icons.ts';
 import {
   ACH_FMT, BACKFILL, BACKFILL_GROUP_KEYS, BACKFILL_GROUP_OF, BACKFILL_GROUPS,
   BASE_DOCS_URL, BBGL_ERROR_CODE, BS_STAT_ROWS, compareVersions, CONSTANTS, ECAN_LOG, ECSTASY_LOG, ENERGY_LOGS, ENERGY_PARAM,
@@ -11,17 +10,13 @@ import {
   TORN_KEY_ERROR_MAP, TRAIN_ENERGY_PARAM, TRAIN_LOGS, WIPE_BELOW_VERSION, XANAX_LOG, XANAX_OD_LOG, ZERO_BREAKDOWN,
   bbglError, tornKeyErrorText
 } from '../core/constants.ts';
-import { Log, Perf, isDevMode } from '../core/log.ts';
+import { Log, Perf } from '../core/log.ts';
 import {
   ALLOWED_CONFIG_KEYS, TAB_ID, calendarState, dom, graphState, historyCache, lastButtonLocation, layoutObservers,
   refreshClickLog, runtime, saveConfig, saveViewState, setHistoryCache, setLastButtonLocation, setTopCeiling, setViewState,
   topCeilingCache, topCeilingTs, userConfig, viewState
 } from '../core/state.ts';
 import { Formatter, TimeManager, getISOWeek, getWeekKey } from '../domain/time.ts';
-import { classifyDay, computeWeekCapsules, computeWeekCompletion, placeCapsuleUnit } from '../domain/capsules.ts';
-import { atrophyTitle, calculateLevelProgress, computeDailyLevelExp, computeLevelExpCost } from '../domain/leveling.ts';
-import { findHappyJumps, initializeDayObject, normalizeApiLogs, sumStats } from '../domain/day.ts';
-
 
 const BestGymController = { _suppressed: {}, _reactItem(btn) { try { const key = Object.keys(btn).find(k => k.startsWith('__reactFiber$') || k.startsWith('__reactInternalInstance$')); let f = btn[key], depth = 0; while (f && depth < 16) { const pp = f.memoizedProps; if (pp && pp.item && pp.item.id != null && pp.item.status) return pp.item; f = f.return; depth++; } } catch (e) {} return null; }, scanGyms() { const root = document.getElementById('gymroot') || document; const result = { gyms: {}, active: null }; root.querySelectorAll("button[class*='gymButton']").forEach(btn => { const icon = btn.querySelector("[class*='gym-']"); if (!icon) return; const match = /gym-(\d+)/.exec(icon.getAttribute('class') || ''); if (!match) return; const id = parseInt(match[1], 10); if (!id || result.gyms[id]) return; const cls = ' ' + (btn.getAttribute('class') || '') + ' '; const locked = /\s(?:locked|inProgress)/i.test(cls); const active = /\sactive/i.test(cls); const item = this._reactItem(btn); const status = item ? item.status : null; const owned = status === 'active' || status === 'available'; result.gyms[id] = { id: id, btn: btn, locked: locked, active: active, status: status, owned: owned }; if (active) result.active = id; }); return result; }, bestGymFor(stat, scan) { const tiers = GYM_TIERS[stat]; if (!tiers) return null; const rankOf = id => { for (let i = 0; i < tiers.length; i++) { const g = tiers[i]; if (Array.isArray(g) ? g.indexOf(id) !== -1 : g === id) return i; } return -1; }; const allowSpec = userConfig.bestGymSpecialist; const allowUnpurchased = userConfig.bestGymUnpurchased; let bestId = null, bestRank = scan.active != null ? rankOf(scan.active) : -1; Object.keys(scan.gyms).forEach(key => { const gym = scan.gyms[key]; if (gym.locked) return; if (!allowSpec && gym.id >= 25) return; if (!allowUnpurchased && !gym.owned) return; const rank = rankOf(gym.id); if (rank > bestRank) { bestRank = rank; bestId = gym.id; } }); return bestId; }, swapToGym(gym) { try { gym.btn.click(); return true; } catch (e) { Log.warn('BestGym: gym switch failed', e); return false; } }, _statFromLabel(label) { if (label === 'Train strength') return 'str'; if (label === 'Train defense') return 'def'; if (label === 'Train speed') return 'spd'; if (label === 'Train dexterity') return 'dex'; return null; }, handleTrainClick(e) { if (!userConfig.bestGym) return false; const btn = e.target && e.target.closest ? e.target.closest('button') : null; if (!btn) return false; const stat = this._statFromLabel(btn.getAttribute('aria-label') || ''); if (!stat || this._suppressed[stat]) return false; const scan = this.scanGyms(); const best = this.bestGymFor(stat, scan); if (!best || best === scan.active) return false; const gym = scan.gyms[best]; if (!gym || !this.swapToGym(gym)) return false; e.preventDefault(); e.stopImmediatePropagation(); this._suppressed[stat] = true; return true; } };
 

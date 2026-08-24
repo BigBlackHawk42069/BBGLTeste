@@ -182,6 +182,6 @@ When you add a new cross-file function:
 - No new runtime packages without an explicit decision
 - No storage-key or IndexedDB schema migration unless you also bump `WIPE_BELOW_VERSION` and accept wiping users
 - No bundling `UserDocs` or sticker/calendar CDN images
-- Do not re-run `scripts/extract-legacy.mjs` against the **built** `BigBlackGymLog.js` — it would clobber source with the bundle
+- Edit `src/` and rebuild. Do not paste the built `BigBlackGymLog.js` back over source.
 
 See [Runtime Contracts](./core/runtime-contracts.md) before changing anything that existing installs persist or update from.

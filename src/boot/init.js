@@ -1,6 +1,5 @@
 import { app } from '../app-context.js';
-import { CUSTOM_STICKERS, PAGE_TITLES, cdnize } from '../ui/assets.ts';
-import { ASSETS, ICONS } from '../ui/icons.ts';
+import { ICONS } from '../ui/icons.ts';
 import { injectStyles } from '../ui/styles.ts';
 import {
   ACH_FMT, BACKFILL, BACKFILL_GROUP_KEYS, BACKFILL_GROUP_OF, BACKFILL_GROUPS,
@@ -11,17 +10,13 @@ import {
   TORN_KEY_ERROR_MAP, TRAIN_ENERGY_PARAM, TRAIN_LOGS, WIPE_BELOW_VERSION, XANAX_LOG, XANAX_OD_LOG, ZERO_BREAKDOWN,
   bbglError, tornKeyErrorText
 } from '../core/constants.ts';
-import { Log, Perf, isDevMode } from '../core/log.ts';
+import { Log, Perf } from '../core/log.ts';
 import {
   ALLOWED_CONFIG_KEYS, TAB_ID, calendarState, dom, graphState, historyCache, lastButtonLocation, layoutObservers,
   refreshClickLog, runtime, saveConfig, saveViewState, setHistoryCache, setLastButtonLocation, setTopCeiling, setViewState,
   topCeilingCache, topCeilingTs, userConfig, viewState
 } from '../core/state.ts';
 import { Formatter, TimeManager, getISOWeek, getWeekKey } from '../domain/time.ts';
-import { classifyDay, computeWeekCapsules, computeWeekCompletion, placeCapsuleUnit } from '../domain/capsules.ts';
-import { atrophyTitle, calculateLevelProgress, computeDailyLevelExp, computeLevelExpCost } from '../domain/leveling.ts';
-import { findHappyJumps, initializeDayObject, normalizeApiLogs, sumStats } from '../domain/day.ts';
-
 
 function checkViewRouting() { const pm = window.location.hash.includes('gymlog'); app.syncSidebarState(); if (pm) { document.title = "Gym Log | TORN"; document.body.classList.add('bbgl-page-mode-active'); renderPageMode(); if (localStorage.getItem(KEYS.CHANGELOG_NOTIF) === '1') { localStorage.setItem(KEYS.CHANGELOG_VER, SCRIPT_VERSION); localStorage.removeItem(KEYS.CHANGELOG_NOTIF); app.syncChangelogNotif(false); setTimeout(() => app.openChangelogModal(), 400); } } else { document.body.classList.remove('bbgl-page-mode-active'); const cw = document.querySelector('.content-wrapper'), pc = document.getElementById('bbgl-page-container'); if (cw && pc) pc.remove(); if (viewState.isOpen) { const lp = dom.panel; if (lp && lp.classList.contains('bbgl-mode-page')) { lp.remove(); dom.panel = null; } app.togglePanel(false); } else { viewState.subView = 'ledger'; viewState.activeItemId = null; viewState.activeViewLabel = null; viewState.isTall = false; calendarState.selectedData = null; calendarState.selectedLabel = null; } } app.updateFooterTooltip(); }
 
