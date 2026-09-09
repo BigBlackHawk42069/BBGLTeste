@@ -2079,14 +2079,106 @@ function achRankPlaqueLabelHTML(label) {
 //           its own box since border-radius can't follow the rectangular frame ring (see
 //           .bbgl-rank-notch-cradle, 04-section-iii-styles.js). Emitted for every plaque, revealed
 //           by CSS alone off the class list.
+function achEmeraldPlaqueHTML(label) {
+    const id = `bbgl-emerald-${achEmeraldPlaqueHTML.serial = (achEmeraldPlaqueHTML.serial || 0) + 1}`;
+    const words = String(label).trim().split(/\s+/);
+    const rows = words.length > 1 ? [words.slice(0, -1).join(' '), words[words.length - 1]] : words;
+    const text = rows.map((row, i) => `<text x="100" y="${rows.length > 1 ? 53 + i * 31 : 67}" text-anchor="middle" font-family="Aldrich, Arial Black, sans-serif" font-weight="bold" font-size="28" textLength="${Math.min(154, row.length * 16)}" lengthAdjust="spacingAndGlyphs">${achEsc(row)}</text>`).join('');
+    return `<svg class="bbgl-rank-emerald-crystal" viewBox="0 0 200 110" preserveAspectRatio="none" role="img" aria-label="${achEsc(label)} — carved emerald rank">
+        <defs>
+            <linearGradient id="${id}-body" x2=".8" y2="1"><stop stop-color="#65ffc1" stop-opacity=".38"/><stop offset=".23" stop-color="#04884a" stop-opacity=".64"/><stop offset=".48" stop-color="#14c47c" stop-opacity=".22"/><stop offset=".72" stop-color="#00482e" stop-opacity=".56"/><stop offset="1" stop-color="#53e9a8" stop-opacity=".4"/></linearGradient>
+            <linearGradient id="${id}-cut" x1="0" y1="0" x2=".25" y2="1"><stop stop-color="#002b19" stop-opacity=".9"/><stop offset=".35" stop-color="#08693c" stop-opacity=".6"/><stop offset=".64" stop-color="#8effc0" stop-opacity=".8"/><stop offset=".8" stop-color="#effff6"/><stop offset="1" stop-color="#21ae68" stop-opacity=".7"/></linearGradient>
+            <linearGradient id="${id}-reflection" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#dbfff0" stop-opacity="0"/><stop offset=".38" stop-color="#dbfff0" stop-opacity="0"/><stop offset=".43" stop-color="#edfff5" stop-opacity=".32"/><stop offset=".46" stop-color="#fff" stop-opacity=".6"/><stop offset=".48" stop-color="#b6ffdc" stop-opacity=".05"/><stop offset="1" stop-color="#b6ffdc" stop-opacity="0"/></linearGradient>
+            <mask id="${id}-holes" maskUnits="userSpaceOnUse" x="0" y="0" width="200" height="110" style="mask-type:luminance"><rect width="200" height="110" fill="white"/><g fill="black" stroke="black" stroke-width="1.2" stroke-linejoin="round">${text}</g></mask>
+        </defs>
+        <g mask="url(#${id}-holes)">
+            <path d="M22 1H178L199 21V89L178 109H22L1 89V21Z" fill="url(#${id}-body)" stroke="#8cf3c3" stroke-opacity=".7" stroke-width=".7"/>
+            <path d="M22 1H178L166 15H34Z" fill="#b7ffda" opacity=".44"/>
+            <path d="M1 21L22 1L34 15L15 29V81L1 89Z" fill="#3ed99c" opacity=".5"/>
+            <path d="M178 1L199 21V89L185 81V29L166 15Z" fill="#013d25" opacity=".62"/>
+            <path d="M1 89L22 109H178L199 89L185 81L166 95H34L15 81Z" fill="#004428" opacity=".55"/>
+            <path d="M22 1L34 15L15 29L1 21Z M178 109L166 95L185 81L199 89Z" fill="#c7ffe4" opacity=".48"/>
+            <path d="M178 1L166 15L185 29L199 21Z M22 109L34 95L15 81L1 89Z" fill="#004026" opacity=".55"/>
+            <path d="M27 6H173L193 24V86L173 103H27L7 86V24Z" fill="none" stroke="#c1ffdd" stroke-opacity=".36" stroke-width=".7"/>
+            <path d="M34 15H166L185 29V81L166 95H34L15 81V29Z" fill="url(#${id}-reflection)" stroke="#96f6c5" stroke-opacity=".55" stroke-width=".65"/>
+            <path d="M23 2H176 M2 23V85 M35 96H164" fill="none" stroke="#e4fff1" stroke-opacity=".8" stroke-width=".65"/>
+            <g fill="none" stroke="#002e1c" stroke-opacity=".65" stroke-width="2" stroke-linejoin="round" transform="translate(0 1.1)">${text}</g>
+            <g fill="none" stroke="url(#${id}-cut)" stroke-width="3" stroke-linejoin="round">${text}</g>
+            <text x="100" y="15" text-anchor="middle" font-family="Arial, sans-serif" font-size="10" font-weight="bold" letter-spacing="2" fill="#064832">RANK</text>
+        </g>
+    </svg>`;
+}
+
+function achGoldCrownHTML() {
+    const id = `bbgl-crown-${achGoldCrownHTML.serial = (achGoldCrownHTML.serial || 0) + 1}`;
+    return `<svg class="bbgl-rank-gold-crown" viewBox="0 0 200 120" preserveAspectRatio="none" aria-hidden="true">
+        <defs>
+            <linearGradient id="${id}-gold" x1="0" y1="0" x2=".8" y2="1"><stop stop-color="#fff5b5"/><stop offset=".16" stop-color="#e4b64e"/><stop offset=".3" stop-color="#fff0a4"/><stop offset=".43" stop-color="#9d6318"/><stop offset=".53" stop-color="#f8d775"/><stop offset=".64" stop-color="#fff5bb"/><stop offset=".79" stop-color="#b77a22"/><stop offset="1" stop-color="#5f350b"/></linearGradient>
+            <linearGradient id="${id}-band" x1="0" y1="0" x2="0" y2="1"><stop stop-color="#fff2aa"/><stop offset=".13" stop-color="#f1ca65"/><stop offset=".22" stop-color="#895015"/><stop offset=".34" stop-color="#dfad43"/><stop offset=".53" stop-color="#ffe498"/><stop offset=".77" stop-color="#d9a13b"/><stop offset=".91" stop-color="#774312"/><stop offset="1" stop-color="#f5cd70"/></linearGradient>
+            <radialGradient id="${id}-stud" cx=".3" cy=".25" r=".8"><stop stop-color="#fffbd5"/><stop offset=".3" stop-color="#f9d879"/><stop offset=".65" stop-color="#b67c22"/><stop offset="1" stop-color="#57300a"/></radialGradient>
+        </defs>
+        <path d="M6 28 Q24 48 39 37 L47 14 Q65 41 80 28 L100 6 L120 28 Q135 41 153 14 L161 37 Q176 48 194 28 L180 96 Q100 117 20 96Z" fill="#57320d" transform="translate(0 3)"/>
+        <path d="M6 25 Q24 45 39 34 L47 11 Q65 38 80 25 L100 3 L120 25 Q135 38 153 11 L161 34 Q176 45 194 25 L180 93 Q100 114 20 93Z" fill="url(#${id}-gold)" stroke="#fff0a3" stroke-width="1.1" stroke-linejoin="round"/>
+        <path d="M14 37 Q29 49 43 40 L49 23 Q66 45 83 33 L100 14 L117 33 Q134 45 151 23 L157 40 Q171 49 186 37 L175 88 Q100 107 25 88Z" fill="none" stroke="#6d400e" stroke-width="2"/>
+        <path d="M16 38 Q29 50 44 41 L50 25 Q67 46 84 34 L100 17 L116 34 Q133 46 150 25 L156 41 Q171 50 184 38" fill="none" stroke="#fff3b2" stroke-opacity=".85" stroke-width=".8"/>
+        <g fill="none" stroke="#f6d179" stroke-width=".85" stroke-linecap="round">
+            <path d="M24 58 Q17 49 22 46 Q28 43 29 50 M27 64 Q20 70 28 77 M176 58 Q183 49 178 46 Q172 43 171 50 M173 64 Q180 70 172 77"/>
+            <path d="M88 31L100 21L112 31 M93 32L100 27L107 32"/>
+        </g>
+        <path d="M20 88 Q100 103 180 88 L178 112 Q100 126 22 112Z" fill="#603710"/>
+        <path d="M20 85 Q100 100 180 85 L178 108 Q100 122 22 108Z" fill="url(#${id}-band)" stroke="#eec26a" stroke-width=".9"/>
+        <path d="M23 90 Q100 105 177 90 M24 105 Q100 119 176 105" fill="none" stroke="#fff0a5" stroke-width=".8"/>
+        <path d="M25 94 Q100 108 175 94" fill="none" stroke="#815018" stroke-width=".65" stroke-dasharray="1 2"/>
+        <g fill="url(#${id}-stud)" stroke="#f8d77e" stroke-width=".65">
+            <circle cx="6" cy="25" r="3.5"/><circle cx="47" cy="11" r="3.5"/><circle cx="100" cy="4" r="3.5"/><circle cx="153" cy="11" r="3.5"/><circle cx="194" cy="25" r="3.5"/>
+            <ellipse cx="35" cy="100" rx="4" ry="3"/><ellipse cx="165" cy="100" rx="4" ry="3"/>
+        </g>
+    </svg>`;
+}
+
+function achPearlMarqueeHTML() {
+    const id = `bbgl-marquee-${achPearlMarqueeHTML.serial = (achPearlMarqueeHTML.serial || 0) + 1}`;
+    const points = [[83, 20], [70, 24], [56, 27], [42, 27], [28, 29], [16, 36], [12, 49], [12, 63], [12, 77], [20, 89], [33, 95], [47, 98], [61, 100]];
+    const colors = ['#f6c2eb', '#b8edff', '#e5d0ff', '#ffe6ac'];
+    const bulbs = points.map(([x, y], i) => [x, 200 - x].map(cx => `<g class="bbgl-marquee-bulb" style="--bulb-delay:${i * 45}ms;--bulb-color:${colors[i % colors.length]}"><circle cx="${cx}" cy="${y}" r="3" fill="#302c49" stroke="#e0d7ef" stroke-width=".6"/><circle class="bbgl-marquee-lamp" cx="${cx}" cy="${y}" r="1.65" fill="${colors[i % colors.length]}"/><circle cx="${cx - .3}" cy="${y - .4}" r=".7" fill="#fff"/></g>`).join('')).join('');
+    return `<svg class="bbgl-rank-pearl-marquee" viewBox="0 0 200 120" preserveAspectRatio="none" aria-hidden="true">
+        <defs>
+            <linearGradient id="${id}-pearl" x1="0" y1="0" x2="1" y2=".7"><stop stop-color="#fff5cf"/><stop offset=".17" stop-color="#f7c3e6"/><stop offset=".34" stop-color="#b5e8fa"/><stop offset=".48" stop-color="#fff"/><stop offset=".62" stop-color="#d3c1f1"/><stop offset=".8" stop-color="#f7d8ad"/><stop offset="1" stop-color="#b0e9ef"/></linearGradient>
+            <linearGradient id="${id}-metal" x2="0" y2="1"><stop stop-color="#fff"/><stop offset=".25" stop-color="#cad4ed"/><stop offset=".43" stop-color="#635879"/><stop offset=".58" stop-color="#f9efff"/><stop offset="1" stop-color="#493d62"/></linearGradient>
+            <radialGradient id="${id}-face" cx=".5" cy=".25" r=".85"><stop stop-color="#342349"/><stop offset=".55" stop-color="#141324"/><stop offset="1" stop-color="#080a16"/></radialGradient>
+            <linearGradient id="${id}-beam" x1="0" y1="1" x2="0" y2="0"><stop stop-color="#f2e5ff" stop-opacity=".48"/><stop offset=".55" stop-color="#c9eaff" stop-opacity=".12"/><stop offset="1" stop-color="#fff" stop-opacity="0"/></linearGradient>
+        </defs>
+        <path d="M100 8 C78 28 45 16 19 28 Q3 34 3 49V79Q3 98 26 102Q100 121 174 102Q197 98 197 79V49Q197 34 181 28C155 16 122 28 100 8Z" fill="#332c48" transform="translate(0 3)"/>
+        <path d="M100 5 C78 25 45 13 19 25 Q3 31 3 46V76Q3 95 26 99Q100 118 174 99Q197 95 197 76V46Q197 31 181 25C155 13 122 25 100 5Z" fill="url(#${id}-pearl)" stroke="url(#${id}-metal)" stroke-width="3"/>
+        <path d="M100 25 C75 37 44 28 26 38Q22 40 22 48V74Q22 84 37 88Q100 102 163 88Q178 84 178 74V48Q178 40 174 38C156 28 125 37 100 25Z" fill="url(#${id}-face)" stroke="#5e5379" stroke-width="2"/>
+        <path d="M100 29C75 41 46 32 29 41 M29 80Q100 105 171 80" fill="none" stroke="url(#${id}-pearl)" stroke-opacity=".6" stroke-width=".7"/>
+        ${bulbs}
+        <g class="bbgl-marquee-beams" fill="url(#${id}-beam)"><path d="M25 91L105 29L160 35Z"/><path d="M175 91L95 29L40 35Z"/></g>
+        <g fill="url(#${id}-metal)" stroke="#35314c" stroke-width=".7"><path d="M16 94L24 82L33 88L27 100Z"/><path d="M184 94L176 82L167 88L173 100Z"/></g>
+        <path d="M23 83L31 88 M177 83L169 88" stroke="#f1f8ff" stroke-width="2"/>
+        <path d="M100 1L104 10L114 11L107 18L109 28L100 23L91 28L93 18L86 11L96 10Z" fill="url(#${id}-pearl)" stroke="#fbf3ff" stroke-width=".8"/>
+        <path d="M100 5V20L94 24L96 16L90 13L98 12Z" fill="#fff" opacity=".45"/>
+        <path d="M67 99Q100 104 133 99L130 114Q100 120 70 114Z" fill="url(#${id}-pearl)" stroke="url(#${id}-metal)" stroke-width="1"/>
+    </svg>`;
+}
+
 function achRankPlaqueHTML(cls, style, tip, revealed, label, textWrapperClass = '') {
+    if (revealed && cls.split(/\s+/).includes('bbgl-title-card-rank-plaque') && cls.split(/\s+/).includes('finish-silver')) {
+        return `<div class="${cls}"${style ? ` style="${style}"` : ''} data-tooltip="${achEsc(tip)}">${achEmeraldPlaqueHTML(label)}</div>`;
+    }
     const nameTag = revealed && cls.split(/\s+/).includes('bbgl-title-card-rank-plaque') && cls.split(/\s+/).includes('finish-mill');
     const lightbox = revealed && cls.split(/\s+/).includes('bbgl-title-card-rank-plaque') && cls.split(/\s+/).includes('finish-machined');
+    const steelCrest = revealed && cls.split(/\s+/).includes('bbgl-title-card-rank-plaque') && cls.split(/\s+/).includes('finish-polished');
+    const goldCrown = revealed && cls.split(/\s+/).includes('bbgl-title-card-rank-plaque') && cls.split(/\s+/).includes('finish-gold');
+    const pearlMarquee = revealed && cls.split(/\s+/).includes('bbgl-title-card-rank-plaque') && cls.split(/\s+/).includes('finish-pearl');
     const lines = nameTag
         ? `<span class="bbgl-rank-notch-line" data-rank-text="${achEsc(label)}">${achEsc(label)}</span>`
         : revealed ? achRankPlaqueLabelHTML(label) : '<span class="bbgl-rank-notch-line">?</span>';
     const greeting = nameTag ? '<span class="bbgl-rank-name-tag-heading">Hello, my RANK is...</span>'
-        : lightbox ? '<span class="bbgl-rank-lightbox-heading"><span>RANK</span></span>' : '';
+        : lightbox ? '<span class="bbgl-rank-lightbox-heading"><span>RANK</span></span>'
+        : steelCrest ? '<span class="bbgl-rank-steel-heading">RANK</span>'
+        : goldCrown ? `${achGoldCrownHTML()}<span class="bbgl-rank-crown-heading">RANK</span>`
+        : pearlMarquee ? `${achPearlMarqueeHTML()}<span class="bbgl-rank-marquee-heading">RANK</span>` : '';
     const inner = greeting + (textWrapperClass ? `<span class="${textWrapperClass}">${lines}</span>` : lines);
     const styleAttr = style ? ` style="${style}"` : '';
     return `<div class="${cls}"${styleAttr} data-tooltip="${achEsc(tip)}"><span class="bbgl-rank-notch-label"><span class="bbgl-rank-notch-face"><span class="bbgl-rank-notch-fx"></span>${inner}</span><span class="bbgl-rank-notch-cradle"></span></span></div>`;
@@ -2328,7 +2420,7 @@ function achBuildPageTitles() {
         : '';
 
     const titleValue = titleHtml
-        ? `<i class="bbgl-lvl-title bbgl-titles-title"><span class="bbgl-titles-the">The</span> ${titleHtml}</i>${resetBtn}`
+        ? `<i class="bbgl-lvl-title bbgl-titles-title">${titleHtml}</i>${resetBtn}`
         : `<span class="bbgl-title-card-empty">Unequipped</span>`;
     const head = `<div class="bbgl-titles-center">` +
         `<div class="bbgl-titles-sign">` +
@@ -2339,8 +2431,8 @@ function achBuildPageTitles() {
         `</div>` +
         `<div class="bbgl-title-card" data-sign-stage="0" data-rank-finish="${currentRank.finish}" data-rank-material="${currentRank.material}">` +
         `<div class="bbgl-title-card-sign">` +
-        `<span class="bbgl-title-card-title-label">Title</span>` +
         `<div class="bbgl-title-card-sign-face">` +
+        `<span class="bbgl-title-card-title-label">The</span>` +
         `<span class="bbgl-title-card-value">${titleValue}</span>` +
         `</div>` +
         `</div>` +

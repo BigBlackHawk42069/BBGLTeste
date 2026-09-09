@@ -703,6 +703,12 @@
                         --bbgl-label-case: none;
                         --bbgl-top-h: 177px;
                         --bbgl-top-h-tall: 241px;
+                        /* Toolbar band height, and since #bbgl-toolbar's children all centre against it, the
+                           icon row's vertical position in this mode. Derived, not eyeballed: it is the gap the
+                           icons used to carry above them, plus the tallest SVG, plus that same gap again
+                           (5.5 + 16 + 5.5). Centring in a band built that way lands the row on precisely the
+                           top offset it had before it was centred, with matching clearance underneath. */
+                        --bbgl-toolbar-h: 27px;
                         width: min(576px, calc(100vw - 20px));
                         height: 633px;
                         max-height: calc(100vh - 50px) !important;
@@ -717,6 +723,8 @@
                     #bbgl-panel.bbgl-compact {
                         --bbgl-top-h: 30%;
                         --bbgl-top-h-tall: 40%;
+                        /* 5.5 + 14 + 5.5, same derivation as --bbgl-toolbar-h on .bbgl-expanded above. */
+                        --bbgl-toolbar-h: 25px;
                     }
 
                     #bbgl-panel.bbgl-tall {
@@ -733,6 +741,11 @@
                     }
 
                     #bbgl-panel.bbgl-mode-page {
+                        /* Page mode scaled both the icons (14.5px -> 18px) and their old top offset
+                           (4.5px -> 10px) along --bbgl-page-t, so the band tracks that same curve through the
+                           same gap + SVG + gap derivation: 4.5 + 14.5 + 4.5 = 23.5 at the low end, 10 + 18 + 10
+                           = 38 at the high end. */
+                        --bbgl-toolbar-h: clamp(23.5px, calc(23.5px + 14.5px * var(--bbgl-page-t)), 38px);
                         position: relative !important;
                         top: 0 !important;
                         left: 0 !important;
@@ -1651,6 +1664,50 @@
                         top: var(--bbgl-top-h-tall);
                     }
 
+                    /* Dedicated box for the SVG toolbar row (view-switcher icons, item counters,
+                       copy button). Every one of those was already position:absolute against
+                       #bbgl-top-panel with hand-tuned coordinates, so this wrapper is deliberately
+                       pinned to 0,0 at full width with no border and no padding: absolutely
+                       positioned children resolve against a containing block's PADDING box, so
+                       each icon's existing top/left/right - and #bbgl-item-counters' percentage
+                       right - lands on exactly the same pixel it did as a direct child of the
+                       panel. That is also why #bbgl-top-panel's mode-varying padding-top never
+                       shifted these icons and still doesn't.
+
+                       Two invariants this rule has to keep:
+                       - top/left stay 0. measureToolbarCenter() (07-section-vi-ui.js) reads the
+                         icons' offsetLeft/offsetTop, and their offsetParent is this element now
+                         rather than #bbgl-top-panel. Any offset here silently drags the docked
+                         achievements/stickerbook pagination clusters with it.
+                       - z-index stays 60. The icons carried 59 and #bbgl-item-counters 60, and
+                         nothing else in the panel stacks between the floating labels (50) and the
+                         pagination clusters (61), so folding them into one stacking context at 60
+                         reproduces the old paint order exactly.
+
+                       No overflow, either: the active view's icon is scaled 1.15 with a drop-shadow
+                       glow that reaches outside this box and must not be clipped.
+
+                       pointer-events:none stops the band from swallowing clicks meant for whatever
+                       sits under it - the graph HUD pills (z-index 40) run along this same row.
+                       Every child re-enables its own.
+
+                       The gradient bottoms out at fully transparent exactly at the box's own bottom
+                       edge, so the toolbar reads as a shaded band with no hard border under it.
+                       --bbgl-toolbar-shade is the single knob for how dark the top of that fade is. */
+                    #bbgl-toolbar {
+                        position: absolute;
+                        top: 0;
+                        left: 0;
+                        right: 0;
+                        height: var(--bbgl-toolbar-h, 20px);
+                        z-index: 60;
+                        pointer-events: none;
+                        background: linear-gradient(180deg,
+                            rgba(0, 0, 0, var(--bbgl-toolbar-shade, .5)) 0%,
+                            rgba(0, 0, 0, calc(var(--bbgl-toolbar-shade, .5) * .42)) 55%,
+                            rgba(0, 0, 0, 0) 100%);
+                    }
+
                     #bbgl-tall-toggle,
                     #bbgl-ledger-toggle,
                     #bbgl-graph-toggle,
@@ -1658,6 +1715,16 @@
                     #bbgl-sticker-toggle,
                     #bbgl-copy-btn {
                         position: absolute;
+                        /* Vertical placement for every toolbar child is this one rule now: pinned to both
+                           edges of #bbgl-toolbar with auto block margins, which is what centres an absolutely
+                           positioned box of known height inside its containing block. Done this way rather
+                           than top:50% + translateY(-50%) so it never collides with the transform:scale(1.15)
+                           the active view's icon carries. Every hand-tuned per-mode top value that used to
+                           live across four rule sets is gone - move --bbgl-toolbar-h and the row follows. */
+                        top: 0;
+                        bottom: 0;
+                        margin-top: auto;
+                        margin-bottom: auto;
                         color: rgba(255, 255, 255, .55);
                         cursor: pointer;
                         z-index: 60;
@@ -1679,12 +1746,14 @@
                     }
 
                     #bbgl-tall-toggle {
-                        top: 3px;
                         left: 3px;
                         font-size: 15px;
                         font-weight: 700;
                         width: 19px;
                         height: 19px;
+                        /* #bbgl-toolbar is pointer-events:none; every other child of it already
+                           re-enables its own, this one relied on the default. */
+                        pointer-events: auto;
                     }
 
                     #bbgl-ledger-toggle,
@@ -1692,7 +1761,6 @@
                     #bbgl-achievements-toggle,
                     #bbgl-sticker-toggle,
                     #bbgl-copy-btn {
-                        top: 5.5px;
                         z-index: 59;
                         opacity: 0;
                         pointer-events: none;
@@ -1771,7 +1839,6 @@
                     }
 
                     .bbgl-expanded #bbgl-tall-toggle {
-                        top: 3px;
                         left: 3px;
                         font-size: 15px;
                         width: 19px;
@@ -1815,7 +1882,6 @@
                     #bbgl-panel.bbgl-mode-page #bbgl-copy-btn {
                         width: clamp(14.5px, calc(14.5px + 3.5px * var(--bbgl-page-t)), 18px);
                         height: clamp(14.5px, calc(14.5px + 3.5px * var(--bbgl-page-t)), 18px);
-                        top: clamp(4.5px, calc(4.5px + 5.5px * var(--bbgl-page-t)), 10px);
                     }
 
                     #bbgl-panel.bbgl-mode-page #bbgl-ledger-toggle {
@@ -2693,7 +2759,6 @@
 
                     .copy-hist-btn {
                         position: absolute;
-                        top: 4px;
                         right: 5px;
                         width: 14.5px;
                         height: 14.5px;
@@ -2737,7 +2802,10 @@
 
                     #bbgl-item-counters {
                         position: absolute;
-                        top: 5.5px;
+                        top: 0;
+                        bottom: 0;
+                        margin-top: auto;
+                        margin-bottom: auto;
                         right: 10%;
                         display: none;
                         gap: 10px;
@@ -2766,7 +2834,6 @@
 
                     .bbgl-expanded #bbgl-item-counters {
                         font-size: clamp(11px, calc(11px + 1px * var(--bbgl-dock-t)), 12px);
-                        top: 6px;
                         right: 38px;
                         gap: clamp(4px, calc(4px + 10px * var(--bbgl-dock-t)), 14px);
                     }
@@ -2775,7 +2842,6 @@
                         font-size: clamp(8.5px, calc(8.5px + 5.5px * var(--bbgl-page-t)), 14px);
                         gap: clamp(4px, calc(4px + 10px * var(--bbgl-page-t)), 14px);
                         right: clamp(38px, calc(38px + 4px * var(--bbgl-page-t)), 42px);
-                        top: clamp(6px, calc(6px + 4px * var(--bbgl-page-t)), 10px);
                         height: clamp(16px, calc(16px + 2px * var(--bbgl-page-t)), 18px);
                     }
 
@@ -2813,7 +2879,6 @@
                     #bbgl-panel.bbgl-mode-page .copy-hist-btn {
                         width: clamp(16px, calc(16px + 2px * var(--bbgl-page-t)), 18px);
                         height: clamp(16px, calc(16px + 2px * var(--bbgl-page-t)), 18px);
-                        top: clamp(6px, calc(6px + 4px * var(--bbgl-page-t)), 10px);
                     }
 
                     #bbgl-panel.bbgl-mode-page #bbgl-graph-container .g-hud {
@@ -7044,31 +7109,25 @@
                     .bbgl-title-card-connector::after { right: 0; }
 
                     .bbgl-title-card-title-label {
-                        top: 0;
-                        bottom: auto;
-                        z-index: 5;
-                        font-family: 'Barlow Condensed', 'Arial Narrow', sans-serif;
-                        font-size: var(--bbgl-title-label-size);
+                        position: relative;
+                        left: auto;
+                        transform: none;
+                        flex: 0 0 auto;
+                        font-family: Georgia, 'Times New Roman', serif;
+                        font-size: max(8px, calc(var(--bbgl-t-fs-line) * .8));
+                        font-style: italic;
                         font-weight: 500;
-                        letter-spacing: .06em;
-                        color: transparent;
-                        background: linear-gradient(180deg, #e4e9e9 0%, #858d8f 42%, #343a3c 58%, #aeb5b6 100%);
-                        background-clip: text;
-                        -webkit-background-clip: text;
-                        -webkit-text-fill-color: transparent;
-                        -webkit-text-stroke: 0;
-                        text-shadow:
-                            0 1px 0 #171a1b,
-                            0 0 1px rgba(230, 236, 236, .35);
+                        line-height: 1;
+                        letter-spacing: .02em;
+                        text-transform: none;
+                        color: #c3beb2;
+                        text-shadow: 0 1px 1px #050607;
                     }
 
-                    /* The sign's outside edge is deliberately quiet at stage zero. Later ornament
-                       tiers can key off .bbgl-title-card[data-sign-stage] and enrich this hardware
-                       without touching the title word finishes or changing the component tree. */
                     .bbgl-title-card-sign {
-                        --bbgl-title-sign-edge: #555b5d;
-                        --bbgl-title-sign-highlight: rgba(225, 232, 232, .16);
-                        --bbgl-title-sign-inset: max(2px, calc(var(--bbgl-t-gap) * .55));
+                        --bbgl-title-sign-edge: #41464a;
+                        --bbgl-title-sign-highlight: rgba(223, 204, 246, .3);
+                        --bbgl-title-sign-inset: 1px;
                         position: relative;
                         z-index: 2;
                         align-self: stretch;
@@ -7077,16 +7136,18 @@
                         min-width: 0;
                         min-height: 0;
                         padding: var(--bbgl-title-sign-inset);
-                        border: 1px solid #171a1b;
+                        border: 1px solid #101114;
                         border-radius: max(3px, calc(var(--bbgl-t-win-radius) * .55));
                         box-sizing: border-box;
                         background:
-                            linear-gradient(90deg, rgba(255, 255, 255, .08), transparent 14% 84%, rgba(0, 0, 0, .28)),
-                            linear-gradient(180deg, #6d7476 0%, var(--bbgl-title-sign-edge) 10%, #282d2f 52%, #151819 100%);
+                            radial-gradient(ellipse 70% 55% at 50% 0%, rgba(185, 126, 234, .3), transparent 100%),
+                            linear-gradient(110deg, #777b7d, var(--bbgl-title-sign-edge) 19%, #24272b 72%, #56595b);
                         box-shadow:
                             inset 0 1px 0 var(--bbgl-title-sign-highlight),
                             inset 0 -1px 0 rgba(0, 0, 0, .75),
-                            0 2px 3px rgba(0, 0, 0, .52);
+                            0 2px 0 #24262a,
+                            0 3px 0 #08090b,
+                            0 4px 5px rgba(0, 0, 0, .55);
                     }
 
                     .bbgl-title-card-sign-face {
@@ -7096,27 +7157,25 @@
                         flex-direction: column;
                         align-items: center;
                         justify-content: center;
-                        gap: calc(var(--bbgl-t-gap-v) * .65);
+                        gap: max(1px, calc(var(--bbgl-t-gap-v) * .4));
                         width: 100%;
                         height: 100%;
                         min-width: 0;
                         min-height: 0;
-                        padding: calc(var(--bbgl-t-gap-v) * .75) calc(var(--bbgl-t-gap) * .8);
-                        border: 1px solid rgba(170, 179, 180, .18);
+                        padding: 2px max(2px, calc(var(--bbgl-t-gap) * .45));
+                        border: 1px solid rgba(5, 6, 8, .9);
                         border-radius: max(2px, calc(var(--bbgl-t-win-radius) * .3));
                         box-sizing: border-box;
                         background:
-                            radial-gradient(circle at 4px 4px, #8d9495 0 .45px, #25292a .7px 1.15px, transparent 1.3px),
-                            radial-gradient(circle at calc(100% - 4px) 4px, #8d9495 0 .45px, #25292a .7px 1.15px, transparent 1.3px),
-                            radial-gradient(circle at 4px calc(100% - 4px), #727879 0 .45px, #202425 .7px 1.15px, transparent 1.3px),
-                            radial-gradient(circle at calc(100% - 4px) calc(100% - 4px), #727879 0 .45px, #202425 .7px 1.15px, transparent 1.3px),
-                            repeating-linear-gradient(0deg, rgba(255, 255, 255, .016) 0 1px, transparent 1px 3px),
-                            radial-gradient(ellipse 85% 65% at 50% 44%, rgba(255, 255, 255, .035), transparent 72%),
-                            linear-gradient(160deg, #202426, #090b0c 57%, #16191a);
+                            radial-gradient(circle at 3px 3px, #737077 0 .45px, #15171b .7px 1px, transparent 1.2px),
+                            radial-gradient(circle at calc(100% - 3px) 3px, #737077 0 .45px, #15171b .7px 1px, transparent 1.2px),
+                            radial-gradient(ellipse 85% 50% at 50% 0%, rgba(168, 85, 247, .13), transparent 100%),
+                            linear-gradient(165deg, rgba(211, 218, 226, .055), transparent 42%),
+                            linear-gradient(180deg, #191c22, #0b0e12 55%, #101419);
                         box-shadow:
-                            inset 0 1px 1px rgba(255, 255, 255, .055),
+                            inset 0 1px 1px rgba(220, 201, 241, .1),
                             inset 0 -1px 1px rgba(0, 0, 0, .8),
-                            inset 0 0 9px rgba(0, 0, 0, .5);
+                            inset 0 0 5px rgba(0, 0, 0, .3);
                     }
 
                     .bbgl-title-card-value {
@@ -7719,12 +7778,20 @@
                     }
 
                     @keyframes bbgl-rank-name-fluorescent-on {
-                        0%, 30%, 34.01%, 37.2%, 43.61%, 48% {
+                        0%, 30%, 33%, 40%, 45%, 64%, 74% {
                             color: #858a8d;
                             font-weight: 400;
                             text-shadow: 0 1px 1px rgba(0, 0, 0, .68);
                         }
-                        30.01%, 34%, 37.21%, 43.6% {
+                        30.01%, 38%, 44% {
+                            color: #a3adaf;
+                            font-weight: 500;
+                            text-shadow:
+                                0 1px 1px rgba(0, 0, 0, .68),
+                                0 0 2px rgba(224, 232, 235, .25),
+                                0 0 5px rgba(207, 221, 226, .10);
+                        }
+                        53%, 72% {
                             color: #c9ced0;
                             font-weight: 500;
                             text-shadow:
@@ -7732,7 +7799,7 @@
                                 0 0 3px rgba(224, 232, 235, .50),
                                 0 0 7px rgba(207, 221, 226, .24);
                         }
-                        48.01%, 100% {
+                        76%, 100% {
                             color: #d9dddf;
                             font-weight: 500;
                             text-shadow:
@@ -8681,9 +8748,10 @@
                     }
 
                     @keyframes bbgl-rank-lightbox-on {
-                        0%, 30%, 34.01%, 37.2%, 43.61%, 48% { opacity: 0; }
-                        30.01%, 34%, 37.21%, 43.6% { opacity: .55; }
-                        48.01%, 100% { opacity: 1; }
+                        0%, 30%, 33%, 40%, 45%, 64%, 74% { opacity: 0; }
+                        30.01%, 38%, 44% { opacity: .25; }
+                        53%, 72% { opacity: .65; }
+                        76%, 100% { opacity: 1; }
                     }
 
                     .bbgl-title-card-rank-plaque.finish-machined .bbgl-rank-notch-label {
@@ -8696,15 +8764,20 @@
                     }
 
                     @keyframes bbgl-rank-lightbox-glow-on {
-                        0%, 30%, 34.01%, 37.2%, 43.61%, 48% {
+                        0%, 30%, 33%, 40%, 45%, 64%, 74% {
                             filter: none;
                         }
-                        30.01%, 34%, 37.21%, 43.6% {
+                        30.01%, 38%, 44% {
+                            filter:
+                                drop-shadow(0 0 3px rgba(224, 232, 235, .10))
+                                drop-shadow(0 0 5px rgba(207, 221, 226, .04));
+                        }
+                        53%, 72% {
                             filter:
                                 drop-shadow(0 0 4px rgba(224, 232, 235, .23))
                                 drop-shadow(0 0 7px rgba(207, 221, 226, .10));
                         }
-                        48.01%, 100% {
+                        76%, 100% {
                             filter:
                                 drop-shadow(0 0 4px rgba(232, 239, 242, .38))
                                 drop-shadow(0 0 8px rgba(216, 229, 234, .20))
@@ -8719,6 +8792,249 @@
                     #bbgl-panel.bbgl-no-animations .bbgl-title-card-rank-plaque.finish-machined .bbgl-rank-notch-face::before {
                         animation: none;
                         opacity: 1;
+                    }
+
+                    .bbgl-title-card[data-rank-finish="polished"] .bbgl-title-card-rank-label {
+                        display: none;
+                    }
+
+                    .bbgl-title-card-rank-plaque.finish-polished {
+                        container-type: size;
+                        --rank-drop: none;
+                    }
+
+                    .bbgl-title-card-rank-plaque.finish-polished .bbgl-rank-notch-face {
+                        --rank-steel-outline: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100' preserveAspectRatio='none'%3E%3Cpath d='M50 1 C59 1 64 9 73 10 L91 10 Q98 10 98 17 L96 54 C95 73 77 85 50 99 C23 85 5 73 4 54 L2 17 Q2 10 9 10 L27 10 C36 9 41 1 50 1Z'/%3E%3C/svg%3E");
+                        padding: 23cqh 10cqw 23cqh;
+                        background: linear-gradient(155deg, #f9ffff 0%, #aebbc0 15%, #eef5f8 23%, #59666d 35%, #d9e5ea 46%, #fff 49%, #87969e 57%, #34434d 73%, #c1d0d8 87%, #f2f9fc 100%);
+                        box-shadow: none;
+                        mask: var(--rank-steel-outline) center / 100% 100% no-repeat;
+                        -webkit-mask: var(--rank-steel-outline) center / 100% 100% no-repeat;
+                        overflow: hidden;
+                    }
+
+                    .bbgl-title-card-rank-plaque.finish-polished .bbgl-rank-notch-fx {
+                        inset: 3cqmin;
+                        mask: var(--rank-steel-outline) center / 100% 100% no-repeat;
+                        -webkit-mask: var(--rank-steel-outline) center / 100% 100% no-repeat;
+                        background: linear-gradient(165deg, #cad5da 0%, #74838b 19%, #3d4c55 36%, #637680 55%, #a2b2bb 65%, #44545e 83%, #8c9ca5 100%);
+                        box-shadow: inset 0 1px 1px rgba(255, 255, 255, .8);
+                    }
+
+                    .bbgl-title-card-rank-plaque.finish-polished .bbgl-rank-notch-fx::before {
+                        content: '';
+                        position: absolute;
+                        inset: 18cqh 5cqw 9cqh;
+                        border: 0;
+                        border-radius: 0;
+                        mask: var(--rank-steel-outline) center / 100% 100% no-repeat;
+                        -webkit-mask: var(--rank-steel-outline) center / 100% 100% no-repeat;
+                        background: linear-gradient(165deg, #46565f, #293943 58%, #536770);
+                        box-shadow: none;
+                    }
+
+                    .bbgl-title-card-rank-plaque.finish-polished .bbgl-rank-notch-fx::after {
+                        content: '';
+                        display: block;
+                        position: absolute;
+                        inset: 0;
+                        border: 0;
+                        box-shadow: none;
+                        background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100' preserveAspectRatio='none'%3E%3Cpath fill='none' stroke='%23d6e3eb' stroke-width='.65' d='M32 16 L11 16 Q8 16 8 20 L10 53 C11 68 27 80 50 92 C73 80 89 68 90 53 L92 20 Q92 16 89 16 L68 16'/%3E%3C/svg%3E") center / 100% 100% no-repeat;
+                        opacity: .75;
+                    }
+
+                    .bbgl-title-card-rank-plaque.finish-polished .bbgl-rank-notch-face::before {
+                        background: repeating-linear-gradient(0deg, rgba(255, 255, 255, .035) 0 .5px, transparent .5px 3px);
+                        opacity: .35;
+                    }
+
+                    .bbgl-rank-steel-heading {
+                        position: absolute;
+                        top: 5cqh;
+                        left: 50%;
+                        transform: translateX(-50%);
+                        z-index: 2;
+                        font-family: 'Barlow Condensed', 'Arial Narrow', sans-serif;
+                        font-size: min(11cqw, 13cqh);
+                        font-weight: 600;
+                        line-height: 1;
+                        letter-spacing: .12em;
+                        color: #283841;
+                        text-shadow: 0 1px 0 rgba(240, 249, 255, .65);
+                    }
+
+                    .bbgl-title-card-rank-plaque.finish-polished .bbgl-rank-title-text {
+                        min-width: 0;
+                        min-height: 0;
+                        max-width: 100%;
+                        font-size: min(9cqw, 23cqh);
+                        line-height: 1.18;
+                    }
+
+                    .bbgl-title-card[data-rank-finish="silver"] .bbgl-title-card-rank-label {
+                        display: none;
+                    }
+
+                    .bbgl-rank-emerald-crystal {
+                        display: block;
+                        width: 100%;
+                        height: 100%;
+                        overflow: hidden;
+                    }
+
+                    .bbgl-title-card[data-rank-finish="gold"] .bbgl-title-card-rank-label {
+                        display: none;
+                    }
+
+                    .bbgl-title-card-rank-plaque.finish-gold {
+                        container-type: size;
+                        --rank-drop: none;
+                    }
+
+                    .bbgl-title-card-rank-plaque.finish-gold .bbgl-rank-notch-face {
+                        padding: 0;
+                        background: none;
+                        box-shadow: none;
+                        mask: none;
+                        -webkit-mask: none;
+                    }
+
+                    .bbgl-title-card-rank-plaque.finish-gold .bbgl-rank-notch-face::before,
+                    .bbgl-title-card-rank-plaque.finish-gold .bbgl-rank-notch-face::after,
+                    .bbgl-title-card-rank-plaque.finish-gold .bbgl-rank-notch-fx {
+                        display: none;
+                    }
+
+                    .bbgl-rank-gold-crown {
+                        position: absolute;
+                        inset: 0;
+                        width: 100%;
+                        height: 100%;
+                        overflow: hidden;
+                    }
+
+                    .bbgl-title-card-rank-plaque.finish-gold .bbgl-rank-title-text {
+                        position: absolute;
+                        top: 35%;
+                        left: 18%;
+                        width: 64%;
+                        height: 37%;
+                        min-width: 0;
+                        min-height: 0;
+                        font-size: min(10cqw, 17cqh);
+                        line-height: 1.08;
+                    }
+
+                    .bbgl-title-card-rank-plaque.finish-gold.is-revealed .bbgl-rank-notch-line {
+                        background: none;
+                        color: #69400f;
+                        -webkit-text-fill-color: currentColor;
+                        text-shadow: 0 -0.5px 0 rgba(54, 28, 3, .75), 0 1px 0 rgba(255, 243, 183, .85);
+                        filter: none;
+                        animation: none;
+                    }
+
+                    .bbgl-title-card-rank-plaque.finish-gold.is-revealed .bbgl-rank-notch-line::before {
+                        display: none;
+                    }
+
+                    .bbgl-rank-crown-heading {
+                        position: absolute;
+                        top: 83%;
+                        left: 50%;
+                        transform: translateX(-50%);
+                        z-index: 2;
+                        font-family: 'Barlow Condensed', 'Arial Narrow', sans-serif;
+                        font-size: min(10cqw, 12cqh);
+                        font-weight: 700;
+                        line-height: 1;
+                        letter-spacing: .14em;
+                        color: #5b340c;
+                        text-shadow: 0 1px 0 rgba(255, 242, 178, .8);
+                    }
+
+                    .bbgl-title-card[data-rank-finish="pearl"] .bbgl-title-card-rank-label {
+                        display: none;
+                    }
+
+                    .bbgl-title-card-rank-plaque.finish-pearl {
+                        container-type: size;
+                        --rank-drop: none;
+                    }
+
+                    .bbgl-title-card-rank-plaque.finish-pearl .bbgl-rank-notch-face {
+                        padding: 0;
+                        background: none;
+                        box-shadow: none;
+                        mask: none;
+                        -webkit-mask: none;
+                    }
+
+                    .bbgl-title-card-rank-plaque.finish-pearl .bbgl-rank-notch-fx,
+                    .bbgl-title-card-rank-plaque.finish-pearl .bbgl-rank-notch-face::before,
+                    .bbgl-title-card-rank-plaque.finish-pearl .bbgl-rank-notch-face::after {
+                        display: none;
+                    }
+
+                    .bbgl-rank-pearl-marquee {
+                        position: absolute;
+                        inset: 0;
+                        width: 100%;
+                        height: 100%;
+                        overflow: hidden;
+                    }
+
+                    .bbgl-title-card-rank-plaque.finish-pearl .bbgl-rank-title-text {
+                        position: absolute;
+                        top: 31%;
+                        left: 18%;
+                        width: 64%;
+                        height: 43%;
+                        min-width: 0;
+                        min-height: 0;
+                        font-size: min(17cqw, 23cqh);
+                        line-height: 1.06;
+                    }
+
+                    .bbgl-rank-marquee-heading {
+                        position: absolute;
+                        top: 86%;
+                        left: 50%;
+                        transform: translateX(-50%);
+                        z-index: 2;
+                        font-family: 'Barlow Condensed', 'Arial Narrow', sans-serif;
+                        font-size: min(9cqw, 10cqh);
+                        font-weight: 700;
+                        line-height: 1;
+                        letter-spacing: .16em;
+                        color: #50425d;
+                        text-shadow: 0 1px 0 rgba(255, 255, 255, .8);
+                    }
+
+                    .bbgl-marquee-bulb {
+                        animation: bbgl-marquee-ignite .35s ease-out both;
+                        animation-delay: calc(var(--bbgl-titles-animation-delay, 0ms) + var(--bulb-delay));
+                    }
+
+                    .bbgl-marquee-lamp {
+                        filter: drop-shadow(0 0 2px var(--bulb-color));
+                    }
+
+                    .bbgl-marquee-beams {
+                        mix-blend-mode: screen;
+                        animation: bbgl-marquee-ignite 1.2s ease-out both;
+                        animation-delay: calc(var(--bbgl-titles-animation-delay, 0ms) + 650ms);
+                    }
+
+                    @keyframes bbgl-marquee-ignite {
+                        from { opacity: .12; }
+                        to { opacity: 1; }
+                    }
+
+                    #bbgl-panel.bbgl-no-animations .bbgl-marquee-bulb,
+                    #bbgl-panel.bbgl-no-animations .bbgl-marquee-beams {
+                        animation: none;
                     }
 
                     .bbgl-title-card-rank-plaque .bbgl-rank-notch-cradle {
