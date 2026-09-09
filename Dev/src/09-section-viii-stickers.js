@@ -21,7 +21,7 @@
     }
 
     // Total numbered pages (the sponsor page at STICKER_SPONSOR_PAGE sits before these and is not
-    // counted here). Was recomputed inline at four call sites across two files.
+    // counted here).
     function stickerPageCount() {
         return Math.ceil(runtime.stickerData.length / 10);
     }
@@ -32,10 +32,8 @@
     }
 
     // The single place page state is mutated — clamped to the real page range so no caller has to
-    // carry its own bounds guard (they used to, and disagreed: the arrows refused to step below
-    // page 0 while swipe allowed it, which is why the mini prev arrow couldn't reach sponsorship).
-    // Persisting to viewState here rather than at each call site is what makes dot clicks survive a
-    // panel close/reopen; previously only some of them did.
+    // carry its own bounds guard. Persisting to viewState here (rather than at each call site) is
+    // what makes every control's page selection survive a panel close/reopen.
     function gotoStickerPage(p) {
         const t = Math.max(STICKER_SPONSOR_PAGE, Math.min(p, stickerPageCount() - 1));
         if (t === runtime.currentStickerPage) return;
@@ -77,8 +75,7 @@
             nb = dom.stickerNext;
         if (pb) {
             pb.classList.toggle('disabled', runtime.currentStickerPage <= STICKER_SPONSOR_PAGE);
-            // Gold when the step it would take lands on the sponsor page — this is the whole of
-            // what used to be a second, separately-positioned #sticker-sponsor-btn element.
+            // Gold when the step it would take lands on the sponsor page.
             pb.classList.toggle('is-sponsor', runtime.currentStickerPage === 0);
         }
         if (nb) nb.classList.toggle('disabled', runtime.currentStickerPage >= tp - 1);
@@ -179,20 +176,14 @@
     /**
      *  Brand-mark placement
      *  ------------------------------------------------------------------------
-     *  The maker's mark printed on a sticker's paper backing (.lb-brand) is centred
-     *  on the silhouette's pole of inaccessibility - the centre of the largest circle
-     *  that fits entirely inside the opaque area. That lands it on the widest stretch
-     *  of backing rather than the bounding-box centre, which on a limbed figure is
-     *  usually a gap between an arm and the torso.
+     *  The maker's mark (.lb-brand) is centred on the silhouette's pole of inaccessibility — the
+     *  centre of the largest circle fitting entirely inside the opaque area — so it lands on the
+     *  widest stretch of backing rather than the bounding-box centre (often a gap between limb and
+     *  torso). Fixed size on purpose: scaling it per-sticker would stop it reading as branding.
      *
-     *  The mark is a FIXED size on purpose: scaling it to the circle would make the
-     *  branding a different size on every sticker, which stops reading as branding.
-     *  Only its position adapts.
-     *
-     *  Anchors are normalised to IMAGE space and cached per URL, since that half is
-     *  pure image analysis. Projecting one into ELEMENT space depends on the live box
-     *  (.layer-back masks with contain, so the sprite is letterboxed and centred), so
-     *  that half re-runs on every resize.
+     *  Anchors are normalised to IMAGE space and cached per URL (pure image analysis); projecting
+     *  into ELEMENT space depends on the live box (.layer-back masks with contain), so that half
+     *  re-runs on every resize.
      */
     const _brandAnchors = new Map();
 

@@ -27,40 +27,18 @@
         ACHIEVEMENTS: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6" fill="none"></path><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18" fill="none"></path><path d="M4 22h16" fill="none"></path><path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22" fill="none"></path><path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22" fill="none"></path><path d="M18 2H6v7a6 6 0 0 0 12 0V2Z" fill="none"></path></svg>`,
         PASTE: `<svg viewBox="0 0 24 24"><path d="M19,20H5V4H7V7H17V4H19M12,2A1,1 0 0,1 13,3A1,1 0 0,1 12,4A1,1 0 0,1 11,3A1,1 0 0,1 12,2M19,2H14.82C14.4,0.84 13.3,0 12,0C10.7,0 9.6,0.84 9.18,2H5A2,2 0 0,0 3,4V20A2,2 0 0,0 5,22H19A2,2 0 0,0 21,20V4A2,2 0 0,0 19,2Z"/></svg>`,
         CHECK: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17 4 12" fill="none"/></svg>`,
-        // Titles page — one shared crown for all 40 stat-title tiers. Derived from the silhouette
-        // subpath of LOGO_PATH below — the SAME crown used for the sidebar icon, the footer tab
-        // and the panel header, not the level badge's own EXP_CROWN_PATH (a separate, flush-
-        // bottomed variant tuned for that specific badge) — with two deliberate edits, both purely
-        // geometric (no CSS stretch/distortion involved):
-        //   • TALLER: the two "leg" curves connecting the spike/ball cluster down to the base rim
-        //     (everything between the left valley at ~(88,96) and the right valley at ~(317,94) in
-        //     the original LOGO_PATH coordinates) are extended 33 units further down. The source
-        //     logo's base band was too short to read well once blown up to icon size.
-        //   • WIDER: the spike/ball cluster itself (everything OUTSIDE that same leg+rim range —
-        //     i.e. the three spike tips and their balls) is scaled 8% wider horizontally around
-        //     the crown's own centre x (~200), so the two outer spikes sit further from the centre
-        //     one while the base/rim underneath is untouched.
-        // Both edits were confirmed by render to introduce no kinks at the seams where the edited
-        // regions rejoin the untouched ones — the connecting curves (the short hops from the
-        // widened spike cluster into the unwidened valley points) absorb the size difference
-        // smoothly on their own. The other three subpaths of LOGO_PATH (two small disconnected
-        // gem/swirl flourishes and the wavy base arch) are dropped entirely, since this icon is
-        // traced by stroke-dashoffset and a jump to a disconnected shape mid-trace would look
-        // broken. The silhouette is already a closed loop that winds counterclockwise starting at
-        // its top spike (verified by a shoelace check against the raw path data, and unaffected by
-        // either edit above since neither changes winding order), so stroke-dashoffset sweeping
-        // from full-length to 0 traces exactly that path with no reversal needed.
+        // Titles page — one shared crown for all 40 stat-title tiers, derived from LOGO_PATH's
+        // silhouette subpath (not the level badge's own EXP_CROWN_PATH). Two geometric edits from
+        // the source logo: the leg curves down to the base rim are extended taller, and the
+        // spike/ball cluster is scaled 8% wider — both confirmed to introduce no seam kinks. The
+        // silhouette winds counterclockwise starting at the top spike, so stroke-dashoffset
+        // sweeping from full-length to 0 traces it cleanly.
         //
-        // No pathLength/vector-effect here — a pathLength-normalised stroke-dasharray silently
-        // stops animating at all once vector-effect:non-scaling-stroke is applied to the same
-        // element (confirmed by isolating the two), so instead the CSS below dashes against the
-        // path's own real length (980.10 user units — re-measure this if the path data below ever
-        // changes again, by numeric arc-length integration over its cubic Bezier segments) and
-        // fakes a constant on-screen stroke thickness via a calc() that divides back out through
-        // --bbgl-t-star (see .bbgl-title-star-fill below). The edits above also nudged the
-        // viewBox's own aspect ratio (was 285x184, now 307x217) — width is still very slightly the
-        // binding dimension under default "meet" scaling inside a square star cell, but the two
-        // edits together close most of that gap, so no preserveAspectRatio="none" stretch is used.
+        // No pathLength/vector-effect: a pathLength-normalised dasharray stops animating once
+        // vector-effect:non-scaling-stroke is applied to the same element, so this dashes against
+        // the path's own real length instead (980.10 user units — re-measure if the path data below
+        // ever changes, via arc-length integration) and fakes a constant stroke width via
+        // --bbgl-t-star (see .bbgl-title-star-fill below).
         TITLE_CROWN: `<svg viewBox="47 5 307 217" fill="none"><path d="M193.132 22.044 C 181.137 27.985,178.771 45.621,188.766 54.592 C 192.860 58.266,192.797 58.939,187.236 70.810 C 160.809 127.227,139.426 132.713,96.187 94.170 C 89.016 87.778,88.968 87.704,90.098 84.744 C 95.207 71.365,76.527 57.225,64.916 65.683 C 54.502 73.267,60.796 91.707,74.374 93.393 C 86.535 126.777,87.611 127.407,88.243 129.069 C 89.543 132.488,100.349 172.625,104.966 191.182 C 107.267 200.432,109.322 208.494,109.532 209.099 C 109.800 209.869,111.627 209.423,115.639 207.608 C 154.845 189.875,247.090 189.878,286.205 207.613 C 293.432 210.890,291.721 213.896,299.107 184.950 C 311.947 134.626,314.454 126.636,317.401 126.636 C 336.733 93.636,345.351 79.275,340.775 70.347 C 332.390 53.985,304.856 68.675,311.874 85.767 C 314.350 91.794,276.778 117.463,263.445 118.855 C 245.763 120.700,228.905 103.733,213.296 68.380 L 208.768 58.124 212.234 55.097 C 228.702 40.716,212.398 12.503,193.132 22.044 Z" /></svg>`,
         CLOSE: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>`,
         // Titles page — reverts a hand-picked title to the auto-follow pair. Only rendered while a
@@ -1294,15 +1272,11 @@
                         text-shadow: none;
                     }
 
-                    /* REFLECTS. Stamped into the plate rather than sitting on it: a diffuse dark
-                       impression behind the letters plus a lit lip along their lower edge. Both are
-                       driven by inline custom properties from rankHardenCSS() (03-section-ii-utils.js)
-                       — as the clay hardens the blur collapses toward 0 and the lip firms up, so the
-                       impression sharpens instead of the color merely changing. No outward glow at
-                       any point; that channel belongs to the title.
-                       Fjalla One (condensed display, already loaded for the level badge/rank axis
-                       elsewhere) reads as engraved rather than as quoted speech — upright, not
-                       italic, now that the quote marks are gone from the text itself. */
+                    /* REFLECTS. Stamped into the plate, not sitting on it: a diffuse dark impression
+                       behind the letters plus a lit lip below them, both driven by inline custom
+                       properties from rankHardenCSS() (03-section-ii-utils.js) — as the clay hardens
+                       the blur collapses and the lip firms up. No outward glow; that channel belongs
+                       to the title. Fjalla One reads as engraved rather than quoted speech. */
                     #bbgl-tooltip .bbgl-plaque i.bbgl-lvl-rank {
                         display: block;
                         margin: 0 0 1px;
@@ -1353,11 +1327,9 @@
 
                     /* Title finish progression, Phase 0-9 — dull silver to iridescent diamond.
                        Scoped to the individual WORD, not the whole title: the two slots are chosen
-                       independently on the titles page, so a Phase 1 adjective can sit next to a
-                       Phase 8 noun and each shows its own tier. Unscoped by design — the same title
-                       renders both in the level tooltip and on the titles page dashboard.
-                       Each phase only ever overrides color/text-shadow (or, at Phase 9, swaps to
-                       a clipped animated gradient) on top of the shared rule above.
+                       independently, so a Phase 1 adjective can sit next to a Phase 8 noun and each
+                       shows its own tier. Each phase only overrides color/text-shadow (Phase 9 swaps
+                       to a clipped animated gradient) on top of the shared rule above.
                        Blocks: grey 0-3, green 4-6, gold 7-8, iridescent 9. */
                     /* inline-block so the Phase 9 gradient below gets its own painting box to
                        clip against rather than inheriting the whole line's. */
@@ -4251,10 +4223,7 @@
                         background: linear-gradient(90deg, rgba(170, 68, 255, 0) 0%, rgba(215, 160, 255, .95) 15%, rgba(245, 245, 255, 1) 35%, rgba(255, 255, 255, 1) 45%, rgba(255, 255, 255, 1) 55%, rgba(225, 245, 255, 1) 65%, rgba(160, 215, 255, .95) 85%, rgba(68, 170, 255, 0) 100%);
                     }
 
-                    /* One-way local pass, left-to-right — this is the "outbound" leg. Each
-                       capsule's own copy is delayed by CAP_WIN_DELAY_FWD_S so the whole row of
-                       capsules lights up in left-to-right order, like a single band traveling
-                       the length of the bar rather than each capsule bouncing independently. */
+                    /* Outbound leg, left-to-right (see .bbgl-cap-sweep-pass-fwd above). */
                     @keyframes bbgl-cap-sweep-move-fwd-kf {
                         0% {
                             transform: translateX(-100%)
@@ -4265,10 +4234,9 @@
                         }
                     }
 
-                    /* The "return" leg — same shape, opposite direction. Delayed per-capsule by
-                       CAP_WIN_DELAY_BWD_S, which runs in REVERSE order (rightmost capsule first)
-                       and only starts once every capsule's forward pass has finished, so the
-                       band appears to arrive at the right end, then travel all the way back. */
+                    /* Return leg — runs in reverse order (rightmost capsule first) and only starts
+                       once every capsule's forward pass has finished, so the band appears to
+                       arrive at the right edge before heading back. */
                     @keyframes bbgl-cap-sweep-move-bwd-kf {
                         0% {
                             transform: translateX(100%)
@@ -6219,46 +6187,29 @@
                         overflow: visible;
                     }
 
-                    /* Ordinary flow child of #bbgl-achievements-container, exactly like every other ach page —
-                       the old locked page was absolutely positioned with an inline height stamped
-                       by a rAF measuring loop, which is what left it clipped to half height until
-                       a refresh.
+                    /* Ordinary flow child of #bbgl-achievements-container, like every other ach page
+                       (the old absolutely-positioned version stayed clipped to half height until a
+                       refresh).
 
-                       ─── How this page's sizing is organised ───
                        EVERY value that differs between panel modes lives in the two var blocks below
-                       and nowhere else. Component rules further down consume var()s only — they
-                       carry no literal sizes and no clamps of their own. That's what keeps compact
-                       down to a SINGLE override rule rather than one per component: retuning a mode
-                       is editing one table, not hunting scattered overrides.
+                       and nowhere else — component rules further down consume var()s only, no
+                       literal sizes or clamps of their own. One layout for all three modes: identity
+                       card + unlock grid stacked above a horizontal rank bar pinned to the bottom;
+                       only the var tables differ between modes.
 
-                       One layout for all three modes now: the identity card plus unlock grid stacked
-                       above a horizontal rank bar pinned to the bottom. Only these var tables differ
-                       between modes — the structure (and every component rule below them) is shared.
+                       Expanded/page use clamp()s that track the container (they can resize/pop out);
+                       compact's width never changes, so its values are plain fixed px. Within the
+                       clamps: HORIZONTAL sizes (text) scale off cqi, VERTICAL sizes (gaps, bar
+                       thickness) scale off cqb — cqi says nothing about available height, so tying
+                       vertical spacing to it shrank things whenever the panel merely got narrower
+                       (container-type:size, not just inline-size, is what makes cqb legal here).
+                       This page is the only container on the way down, so every cqi/cqb resolves
+                       against its own box.
 
-                       Expanded/page can be resized or popped out, so their values are clamp()s that
-                       track the container. Compact's width never changes, so there is nothing to
-                       respond to and its values are plain fixed px.
-
-                       Within the clamps: sizes that read HORIZONTALLY (text) scale off cqi, anything
-                       reading VERTICALLY (gaps between stacked things, the bar's own thickness)
-                       scales off cqb — cqi is the page's width, which says
-                       nothing about available height, so tying vertical spacing to it shrank things
-                       whenever the panel merely got narrower. container-type:size (not just
-                       inline-size) is what makes cqb legal here.
-
-                       cqi/cqb in these vars resolve at the USE site, but this page is the only
-                       container on the way down (.bbgl-title-block deliberately isn't one — see the
-                       note on it below), so everything measures against this page's box.
-
-                       ─── Which mode scales what ───
-                       PAGE is full-width and can be anything from a narrow column to the whole
-                       screen, so it scales throughout, stars included.
-                       EXPANDED caps at 576px. Its stars, stat labels and tier numbers are flat px so
-                       they hold their size as the browser narrows; the corners simply crowd closer
-                       toward the centred card instead of shrinking. Its card text still eases down
-                       gently.
-                       COMPACT has a fixed width, so nothing has anything to respond to and every
-                       value is flat px. */
+                       Which mode scales what: PAGE scales throughout, stars included. EXPANDED caps
+                       at 576px — stars/stat labels/tier numbers are flat px so corners crowd inward
+                       instead of shrinking, though card text still eases down. COMPACT is fixed
+                       width, so everything is flat px. */
                     .bbgl-titles-page {
                         container-type: size;
                         container-name: bbgl-titles;
@@ -6294,45 +6245,27 @@
                         --bbgl-t-gap: clamp(3px, .6cqi, 6px);
                         --bbgl-t-gap-v: clamp(2px, .6cqb, 6px);
                         --bbgl-t-block-gap: calc(var(--bbgl-t-gap-v) * .75);
-                        /* -corner-gap's floor (was 130px) mattered more than its slope at the
-                           narrow end: at true minimum page width the titles page's own container
-                           (panel width minus ancestor padding) is only ~276px, and 130px was
-                           nearly half of that — forcing the two stat columns wider than the space
-                           actually allows and squeezing the centred identity card between them.
-                           The slope matters more at the WIDE end — at this page's true maximum
-                           container width (~614px, since the outer panel's own ~670px max is
-                           itself trimmed by ancestor padding), 54cqi now works out to ~332px,
-                           past the 330px ceiling — so unlike the old 48cqi/300px pair (which
-                           landed just under its own ceiling and never actually hit it), the columns
-                           now sit right at the cap at true max width, pushed further out on
-                           request. Both slope and ceiling were raised together here rather than
-                           slope alone, so the cap itself moves out instead of just being reached
-                           sooner. */
+                        /* Floor matters most at the narrow end (too high a floor forces the stat
+                           columns wider than the space allows, squeezing the centred identity card);
+                           slope matters most at the wide end. Both are raised together here so the
+                           cap actually gets reached at max width instead of landing just under it. */
                         --bbgl-t-corner-gap: clamp(90px, 54cqi, 330px);
                         --bbgl-t-corner-shift-y: clamp(3px, 1cqb, 9px);
                         /* Moves the complete five-card cluster as one without changing its internal
                            centring. The rank geometry pass reads the resulting lower-card edge and
                            automatically recentres the bar in the reduced space beneath it. */
                         --bbgl-t-main-shift-y: 3px;
-                        /* Minimum vertical space held open between a column's top and bottom
-                           block, on top of whatever .bbgl-titles-corner-col's own space-between
-                           already provides — flex 'gap' sets a floor that space-between's free-space
-                           distribution can still grow past, it just can't shrink below it. Needed
-                           because enlarging the stat blocks (-star et al above) ate into that free
-                           space at this page's true maximum size, crowding the two corners of a
-                           column together; this reopens some of that room explicitly rather than by
-                           further inflating the blocks themselves — deliberately only between a
-                           column's OWN top/bottom stat blocks, not the identity card. Page and
-                           expanded both use this; compact pins it back to 0 below since it wasn't
-                           asked for there. */
+                        /* Minimum vertical space between a column's top/bottom stat block, on top of
+                           whatever space-between already provides — gap sets a floor that
+                           space-between can grow past but not shrink below. Needed because enlarging
+                           the stat blocks crowded the column's own corners together at max page
+                           size; only applies within a column, not the identity card. Compact pins
+                           this to 0 below, since it wasn't needed there. */
                         --bbgl-t-corner-vgap: clamp(3px, 1.8cqb, 16px);
-                        /* Used to reserve clearance here for the pagination-dot footer, which sat
-                           at the bottom of this page as an absolutely-positioned overlay. Now that
-                           the footer has moved up into the SVG icon toolbar (see
-                           layoutToolbarPaginationPosition(), 07-section-vi-ui.js) there's nothing left down
-                           here to clear — 0 lets the stat blocks' own space-between (see
-                           .bbgl-titles-corner-col below) spread further apart into the reclaimed
-                           room automatically, no other change needed. */
+                        /* 0 — nothing to clear here since the pagination-dot footer moved into the
+                           SVG icon toolbar (layoutToolbarPaginationPosition(), 07-section-vi-ui.js);
+                           this lets the stat blocks' own space-between spread further apart into
+                           the reclaimed room automatically. */
                         --bbgl-t-main-pb: 0px;
                         /* The rank bar's downward position is carried entirely by the container's own
                            bottom padding (see .viewing-achievements #bbgl-achievements-container —
@@ -6341,13 +6274,9 @@
                            is a separate small nudge on just the cards above (via .bbgl-titles-main's
                            margin-top), independent of the bar. */
                         --bbgl-t-cards-drop: -3px;
-                        /* Neon-window chrome (.bbgl-title-block/.bbgl-titles-head). -win-pad is the
-                           breathing room between the tube and its content; -win-pad-y overrides just
-                           the top/bottom of that for stat blocks only (see .bbgl-title-block above)
-                           — their content is two star rows with no equivalent horizontal slack to
-                           reclaim, so only the vertical side gets the tighter number. -win-radius is
-                           the corner rounding; -win-glow scales the two outer glow stops so a whole
-                           mode can be dimmed at once (small panels need less bloom before it smears). */
+                        /* Shared responsive chrome measurements. The stat windows consume the full
+                           set; the title assembly reuses radius/gap values for its metal sign so its
+                           proportions continue to track the surrounding cards. */
                         --bbgl-t-win-pad: clamp(3px, 1.8cqi, 12px);
                         --bbgl-t-win-pad-y: clamp(4px, 1.6cqb, 9px);
                         --bbgl-t-win-radius: clamp(6px, 1.4cqi, 12px);
@@ -6624,22 +6553,18 @@
                            the blocks use more of the room that was already there instead of
                            sitting closer to the centred card than they need to. */
                         --bbgl-t-corner-gap: clamp(130px, 42cqi, 280px);
-                        /* -corner-shift-y stays pinned to expanded's own original value — that
-                           specific "nudge columns down off the top edge" tuning was never part of
-                           this request. -cards-lift (all five cards, up) and -corner-vgap (gap
-                           between a column's own top/bottom blocks only) ARE requested for expanded
-                           now too, reusing page mode's clamp shape since both modes query roughly
-                           the same vertical room — retune independently later if expanded needs its
-                           own numbers. */
+                        /* -corner-shift-y stays at expanded's original value (not part of this
+                           change). -cards-lift and -corner-vgap reuse page mode's clamp shape since
+                           both modes query similar vertical room — retune independently later if
+                           expanded needs its own numbers. */
                         --bbgl-t-corner-shift-y: clamp(6px, 1.5cqb, 14px);
                         --bbgl-t-cards-lift: clamp(6px, 1.4cqb, 14px);
                         --bbgl-t-corner-vgap: clamp(2px, .5cqb, 4px);
 
-                        /* Let the clearance around the centre card compress further before crown
-                           sizing responds, while retaining the same continuous shrink-to-fit
-                           behaviour as the other modes. 5cqi reaches the 25px cap at 500px (the old
-                           4.2cqi curve never reached it within expanded's normal width), then eases
-                           down soon enough to protect the centre card at narrower widths. */
+                        /* Lets clearance around the centre card compress further before crown sizing
+                           responds, while keeping the same continuous shrink-to-fit behaviour as
+                           other modes. 5cqi reaches the 25px cap at 500px, then eases down to
+                           protect the centre card at narrower widths. */
                         --bbgl-t-star: clamp(15px, 5cqi, 25px);
                         --bbgl-t-star-cgap: clamp(1.8px, .6cqi, 3px);
 
@@ -6731,39 +6656,23 @@
                         --bbgl-t-win-radius: clamp(4.5px, 1.6cqi, 8px);
                     }
 
-                    /* Everything but the rank track: three columns (str+spd on the left, the
-                       identity card in the middle, def+dex on the right — see
-                       .bbgl-titles-corner-col below). The two side columns are equal
-                       (minmax(0,1fr) each) and centre their own card via justify-self; the middle
-                       column is 'auto' — sized to
-                       the identity card's own intrinsic width rather than forced into an equal
-                       third, since the card's actual content (name/rank/title lines) has nothing to
-                       do with a 1/3 split and forcing it into one was squeezing/wrapping it. That's
-                       the point of the grid over the old flex-row-plus-absolute-overlay layout it
-                       replaces: a side column's card can change size (bigger stars, a wider label,
-                       whatever) and it just stays centred in its own equal half with no
-                       --bbgl-t-corner-gap retuning needed, while the middle column always matches
-                       whatever the identity card actually needs.
-                       --bbgl-t-corner-gap itself is now unused (kept defined, in case a future layout
-                       wants it back) — nothing here reads it any more.
+                    /* Everything but the rank track: three columns (str+spd left, identity card
+                       middle, def+dex right). The two side columns are equal (minmax(0,1fr)) and
+                       centre their own card; the middle column is 'auto' — sized to the identity
+                       card's own intrinsic width rather than forced into an equal third, since a
+                       side column's card can change size and just stays centred in its own equal
+                       half with no retuning needed.
 
-                       An 'auto' middle track only sizes to content that's actually IN FLOW —
-                       absolutely-positioned items don't contribute to track sizing at all, which is
-                       why .bbgl-titles-head (below) had to stop being position:absolute and become a
-                       normal in-flow grid item; see its own comment for how its vertical placement is
-                       preserved without that.
+                       An 'auto' middle track only sizes to content that's actually IN FLOW — the
+                       dual-sign assembly stays a normal grid item; only the player name above it
+                       may overhang without affecting width.
 
-                       Deliberately NOT centred vertically as a whole grid, on request — the rank
-                       track below is a sibling, not a grid row, specifically so its height never
-                       skews where "vertical centre" would otherwise land for the cards above it. The
-                       corner columns now contribute their intrinsic two-card stack height to the
-                       single centred grid row. The identity card stretches through that same row,
-                       so its frame always shares the stack's exact top and bottom edges.
-
-                       --bbgl-t-main-pb is 0 in every mode now that the pagination dots have moved
-                       out of this page entirely (see --bbgl-t-main-pb's own comment above) — kept
-                       as a var rather than deleted in case a future layout needs bottom clearance
-                       here again. */
+                       Not centred vertically as a whole grid, on request: the rank track below is a
+                       sibling, not a grid row, so its height never skews where "vertical centre"
+                       would land for the cards above it. The corner columns contribute their
+                       intrinsic two-card stack height to the single centred grid row; the identity
+                       card stretches through that same row, so its frame shares the stack's exact
+                       top and bottom edges. */
                     .bbgl-titles-main {
                         position: relative;
                         top: var(--bbgl-t-main-shift-y, 0px);
@@ -6823,32 +6732,16 @@
                     }
 
                     /* ─── Identity block ─────────────────────────────────────────────
-                       A normal in-flow grid item now (was position:absolute, centred over the two
-                       stat columns by transform) — it has to be in-flow for .bbgl-titles-main's
-                       'auto' middle column (above) to size itself off this card's own intrinsic
-                       width, since out-of-flow items are invisible to grid track sizing entirely.
-                       grid-column:2 is mostly documentation at this point (auto-flow would already
-                       put it there); justify-self:center keeps it centred in that column, which only
-                       visibly matters if the column ever ends up wider than the card itself.
-
-                       align-self:stretch makes the wrapper consume the row height established by the
-                       stat stacks. Its translateY uses the exact same net offset as both columns, so
-                       the billboard retains their shared top edge, bottom edge and centreline as
-                       responsive shift/lift values change.
-
-                       --bbgl-t-win-color feeds the neon-window chrome shared with the stat blocks —
-                       see the .bbgl-title-block/.bbgl-titles-head combo rule below. Purple to match
-                       the equipped-star highlight, and a glow multiplier above the blocks' 1 since
-                       this is the page's primary object; the hum period is off theirs so nothing
-                       pulses in lockstep. */
-                    /* Plain layout wrapper for the centre column. Holds the grid placement and the
-                       --bbgl-t-win-* values (which inherit down to sign and window alike, the
-                       window's own ::before tube included) so everything here is lit by the same
-                       source. No chrome of its own - it is scaffolding.
-
-                       Its size comes only from the window. The sign above is absolutely centred on
-                       this wrapper, so neither a taller nor wider player name can alter the middle
-                       grid track or pull the two stat columns away from their geometric centres. */
+                       A normal in-flow grid item — has to be, so .bbgl-titles-main's 'auto' middle
+                       column can size itself off this card's own intrinsic width (out-of-flow items
+                       are invisible to grid track sizing). align-self:stretch makes the wrapper
+                       consume the row height the stat stacks establish; its translateY uses the
+                       exact same net offset as both columns, so the plaque and hanging sign keep a
+                       shared top edge, bottom edge and centreline as shift/lift values change. */
+                    /* Plain layout wrapper for the centre column. Its dimensions come only from the
+                       in-flow dual-sign assembly. The player name is absolutely centred above it, so
+                       a long name cannot widen the grid track or displace the stat columns. Purple
+                       custom properties now drive that player-name neon alone. */
                     .bbgl-titles-center {
                         --bbgl-t-win-color: #a855f7;
                         --bbgl-t-win-glow: 1.3;
@@ -6879,28 +6772,21 @@
                         width: 82px;
                     }
 
-                    /* The suspended sign: name plus the rods it hangs from. It is absolutely centred
-                       on the identity wrapper and pinned to zero height, so only the box below decides
-                       both middle-track width and vertical centring. Width:max-content still measures
-                       the name for its own drawing even though it contributes nothing to the grid.
+                    /* The suspended sign: name plus the rods it hangs from. Absolutely centred on
+                       the identity wrapper and pinned to zero height, so only the box below decides
+                       middle-track width and vertical centring; width:max-content still measures
+                       the name for drawing even though it contributes nothing to the grid.
 
-                       The zero height means the content would spill DOWNWARD over the box, so
-                       .bbgl-titles-sign-inner lifts it back up by exactly its own height. That has
-                       to be a transform on a wrapper element, not top/bottom on these: a
-                       percentage in top/bottom resolves against the containing block's height,
-                       which is 0 here, whereas a percentage in translateY resolves against the
-                       element's OWN height - the one measurement that's actually meaningful. And
-                       being a transform, it moves the sign visually without putting the height
-                       back into layout.
+                       Zero height means content would spill DOWNWARD, so .bbgl-titles-sign-inner
+                       lifts it back up by its own height via translateY (not top/bottom — a
+                       percentage there resolves against the containing block's height, which is 0
+                       here, where translateY resolves against the element's OWN height). Because
+                       the lift is by the inner wrapper's own height, growing the rods
+                       (--bbgl-t-wire-h) raises the name by the same amount for free — one number
+                       moves both.
 
-                       Because that lift is by the inner wrapper's OWN height, growing the rods
-                       (--bbgl-t-wire-h) raises the name by the same amount for free: the rods'
-                       lower ends stay put against the window while the sign above rises. One
-                       number moves both.
-
-                       The assembly itself stays exactly as wide as the billboard, which keeps the
-                       mounting bars inside its column. Only .bbgl-titles-name may overhang that
-                       width; its own cap and ellipsis protect the stat columns on either side. */
+                       The assembly stays exactly as wide as the billboard; only .bbgl-titles-name
+                       may overhang that width, protected by its own cap and ellipsis. */
                     .bbgl-titles-sign {
                         position: absolute;
                         top: 0;
@@ -6929,31 +6815,10 @@
                         min-width: 0;
                     }
 
-                    .bbgl-titles-head {
-                        display: flex;
-                        flex-direction: column;
-                        align-items: center;
-                        justify-content: stretch;
-                        flex: 1 1 auto;
-                        gap: 0;
-                        position: relative;
-                        width: 100%;
-                        height: 100%;
-                        min-width: 0;
-                        max-width: 100%;
-                        overflow: visible;
-                    }
-
                     /* line-height and the padding leave room for descenders — at 1.05 with the
-                       page's overflow:hidden the bottom of the name was being shaved off. The card's
-                       type is a flat px per mode rather than a clamp, so it reads as a stable piece
-                       of chrome regardless of how the rest of the page's scaling plays out.
-
-                       Now a neon sign lifted off the plate below (.bbgl-titles-wires connects the
-                       two) rather than plain text: same glow recipe as the identity card's own tube
-                       border (.bbgl-titles-head::before) - near-white core, colour lives in the
-                       glow, three stacked drop-shadows for a falloff instead of one smudged blur -
-                       reused here as text-shadow so the letters themselves read as the tube. */
+                       page's overflow:hidden the bottom of the name was being shaved off. It remains
+                       a neon sign lifted above the new rank-plaque/title-sign assembly; the shared
+                       purple custom properties now belong to this name alone. */
                     .bbgl-titles-name {
                         /* Neonderthaw, not the stat labels' Dancing Script: both are connected
                            scripts standing in for bent glass, but they're built for opposite ends
@@ -7057,112 +6922,234 @@
                         right: 0;
                     }
 
-                    /* The billboard face: smoked glass mounted inside the purple tube. Four tiny
-                       radial highlights imply fasteners without adding markup, while the fine
-                       horizontal grain keeps the large dark face from reading as an empty flat box. */
-                    .bbgl-titles-plate {
-                        position: relative;
-                        flex: 1 1 auto;
-                        width: 100%;
-                        height: 100%;
-                        background:
-                            radial-gradient(circle at 5px 5px, rgba(244, 231, 255, .5) 0 .55px, rgba(73, 53, 85, .8) .7px 1.25px, transparent 1.4px),
-                            radial-gradient(circle at calc(100% - 5px) 5px, rgba(244, 231, 255, .5) 0 .55px, rgba(73, 53, 85, .8) .7px 1.25px, transparent 1.4px),
-                            radial-gradient(circle at 5px calc(100% - 5px), rgba(244, 231, 255, .4) 0 .55px, rgba(73, 53, 85, .8) .7px 1.25px, transparent 1.4px),
-                            radial-gradient(circle at calc(100% - 5px) calc(100% - 5px), rgba(244, 231, 255, .4) 0 .55px, rgba(73, 53, 85, .8) .7px 1.25px, transparent 1.4px),
-                            repeating-linear-gradient(0deg, rgba(255, 255, 255, .018) 0 1px, transparent 1px 3px),
-                            radial-gradient(ellipse 90% 58% at 50% 44%, rgba(168, 85, 247, .12), transparent 72%),
-                            linear-gradient(155deg, rgba(35, 30, 40, .96), rgba(9, 9, 12, .97) 54%, rgba(24, 18, 29, .96));
-                        border: 1px solid rgba(217, 190, 234, .15);
-                        border-radius: max(2px, calc(var(--bbgl-t-win-radius) * .45));
-                        box-shadow:
-                            inset 0 1px 0 rgba(255, 255, 255, .07),
-                            inset 0 -1px 0 rgba(0, 0, 0, .8),
-                            inset 0 0 12px rgba(0, 0, 0, .48);
-                        overflow: hidden;
-                        display: flex;
-                        flex-direction: column;
-                        align-items: center;
-                        justify-content: stretch;
-                        gap: 0;
-                        padding: calc(var(--bbgl-t-gap-v) * .65) calc(var(--bbgl-t-gap) * 1.5);
-                        min-width: 0;
-                        max-width: 100%;
-                        box-sizing: border-box;
-                    }
-
-                    /* A narrow diagonal glass catch-light, rather than the old broad pill gloss. */
-                    .bbgl-titles-reflection {
-                        position: absolute;
-                        inset: 0;
-                        background: linear-gradient(122deg, transparent 0 28%, rgba(255, 255, 255, .055) 37%, transparent 48%);
-                        pointer-events: none;
-                    }
-
-                    /* Rank line over title line, each explicitly labelled so the two systems read as
-                       separate pieces rather than one run-on phrase. Label sits above its value
-                       (not beside it) so each line reads top-down as its own labelled block. */
-                    .bbgl-titles-line {
-                        display: flex;
-                        flex-direction: column;
-                        align-items: center;
-                        justify-content: center;
-                        flex: 1 1 50%;
-                        width: 100%;
-                        gap: calc(var(--bbgl-t-gap) * .25);
-                        padding: calc(var(--bbgl-t-gap-v) * .45) 2px;
-                        box-sizing: border-box;
-                        font-size: var(--bbgl-t-fs-line);
-                        line-height: 1.25;
-                        min-width: 0;
-                        max-width: 100%;
-                    }
-
-                    /* The two display bays share one illuminated engraved divider. */
-                    .bbgl-titles-line + .bbgl-titles-line {
-                        border-top: 1px solid color-mix(in srgb, var(--bbgl-t-win-color) 42%, rgba(255, 255, 255, .18));
-                        box-shadow: inset 0 1px 0 rgba(0, 0, 0, .72);
-                    }
-
-                    .bbgl-titles-line-label {
-                        flex: 0 0 auto;
-                        font-size: var(--bbgl-t-fs-line-label);
-                        font-weight: 700;
-                        letter-spacing: .1em;
-                        text-transform: uppercase;
-                        color: rgba(255, 255, 255, .38);
-                    }
-
-                    /* Font/color/shadow match Torn's own rank-plate text exactly (its .medium
-                       span: 'Fjalla One', serif, #aaa, 0 0 2px rgba(0,0,0,.65), 400 weight -
-                       looks bold only because Fjalla One is an inherently heavy display face).
-                       Font-size stays on our own --bbgl-t-fs-line clamp rather than Torn's fixed
-                       21px, since our card scales across panel modes and theirs doesn't. */
-                    .bbgl-titles-rankname {
-                        font-family: 'Fjalla One', 'Barlow Condensed', 'Arial Narrow', sans-serif;
-                        font-weight: 400;
-                        color: #aaa;
-                        text-shadow: 0 0 2px rgba(0, 0, 0, .65);
-                        line-height: 1.55;
-                    }
-
-                    /* The title's value and its reset button stay on one row (baseline-aligned,
-                       same as before) even though the label now sits above them - only the
-                       label/value relationship went vertical, not the value's own internals. */
-                    .bbgl-titles-line-value {
-                        display: flex;
-                        align-items: baseline;
-                        justify-content: center;
-                        flex-wrap: wrap;
-                        gap: calc(var(--bbgl-t-gap) * 1.25);
-                        min-width: 0;
-                        max-width: 100%;
-                    }
-
                     /* Article sits deliberately quieter than the words it introduces. */
                     .bbgl-titles-the {
                         color: rgba(255, 255, 255, .55);
                         font-weight: 600;
+                    }
+
+                    .bbgl-title-card {
+                        --bbgl-title-label-size: calc(var(--bbgl-t-fs-line-label) * .8);
+                        --bbgl-title-connector-space: calc(var(--bbgl-title-label-size) + 2px);
+                        position: relative;
+                        isolation: isolate;
+                        display: grid;
+                        grid-template-rows: minmax(0, calc(35% - var(--bbgl-title-connector-space) * .35)) calc(var(--bbgl-title-connector-space) * .5) minmax(0, 1fr);
+                        justify-items: center;
+                        align-items: stretch;
+                        flex: 1 1 auto;
+                        width: 100%;
+                        height: 100%;
+                        min-width: 0;
+                        min-height: 0;
+                        padding: 0;
+                        border-radius: max(3px, calc(var(--bbgl-t-win-radius) * .65));
+                        box-sizing: border-box;
+                    }
+
+                    .bbgl-title-card::before {
+                        content: none;
+                        position: absolute;
+                        inset: 0;
+                        z-index: -2;
+                        border: 1px solid color-mix(in srgb, var(--bbgl-t-win-color) 38%, rgba(255, 255, 255, .96));
+                        border-radius: inherit;
+                        pointer-events: none;
+                        filter:
+                            drop-shadow(0 0 1px color-mix(in srgb, var(--bbgl-t-win-color) 55%, #fff))
+                            drop-shadow(0 0 calc(4px * var(--bbgl-t-win-glow)) color-mix(in srgb, var(--bbgl-t-win-color) 55%, transparent))
+                            drop-shadow(0 0 calc(11px * var(--bbgl-t-win-glow)) color-mix(in srgb, var(--bbgl-t-win-color) 26%, transparent));
+                        animation: bbgl-neon-hum var(--bbgl-t-win-hum, 8s) ease-in-out infinite;
+                        animation-delay: var(--bbgl-titles-animation-delay, 0ms);
+                    }
+
+                    .bbgl-title-card::after {
+                        content: none;
+                        position: absolute;
+                        inset: 1px;
+                        z-index: -1;
+                        border-radius: inherit;
+                        pointer-events: none;
+                        background:
+                            radial-gradient(ellipse 118% 118% at 50% 50%, transparent 34%, color-mix(in srgb, var(--bbgl-t-win-color) 13%, transparent) 100%),
+                            repeating-linear-gradient(0deg, transparent 0 2px, color-mix(in srgb, var(--bbgl-t-win-color) 9%, transparent) 2px 4px);
+                        -webkit-mask-image: radial-gradient(ellipse 130% 130% at 50% 50%, rgba(0, 0, 0, .25) 20%, #000 100%);
+                        mask-image: radial-gradient(ellipse 130% 130% at 50% 50%, rgba(0, 0, 0, .25) 20%, #000 100%);
+                    }
+
+                    .bbgl-title-card-rank {
+                        position: relative;
+                        z-index: 3;
+                        display: flex;
+                        align-items: stretch;
+                        justify-content: center;
+                        width: 100%;
+                        height: 100%;
+                        min-width: 0;
+                        min-height: 0;
+                    }
+
+                    .bbgl-title-card-rank-label,
+                    .bbgl-title-card-title-label {
+                        position: absolute;
+                        left: 50%;
+                        z-index: 4;
+                        transform: translateX(-50%);
+                        font-family: Consolas, Menlo, 'DejaVu Sans Mono', monospace;
+                        font-size: var(--bbgl-t-fs-line-label);
+                        font-weight: 700;
+                        line-height: 1;
+                        letter-spacing: .14em;
+                        text-transform: uppercase;
+                        color: rgba(207, 214, 214, .58);
+                        text-shadow: 0 1px 1px rgba(0, 0, 0, .9);
+                        white-space: nowrap;
+                        pointer-events: none;
+                    }
+
+                    .bbgl-title-card-rank-label {
+                        top: 0;
+                        padding: 0 .45em;
+                        transform: translateX(-50%);
+                        background: #0b0d0e;
+                    }
+
+                    /* Two narrow mounting rods. The highlight is intentionally off-centre so they
+                       read as round steel hardware instead of another pair of glowing neon lines. */
+                    .bbgl-title-card-connector {
+                        position: relative;
+                        z-index: 3;
+                        align-self: stretch;
+                        width: 58%;
+                        min-height: 0;
+                        margin: -1px 0;
+                        pointer-events: none;
+                    }
+
+                    .bbgl-title-card-connector::before,
+                    .bbgl-title-card-connector::after {
+                        content: '';
+                        position: absolute;
+                        top: 0;
+                        bottom: 0;
+                        width: 2px;
+                        border-radius: 1px;
+                        background: linear-gradient(90deg, #090a0b, #73797a 43%, #292d2e 66%, #08090a);
+                        box-shadow:
+                            inset 0 0 1px rgba(255, 255, 255, .18),
+                            0 1px 1px rgba(0, 0, 0, .8);
+                    }
+
+                    .bbgl-title-card-connector::before { left: 0; }
+                    .bbgl-title-card-connector::after { right: 0; }
+
+                    .bbgl-title-card-title-label {
+                        top: 0;
+                        bottom: auto;
+                        z-index: 5;
+                        font-family: 'Barlow Condensed', 'Arial Narrow', sans-serif;
+                        font-size: var(--bbgl-title-label-size);
+                        font-weight: 500;
+                        letter-spacing: .06em;
+                        color: transparent;
+                        background: linear-gradient(180deg, #e4e9e9 0%, #858d8f 42%, #343a3c 58%, #aeb5b6 100%);
+                        background-clip: text;
+                        -webkit-background-clip: text;
+                        -webkit-text-fill-color: transparent;
+                        -webkit-text-stroke: 0;
+                        text-shadow:
+                            0 1px 0 #171a1b,
+                            0 0 1px rgba(230, 236, 236, .35);
+                    }
+
+                    /* The sign's outside edge is deliberately quiet at stage zero. Later ornament
+                       tiers can key off .bbgl-title-card[data-sign-stage] and enrich this hardware
+                       without touching the title word finishes or changing the component tree. */
+                    .bbgl-title-card-sign {
+                        --bbgl-title-sign-edge: #555b5d;
+                        --bbgl-title-sign-highlight: rgba(225, 232, 232, .16);
+                        --bbgl-title-sign-inset: max(2px, calc(var(--bbgl-t-gap) * .55));
+                        position: relative;
+                        z-index: 2;
+                        align-self: stretch;
+                        width: 100%;
+                        height: 100%;
+                        min-width: 0;
+                        min-height: 0;
+                        padding: var(--bbgl-title-sign-inset);
+                        border: 1px solid #171a1b;
+                        border-radius: max(3px, calc(var(--bbgl-t-win-radius) * .55));
+                        box-sizing: border-box;
+                        background:
+                            linear-gradient(90deg, rgba(255, 255, 255, .08), transparent 14% 84%, rgba(0, 0, 0, .28)),
+                            linear-gradient(180deg, #6d7476 0%, var(--bbgl-title-sign-edge) 10%, #282d2f 52%, #151819 100%);
+                        box-shadow:
+                            inset 0 1px 0 var(--bbgl-title-sign-highlight),
+                            inset 0 -1px 0 rgba(0, 0, 0, .75),
+                            0 2px 3px rgba(0, 0, 0, .52);
+                    }
+
+                    .bbgl-title-card-sign-face {
+                        position: relative;
+                        isolation: isolate;
+                        display: flex;
+                        flex-direction: column;
+                        align-items: center;
+                        justify-content: center;
+                        gap: calc(var(--bbgl-t-gap-v) * .65);
+                        width: 100%;
+                        height: 100%;
+                        min-width: 0;
+                        min-height: 0;
+                        padding: calc(var(--bbgl-t-gap-v) * .75) calc(var(--bbgl-t-gap) * .8);
+                        border: 1px solid rgba(170, 179, 180, .18);
+                        border-radius: max(2px, calc(var(--bbgl-t-win-radius) * .3));
+                        box-sizing: border-box;
+                        background:
+                            radial-gradient(circle at 4px 4px, #8d9495 0 .45px, #25292a .7px 1.15px, transparent 1.3px),
+                            radial-gradient(circle at calc(100% - 4px) 4px, #8d9495 0 .45px, #25292a .7px 1.15px, transparent 1.3px),
+                            radial-gradient(circle at 4px calc(100% - 4px), #727879 0 .45px, #202425 .7px 1.15px, transparent 1.3px),
+                            radial-gradient(circle at calc(100% - 4px) calc(100% - 4px), #727879 0 .45px, #202425 .7px 1.15px, transparent 1.3px),
+                            repeating-linear-gradient(0deg, rgba(255, 255, 255, .016) 0 1px, transparent 1px 3px),
+                            radial-gradient(ellipse 85% 65% at 50% 44%, rgba(255, 255, 255, .035), transparent 72%),
+                            linear-gradient(160deg, #202426, #090b0c 57%, #16191a);
+                        box-shadow:
+                            inset 0 1px 1px rgba(255, 255, 255, .055),
+                            inset 0 -1px 1px rgba(0, 0, 0, .8),
+                            inset 0 0 9px rgba(0, 0, 0, .5);
+                    }
+
+                    .bbgl-title-card-value {
+                        position: relative;
+                        z-index: 1;
+                        display: flex;
+                        align-items: baseline;
+                        justify-content: center;
+                        flex-wrap: wrap;
+                        gap: calc(var(--bbgl-t-gap) * .8);
+                        width: 100%;
+                        min-width: 0;
+                        max-width: 100%;
+                        box-sizing: border-box;
+                        text-align: center;
+                    }
+
+                    .bbgl-title-card-value .bbgl-titles-title {
+                        display: block;
+                        max-width: 100%;
+                        font-size: var(--bbgl-t-fs-line);
+                        line-height: 1.25;
+                        white-space: normal;
+                    }
+
+                    .bbgl-title-card-empty {
+                        font-family: 'Fjalla One', 'Barlow Condensed', 'Arial Narrow', sans-serif;
+                        font-size: var(--bbgl-t-fs-line);
+                        line-height: 1.2;
+                        letter-spacing: .06em;
+                        text-transform: uppercase;
+                        color: rgba(170, 176, 177, .38);
+                        text-shadow: 0 1px 1px rgba(0, 0, 0, .8);
                     }
 
                     /* Reset-to-automatic arrow. Only rendered while a hand-picked title is active,
@@ -7206,13 +7193,10 @@
                     /* ─── Engraved machine scale ─────────────────────────────────────────
                        No shared plaque, face or border: this transparent box reserves the single
                        milestone row above the track. The narrow channel below reads as a groove cut
-                       straight into the panel surface, so the ambient photo texture and scanlines are
-                       entirely uninterrupted around it.
-
-                       All seven plaques (six bands plus the Fully Bricked capstone) live on the one
-                       axis inside .bbgl-rank-scale again, so this is a plain single-child wrapper
-                       rather than the two-column row it briefly was while the capstone docked
-                       outside the groove. */
+                       straight into the panel surface, so the ambient photo texture and scanlines
+                       stay uninterrupted around it. All seven plaques (six bands plus the Fully
+                       Bricked capstone) live on one axis inside .bbgl-rank-scale, as a plain
+                       single-child wrapper. */
                     .bbgl-rank-track {
                         position: relative;
                         display: flex;
@@ -7233,18 +7217,13 @@
                         box-sizing: border-box;
                     }
 
-                    /* Shallow divot pressed into the panel, not a slot cut through it. The
-                       difference is deliberate: a hard 1px black line with sharp highlight/shadow
-                       edges reads as a HOLE, while a dished recession reads as the panel material
-                       simply being pushed in. Three things do that work — rounded caps, a base
-                       tone lifted off pure black toward the panel's own value so the ambient photo
-                       texture still carries through the channel, and a soft elliptical inner
-                       shading in place of the old hard 1px highlight/shadow pair.
+                    /* Shallow divot pressed into the panel, not a slot cut through it — a dished
+                       recession with rounded caps, a base tone lifted toward the panel's own value,
+                       and soft elliptical inner shading reads as material pushed in, not a hole.
                        Side padding on BOTH ends: a locked plaque is centred on the level it names, so
-                       the 0% one (Dry/Parched/Cracked Clay) and the 100% one (Fully Bricked) each
-                       overhang the groove's own end by half their width. This is the room they
-                       overhang INTO, and it doubles as the clamp headroom layoutRankShelf()
-                       (07-section-vi-ui.js) allows itself when keeping a plaque on the panel. */
+                       the 0% and 100% plaques each overhang the groove's own end by half their
+                       width — this is the room they overhang into, and it doubles as the clamp
+                       headroom layoutRankShelf() (07-section-vi-ui.js) allows itself. */
                     .bbgl-rank-line {
                         /* Knob geometry lives here, not on .bbgl-rank-knob itself, so
                            .bbgl-rank-notch's .is-above rule (a separate sibling below) can read the
@@ -7386,16 +7365,17 @@
                     }
 
                     /* ─── Rank-name material ladder ─────────────────────────────────────
-                       The visible rank scale owns this progression. Each atrophy cycle changes
-                       the WORDS but keeps the same five materials; Fully Bricked is the one true
-                       terminal sixth tier. Apply paint to each wrapped line rather than the title
-                       container so two-line names receive one clean gradient per line.
+                       The visible rank scale and identity-card plaque share this progression. Each
+                       atrophy cycle changes the WORDS but keeps the same five materials; Fully
+                       Bricked is the one true terminal sixth tier. Apply paint to each wrapped line
+                       rather than the title container so two-line names receive one clean gradient
+                       per line.
 
                        T1 stays plain. T2 is the first presentation upgrade: flat lettering flickers
                        on like a fluorescent sign, then holds a restrained steady light. T3 is the
                        first physical-looking title and begins the material progression. Gold and the
                        Diamond-family A2 capstone retain color-driven motion inside the glyphs. */
-                    .bbgl-rank-title.is-revealed .bbgl-rank-notch-line {
+                    :is(.bbgl-rank-title, .bbgl-title-card-rank-plaque).is-revealed .bbgl-rank-notch-line {
                         color: #fff;
                         background: none;
                         -webkit-text-fill-color: currentColor;
@@ -7404,7 +7384,7 @@
                         filter: none;
                     }
 
-                    .bbgl-rank-title:is(.material-bright-silver, .material-gold, .material-diamond).is-revealed .bbgl-rank-notch-line {
+                    :is(.bbgl-rank-title, .bbgl-title-card-rank-plaque):is(.material-bright-silver, .material-gold, .material-diamond).is-revealed .bbgl-rank-notch-line {
                         background-clip: text;
                         -webkit-background-clip: text;
                         color: transparent;
@@ -7412,12 +7392,12 @@
                     }
 
                     /* T1 — deliberately plain baseline. */
-                    .bbgl-rank-title.material-iron.is-revealed .bbgl-rank-notch-line {
-                        color: #858a8d;
+                    :is(.bbgl-rank-title, .bbgl-title-card-rank-plaque).material-iron.is-revealed .bbgl-rank-notch-line {
+                        color: #000;
                         background: none;
                         -webkit-text-fill-color: currentColor;
                         font-weight: 400;
-                        text-shadow: 0 1px 1px rgba(0, 0, 0, .68);
+                        text-shadow: none;
                         filter: none;
                         animation: none;
                     }
@@ -7426,7 +7406,7 @@
                        The uneven one-shot ignition briefly falls back to its gray unlit face before
                        settling into a modest off-white lamp glow. It never flickers again once lit,
                        keeping T3's brighter aluminum face and reflected streak as a clear promotion. */
-                    .bbgl-rank-title.material-steel.is-revealed .bbgl-rank-notch-line {
+                    :is(.bbgl-rank-title, .bbgl-title-card-rank-plaque).material-steel.is-revealed .bbgl-rank-notch-line {
                         color: #d9dddf;
                         background: none;
                         -webkit-text-fill-color: currentColor;
@@ -7444,7 +7424,7 @@
                     /* T3 is painted once on the shared two-line wrapper rather than once on every
                        .bbgl-rank-notch-line. Both rows therefore belong to one aluminum block and
                        receive one reflection centred across the complete title. */
-                    .bbgl-rank-title.material-silver.is-revealed .bbgl-rank-title-text {
+                    :is(.bbgl-rank-title, .bbgl-title-card-rank-plaque).material-silver.is-revealed .bbgl-rank-title-text {
                         /* Polished aluminum blocks. The angular Aldrich face and hard underside
                            step square the lettering off into small metal-cut forms rather than the
                            softer condensed type used by the surrounding ranks. A narrow value range
@@ -7483,7 +7463,7 @@
                         animation: none;
                     }
 
-                    .bbgl-rank-title.material-silver.is-revealed .bbgl-rank-notch-line {
+                    :is(.bbgl-rank-title, .bbgl-title-card-rank-plaque).material-silver.is-revealed .bbgl-rank-notch-line {
                         width: 100%;
                         text-align: center;
                         color: transparent;
@@ -7500,7 +7480,7 @@
                        samples its own half of one 200%-tall gradient, preserving the streak's single
                        continuous angle while allowing light to escape only beside the glyph slices
                        it actually strikes. */
-                    .bbgl-rank-title.material-silver.is-revealed .bbgl-rank-notch-line::before {
+                    :is(.bbgl-rank-title, .bbgl-title-card-rank-plaque).material-silver.is-revealed .bbgl-rank-notch-line::before {
                         content: attr(data-rank-text);
                         position: absolute;
                         inset: 0;
@@ -7518,21 +7498,16 @@
                         pointer-events: none;
                     }
 
-                    .bbgl-rank-title.material-silver.is-revealed .bbgl-rank-notch-line:last-child::before {
+                    :is(.bbgl-rank-title, .bbgl-title-card-rank-plaque).material-silver.is-revealed .bbgl-rank-notch-line:last-child::before {
                         background-position: 0 100%;
                     }
 
-                    /* T4 — cut emerald. Hard stops in the stationary ramp divide the face into
-                       table, crown and pavilion-like facets rather than the soft tonal roll of
-                       metal. Selected panes step from pale cut edges into broad, green-tinted clear
-                       cores, letting the dark panel optically enter the stone without becoming gray
-                       scratches; the fine mint stroke keeps those openings bounded by a lit crystal
-                       edge. The moving layer is a centred ring of refraction: its two sides begin
-                       together in the middle, then separate toward the ends as the ring expands.
-                       The opening starts at half the line width but cannot fall below 2.5em, giving
-                       short second-row words enough pixels to interpolate cleanly while still
-                       reading as a light source originating at the centre. */
-                    .bbgl-rank-title.material-bright-silver.is-revealed .bbgl-rank-notch-line {
+                    /* T4 — cut emerald. Hard stops in the stationary ramp carve facets instead of
+                       metal's soft tonal roll. The moving layer is a centred ring of refraction:
+                       both sides start together in the middle, then separate toward the ends as it
+                       expands. The opening's minimum width (2.5em) keeps short second-row words
+                       interpolating cleanly. */
+                    :is(.bbgl-rank-title, .bbgl-title-card-rank-plaque).material-bright-silver.is-revealed .bbgl-rank-notch-line {
                         --rank-emerald-start: max(50%, 2.5em);
                         --rank-emerald-light: radial-gradient(ellipse at center,
                             transparent 0%, transparent 30%,
@@ -7588,7 +7563,7 @@
                        dark until the moving refraction reaches a cut, then blooms saturated green
                        as though the light has passed through the stone rather than reflecting off
                        its front surface. */
-                    .bbgl-rank-title.material-bright-silver.is-revealed .bbgl-rank-notch-line::before {
+                    :is(.bbgl-rank-title, .bbgl-title-card-rank-plaque).material-bright-silver.is-revealed .bbgl-rank-notch-line::before {
                         content: attr(data-rank-text);
                         position: absolute;
                         inset: 0;
@@ -7617,7 +7592,7 @@
                        transparent polish band crosses it left-to-right. Because that band is fully
                        off-glyph at both endpoints, the base lighting before and after the pass is
                        identical and the one-way animation can reset invisibly. */
-                    .bbgl-rank-title.material-gold.is-revealed .bbgl-rank-notch-line {
+                    :is(.bbgl-rank-title, .bbgl-title-card-rank-plaque).material-gold.is-revealed .bbgl-rank-notch-line {
                         --rank-gold-sheen: linear-gradient(105deg,
                             transparent 0%, transparent 40%,
                             rgba(255, 234, 145, .24) 43%, rgba(255, 249, 214, .72) 47%,
@@ -7641,7 +7616,7 @@
                     /* The background copy contains only the moving polish band. The faint gold
                        base glow comes from the stationary drop-shadows above, so this layer is
                        transparent at both endpoints too and cannot expose the loop boundary. */
-                    .bbgl-rank-title.material-gold.is-revealed .bbgl-rank-notch-line::before {
+                    :is(.bbgl-rank-title, .bbgl-title-card-rank-plaque).material-gold.is-revealed .bbgl-rank-notch-line::before {
                         content: attr(data-rank-text);
                         position: absolute;
                         inset: 0;
@@ -7666,7 +7641,7 @@
                        paint. Only that colored reflection travels, so the title remains glassy,
                        platinum and dimensional at every point in the animation rather than turning
                        into alternating blocks of opaque rainbow color. */
-                    .bbgl-rank-title.material-diamond.is-revealed .bbgl-rank-notch-line {
+                    :is(.bbgl-rank-title, .bbgl-title-card-rank-plaque).material-diamond.is-revealed .bbgl-rank-notch-line {
                         background-image:
                             linear-gradient(105deg,
                                 transparent 0%, transparent 24%,
@@ -7693,7 +7668,7 @@
                     /* Depth belongs behind the completed two-line title, not over the translucent
                        glyph fill. Applying it to the shared wrapper keeps the pearl face bright
                        while giving the whole mark a darker, more prominent lift from the panel. */
-                    .bbgl-rank-title.material-diamond.is-revealed .bbgl-rank-title-text {
+                    :is(.bbgl-rank-title, .bbgl-title-card-rank-plaque).material-diamond.is-revealed .bbgl-rank-title-text {
                         filter:
                             drop-shadow(0 2px 1px rgba(12, 16, 25, .76))
                             drop-shadow(0 3px 2.5px rgba(6, 9, 16, .52));
@@ -7702,7 +7677,7 @@
                     /* A blurred duplicate of each line paints one continuous iridescent ribbon
                        behind the platinum face. Unlike stacked colored drop-shadows, the hues keep
                        their own positions instead of mixing into a single gray-white bloom. */
-                    .bbgl-rank-title.material-diamond.is-revealed .bbgl-rank-notch-line::before {
+                    :is(.bbgl-rank-title, .bbgl-title-card-rank-plaque).material-diamond.is-revealed .bbgl-rank-notch-line::before {
                         content: attr(data-rank-text);
                         position: absolute;
                         inset: 0;
@@ -7726,7 +7701,7 @@
                     /* Stationary pearl-platinum light beneath the colored ribbon restores the
                        strong luminous base without mixing the iridescent hues together. It uses
                        the same blur radius, so intensity rises without growing the bloom. */
-                    .bbgl-rank-title.material-diamond.is-revealed .bbgl-rank-notch-line::after {
+                    :is(.bbgl-rank-title, .bbgl-title-card-rank-plaque).material-diamond.is-revealed .bbgl-rank-notch-line::after {
                         content: attr(data-rank-text);
                         position: absolute;
                         inset: 0;
@@ -7798,26 +7773,26 @@
                         to { background-position: 0% 50%; }
                     }
 
-                    #bbgl-panel.bbgl-no-animations .bbgl-rank-title.is-revealed .bbgl-rank-notch-line {
+                    #bbgl-panel.bbgl-no-animations :is(.bbgl-rank-title, .bbgl-title-card-rank-plaque).is-revealed .bbgl-rank-notch-line {
                         animation: none;
                         background-position: 50% 50%;
                     }
 
-                    #bbgl-panel.bbgl-no-animations .bbgl-rank-title.material-bright-silver.is-revealed .bbgl-rank-notch-line {
+                    #bbgl-panel.bbgl-no-animations :is(.bbgl-rank-title, .bbgl-title-card-rank-plaque).material-bright-silver.is-revealed .bbgl-rank-notch-line {
                         background-size: 400% 240%, 100% 100%;
                     }
 
-                    #bbgl-panel.bbgl-no-animations .bbgl-rank-title.material-bright-silver.is-revealed .bbgl-rank-notch-line::before {
+                    #bbgl-panel.bbgl-no-animations :is(.bbgl-rank-title, .bbgl-title-card-rank-plaque).material-bright-silver.is-revealed .bbgl-rank-notch-line::before {
                         animation: none;
                         background-size: 400% 240%;
                     }
 
-                    #bbgl-panel.bbgl-no-animations .bbgl-rank-title.material-gold.is-revealed .bbgl-rank-notch-line::before {
+                    #bbgl-panel.bbgl-no-animations :is(.bbgl-rank-title, .bbgl-title-card-rank-plaque).material-gold.is-revealed .bbgl-rank-notch-line::before {
                         animation: none;
                         background-position: 50% 50%;
                     }
 
-                    #bbgl-panel.bbgl-no-animations .bbgl-rank-title.material-diamond.is-revealed .bbgl-rank-notch-line::before {
+                    #bbgl-panel.bbgl-no-animations :is(.bbgl-rank-title, .bbgl-title-card-rank-plaque).material-diamond.is-revealed .bbgl-rank-notch-line::before {
                         animation: none;
                         background-position: 50% 50%;
                     }
@@ -7902,22 +7877,17 @@
                     }
 
                     /* ─── Material plaques ────────────────────────────────────────────────
-                       One title per band plus Fully Bricked. The finish ladder communicates
-                       prestige independently of the changing Atrophy-tier words, and escalates on
-                       two axes at once: the METAL (aluminium -> steel -> silver -> gold -> nacre)
-                       and the WORKMANSHIP (bare blank -> chamfered -> framed with a sunk field ->
-                       rivets -> milled edge). The first three tiers are the same metal family and
-                       separate on workmanship alone.
+                       One title per band plus Fully Bricked. The finish ladder escalates on two
+                       axes: METAL (aluminium -> steel -> silver -> gold -> nacre) and WORKMANSHIP
+                       (bare blank -> chamfered -> framed with a sunk field -> rivets -> milled
+                       edge) — the first three tiers share a metal family and separate on
+                       workmanship alone.
 
-                       Ornament scale keys off --bbgl-t-rank-tag-cut, which already scales per
-                       panel mode (1px compact -> ~2.7px page), so the whole ladder resizes with
-                       the panel without a single new per-mode variable.
-
-                       Horizontal footprint is guarded deliberately: the frame band is ADDED to
-                       --bbgl-t-rank-tag-pad-x rather than carved out of it, so the inner text
-                       clearance stays exactly what it was and only the frame widens the plate.
-                       The five level bands are even 20-point spans (see LEVEL_TITLE_BANDS), with
-                       the Fully Bricked capstone pinned at 100. */
+                       Ornament scale keys off --bbgl-t-rank-tag-cut, which already scales per panel
+                       mode, so the ladder resizes without a new per-mode variable. Frame band width
+                       is ADDED to --bbgl-t-rank-tag-pad-x rather than carved out of it, so inner
+                       text clearance stays fixed and only the frame widens the plate. The five
+                       level bands are even 20-point spans (LEVEL_TITLE_BANDS), capstone at 100. */
                     /* Hidden, not removed: the plaques below are queued to relocate onto the
                        identity card rather than disappear, so every rule in this section stays
                        live and correct — layoutRankShelf() (07-section-vi-ui.js) still measures and
@@ -8146,17 +8116,13 @@
 
                     /* Positioned wrapper only. Its single job is the drop-shadow, which MUST be a
                        filter rather than a box-shadow: the mask on .bbgl-rank-notch-face below cuts
-                       the silhouette, and a mask (like the clip-path this replaced) clips an outer
-                       box-shadow away entirely. That is why the old plaques cast no shadow at all
-                       and read as pasted onto the panel rather than sitting on it.
+                       the silhouette, and a mask clips an outer box-shadow away entirely.
 
                        Centred, not left-anchored: .bbgl-rank-notch sits at the exact level it
-                       names, and the plaque straddles that tick rather than occupying the space
-                       toward the next one. .bbgl-rank-notch has no intrinsic width of its own (its
-                       only child is this absolutely positioned label, which is out of flow and so
-                       does not count toward its parent's auto width), so this element's own
-                       left:50%/translateX(-50%) is what centres the plaque's real box on the
-                       milestone rather than on the zero-width anchor point alone. */
+                       names, and the plaque straddles that tick. .bbgl-rank-notch has no intrinsic
+                       width of its own (its only child is this out-of-flow absolutely positioned
+                       label), so this element's own left:50%/translateX(-50%) is what centres the
+                       plaque's real box on the milestone. */
                     .bbgl-rank-notch-label {
                         position: absolute;
                         left: 50%;
@@ -8293,23 +8259,15 @@
 
 
                     /* A plaque at rest SITS ON the bar rather than floating over it: bottom lands on
-                       the groove's own top surface (half its height above the centreline this is
-                       measured from), so the shelf reads as trophies standing on a rail. That is
-                       also the cheapest vertical space on the page — the old flat +5px of float was
-                       pure air between the plaque row and the bar, and dropping it lets
-                       layoutRankBarCenter() (07-section-vi-ui.js) recover the whole amount, since it
-                       centres the measured union of the labels, the line and the readout.
+                       the groove's own top surface, so the shelf reads as trophies standing on a
+                       rail. --bbgl-t-notch-gap is the per-mode float on top of that, measured from
+                       the bar's surface — compact runs it at 0 (genuinely resting), roomier modes
+                       keep a little air.
 
-                       --bbgl-t-notch-gap survives as the per-mode float knob on top of that, now
-                       measured from the bar's surface rather than from its centreline. Compact runs
-                       it at 0 (genuinely resting); the roomier modes keep a little air.
-
-                       On top of --bbgl-t-notch-gap, every plaque also clears the slider knob: the
-                       knob is centred ON the line (straddling it, like the groove's numerals always
-                       have been), so only its upper half — --bbgl-t-knob-fs / 2, off
-                       .bbgl-rank-line's own --bbgl-t-knob-fs var — reaches above centre for the
-                       plaques to clear. Without this, compact mode (--bbgl-t-notch-gap: 0) would rest
-                       the plaques right on top of the knob's digits instead of above them. */
+                       Every plaque also clears the slider knob: the knob is centred ON the line, so
+                       only its upper half (--bbgl-t-knob-fs / 2) reaches above centre for the
+                       plaques to clear. Without this, compact mode would rest the plaques right on
+                       top of the knob's digits. */
                     .bbgl-rank-notch.is-above .bbgl-rank-notch-label {
                         bottom: calc(
                             var(--bbgl-t-bar-h) / 2 + var(--bbgl-t-notch-gap)
@@ -8326,28 +8284,22 @@
 
                     /* ── The cradle ───────────────────────────────────────────────────────
                        The rank you hold and the level you are at read as one object: the plate keeps
-                       its plain rectangle and its full frame, and a separate curved cradle hangs off
-                       its bottom edge to close around the readout's digits.
+                       its plain rectangle and full frame, and a separate curved cradle hangs off its
+                       bottom edge to close around the readout's digits.
 
                        TWO pieces rather than one grown-and-clipped plate, because the frame band is
-                       a rectangle ring (a border on .bbgl-rank-notch-fx::before) and cannot follow a
-                       curve. Clipping a single plate to a rounded silhouette cuts straight through
-                       that ring and leaves the curved edges bare. Giving the cradle its own box
-                       instead means border-radius draws its edge for free — and it lets the two
-                       carry different treatments on purpose: the machined frame belongs to the
-                       rectangular plate, the cradle is plain stock bent around the number.
+                       a rectangle ring and cannot follow a curve — clipping a single plate to a
+                       rounded silhouette cuts straight through that ring. A separate box lets
+                       border-radius draw the cradle's edge for free, and lets the two carry
+                       different treatments: the machined frame belongs to the rectangular plate, the
+                       cradle is plain stock bent around the number.
 
-                       This costs NO vertical space. The plate still rests exactly where a docked
-                       plaque does (the .is-above rule above), so the shelf line is unchanged and the
-                       lettering does not shift when this plaque later docks.
-
-                       --rank-wrap-drop is how far past the plate's resting bottom the cradle
-                       reaches. .bbgl-rank-knob now rests at that same floor-relative height instead
-                       of overhanging below it (.bbgl-rank-line is the assembly's hard floor — nothing
-                       may paint past it), so there is no digit height left for the cradle to wrap
-                       around below the plate. Zeroed rather than deleted: the cradle element and its
-                       overlap term stay, purely to fuse the seam at the plate's own bottom edge (see
-                       --rank-cradle-overlap below), but it may never extend further than that. */
+                       Costs NO vertical space — the plate still rests exactly where a docked plaque
+                       does, so the shelf line is unchanged when this plaque later docks.
+                       --rank-wrap-drop is zeroed (not deleted): .bbgl-rank-line is the assembly's
+                       hard floor, so there's no digit height left for the cradle to wrap below the
+                       plate, but the element and its overlap term stay to fuse the seam at the
+                       plate's own bottom edge (see --rank-cradle-overlap below). */
                     .bbgl-rank-notch.is-riding {
                         --rank-wrap-drop: 0px;
                         /* How far the cradle rides UP into the plate. It paints after the plate, so
@@ -8362,29 +8314,23 @@
                     /* ── One ramp across both pieces ──────────────────────────────────────
                        The plate and the cradle are the same piece of metal, so they sample a SINGLE
                        gradient spanning both rather than each running the tier ramp over its own
-                       box. Left alone, the cradle would restart at the ramp's brightest stop right
-                       where the plate had reached its darkest, laying a hard bright band across the
-                       join — the one seam this whole two-element split exists to avoid.
+                       box — otherwise the cradle would restart at the ramp's brightest stop right
+                       where the plate had reached its darkest, laying a hard bright seam at the join.
 
-                       The shared ramp is the plate's height plus the drop. The plate can state that
-                       without help: a background-size percentage resolves against its own padding
-                       box, so calc(100% + drop) IS the combined height, with the image anchored at
-                       its top by default.
+                       The plate states the shared ramp height itself: background-size percentage
+                       resolves against its own padding box, so calc(100% + drop) IS the combined
+                       height. The cradle can't do the same — a percentage there would resolve
+                       against the CRADLE's own height — so it needs the plate's actual height,
+                       which is content-driven and only measurable: layoutRankShelf()
+                       (07-section-vi-ui.js) writes it as --rank-plate-h. The negative offset then
+                       slides the image up so its top lands on the plate's top, putting both pieces
+                       on the same row of the same ramp at the junction.
 
-                       The cradle cannot — a percentage there would resolve against the CRADLE's
-                       height, and what it needs to know is where its own slice begins partway down
-                       the shared ramp. That distance is the plate's height, which is content-driven
-                       and only measurable: layoutRankShelf() (07-section-vi-ui.js) writes it as
-                       --rank-plate-h. The negative offset then slides the image up so its top lands
-                       on the plate's top rather than the cradle's, which is what puts both pieces on
-                       the same row of the same ramp at the junction.
-
-                       Repeat is deliberately left at its default. Once measured, the image covers
-                       the cradle exactly and there is nothing to tile; before then --rank-plate-h
-                       falls back to 0 and the image is too short, so tiling is what keeps the box
-                       fully painted. no-repeat would instead leave the overlap strip transparent
-                       and let the plate's bottom border show through it — the exact seam this
-                       arrangement exists to hide, flashed for the one frame before placement. */
+                       Repeat is left at its default: once measured, the image covers the cradle
+                       exactly, but before then --rank-plate-h falls back to 0 and the image is too
+                       short, so tiling keeps the box fully painted rather than leaving the overlap
+                       strip transparent (which would show the plate's bottom border through it —
+                       the exact seam this whole arrangement exists to hide). */
                     .bbgl-rank-notch.is-riding .bbgl-rank-notch-face {
                         background-size: 100% calc(100% + var(--rank-wrap-drop));
                     }
@@ -8484,6 +8430,301 @@
                         opacity: 0;
                     }
 
+                    /* Card context for one current-rank plaque. The plaque renderer is shared with
+                       the dormant trophy shelf, but every positioning rule below severs this copy
+                       from the shelf coordinate system. Material, silhouette, frame, grain and
+                       sweep remain the exact same implementation used by the original plaques. */
+                    .bbgl-title-card-rank-plaque {
+                        --rank-pad-block: calc(var(--bbgl-t-gap-v) * .85 + 1px);
+                        --rank-pad-inline: calc(var(--bbgl-t-gap) * .8 + 1px);
+                        position: relative;
+                        top: auto;
+                        left: auto;
+                        display: block;
+                        width: 100%;
+                        height: 100%;
+                        max-width: 100%;
+                        transform: none;
+                        pointer-events: auto;
+                        z-index: 1;
+                    }
+
+                    .bbgl-title-card-rank-plaque .bbgl-rank-notch-label {
+                        position: relative;
+                        left: auto;
+                        bottom: auto;
+                        display: block;
+                        width: 100%;
+                        height: 100%;
+                        max-width: 100%;
+                        transform: none;
+                    }
+
+                    .bbgl-title-card-rank-plaque .bbgl-rank-notch-face {
+                        display: flex;
+                        flex-direction: column;
+                        align-items: center;
+                        justify-content: center;
+                        width: 100%;
+                        height: 100%;
+                        max-width: 100%;
+                        font-size: calc(var(--bbgl-t-fs-line) * 1.08);
+                        line-height: 1.05;
+                    }
+
+                    /* The progress-bar finishes for silver and diamond paint the two-line rank as
+                       one shared block. The card adds that same wrapper, then neutralises the bar's
+                       absolute milestone positioning while leaving its typography/paint untouched. */
+                    .bbgl-title-card-rank-plaque .bbgl-rank-title-text {
+                        position: relative;
+                        top: auto;
+                        left: auto;
+                        display: flex;
+                        flex-direction: column;
+                        align-items: center;
+                        justify-content: center;
+                        transform: none;
+                        z-index: 2;
+                    }
+
+                    .bbgl-title-card[data-rank-finish="mill"] .bbgl-title-card-rank-label {
+                        display: none;
+                    }
+
+                    .bbgl-title-card-rank-plaque.finish-mill {
+                        container-type: size;
+                        --rank-drop: none;
+                    }
+
+                    .bbgl-title-card-rank-plaque.finish-mill .bbgl-rank-notch-face {
+                        display: grid;
+                        grid-template-rows: 36% minmax(0, 1fr);
+                        padding: clamp(2px, 3cqh, 4px);
+                        border: 1px solid;
+                        border-color: #fffefa #cecec8 #93968f #e1e2da;
+                        border-radius: clamp(3px, 5cqw, 7px);
+                        background: linear-gradient(165deg, #fffefa 0%, #f4f4ee 48%, #e4e5de 100%);
+                        box-shadow:
+                            inset 0 1px 0 #fff,
+                            inset 1px 0 1px rgba(255, 255, 255, .9),
+                            inset -1px 0 1px rgba(90, 96, 84, .18),
+                            inset 0 -3px 1px #c0c3b9,
+                            inset 0 -4px 0 rgba(255, 255, 255, .8);
+                        mask: none;
+                        -webkit-mask: none;
+                        overflow: hidden;
+                        align-items: stretch;
+                        justify-content: stretch;
+                    }
+
+                    .bbgl-title-card-rank-plaque.finish-mill .bbgl-rank-notch-face::after,
+                    .bbgl-title-card-rank-plaque.finish-mill .bbgl-rank-notch-fx {
+                        display: none;
+                    }
+
+                    .bbgl-title-card-rank-plaque.finish-mill .bbgl-rank-notch-face::before {
+                        inset: 1px 1px 4px;
+                        z-index: 3;
+                        border-radius: inherit;
+                        background:
+                            linear-gradient(115deg, rgba(255, 255, 255, .24), transparent 42%),
+                            linear-gradient(180deg, rgba(255, 255, 255, .2), transparent 22%);
+                        opacity: 1;
+                    }
+
+                    .bbgl-rank-name-tag-heading {
+                        display: flex;
+                        align-items: center;
+                        justify-content: center;
+                        min-width: 0;
+                        min-height: 0;
+                        border-radius: clamp(2px, 3cqw, 4px) clamp(2px, 3cqw, 4px) 0 0;
+                        background: linear-gradient(180deg, #bc4145, #ad3036);
+                        box-shadow: inset 0 1px 1px rgba(86, 20, 24, .35), 0 1px 0 rgba(255, 255, 255, .9);
+                        color: #fff;
+                        font-family: 'Trebuchet MS', 'Segoe UI', sans-serif;
+                        font-size: min(9cqw, 23cqh);
+                        font-weight: 400;
+                        line-height: 1;
+                        letter-spacing: 0;
+                        text-shadow: none;
+                        white-space: nowrap;
+                    }
+
+                    .bbgl-title-card-rank-plaque.finish-mill .bbgl-rank-title-text {
+                        box-sizing: border-box;
+                        min-width: 0;
+                        min-height: 0;
+                        padding: 3px 5%;
+                        font-size: min(15cqw, 40cqh);
+                        line-height: 1.08;
+                    }
+
+                    #bbgl-panel.bbgl-compact .bbgl-title-card-rank-plaque.finish-mill .bbgl-rank-title-text {
+                        font-size: min(13cqw, 34cqh);
+                    }
+
+                    #bbgl-panel.bbgl-compact .bbgl-title-card-rank-plaque.finish-mill .bbgl-rank-notch-face {
+                        padding: 1px;
+                        box-shadow:
+                            inset 0 1px 0 #fff,
+                            inset -1px 0 1px rgba(90, 96, 84, .12),
+                            inset 0 -1px 0 #c0c3b9,
+                            inset 0 -2px 0 rgba(255, 255, 255, .8);
+                    }
+
+                    #bbgl-panel.bbgl-compact .bbgl-title-card-rank-plaque.finish-mill .bbgl-rank-notch-face::before {
+                        bottom: 2px;
+                    }
+
+                    .bbgl-title-card[data-rank-finish="machined"] .bbgl-title-card-rank-label {
+                        display: none;
+                    }
+
+                    .bbgl-title-card-rank-plaque.finish-machined {
+                        container-type: size;
+                        --rank-drop: none;
+                    }
+
+                    .bbgl-title-card-rank-plaque.finish-machined .bbgl-rank-notch-face {
+                        --rank-lightbox-rim: 17cqmin;
+                        --rank-lightbox-thin-rim: calc(var(--rank-lightbox-rim) * .5);
+                        --rank-lightbox-edge: clamp(.4px, 1cqmin, 1px);
+                        display: flex;
+                        align-items: center;
+                        justify-content: center;
+                        padding: calc(var(--rank-lightbox-rim) + 2px) calc(var(--rank-lightbox-thin-rim) + 2px) calc(var(--rank-lightbox-thin-rim) + 2px);
+                        border: 0;
+                        border-radius: clamp(3px, 5cqw, 7px);
+                        background: linear-gradient(165deg, #7d928d, #4c6462 48%, #344b4b);
+                        box-shadow: none;
+                        mask: none;
+                        -webkit-mask: none;
+                        overflow: hidden;
+                    }
+
+                    .bbgl-title-card-rank-plaque.finish-machined .bbgl-rank-notch-fx {
+                        inset: var(--rank-lightbox-thin-rim);
+                        border: 1px solid #0c1011;
+                        border-radius: clamp(2px, 3cqw, 4px);
+                        background: linear-gradient(160deg, #1c2325, #090d0e 65%, #111719);
+                        box-shadow: inset 0 1px 3px #000, 0 1px 0 rgba(255, 255, 255, .09);
+                        -webkit-mask-image: radial-gradient(ellipse 34cqmin calc(var(--rank-lightbox-rim) * .65) at 50% 0, transparent calc(100% - .5px), #000 100%);
+                        mask-image: radial-gradient(ellipse 34cqmin calc(var(--rank-lightbox-rim) * .65) at 50% 0, transparent calc(100% - .5px), #000 100%);
+                    }
+
+                    .bbgl-title-card-rank-plaque.finish-machined .bbgl-rank-notch-fx::before,
+                    .bbgl-title-card-rank-plaque.finish-machined .bbgl-rank-notch-fx::after {
+                        display: none;
+                    }
+
+                    .bbgl-title-card-rank-plaque.finish-machined .bbgl-rank-notch-face::after {
+                        inset: 0;
+                        width: auto;
+                        border-radius: inherit;
+                        background: none;
+                        box-shadow:
+                            inset 0 var(--rank-lightbox-edge) 0 rgba(255, 255, 255, .65),
+                            inset 0 calc(var(--rank-lightbox-edge) * -1.5) 0 rgba(24, 58, 55, .5);
+                        transform: none;
+                        animation: none;
+                    }
+
+                    .bbgl-title-card-rank-plaque.finish-machined .bbgl-rank-notch-face::before {
+                        inset: 0;
+                        z-index: 0;
+                        border-radius: inherit;
+                        background: #d9dddf;
+                        box-shadow:
+                            inset 0 0 3px rgba(232, 239, 242, .82),
+                            inset 0 0 8px rgba(216, 229, 234, .48),
+                            inset 0 0 14px rgba(201, 219, 225, .20);
+                        opacity: 1;
+                        animation: bbgl-rank-lightbox-on 2.5s step-end 1 both;
+                        animation-delay: var(--bbgl-titles-animation-delay, 0ms);
+                    }
+
+                    .bbgl-rank-lightbox-heading {
+                        position: absolute;
+                        top: 0;
+                        left: 50%;
+                        transform: translateX(-50%);
+                        z-index: 2;
+                        display: flex;
+                        align-items: center;
+                        height: var(--rank-lightbox-rim);
+                        padding: 0;
+                        font-family: 'Barlow Condensed', 'Arial Narrow', sans-serif;
+                        font-size: min(calc(var(--rank-lightbox-rim) * 1.12), 22cqw);
+                        font-weight: 500;
+                        line-height: 1;
+                        letter-spacing: .16em;
+                        color: #263c39;
+                        text-shadow: none;
+                    }
+
+                    .bbgl-rank-lightbox-heading > span {
+                        display: block;
+                        text-box-trim: trim-both;
+                        text-box-edge: cap alphabetic;
+                    }
+
+                    .bbgl-title-card-rank-plaque.finish-machined .bbgl-rank-title-text {
+                        min-width: 0;
+                        min-height: 0;
+                        font-size: min(13cqw, 25cqh);
+                        line-height: 1.12;
+                    }
+
+                    #bbgl-panel.bbgl-expanded .bbgl-title-card-rank-plaque.finish-machined .bbgl-rank-title-text {
+                        font-size: min(15cqw, 28cqh);
+                    }
+
+                    @keyframes bbgl-rank-lightbox-on {
+                        0%, 30%, 34.01%, 37.2%, 43.61%, 48% { opacity: 0; }
+                        30.01%, 34%, 37.21%, 43.6% { opacity: .55; }
+                        48.01%, 100% { opacity: 1; }
+                    }
+
+                    .bbgl-title-card-rank-plaque.finish-machined .bbgl-rank-notch-label {
+                        filter:
+                            drop-shadow(0 0 4px rgba(232, 239, 242, .38))
+                            drop-shadow(0 0 8px rgba(216, 229, 234, .20))
+                            drop-shadow(0 0 14px rgba(201, 219, 225, .08));
+                        animation: bbgl-rank-lightbox-glow-on 2.5s step-end 1 both;
+                        animation-delay: var(--bbgl-titles-animation-delay, 0ms);
+                    }
+
+                    @keyframes bbgl-rank-lightbox-glow-on {
+                        0%, 30%, 34.01%, 37.2%, 43.61%, 48% {
+                            filter: none;
+                        }
+                        30.01%, 34%, 37.21%, 43.6% {
+                            filter:
+                                drop-shadow(0 0 4px rgba(224, 232, 235, .23))
+                                drop-shadow(0 0 7px rgba(207, 221, 226, .10));
+                        }
+                        48.01%, 100% {
+                            filter:
+                                drop-shadow(0 0 4px rgba(232, 239, 242, .38))
+                                drop-shadow(0 0 8px rgba(216, 229, 234, .20))
+                                drop-shadow(0 0 14px rgba(201, 219, 225, .08));
+                        }
+                    }
+
+                    #bbgl-panel.bbgl-no-animations .bbgl-title-card-rank-plaque.finish-machined .bbgl-rank-notch-label {
+                        animation: none;
+                    }
+
+                    #bbgl-panel.bbgl-no-animations .bbgl-title-card-rank-plaque.finish-machined .bbgl-rank-notch-face::before {
+                        animation: none;
+                        opacity: 1;
+                    }
+
+                    .bbgl-title-card-rank-plaque .bbgl-rank-notch-cradle {
+                        display: none !important;
+                    }
+
                     /* ─── Unlock blocks, one per stat ──────────────────────────────────
                        One in each corner (str top-left, def top-right, spd bottom-left, dex
                        bottom-right — grouped into .bbgl-titles-corner-col pairs above) rather than a
@@ -8502,30 +8743,18 @@
                     }
 
                     /* One block per stat: name on top, its own row of tier stars below.
-                       Deliberately NOT a container: inline-size containment computes an element's
-                       width without looking at its contents, so it would report a 0 contribution to
-                       its parent .bbgl-titles-corner-col — the column would collapse and the star
-                       rows would overflow and overlap. Sizing inside the block therefore measures
-                       against .bbgl-titles-page, which is what we want anyway: the page's width is
-                       set by the panel, independent of this layout, so there's no circularity and
-                       page mode can scale its stars off it. --bbgl-t-win-color feeds the glowing
-                       "window" chrome, set per stat below.
-
-                       position:relative is set HERE rather than in the shared chrome rule below,
-                       because that rule also covers .bbgl-titles-head — which is position:absolute
-                       for its centring and would be broken by a later 'relative'. Both end up
-                       positioned either way, which is all the frame/label need. It also anchors the
-                       stat-name label (.bbgl-title-block-label) straddling the top border below.
+                       Deliberately NOT a container: inline-size containment computes width without
+                       looking at contents, so it would report 0 contribution to its parent column,
+                       collapsing it. Sizing measures against .bbgl-titles-page instead — the page's
+                       width is set by the panel, independent of this layout, so there's no
+                       circularity. --bbgl-t-win-color feeds the glowing "window" chrome, set per
+                       stat below. position:relative anchors the SVG frame and the stat-name label
+                       straddling the top border.
 
                        margin-top reserves room for that label: it's absolutely positioned straddling
-                       the block's own top edge, so the column it sits in has no idea it exists and
-                       would otherwise let the TOP block's label collide with whatever is above the
-                       column (or the panel edge itself). Derived from the label's own font size
-                       rather than eyeballed, so retuning it keeps the clearance correct on its own.
-                       Only about half the label's height actually pokes above the block (it's
-                       centred ON the border line), so this is a much smaller reservation than the
-                       old hanging sign needed below — most of where the extra vertical room in this
-                       round came from. */
+                       the block's own top edge, so the column has no idea it exists and would
+                       otherwise let the label collide with whatever's above. Derived from the
+                       label's own font size so retuning it keeps the clearance correct on its own. */
                     .bbgl-title-block {
                         position: relative;
                         margin-top: var(--bbgl-t-label-clear);
@@ -8544,56 +8773,33 @@
                     .bbgl-title-block.ach-stat-spd { --bbgl-t-win-color: #ff9900; --bbgl-t-win-hum: 6.7s; }
                     .bbgl-title-block.ach-stat-dex { --bbgl-t-win-color: #109618; --bbgl-t-win-hum: 9.7s; }
 
-                    /* ─── Neon windows ──────────────────────────────────────────────────
-                       Shared chrome for the four stat blocks and the identity card: a neon tube bent
-                       around each one. Curved corners (not the earlier notched HUD look) are what
-                       sell "tube" over "terminal chrome."
+                    /* ─── Stat-block neon windows ───────────────────────────────────────
+                       Each stat block uses a neon tube bent around its two star rows, with curved
+                       corners rather than a notched HUD look.
 
-                       ── Why the chrome lives on pseudo-elements ──
-                       The frame and its glow are drawn by ::before, the interior texture by ::after,
-                       and NEITHER is on the element itself. That's not tidiness — 'filter' applies to
-                       an element's whole rendered subtree, so a drop-shadow here would re-glow every
-                       star and every letter inside the window on top of the glow they already carry
-                       (.bbgl-title-star-fill has its own). Confining the filter to a childless pseudo
-                       is what keeps the glow on the tube and off the contents. Both pseudos sit at
-                       z-index:-1 so they paint behind that content rather than over it.
+                       The frame/glow are drawn by ::before and the interior texture by ::after,
+                       neither on the element itself — 'filter' applies to an element's whole
+                       rendered subtree, so a drop-shadow directly on the block would re-glow every
+                       star and letter inside it. Confining the filter to a childless pseudo keeps
+                       the glow on the tube and off the contents; both pseudos sit at z-index:-1 so
+                       they paint behind the content.
 
-                       ── How it sits in the panel ──
-                       #bbgl-top-panel's ambient CRT texture — ::after (scanlines + vignette, z-index
-                       10) and .glass-overlay (the glass-glare image, z-index 11) — both sit BEHIND
-                       this content (#bbgl-achievements-container is z-index 20), and the window has
-                       no opaque fill, so those ambient scanlines already read through its interior
-                       for free. ::after only adds a second, TINTED layer over them, confined to this
-                       window: the same 2px-on/2px-off cadence as the ambient lines, recoloured, plus
-                       a radial bleed that's brightest at the RIM and gone by the middle — the tube's
-                       own light spilling onto the glass just inside it, not a panel lit from within.
-                       A radial mask fades the whole texture toward the centre for the same reason.
-                       The result reads as "this patch of glass is lit by this colour" rather than as
-                       a second card stacked on the first.
+                       The panel's ambient CRT texture (scanlines/vignette, glass glare) already
+                       sits behind this content, so it reads through the window's open interior for
+                       free — ::after adds only a second TINTED layer confined to this window: same
+                       cadence, recoloured, with a radial bleed brightest at the rim, reading as
+                       "this patch of glass is lit by this colour" rather than a second card stacked
+                       on top.
 
-                       ── Why it reads as neon rather than as a coloured border ──
-                       Two things, both borrowed from how the real thing works:
-                         • The LINE is near-white with only a tint of the stat colour; the COLOUR
-                           lives in the glow around it. A real tube is white-hot at the core and
-                           blooms its colour outward. This is also what reconciles "more prominent"
-                           with "fainter colour" — the line gets brighter while the hue gets softer,
-                           instead of trading one against the other.
-                         • The glow is three stacked drop-shadows (tight core -> mid bloom -> wide
-                           haze) rather than one big blur. A single blur reads as smudged; a falloff
-                           reads as lit. --bbgl-t-win-glow scales the two outer stops per mode, and
-                           lets the identity card burn slightly brighter than the four stat blocks
-                           without needing its own copy of these rules. */
-                    .bbgl-title-block,
-                    .bbgl-titles-head {
+                       Reads as neon rather than a coloured border for two reasons: the LINE is
+                       near-white with only a tint of the stat colour, the COLOUR lives in the glow
+                       around it (real tubes are white-hot at the core); and the glow is three
+                       stacked drop-shadows (tight core -> mid bloom -> wide haze) rather than one
+                       blur, since a single blur reads as smudged where a falloff reads as lit. */
+                    .bbgl-title-block {
                         padding: var(--bbgl-t-win-pad);
                         box-sizing: border-box;
                         border-radius: var(--bbgl-t-win-radius);
-                    }
-
-                    /* The centre is a framed installation rather than another rounded stat
-                       window: modest corners preserve the neon bend without returning to a pill. */
-                    .bbgl-titles-head {
-                        border-radius: max(3px, calc(var(--bbgl-t-win-radius) * .65));
                     }
 
                     /* Stat blocks only (not the identity card) tighten up top/bottom beyond the
@@ -8604,30 +8810,6 @@
                     .bbgl-title-block {
                         padding-top: var(--bbgl-t-win-pad-y);
                         padding-bottom: var(--bbgl-t-win-pad-y);
-                    }
-
-                    /* The identity card's tube — still a plain CSS border on a pseudo-element,
-                       unchanged. The four stat blocks' tubes are NOT this any more: they're real
-                       SVG paths (.bbgl-title-block-frame below) instead, so their top edge can
-                       carry a literal gap for the stat-name label to straddle — a CSS border can't
-                       have an actual gap in it without masking hacks that don't track the label's
-                       own rendered width cleanly, so this page's already-established "neon via a
-                       stroked SVG path" idiom (see ICONS.TITLE_CROWN / .bbgl-title-star-fill) gets
-                       reused here instead. */
-                    .bbgl-titles-head::before {
-                        content: '';
-                        position: absolute;
-                        inset: 0;
-                        z-index: -1;
-                        border-radius: inherit;
-                        border: 1px solid color-mix(in srgb, var(--bbgl-t-win-color) 42%, rgba(255, 255, 255, .92));
-                        pointer-events: none;
-                        filter:
-                            drop-shadow(0 0 1px color-mix(in srgb, var(--bbgl-t-win-color) 55%, #fff))
-                            drop-shadow(0 0 calc(4px * var(--bbgl-t-win-glow)) color-mix(in srgb, var(--bbgl-t-win-color) 55%, transparent))
-                            drop-shadow(0 0 calc(11px * var(--bbgl-t-win-glow)) color-mix(in srgb, var(--bbgl-t-win-color) 26%, transparent));
-                        animation: bbgl-neon-hum var(--bbgl-t-win-hum, 8s) ease-in-out infinite;
-                        animation-delay: var(--bbgl-titles-animation-delay, 0ms);
                     }
 
                     /* The frame for each stat block: a real inline SVG (first child of
@@ -8664,8 +8846,7 @@
 
                     /* The lit glass inside it. inset:1px keeps the texture off the tube's own line so
                        the two don't blur into each other at small sizes. */
-                    .bbgl-title-block::after,
-                    .bbgl-titles-head::after {
+                    .bbgl-title-block::after {
                         content: '';
                         position: absolute;
                         inset: 1px;
@@ -8679,12 +8860,6 @@
                         mask-image: radial-gradient(ellipse 130% 130% at 50% 50%, rgba(0, 0, 0, .25) 20%, #000 100%);
                     }
 
-                    /* The identity card is the page's primary object, so its tube runs a little
-                       hotter than the four stat blocks flanking it. */
-                    .bbgl-titles-head::before {
-                        border-color: color-mix(in srgb, var(--bbgl-t-win-color) 38%, rgba(255, 255, 255, .96));
-                    }
-
                     /* Mains hum — a slow, shallow breath on the tube only (the texture underneath
                        holds steady). Amplitude is deliberately small: five of these are on screen at
                        once, and anything more visible would fight the rank bar's shine sweep and the
@@ -8694,7 +8869,7 @@
                         50% { opacity: .84; }
                     }
 
-                    #bbgl-panel.bbgl-no-animations .bbgl-titles-head::before,
+                    #bbgl-panel.bbgl-no-animations .bbgl-title-card::before,
                     #bbgl-panel.bbgl-no-animations .bbgl-title-block-frame path,
                     #bbgl-panel.bbgl-no-animations .bbgl-titles-name {
                         animation: none;
@@ -8767,32 +8942,22 @@
                         margin-top: 0;
                     }
 
-                    /* No box any more — just the crown shape. Explicitly sized off --bbgl-t-star
-                       rather than stretching to fill a track — flex would otherwise size each star
-                       to a fraction of its row,
-                       which would make the 5-star row's stars a different size from row to row if
-                       the two rows ever went uneven.
+                    /* Explicitly sized off --bbgl-t-star rather than stretching to fill a track —
+                       flex would otherwise size each star to a fraction of its row, making the
+                       5-star row's stars different sizes if the two rows ever went uneven. Width,
+                       height and flex-basis share one token so the tooltip/click-target element is
+                       one invariant square in every mode.
 
-                       Width, height and flex-basis share one token so the element
-                       carrying data-tooltip and the click handler is one invariant square in every
-                       mode. Neighbouring squares stay in normal flex flow and never overlap.
+                       overflow:hidden keeps a star's own glow from bleeding into its neighbour: the
+                       1-5px gaps between stars are far less than a drop-shadow's blur radius, so
+                       clipping at each cell's own edge is what keeps two adjacent glowing crowns
+                       from merging into one hazy rectangle.
 
-                       overflow:hidden is what keeps a star's own glow (see .bbgl-title-star-fill
-                       below) from bleeding into its neighbour: the gaps between stars are only 1-5px
-                       depending on mode, far less than a drop-shadow's blur radius, so without a clip
-                       boundary here two adjacent glowing crowns merge into one hazy rectangle spanning
-                       both. Clipping at each star's own cell edge contains the glow to that star
-                       while leaving the icon itself, sized well inside the cell, untouched. */
-                    /* Height is deliberately shorter than width (unlike the old equal-square
-                       cell) to close some of the row-to-row gap for real, rather than just
-                       redrawing the crown differently inside an unchanged box (that was tried via
-                       a scaleY on the SVG and reverted — it moved no layout, so nothing was
-                       actually reclaimed for the rank slider below). width/flex-basis (the row's
-                       own main axis) stay at the full --bbgl-t-star so horizontal spacing and the
-                       crown's own rendered size are untouched — the crown's aspect ratio already
-                       renders at ~68% of a square cell's height (see the -base/-fill comment
-                       below), so trimming the cell down to 90% still leaves it comfortably inside,
-                       just with less slack above/below to close the inter-row gap. */
+                       Height is shorter than width (unlike an equal-square cell) to close some of
+                       the row-to-row gap for real. width/flex-basis stay at the full --bbgl-t-star
+                       so horizontal spacing and the crown's rendered size are untouched — the
+                       crown's aspect ratio already renders at ~68% of a square cell's height, so
+                       trimming the cell to 90% still leaves it comfortably inside. */
                     .bbgl-title-star {
                         position: relative;
                         width: var(--bbgl-t-star);
@@ -9349,17 +9514,12 @@
 
                     /* ─── The stickerbook's sponsorship dot ──────────────────────────────
                        Gold at rest, not only while selected: this dot marks WHERE the sponsorship
-                       page is, so it has to read as gold from every other page too. It was
-                       previously gated on .active — which, combined with the pg-dot-sponsor class
-                       only ever being applied by the sponsor page's own (now-deleted) render path,
-                       meant the gold could never actually be seen from anywhere else.
+                       page is, so it has to read as gold from every other page too.
 
-                       Deliberately declared after the shared dot rules above rather than next to the
-                       other sponsor styling further up this file: several of those are ID-scoped, so
-                       an unscoped .pg-dot-sponsor rule would lose the cascade to them. Same ID
-                       scope + later position is what lets these win cleanly without !important.
-                       Everything here is colour/emphasis only; size and hit-box come from the shared
-                       rules, so the sponsor dot stays exactly as tappable as its neighbours. */
+                       Declared after the shared dot rules above (not next to the other sponsor
+                       styling further up this file) since several of those are ID-scoped — same ID
+                       scope + later position is what lets this win the cascade without !important.
+                       Colour/emphasis only; size and hit-box come from the shared rules. */
                     #bbgl-sticker-pagination .pg-dot.pg-dot-sponsor {
                         background: linear-gradient(135deg, #b8860b, #ffd700, #fffacd, #ffd700, #b8860b);
                         opacity: .55;

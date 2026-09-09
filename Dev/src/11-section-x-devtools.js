@@ -163,15 +163,11 @@
     }
 
     // ─── Rank Preview section (atrophy/level-band testing) ─────────────────
-    // Jumps straight to the chosen atrophy/level by writing the equivalent real EXP into
-    // runtime.careerLevelExp (same net-out-today's-real-exp trick as Complete Atrophy/Max Out
-    // above), rather than cosmetically overriding what the bar displays. A display-only override
-    // used to live here, but Level Up/Train/Complete Atrophy all advance runtime.careerLevelExp
-    // directly and had no idea the override existed — so setting an override then clicking Level
-    // Up silently advanced a second, invisible progress track underneath the frozen preview,
-    // ticking the level number up without ever moving the rank slider or unlocking a plaque.
-    // Writing real EXP instead means every trigger button keeps working from wherever this jumps
-    // to, since they all share the same one source of truth.
+    // Jumps to the chosen atrophy/level by writing the equivalent real EXP into
+    // runtime.careerLevelExp (same trick as Complete Atrophy/Max Out above), not a cosmetic
+    // override — a display-only version let other triggers (Level Up/Train/Complete Atrophy)
+    // advance the real EXP underneath it with no idea the override existed, desyncing the preview
+    // from the rank slider. Writing real EXP keeps every trigger working from one source of truth.
     function buildRankPreviewSection() {
         const rowStyle = 'display:flex;gap:6px;';
         const selectStyle = 'flex:1;background:#333;color:#fff;border:1px solid #666;border-radius:4px;padding:5px 6px;font-family:sans-serif;font-size:12px;';

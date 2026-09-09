@@ -328,8 +328,7 @@
         alert(msg + `\n\n${BBGL_ERROR_CODE}`);
     }
 
-    // Shared text for error situations that were previously duplicated verbatim
-    // (or near-verbatim) across multiple call sites.
+    // Shared text for error situations, to avoid duplicating copy across call sites.
     const MSG_KEY_FORMAT_INVALID = "Invalid Format.\nA Torn API Key must be exactly 16 alphanumeric characters.";
     const MSG_CLIPBOARD_DENIED = "Clipboard access denied. Please paste manually.";
     const MSG_KEY_NETWORK_ERROR = "Network error while verifying your API key. Please try again.";
@@ -438,18 +437,13 @@
         // nothing lower to overwrite (green overflow, or week already all-equal/higher) → dropped
     }
 
-    // Build the 5 capsule slots for a week, chronologically.
-    // Organic days: green/gold = 1 unit, diamond = 2 units (via classifyDay).
-    // Happy Jumps layer on top of that: the week's 1st HJ day grants 2 units, its 2nd HJ day
-    // grants 3 more (2+3=5 — two jumps alone complete a green week); a 3rd HJ that week doesn't
-    // add units (the pool's already full) but upgrades every still-green HJ unit to gold. Each HJ
-    // day's own organic tier is spent as upgrade credit on that jump's own units first (capped at
-    // however many units that jump granted), so a naturally gold/diamond HJ day still gets credit
-    // for its real performance instead of defaulting to green. A genuine HJ day's own eSpent is
-    // always >= the window's 1000E (the window is a subset of the day's clicks), so it's never
-    // classified below green here. Everything feeds the same rank-based overflow above, which is
-    // insertion-order independent, so this composes correctly with unrelated diamond days elsewhere
-    // in the week without any extra priority logic.
+    // Build the 5 capsule slots for a week, chronologically. Organic days: green/gold = 1 unit,
+    // diamond = 2 units (via classifyDay). Happy Jumps layer on top: the week's 1st HJ day grants
+    // 2 units, its 2nd grants 3 more (two jumps alone complete a green week); a 3rd HJ doesn't add
+    // units but upgrades every still-green HJ unit to gold. Each HJ day's own organic tier is spent
+    // as upgrade credit on that jump's own units first, so a naturally gold/diamond HJ day still
+    // gets credit instead of defaulting to green. Everything feeds the same rank-based overflow
+    // above, so this composes correctly with unrelated diamond days elsewhere in the week.
     function computeWeekCapsules(days, hjDaySet = null) {
         const slots = [null, null, null, null, null];
         const hjDays = hjDaySet ? days.filter(d => hjDaySet.has(d.date)) : [];
@@ -558,19 +552,14 @@
 
     // Level-band flavor titles: five bands per atrophy tier, walking a raw-clay-to-fired-brick
     // metaphor. Columns are [atrophy0, atrophy1, atrophy2] — same band, escalating intensity per
-    // tier. Bands key off the raw level number directly: negative pre-zero levels (atrophy 1/2's
-    // earlier start) just fall into band 1 via its <= comparison, and the level-69 easter egg
-    // lands on the literal displayed "69" for every atrophy tier regardless of where it started.
-    // Level 100 is the universal finish line, but only atrophy 2 gets "Fully Bricked" — atrophy
-    // 0/1 auto-roll into the next tier, so they keep band 5's capstone title instead.
+    // tier. Bands key off the raw level number, so atrophy 1/2's earlier negative pre-zero levels
+    // just fall into band 1. Level 100 is the universal finish line, but only atrophy 2 gets "Fully
+    // Bricked" — atrophy 0/1 auto-roll into the next tier instead, keeping band 5's capstone title.
     //
     // `max` is inclusive and doubles as the bracket axis on the titles page (levelRankBrackets()
-    // below reads widths straight off these numbers), so edit a max here and the axis re-draws
-    // itself — no second list to keep in sync. Five even 20-level bands.
-    //
-    // Level 69's easter egg (LEVEL_TITLE_EASTER_EGG_LEVEL below) intercepts before any band
-    // lookup happens, so it isn't pinned to a boundary here — it just falls wherever it falls
-    // inside band 4, which still contains it.
+    // below reads widths straight off these numbers) — edit a max here and the axis re-draws
+    // itself. Level 69's easter egg (LEVEL_TITLE_EASTER_EGG_LEVEL below) intercepts before any band
+    // lookup, landing wherever it falls inside band 4.
     const LEVEL_TITLE_BANDS = [
         { max: 19, titles: ['Dry Clay', 'Parched Clay', 'Cracked Clay'] },
         { max: 39, titles: ['Moistened Clay', 'Saturated Clay', 'Dripping Wet Clay'] },
@@ -595,28 +584,25 @@
     function atrophyTitle(atrophy, level) {
         if (isFullyBricked(atrophy, level)) return 'Fully Bricked';
         if (level === LEVEL_TITLE_EASTER_EGG_LEVEL) return LEVEL_TITLE_EASTER_EGG[atrophy] || LEVEL_TITLE_EASTER_EGG[0];
+        return atrophyBandTitle(atrophy, level);
+    }
+
+    function atrophyBandTitle(atrophy, level) {
         const band = LEVEL_TITLE_BANDS.find(b => level <= b.max) || LEVEL_TITLE_BANDS[LEVEL_TITLE_BANDS.length - 1];
         return band.titles[atrophy] || band.titles[0];
     }
 
     // ─── Rank Hardening Finish ──────────────────────────────────────────────
-    // The rank line's own progression, deliberately built as the OPPOSITE of the stat title's:
-    // the title EMITS (outward glow, discrete phase jumps, animated rainbow at the top), the rank
-    // REFLECTS (a stamped impression in a surface, continuous, no halo). They can therefore share
-    // a tooltip without competing even when both are maxed.
+    // The rank line's progression, built as the OPPOSITE of the stat title's: the title EMITS
+    // (outward glow, discrete phase jumps), the rank REFLECTS (a stamped impression, continuous,
+    // no halo) — so they can share a tooltip without competing even when both are maxed.
     //
-    // Two channels move independently, which is what keeps it from being a plain color ramp:
-    //   • hardness  — strictly monotonic. The impression sharpens: the soft diffuse blur collapses,
-    //                 the lit lip under each letter firms up, tracking tightens, opacity rises.
-    //   • moisture/heat — NOT monotonic, because the band names aren't either (Dry -> Moistened ->
-    //                 worked -> molded -> Fired -> Bricked). Clay is wettest in the MIDDLE. Gloss
-    //                 rises early then burns off, and the hue warms toward the firing bands.
-    // Lightness only ever climbs, so the "wet" stretch reads as sheen rather than going dark and
-    // losing contrast against the plaque behind it.
+    // Two independent channels: hardness is strictly monotonic (impression sharpens, lip firms up,
+    // opacity rises); moisture/heat is NOT, mirroring the band names themselves (Dry -> Moistened ->
+    // worked -> molded -> Fired -> Bricked). Lightness only ever climbs, so it never goes dark.
     //
-    // Stops are [progress 0-1, [r,g,b], softness]. Continuous in `level` rather than banded on
-    // purpose: the finish is already warming before the word flips to "Pit-Fired", so the band
-    // name reads as a label on a continuum instead of snapping in lockstep with the color.
+    // Stops are [progress 0-1, [r,g,b], softness], continuous in `level` rather than banded, so the
+    // finish is already warming before the word flips to the next band name.
     const RANK_HARDEN_STOPS = [
         [0.00, [154, 149, 141], 0.55], // raw and dusty — barely formed, softest impression
         [0.22, [168, 160, 150], 0.45], // moistened — sheen up, still takes a mushy stamp
@@ -719,7 +705,7 @@
 
     // While the player has never made a manual pick, the displayed pair auto-follows their top two
     // stats. Phase bumps apply the moment they unlock, but WHICH stats hold the two slots may only
-    // change this often — the simple replacement for the old checkpoint/stability-day debounce.
+    // change this often.
     const STAT_TITLE_AUTO_PAIR_COOLDOWN_MS = 72 * 3600 * 1000;
 
     // One evolving noun+adjective ladder per stat, indexed by phase (0-9). Undecided phases are
@@ -880,8 +866,7 @@
     // Custom mode: the saved manual pick, clamped to what's unlocked. Earned mode: the top two
     // stats, each at its own highest unlocked phase — so a phase bump shows up the instant it
     // unlocks — except that WHICH stats hold the two slots may only change once per
-    // STAT_TITLE_AUTO_PAIR_COOLDOWN_MS. That cooldown is the whole of the debounce now; the old
-    // checkpoint + stability-day machinery is gone.
+    // STAT_TITLE_AUTO_PAIR_COOLDOWN_MS.
     //
     // The two are stored separately (titleCustom vs titleAutoPair) precisely so the reset arrow is
     // non-destructive: going back to Earned never overwrites the custom pick waiting behind it.
@@ -937,9 +922,9 @@
         return next;
     }
 
-    // Drives the titles page's reset arrow (and nothing else now that the Earned/Custom switch is
-    // gone — picking a star sets 'custom' on its own). Zeroing the cooldown stamp on the way back to
-    // Earned lets it snap straight to the real top two instead of sitting on a stale pair for 72h.
+    // Drives the titles page's reset arrow — picking a star sets 'custom' on its own. Zeroing the
+    // cooldown stamp on the way back to Earned lets it snap straight to the real top two instead of
+    // sitting on a stale pair for 72h.
     function setStatTitleMode(mode) {
         userConfig.titleMode = mode === 'custom' ? 'custom' : 'earned';
         if (userConfig.titleMode === 'earned') userConfig.titleAutoPairChangedAt = 0;

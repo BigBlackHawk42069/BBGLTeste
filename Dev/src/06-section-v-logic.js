@@ -82,9 +82,8 @@ const DataController = {
         this._cache.dateMap = null;
         this._cache.slices = {};
     },
-    // Fast hydration from a pre-built { meta, history, today } (DBManager.loadHistory()).
-    // Replaces the old syncCache-on-boot path: no series flatten, no _rebuildFromSeries,
-    // no session serialization.
+    // Fast hydration from a pre-built { meta, history, today } (DBManager.loadHistory()) —
+    // no series flatten, no _rebuildFromSeries, no session serialization.
     hydrate(loaded) {
         _historyCache = loaded || null;
         this.invalidate();
@@ -335,10 +334,9 @@ const DataController = {
             dex: null
         };
         const arr = [];
-        // Origin rates: derived from the first per-entry rate on or after the
-        // timeline floor (first fully-visible day). Replaces the old persisted
-        // meta.originRates which locked in at genesis time and went stale when
-        // backfill extended history backward.
+        // Origin rates: derived from the first per-entry rate on or after the timeline floor
+        // (first fully-visible day) — recomputed each time rather than cached, so backfill
+        // extending history backward can't leave it stale.
         const derived = {};
         let floorDate = null;
         if (h.meta && h.meta.logStartDate) {
@@ -703,8 +701,7 @@ const DataController = {
         const allDays = [...(d.history || [])];
         if (d.today) allDays.push(d.today);
         // Persist the in-memory day objects directly — no flatten-to-series + rebuild
-        // round-trip, and a single write (saveDays) rather than the previous whole-history
-        // blob rewrite. saveDays puts each day record without clearing the store; normal
+        // round-trip. saveDays puts each day record without clearing the store; normal
         // syncs never remove days (only import/clear do, via setStorage/clearStorage), so
         // untouched days remain intact.
         DBManager.saveDays(d.meta, allDays);
@@ -758,9 +755,7 @@ const DataController = {
         if (l.type === 'item') {
             if (!s.today.items) s.today.items = {};
             if (!s.today.itemLogIds) s.today.itemLogIds = [];
-            // Dedup on the natural (ts, logId) key rather than Torn's log id: the id is dropped
-            // on export, so this is the only key that survives an export/import round-trip (and
-            // two uses of the same item in the same second is not possible in-game).
+            // Same (ts, logId) dedup key as seriesDedupKey() above.
             const itemKey = `${l.ts}_${l.logId}`;
             if (!s.today.itemLogIds.includes(itemKey)) {
                 s.today.itemLogIds.push(itemKey);
@@ -2073,49 +2068,41 @@ function achRankPlaqueLabelHTML(label) {
         .join('');
 }
 
-// Four nested boxes per plaque, because the ornate tiers need more paint layers than two elements'
-// worth of pseudo-elements can supply:
-//   -label  positioned wrapper. Carries the drop-shadow as a FILTER — a box-shadow here would be
-//           clipped away by the mask that cuts -face's silhouette. Being filtered also makes it the
-//           containing block -cradle hangs from.
-//   -face   the plate itself: masked silhouette, metal gradient, bevel. Its ::before is the
-//           grain/patina and its ::after the travelling specular sweep.
-//   -fx     ornament inside -face's mask: ::before the frame band (plus rivets/milling), ::after
-//           the recessed inner field the lettering sits on.
-//   -cradle the curved lobe that closes around the level readout, shown only while this plaque is
-//           the one riding the groove. Its own box rather than part of -face because a border-radius
-//           edge is the one thing the rectangular frame ring cannot follow; see .bbgl-rank-notch-
-//           cradle (04-section-iii-styles.js). Emitted for every plaque and revealed by CSS alone —
-//           which state rides is already settled in the class list, so there is nothing here to
-//           branch on.
-function achRankPlaqueHTML(cls, style, tip, revealed, label) {
-    const inner = revealed ? achRankPlaqueLabelHTML(label) : '<span class="bbgl-rank-notch-line">?</span>';
+// Four nested boxes per plaque — more paint layers than two elements' pseudo-elements can supply:
+//   -label  positioned wrapper; carries the drop-shadow as a FILTER (a box-shadow would be clipped
+//           by the mask that cuts -face's silhouette) and is the containing block -cradle hangs from.
+//   -face   the plate: masked silhouette, metal gradient, bevel. ::before is grain/patina, ::after
+//           the travelling specular sweep.
+//   -fx     ornament inside -face's mask: ::before the frame band (rivets/milling), ::after the
+//           recessed inner field the lettering sits on.
+//   -cradle the curved lobe closing around the level readout, shown only while riding the groove —
+//           its own box since border-radius can't follow the rectangular frame ring (see
+//           .bbgl-rank-notch-cradle, 04-section-iii-styles.js). Emitted for every plaque, revealed
+//           by CSS alone off the class list.
+function achRankPlaqueHTML(cls, style, tip, revealed, label, textWrapperClass = '') {
+    const nameTag = revealed && cls.split(/\s+/).includes('bbgl-title-card-rank-plaque') && cls.split(/\s+/).includes('finish-mill');
+    const lightbox = revealed && cls.split(/\s+/).includes('bbgl-title-card-rank-plaque') && cls.split(/\s+/).includes('finish-machined');
+    const lines = nameTag
+        ? `<span class="bbgl-rank-notch-line" data-rank-text="${achEsc(label)}">${achEsc(label)}</span>`
+        : revealed ? achRankPlaqueLabelHTML(label) : '<span class="bbgl-rank-notch-line">?</span>';
+    const greeting = nameTag ? '<span class="bbgl-rank-name-tag-heading">Hello, my RANK is...</span>'
+        : lightbox ? '<span class="bbgl-rank-lightbox-heading"><span>RANK</span></span>' : '';
+    const inner = greeting + (textWrapperClass ? `<span class="${textWrapperClass}">${lines}</span>` : lines);
     const styleAttr = style ? ` style="${style}"` : '';
     return `<div class="${cls}"${styleAttr} data-tooltip="${achEsc(tip)}"><span class="bbgl-rank-notch-label"><span class="bbgl-rank-notch-face"><span class="bbgl-rank-notch-fx"></span>${inner}</span><span class="bbgl-rank-notch-cradle"></span></span></div>`;
 }
 
-// The rank line as a TROPHY SHELF. Six plaques — the five level bands plus the Fully Bricked
-// capstone — each in exactly one of three states, and the state alone decides where the plaque sits:
+// The rank line as a TROPHY SHELF. Six plaques (five level bands + Fully Bricked capstone), each
+// in exactly one state that decides where it sits:
+//   locked  ("?")  parked at the exact level it unlocks at — nothing is known about it yet.
+//   riding         the rank you hold RIGHT NOW; tracks the sliding level readout along the groove.
+//   docked         earned, then outgrown — retired to its permanent slot, left to right in order.
 //
-//   locked  ("?")   parked on the axis at the exact level it unlocks at, same as it always was.
-//                   Nothing is known about it yet, so the milestone it marks is all it can say.
-//   riding          the rank you hold RIGHT NOW. Tracks the sliding level readout along the groove,
-//                   so the title you currently own literally travels with your level.
-//   docked          earned, then outgrown. Retired to its permanent slot on the shelf, left to
-//                   right in ladder order.
-//
-// The shelf's slot geometry is computed for all SIX plaques from the very first render (see
-// layoutRankShelf(), 07-section-vi-ui.js) — never for however many happen to be docked so far. That
-// is the whole point: a plaque docks once, into the exact position and spacing it will still occupy
-// when the shelf is full, and nothing on the shelf ever moves again. Earning a rank rearranges
-// nothing; it only ever fills one more empty slot.
-//
-// Fully Bricked is back on this axis rather than in its own column beside the bar. It is the sixth
-// slot, and because it is terminal there is no "next" rank for it to hand the slider to — earning it
-// docks it immediately, which is also what completes the shelf.
-//
-// Band data comes straight from levelRankBrackets() (03-section-ii-utils.js), derived from
-// LEVEL_TITLE_BANDS — nothing here needs touching if the bands change.
+// Slot geometry is computed for all SIX plaques from the first render (layoutRankShelf(),
+// 07-section-vi-ui.js), never just however many are docked — a plaque docks once, into the exact
+// position it'll still occupy when the shelf is full, so earning a rank never rearranges anything.
+// Fully Bricked is the terminal sixth slot on this same axis: earning it docks immediately, which
+// completes the shelf. Band data comes from levelRankBrackets() (03-section-ii-utils.js).
 function achTitleNotchesHTML(atrophy, level) {
     // Fixed physical finish per milestone. Atrophy changes the WORDS on the plaques, never their
     // material progression. The ladder escalates on two axes at once — the metal itself, and how
@@ -2172,14 +2159,47 @@ function achTitleNotchesHTML(atrophy, level) {
     }).join('');
 }
 
+// Resolves the stationary card plaque without the rank shelf's position/state classes.
+function achCurrentRankPlaqueData(atrophy, level) {
+    const finishes = ['mill', 'machined', 'polished', 'silver', 'gold', 'pearl'];
+    const materials = ['iron', 'steel', 'silver', 'bright-silver', 'gold', 'diamond'];
+    const brackets = levelRankBrackets(atrophy, level);
+    const bricked = isFullyBricked(atrophy, level);
+    let currentIdx = -1;
+    brackets.forEach((b, i) => { if (b.unlocked) currentIdx = i; });
+
+    const isCap = bricked;
+    const finishIdx = isCap ? finishes.length - 1 : Math.max(0, currentIdx);
+    const current = brackets[Math.max(0, currentIdx)] || brackets[0];
+    const label = isCap ? 'Fully Bricked' : atrophyBandTitle(atrophy, level);
+    const tip = isCap
+        ? 'Fully Bricked · Level 100'
+        : (current ? `${label} · Levels ${current.start}-${current.end}` : label);
+    const cls = [
+        'bbgl-rank-notch',
+        'bbgl-title-card-rank-plaque',
+        `finish-${finishes[finishIdx] || 'mill'}`,
+        `material-${materials[finishIdx] || 'iron'}`,
+        'is-revealed',
+        'is-current',
+        isCap ? 'is-cap is-bricked' : ''
+    ].filter(Boolean).join(' ');
+
+    return {
+        finish: finishes[finishIdx] || 'mill',
+        material: materials[finishIdx] || 'iron',
+        label,
+        html: achRankPlaqueHTML(cls, '', tip, true, label, 'bbgl-rank-title-text')
+    };
+}
+
 // Plain-text milestone scale. Every title sits at the exact level that unlocks it rather than in a
 // visual range beginning at some other coordinate: 0, 20, 40, 60, 80, then Fully Bricked at 100.
 // The symmetric endpoint titles deliberately overhang the groove by half their rendered widths.
 function achTitleLabelsHTML(atrophy, level) {
     const bricked = isFullyBricked(atrophy, level);
-    // Rank-name bands own a fixed material ladder on the visible scale. Atrophy changes the words,
-    // while the material order remains stable; future atrophy-specific flourishes can therefore be
-    // layered onto these classes without duplicating the base progression.
+    // Rank-name bands own a fixed material ladder on the visible scale — atrophy changes the
+    // words, the material order stays stable.
     const materials = ['iron', 'steel', 'silver', 'bright-silver', 'gold'];
     const bands = levelRankBrackets(atrophy, level).map((b, i) => {
         const cls = [
@@ -2255,7 +2275,8 @@ function achTitleStarHTML(stat, phase, unlockedPhase, statE, role) {
 function achBuildPageTitles() {
     const totalExp = getLiveLevelExp();
     const { atrophy, level } = calculateLevelProgress(totalExp);
-    const rankName = atrophyTitle(atrophy, level);
+    const currentRank = achCurrentRankPlaqueData(atrophy, level);
+    const rankName = currentRank.label;
 
     const eByStat = getLiveStatTitleE();
     const sel = getLiveStatTitleSelection();
@@ -2273,24 +2294,17 @@ function achBuildPageTitles() {
     };
 
     // One block per stat: 10 tier stars split 5 over 5, two even rows (.bbgl-title-star-row,
-    // 04-section-iii-styles.js). Grouped into two corner columns rather than a single grid — str+spd
-    // down the left, def+dex down the right — so each pair can pin to its column's own top/bottom
-    // corner (see .bbgl-titles-corner-col) around the
-    // identity card floating dead centre.
+    // 04-section-iii-styles.js), grouped into two corner columns (str+spd left, def+dex right)
+    // pinned to top/bottom around the centred identity card.
     //
-    // The stat-name label stays FIRST in the markup — it names the group, so that's the right
-    // reading order — but renders straddling the block's own top border line as cursive neon text
-    // (.bbgl-title-block-label, CSS-positioned there, not moved in the DOM), not a hanging sign
-    // below it any more. The frame itself is now a real inline SVG
-    // (.bbgl-title-block-frame, first child so it paints behind everything else in this block) —
-    // a plain 1x1 placeholder here, filled in with an actual rounded-rect-with-a-gap path sized to
-    // this specific label's rendered width by layoutTitleBlockFrames() (07-section-vi-ui.js) right
-    // after this markup lands in the DOM, so the border's tube looks like it terminates into the
-    // label text instead of a solid line running behind it.
+    // The stat-name label stays first in the markup (it names the group) but renders straddling the
+    // block's top border as cursive neon text via CSS, not DOM position. The frame is a real inline
+    // SVG (.bbgl-title-block-frame, first child) — a 1x1 placeholder here, filled in with a
+    // rounded-rect-with-a-gap path sized to the label's rendered width by layoutTitleBlockFrames()
+    // (07-section-vi-ui.js), so the tube looks like it terminates into the label text.
     //
-    // ach-stat-${k} rides the block itself, and everything inside inherits the --bbgl-t-win-color it
-    // sets — the block's own neon frame and the straddling label both read that one var, so the
-    // stat's colour is declared in exactly one place per block.
+    // ach-stat-${k} sets --bbgl-t-win-color on the block itself; the frame and label both inherit
+    // it, so the stat's colour is declared in exactly one place.
     const titleBlockHTML = k => {
         const star = i => achTitleStarHTML(k, i, phases[k], eByStat[k] || 0, roleFor(k, i));
         const top = STAT_TITLE_THRESHOLDS.slice(0, 5).map((_, i) => star(i)).join('');
@@ -2313,21 +2327,9 @@ function achBuildPageTitles() {
         ? `<button type="button" class="bbgl-title-reset" data-title-reset="1" data-tooltip="${achEsc(resetTip)}" aria-label="Reset title">${ICONS.REFRESH}</button>`
         : '';
 
-    // Identity card: name, then Rank and Title as two labelled lines. "The" is card text rather than
-    // part of the composed title so the clipboard, aria labels and the level bar's own plaque all
-    // keep emitting the bare title.
-    // Rank and Title occupy the two equal bays of one tall smoked-glass billboard. The reflection
-    // remains a real sibling div so its glass catch-light stays directly inspectable/tunable.
-    //
-    // The player name sits OUTSIDE the neon window (.bbgl-titles-head) entirely - a neon sign
-    // mounted above the box rather than lettering inside it, with .bbgl-titles-wires the visible
-    // standoffs hanging it off the box's top edge. Name and wires sit in .bbgl-titles-sign,
-    // which stays in flow horizontally but contributes NO height (see its CSS) - so the name's
-    // width widens the centre column and is centred along with the box, while only the box
-    // decides where things sit vertically. .bbgl-titles-center is the in-flow wrapper that took
-    // over the grid placement the window used to carry, and carries the --bbgl-t-win-* custom
-    // properties so name, wires and window all read as one light source (custom properties
-    // inherit; the window's own ::before tube picks them up from here just the same).
+    const titleValue = titleHtml
+        ? `<i class="bbgl-lvl-title bbgl-titles-title"><span class="bbgl-titles-the">The</span> ${titleHtml}</i>${resetBtn}`
+        : `<span class="bbgl-title-card-empty">Unequipped</span>`;
     const head = `<div class="bbgl-titles-center">` +
         `<div class="bbgl-titles-sign">` +
         `<div class="bbgl-titles-sign-inner">` +
@@ -2335,17 +2337,15 @@ function achBuildPageTitles() {
         `<div class="bbgl-titles-wires"></div>` +
         `</div>` +
         `</div>` +
-        `<div class="bbgl-titles-head">` +
-        `<div class="bbgl-titles-plate">` +
-        `<div class="bbgl-titles-reflection"></div>` +
-        `<div class="bbgl-titles-line"><span class="bbgl-titles-line-label">Rank</span>` +
-        `<span class="bbgl-titles-rankname">${achEsc(rankName)}</span></div>` +
-        (titleHtml
-            ? `<div class="bbgl-titles-line"><span class="bbgl-titles-line-label">Title</span>` +
-              `<span class="bbgl-titles-line-value">` +
-              `<i class="bbgl-lvl-title bbgl-titles-title"><span class="bbgl-titles-the">The</span> ${titleHtml}</i>${resetBtn}</span></div>`
-            : '') +
+        `<div class="bbgl-title-card" data-sign-stage="0" data-rank-finish="${currentRank.finish}" data-rank-material="${currentRank.material}">` +
+        `<div class="bbgl-title-card-sign">` +
+        `<span class="bbgl-title-card-title-label">Title</span>` +
+        `<div class="bbgl-title-card-sign-face">` +
+        `<span class="bbgl-title-card-value">${titleValue}</span>` +
         `</div>` +
+        `</div>` +
+        `<div class="bbgl-title-card-connector" aria-hidden="true"></div>` +
+        `<div class="bbgl-title-card-rank"><span class="bbgl-title-card-rank-label">Rank</span>${currentRank.html}</div>` +
         `</div>` +
         `</div>`;
 
@@ -2353,18 +2353,16 @@ function achBuildPageTitles() {
     // the live level rides the channel as the low-profile slider knob. rankBarProgressCSS()
     // (03-section-ii-utils.js) supplies its live readout position.
     //
-    // Two parallel renderings of the same six bands + capstone sit on this axis right now:
-    // .bbgl-rank-notches, the ornate plaque shelf (achTitleNotchesHTML() above, positioned by
-    // layoutRankShelf(), 07-section-vi-ui.js) — hidden via CSS but left fully wired up, since the
-    // plan is to relocate the plaques onto the identity card rather than delete them — and
-    // .bbgl-rank-titles, the plain-text labels (achTitleLabelsHTML() above) that actually render on
-    // the bar in the meantime.
+    // Two parallel renderings of the same six bands + capstone sit on this axis: .bbgl-rank-notches,
+    // the ornate plaque shelf (achTitleNotchesHTML() above, positioned by layoutRankShelf(),
+    // 07-section-vi-ui.js) — hidden via CSS but left fully wired up — and .bbgl-rank-titles, the
+    // plain-text labels (achTitleLabelsHTML() above) that actually render on the bar.
     //
-    // is-wrapped says the riding plaque's skirt is currently drawn down around the readout's digits
-    // (see .bbgl-rank-notch.is-riding, 04-section-iii-styles.js). The readout reads it to drop the
-    // dark pool it normally paints behind itself: that pool exists only to swallow the 1px groove
-    // line where it would otherwise strike through the numerals, and the skirt already covers the
-    // groove there — leaving it on would just smear a dark blot across the plaque's metal field.
+    // is-wrapped says the riding plaque's skirt is drawn down around the readout's digits (see
+    // .bbgl-rank-notch.is-riding, 04-section-iii-styles.js). The readout reads it to drop the dark
+    // pool it normally paints behind itself, which exists only to swallow the 1px groove line — the
+    // skirt already covers the groove there, so leaving the pool on would smear a dark blot across
+    // the plaque's metal field.
     const bricked = isFullyBricked(atrophy, level);
     const bar = `<div class="bbgl-rank-track" style="${rankBarProgressCSS(atrophy, level)}">` +
         `<div class="bbgl-rank-scale">` +

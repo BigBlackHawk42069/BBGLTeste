@@ -227,12 +227,10 @@
         });
     }
 
-    // Steps one page in either direction. Bounds are enforced HERE, not at the call sites: they
-    // used to each carry their own guard and had drifted apart (the arrows refused to step below
-    // page 0 while swipe allowed it, so the sponsor page was unreachable by arrow). Callers now
-    // just say which way they want to go and this no-ops at the ends. gotoStickerPage()
-    // (09-section-viii-stickers.js) owns the actual clamp + state write + render, so this only adds
-    // the slide animation around it.
+    // Steps one page in either direction. Bounds are enforced HERE, not at the call sites, so
+    // every control (arrows, dots, swipe) agrees on where the range starts and stops. Callers just
+    // say which way they want to go; gotoStickerPage() (09-section-viii-stickers.js) owns the
+    // actual clamp + state write + render, so this only adds the slide animation around it.
     function changeStickerPage(d) {
         const target = Math.max(STICKER_SPONSOR_PAGE, Math.min(runtime.currentStickerPage + d, stickerPageCount() - 1));
         if (target === runtime.currentStickerPage) return;
@@ -729,10 +727,9 @@
                 tp.classList.add('viewing-stickers');
                 renderStickers();
                 // One-time gold attention glow on the prev arrow, which carries the sponsor page's
-                // gold treatment via .is-sponsor (set in renderStickers()) — it used to be its own
-                // #sticker-sponsor-btn element sitting at the identical position. The CSS rule is
-                // scoped to .is-sponsor too, so this can't glow gold on a plain grey arrow if the
-                // view is entered on some other page.
+                // gold treatment via .is-sponsor (set in renderStickers()). The CSS rule is scoped
+                // to .is-sponsor too, so this can't glow gold on a plain grey arrow if the view is
+                // entered on some other page.
                 if (cm !== 'stickers' && dom.stickerPrev && userConfig.animations) {
                     dom.stickerPrev.classList.remove('shimmer-once');
                     void dom.stickerPrev.offsetWidth;
@@ -1368,10 +1365,8 @@
             const { sl, s } = cs;
             const txt = buildSessionText(sl, s, ['str', 'def', 'spd', 'dex']);
             navigator.clipboard.writeText(txt).then(() => {
-                // Flash all four stat columns on the ledger.
                 const cols = dom.ledgerView ? Array.from(dom.ledgerView.querySelectorAll('.stat-column')) : [];
                 if (cols.length) flashCopied(cols);
-                // Also animate the copy button itself.
                 const oH = cpb.innerHTML, oC = cpb.style.color;
                 cpb.innerHTML = ICONS.CHECK;
                 cpb.style.color = '#69f0ae';
@@ -1408,10 +1403,8 @@
         const st = get('bbgl-sticker-toggle');
         if (st) st.onclick = toggleStickerView;
         // Big edge arrows, plus the mini prev/next flanking the pagination dots
-        // (#bbgl-sticker-pagination-bar) — a second, smaller control for the same action, not a
-        // replacement. None of these carry a bounds guard: changeStickerPage() clamps and no-ops at
-        // the ends itself, which is what keeps every control (these, the dots, and swipe) agreeing
-        // on where the page range starts and stops.
+        // (#bbgl-sticker-pagination-bar) — a second, smaller control for the same action. No bounds
+        // guard needed here; changeStickerPage() above handles clamping.
         const sp = get('sticker-prev-btn'),
             sn = get('sticker-next-btn'),
             smp = get('sticker-mini-prev-btn'),
@@ -1625,8 +1618,8 @@
         };
         const iF = get('import-file');
         if (iF) iF.onchange = (e) => importData(e.target.files[0]);
-        // The backfill button's click behavior is state-dependent (open modal / resume / acknowledge),
-        // so renderBackfillButton owns wiring its onclick for the current state.
+        // The backfill button's click behavior is state-dependent (start / resume / re-run after
+        // complete), so renderBackfillButton owns wiring its onclick for the current state.
         renderScanUI();
         const clb = get('clear-btn');
         if (clb) clb.onclick = function() {
@@ -2024,15 +2017,10 @@
             subtree: true
         });
         attachLayoutObservers();
-        // SPA-navigation safety net for the footer tab. Torn travels (and some other in-app nav)
-        // via history.pushState — no hashchange, no popstate, no full reload — and during the
-        // transition it rebuilds whole regions of the chat/footer, removing our injected tab faster
-        // than the body-subtree observer's rAF-debounced callback re-adds it. Re-run the existing
-        // placement pass a few times across the transition window so the tab re-anchors against the
-        // rebuilt notes button. This deliberately touches no observer or injection internals — it
-        // just calls handleDomMutation (which the observer already invokes constantly) on a short,
-        // bounded schedule, and only on an actual navigation. Each call fast-paths out when nothing
-        // has changed, so steady state stays lightweight.
+        // SPA-navigation safety net: Torn's pushState-based nav rebuilds chat/footer regions faster
+        // than the body-subtree observer can re-add our injected tab. Re-running handleDomMutation
+        // a few times across the transition window re-anchors it against the rebuilt notes button;
+        // each call fast-paths out when nothing's changed, so steady state stays lightweight.
         const _bbglRecheckNav = () => {
             [150, 600, 1500].forEach(ms => setTimeout(() => {
                 try { handleDomMutation(); } catch (e) {}

@@ -119,7 +119,6 @@
     const ITEM_GROUP_LABELS = { energy: 'Energy Items', stat: 'Stat Items', happy: 'Happy Items', od: 'OD Items' };
     const ITEM_LOGS = Object.keys(ITEM_LOG_META).map(Number);
     const itemLogsByGroup = g => ITEM_LOGS.filter(id => ITEM_LOG_META[id].group === g);
-    // Gym training log ids, one per stat.
     const TRAIN_LOGS = [5300, 5301, 5302, 5303];
     // Per-group code lists for the live request architecture. battlestats is always fetched on its
     // own call (it can't share a request with `log`), and any one `log=` call may carry at most 10
@@ -167,27 +166,22 @@
     // makes the overlap harmless.
     const SYNC_FROM_BUFFER = 3 * 3600;
     // Backfill Logs: a resumable backward scan that walks the activity log to the beginning of
-    // time, moving the origin floor back as it verifies complete days. Torn caps cloud-data
-    // reads at 50,000 rows/day per category (the activity log is one category, shared across
-    // every log type and every script the user runs). SOFT_CAP leaves comfortable headroom for
-    // that; once crossed, the scan keeps paging only to finish the current day across every
-    // frontier (so the budget spent yields a fully complete, visible day rather than a hidden
-    // partial one), bounded by HARD_CAP as an absolute failsafe against a pathologically dense
-    // single day.
+    // time, moving the origin floor back as it verifies complete days. Torn caps cloud-data reads
+    // at 50,000 rows/day per category (shared across every log type and script the user runs).
+    // SOFT_CAP leaves headroom for that; once crossed, the scan keeps paging only to finish the
+    // current day across every frontier, bounded by HARD_CAP as an absolute failsafe.
     //
-    // Budget accounting uses a single cumulative counter (rowsUsed) plus a cooldown armed only at
-    // the moment the cap is hit. rowsUsed accumulates across resumes and cancels; the per-run budget
-    // is SOFT_CAP minus what is already spent. When the budget is exhausted the cooldown is armed to
-    // now + COOLDOWN_MS (24h6m) — anchored at the cap-hit itself, not at any window start — which
-    // provably ages every counted row out of Torn's rolling 24h before the next scan may begin.
-    // rowsUsed resets to 0 only when a scan completes fully, or when a new attempt starts after a
-    // previously-armed cooldown has elapsed. Any other stop (interrupt, crash, network, pause) leaves
-    // the cooldown clear so Resume works immediately. Progress is checkpointed to storage every
-    // CHECKPOINT_ROWS rows AND every HEARTBEAT_MS so an interruption never loses more than the last
-    // partial batch, and the heartbeat lock (considered dead after LOCK_STALE_MS) guards against two
-    // tabs scanning at once. ORIGIN_MAX_STAT classifies a completed scan: if every baseline stat is
-    // at/under it the scan genuinely reached the account's origin, otherwise it merely exhausted
-    // Torn's retained logs.
+    // rowsUsed is a single cumulative counter across resumes/cancels; the per-run budget is
+    // SOFT_CAP minus what's already spent. When exhausted, the cooldown arms to now + COOLDOWN_MS
+    // (24h6m), anchored at the cap-hit itself so every counted row has aged out of Torn's rolling
+    // 24h before the next scan may begin. rowsUsed resets only on a full completion or once an
+    // armed cooldown has elapsed — any other stop (interrupt/crash/network/pause) leaves it clear
+    // so Resume works immediately.
+    //
+    // Progress checkpoints every CHECKPOINT_ROWS rows and every HEARTBEAT_MS; the heartbeat lock
+    // (dead after LOCK_STALE_MS) guards against two tabs scanning at once. ORIGIN_MAX_STAT
+    // classifies completion: every baseline stat at/under it means the scan reached the account's
+    // true origin, otherwise it merely exhausted Torn's retained logs.
     const BACKFILL = {
         SOFT_CAP: 38000,   // stop *starting* new days once crossed
         HARD_CAP: 40000,   // absolute failsafe, normally never reached, keeps us < 50k

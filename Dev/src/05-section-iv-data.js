@@ -102,7 +102,6 @@
                         if (d && d.date) dayStore.put(d, d.date);
                     });
                     tx.oncomplete = () => {
-                        // This tells other open tabs that your data has been updated.
                         _syncChannel.postMessage({
                             type: 'update',
                             from: _TAB_ID
@@ -206,13 +205,6 @@
                 const tx = this._db.transaction([this._META_STORE, this._DAYS_STORE], 'readwrite');
                 const metaStore = tx.objectStore(this._META_STORE);
                 metaStore.clear();
-                // Re-seed rewardStartDate atomically with the wipe, in the same transaction, rather
-                // than leaving meta empty until the next sync gets around to it. getInstallWeekKey()
-                // treats a missing rewardStartDate as "no gating" (fail open, not fail closed) — so
-                // any reward computation between a clear and the next normal sync (e.g. a Backfill
-                // run from Settings right after clearing) would count pre-clear weeks as eligible
-                // again. logStartDate is deliberately NOT seeded here, so the next sync still runs
-                // its normal baseline-capture path (current battlestats -> baselineBreakdown).
                 metaStore.put({ rewardStartDate: Math.floor(Date.now() / 1000) }, this._META_KEY);
                 tx.objectStore(this._DAYS_STORE).clear();
                 tx.oncomplete = () => {
@@ -242,8 +234,6 @@
                 const loaded = await DBManager.loadHistory();
                 DataController.hydrate(loaded);
                 if (dom.panel && dom.panel.style.display !== 'none') renderPanelContent();
-                // Keep this tab's scan mask in sync with whatever the scanning tab just persisted
-                // (start / heartbeat / pause / cap / complete). Passenger tabs mask off this.
                 renderScanUI();
             } catch (e) {
                 Log.warn('Cross-tab sync failed', e);
@@ -254,14 +244,14 @@
     function defaultBackfill() {
         return {
             targets: {},
-            rowsUsed: 0,         // cumulative rows spent; resets on full completion or after a cap cooldown elapses
-            cooldownUntil: 0,    // armed to now + COOLDOWN_MS at the moment the cap is hit
-            lastResult: null,    // 'partial' | 'complete'
-            stopReason: null,    // null | 'paused' | 'error' | 'interrupted' | 'cap' — why a partial stopped; drives masked-state copy
-            completion: null,    // 'origin' | 'exhausted' (only meaningful once lastResult === 'complete')
-            acknowledged: true,  // false while a masked stop-state (paused/error/cap/complete) awaits the user's dismissal
-            lock: 0,             // heartbeat timestamp of the tab currently scanning; 0 = no scan running
-            lockOwner: null      // _TAB_ID of the scanning tab; lets any tab tell driver from passenger
+            rowsUsed: 0,
+            cooldownUntil: 0,
+            lastResult: null,
+            stopReason: null,
+            completion: null,
+            acknowledged: true,
+            lock: 0,
+            lockOwner: null
         };
     }
 
@@ -269,7 +259,6 @@
         const d = defaultBackfill();
         if (ds && typeof ds === 'object') {
             if (ds.targets && typeof ds.targets === 'object') d.targets = ds.targets;
-            // rowsUsed superseded the older rowsThisWindow; accept either on load.
             if (typeof ds.rowsUsed === 'number') d.rowsUsed = ds.rowsUsed;
             else if (typeof ds.rowsThisWindow === 'number') d.rowsUsed = ds.rowsThisWindow;
             if (typeof ds.cooldownUntil === 'number') d.cooldownUntil = ds.cooldownUntil;
@@ -302,13 +291,6 @@
             if (e.energy !== undefined) e.energy = parseInt(e.energy);
             return;
         }
-        // A non-item entry is a gym training row by definition, so the tag is stamped here rather
-        // than trusted from the record. The export format omits it (gym lines are identified by
-        // their shape: at/ts/stat/gain/cost/after), which means an imported series would otherwise
-        // carry untagged rows — and every reward computation keys off `type === 'gym'`
-        // (buildProgressionCache, 06-section-v-logic.js), silently scoring them as zero. Stamping
-        // at this single choke point covers every path: boot (loadHistory -> sanitizeDayRecord),
-        // import, and export, so already-stored untagged rows self-heal on the next load.
         e.type = 'gym';
         if (e.ts !== undefined) e.ts = parseInt(e.ts);
         if (e.gain !== undefined) e.gain = parseFloat(e.gain);
@@ -342,9 +324,6 @@
             ok: false,
             msg: "Invalid file format."
         };
-        // Testing-phase reset lever (WIPE_BELOW_VERSION, 02-section-i-constants.js): once armed,
-        // an export from before the cutoff can't be re-imported to resurrect pre-wipe data —
-        // otherwise anyone with an old backup could bypass the forced reset entirely.
         if (WIPE_BELOW_VERSION !== '0.0.0') {
             const importedVer = (j.meta && j.meta.version) ? String(j.meta.version) : '';
             if (!importedVer || compareVersions(importedVer, WIPE_BELOW_VERSION) < 0) return {
@@ -373,19 +352,9 @@
         };
     }
 
-    // The ONE place a Torn API request is built, counted, sent and parsed. Every network call in the
-    // script goes through here, so the base URL and the API key appear exactly once in the codebase.
-    //
-    // Returns a normalized envelope rather than throwing, because each caller's error policy is
-    // deliberately different: a sync surfaces a message to the user, the wars/faction fetches fail
-    // silent, and backfill treats specific Torn error codes as a soft stop. Callers branch on
-    // `apiError` / `http` / `netErr`; none of them re-derive the happy path.
-    //
-    // Params are interpolated raw rather than through URLSearchParams — every `log=` request depends
-    // on literal commas surviving into the query string. Undefined/null values are dropped, so an
-    // optional bound (`from`, `to`) is simply omitted when the caller has nothing to pass. Pass
-    // `timestamp` only where a cache-buster is actually wanted: Torn caches responses for ~29s, and
-    // the low-frequency wars/faction calls deliberately benefit from that.
+    // This is the only place anywhere in the script that sends your API key. Every single network
+    // request the script ever makes — whether that's your training logs, your stats, or anything
+    // else — passes through this one function, and it only ever talks to api.torn.com.
     async function tornGet(path, params) {
         const qs = Object.entries({ ...params, key: userConfig.apiKey })
             .filter(([, v]) => v !== undefined && v !== null)
@@ -403,9 +372,6 @@
         }
     }
 
-    // Converts a failed tornGet envelope into the Error the sync path surfaces. `isTornError` marks
-    // a message as already user-facing copy, so universalFetch's catch passes it through verbatim
-    // instead of replacing it with the generic network-failure text.
     function tornError(r) {
         if (r.netErr) return r.netErr;
         const e = new Error(r.apiError ? tornKeyErrorText(r.data) : `Torn returned an unexpected error (HTTP ${r.http}).`);
@@ -418,12 +384,9 @@
         const lastSync = parseInt(localStorage.getItem(KEYS.WARS_SYNC) || '0');
         if (!manual && (Date.now() - lastSync) < TWENTY_FOUR_HOURS) return;
         try {
-            // user/?selections=faction is API v2-only (v1 returns error code 23), so the faction
-            // ID has to come from the same v1 faction/rankedwars request via the "basic" selection.
             const r = await tornGet('faction/', { selections: 'rankedwars,basic' });
             if (!r.ok) return;
             const wars = r.data.rankedwars || {};
-            // Resolve the player's current faction ID to tag each war with win/loss outcome.
             const myFactionId = r.data.ID || null;
             if (myFactionId) Object.values(wars).forEach(w => tagWar(w, myFactionId));
             localStorage.setItem(KEYS.WARS_DATA, JSON.stringify(wars));
@@ -433,16 +396,12 @@
         }
     }
 
-    // Stamps a war with the faction it belongs to (for membership filtering) and, once it has
-    // ended, whether that faction won. Shared by the current-faction and past-faction fetches.
     function tagWar(w, factionId) {
         if (!w || !w.war) return;
         if (w.war.end && w.war.winner != null) w.outcome = w.war.winner === factionId ? 'won' : 'lost';
         w.factionId = factionId;
     }
 
-    // Fetches log 6253 ("faction application accept receive") and stores a membership timeline.
-    // Only called once at the start of backfill — historical data, not needed on every sync.
     async function fetchFactionHistory() {
         try {
             const r = await tornGet('user/', { selections: 'log', log: 6253 });
@@ -461,7 +420,6 @@
         }
     }
 
-    // Parses and returns the stored faction membership timeline, or null if absent/malformed.
     function getFactionHistory() {
         try {
             const raw = localStorage.getItem(KEYS.FACTION_HISTORY);
@@ -469,8 +427,6 @@
         } catch (e) { return null; }
     }
 
-    // Fetches ranked war history for each past faction in the membership timeline and merges
-    // it into WARS_DATA. Called once per backfill — current faction is handled by fetchWars.
     async function fetchPastFactionWars() {
         const factionHistory = getFactionHistory();
         if (!factionHistory || !factionHistory.length) return;
@@ -494,9 +450,6 @@
         localStorage.setItem(KEYS.WARS_DATA, JSON.stringify(wars));
     }
 
-    // Returns true if the user was a member of the given factionId when the war ended.
-    // Unknown factionIds (not in history) are allowed through — they are factions joined
-    // after backfill ran, so logStartDate already floors any pre-join wars for them.
     function wasInFactionDuringWar(factionHistory, factionId, warEnd) {
         if (!factionHistory) return true;
         const intervals = factionHistory.filter(m => m.factionId === factionId);
@@ -504,9 +457,8 @@
         return intervals.some(m => m.joinedAt <= warEnd && (m.leftAt === null || m.leftAt > warEnd));
     }
 
-    // This is the ONLY function that connects to the internet with your API key.
-    // It strictly contacts api.torn.com to fetch your Gym training logs (Log IDs 5300-5303), a
-    // fixed short list of item-use logs (Xanax, energy cans, ODs, etc. — see ITEM_LOG_META), and current stats.
+    // Fetches your Gym training logs, a short fixed list of item-use logs (Xanax, energy cans,
+    // overdoses, etc.), and your current stats — via tornGet() above, the one place your API key is sent.
     async function universalFetch(mission, options = {}) {
         if (runtime.demoMode) return {
             success: false,
@@ -520,10 +472,6 @@
             manualWars = false,
             animate = false
         } = options;
-        // The level bar only animates when the caller explicitly says this is exp the user just
-        // earned by clicking Train. Every other path — the passive TRAIN heartbeat, FULL_SYNC,
-        // manual RESYNC — is catching up on exp earned elsewhere/earlier, so it snaps to the new
-        // value instead of replaying a level-up sequence the user didn't trigger.
         const silent = !animate;
 
         if (!userConfig.apiKey || userConfig.apiKey.length < 16) {
@@ -535,16 +483,6 @@
 
         const ts = Date.now();
         const meta = getActiveHistory().meta;
-        // syncFloor is keyed per individual log code, not per named call-shape. A call that only
-        // covers a subset of a group must only ever advance the floor for the codes it actually
-        // requested — otherwise a narrower call silently pushes the window forward for codes it
-        // never asked about, and any entries before that point become permanently unreachable by
-        // the next wider sync, not just deferred. `from=` needs one cutoff for the whole request,
-        // so if any requested code has never been synced, omit `from=` entirely for this call (fetch everything)
-        // rather than risk a code being skipped; otherwise use the oldest floor among the
-        // requested codes, so no code's window is advanced further than it's actually earned.
-        // Returns undefined when any requested code is unsynced, which tornGet drops from the query
-        // string entirely — the "fetch everything" case.
         const fromFor = codes => {
             const floors = codes.map(c => meta.syncFloor && meta.syncFloor[c]).filter(f => f != null);
             if (floors.length < codes.length) return undefined;
@@ -554,8 +492,6 @@
             if (!meta.syncFloor) meta.syncFloor = {};
             codes.forEach(c => { meta.syncFloor[c] = tsSec; });
         };
-        // Single source of truth for the code-array -> `log=` request shape, shared by every
-        // mission below so a subset call and the full reconcile call can never drift apart.
         const logReq = codes => ({
             type: 'log',
             logCodes: codes,
@@ -564,38 +500,24 @@
         let reqs = [];
 
         if (mission === 'TRAIN') {
-            // Just enough to keep the exp bar accurate (all 4 stats' cost + Ecstasy for HJ
-            // detection). Used for both a real click (animate:true) and the passive gym-page
-            // heartbeat (panel closed) — same shape either way. No items, no battlestats, no
-            // OD/SE reconcile — those only matter once something is actually being viewed, and
-            // are picked up by the pending-flag-triggered or routine FULL_SYNC instead.
             reqs.push(logReq(TRAIN_CODES));
         } else {
             reqs = [{
                     type: 'battlestats',
-                    // `basic` rides along in the same request — v1 takes comma-separated
-                    // selections and still bills it as one call — purely to learn the player's
-                    // name for the titles page. Nothing else reads it.
+                    // This request also pulls your basic profile info, but the only thing the script
+                    // reads from it is your player name (to show on the Titles page) — nothing else.
                     params: { selections: 'battlestats,basic', timestamp: ts }
                 },
-                // Items (energy + happy) have no proxy signal to gate behind, so they're always
-                // fetched. OD has no signal either (it never moves battlestats), so it rides with
-                // train — redundant with the live TRAIN call most of the time, but cheap insurance
-                // that self-heals a missed/aborted TRAIN call for free.
                 logReq(ITEM_CODES),
                 logReq(TRAIN_OD_CODES)
             ];
         }
 
-        // Wars runs in parallel with the main calls for FULL_SYNC — it has its own gate and
-        // error handling so a failure cannot affect the main sync result.
         if (mission === 'FULL_SYNC') fetchWars(manualWars);
 
         try {
-            // This safely performs the official Torn API request using your provided key.
+            // Sends the actual requests using your API key, via tornGet().
             const res = await Promise.all(reqs.map(c => tornGet('user/', c.params).then(r => ({ cfg: c, r }))));
-            // Any failed leg fails the whole sync. Request order decides which message surfaces when
-            // more than one leg failed, so it stays deterministic regardless of completion order.
             const failed = res.find(x => !x.r.ok);
             if (failed) throw tornError(failed.r);
 
@@ -605,9 +527,6 @@
                 if (r.data.log) logs = { ...logs, ...r.data.log };
                 if (cfg.type === 'battlestats') bs = r.data;
             });
-            // Name and player_id come from the `basic` selection bundled into the battlestats call
-            // above. player_id seeds the deterministic per-user sticker roulette (buildProgressionCache,
-            // 06-section-v-logic.js) so placement is unique per account but identical across devices.
             if (bs && bs.name) meta.playerName = bs.name;
             if (bs && bs.player_id) meta.playerId = bs.player_id;
 
@@ -616,12 +535,6 @@
                 if (c.logCodes) advanceFloor(c.logCodes, tsSec);
             });
 
-            // Only a true FULL_SYNC stamps the shared freshness clock — TRAIN is partial (no
-            // battlestats/items/OD), so marking LAST_SYNC fresh here would let a subsequent
-            // panel-open skip the full reconcile it still needs. Clearing PENDING_SYNC here too:
-            // this is the only point a full reconcile actually completes, whether it got here via
-            // the routine 30-min heartbeat or a pending-flag bypass — so this is the one place
-            // "a full sync is owed" stops being true, restarting the 30-min gate from now.
             if (mission === 'FULL_SYNC') {
                 localStorage.setItem(KEYS.LAST_SYNC, ts.toString());
                 localStorage.removeItem(KEYS.PENDING_SYNC);
@@ -629,22 +542,12 @@
 
             await DataController.processDataPayload(logs, bs, { silent });
 
-            // Stat enhancer check: if battlestats shows higher values than the last recorded
-            // endBreakdown, stat-enhancing items were used since the last sync. Only then do we
-            // fire the extra call — almost always a no-op. Must run AFTER processDataPayload
-            // above: that's what folds this sync's own training logs into endBreakdown, so
-            // checking beforehand would compare fresh battlestats against a stale endBreakdown
-            // and mistake an ordinary training gain (log just hasn't landed yet) for an
-            // unexplained one, firing this needlessly.
             const _s = getActiveHistory();
             const needsEnhancers = mission === 'FULL_SYNC' && bs &&
                 BS_STAT_ROWS.some(row => (bs[row.api] || 0) > (_s.today.endBreakdown[row.abbr] || 0));
 
             if (needsEnhancers) {
                 try {
-                    // Same request shape as any other log call, but with its own cache-buster: this
-                    // fires seconds after `ts` was captured, past the point where reusing it could
-                    // land on Torn's ~29s cached copy of an earlier request.
                     const r = await tornGet('user/', { ...logReq(STAT_LOGS).params, timestamp: Date.now() });
                     if (r.ok) {
                         advanceFloor(STAT_LOGS, tsSec);
@@ -660,10 +563,6 @@
         } catch (e) {
             Log.error('Sync failed', e);
             const isQuota = e.name === 'QuotaExceededError' || (e.message && e.message.toLowerCase().includes('quota'));
-            // Torn-tagged errors (bad HTTP status or an explicit error body) already carry a
-            // tailored message via tornKeyErrorText — anything else here is a real fetch()-level
-            // failure (offline, DNS, blocked, etc.), so it never leaks a raw browser exception
-            // string like "Failed to fetch" to the user.
             const errorMsg = isQuota ? MSG_SYNC_QUOTA :
                 e.isTornError ? e.message :
                 MSG_SYNC_NETWORK_ERROR;
@@ -674,7 +573,6 @@
         }
     }
 
-    // This function updates the 'Refresh' button in the app while it's fetching your latest logs.
     async function syncWithFeedback(mission, options = {}) {
         Perf.start('syncWithFeedback');
         const btn = dom.refreshBtn;
@@ -697,7 +595,6 @@
                 }, 2000);
             }
         } else if (result.suppressed) {
-            // A backfill is running and owns the daily row pool; quietly stand down, no error.
             resetRefreshBtn(btn);
         } else {
             bbglError("Sync Error: " + result.error);
@@ -706,41 +603,14 @@
         Perf.end('syncWithFeedback');
     }
 
-    // Conditional heartbeat: fires at most once per 30 minutes, and only while there's actually a
-    // reason to — the panel is open (any mode, including the gym-log page) or the user is on the
-    // gym page — and this tab is the one being looked at. Called only from the interval in
-    // startBackgroundSync; nothing needs to poke it on navigation or panel-open because it
-    // re-checks the live URL/panel state itself.
-    //
-    // Panel open always wins with a full FULL_SYNC (items/battlestats/OD are visible there). If a
-    // FULL_SYNC is still owed from training that happened while the panel was closed (KEYS.PENDING_SYNC),
-    // this bypasses the 30-min gate so the data is current the moment it's actually looked at —
-    // but a successful FULL_SYNC still stamps LAST_SYNC same as always, so the routine cadence
-    // simply restarts counting from that completion rather than needing a separate reset path.
-    //
-    // Gym-page-only (panel closed) settles for the lightweight TRAIN call — the exp bar is all
-    // that's on screen, and it only needs the 5 codes in TRAIN_CODES. TRAIN never stamps the
-    // shared KEYS.LAST_SYNC (see universalFetch), so its own throttle lives in
-    // runtime.lastTrainLightSync; that throttle is also satisfied by a recent FULL_SYNC (which
-    // covers everything TRAIN does and more), so closing the panel right after a full sync
-    // doesn't immediately re-fetch.
     function heartbeatTick() {
-        // hbBusy guards against a tick firing while a prior fetch is still in flight (LAST_SYNC
-        // isn't written until it resolves). hbRetryAfter keeps a failing key or dead connection
-        // from re-attempting on every tick.
         if (runtime.hbBusy || Date.now() < (runtime.hbRetryAfter || 0)) return;
         if (document.visibilityState !== 'visible') return;
         const panelOpen = dom.panel && dom.panel.style.display !== 'none';
-        // Keyed off the URL, not the injected bar's DOM presence — the bar depends on Torn's own
-        // gym page render finishing, which races the script's own DOM-mutation observer with no
-        // guaranteed retry trigger. The URL is known instantly at document-start, no race possible.
         const onGymPage = window.location.href.includes('gym.php');
         if (!panelOpen && !onGymPage) return;
 
         const lastFull = parseInt(localStorage.getItem(KEYS.LAST_SYNC)) || 0;
-        // Dev-only override (11-section-x-devtools.js, stripped from release builds): lets the
-        // 30-minute gate be shortened for testing without touching the real cadence. Unset in
-        // production, so this is always the 30-minute default there.
         const gate = runtime._devHbIntervalMs || 1800000;
 
         let mission, fire;
@@ -768,12 +638,6 @@
             });
     }
 
-    // The interval is the ONLY thing that fires the heartbeat. heartbeatTick() self-gates on the
-    // URL and panel state every tick, so it doesn't matter how the user arrived at a surface —
-    // no per-surface hooks to scatter, no DOM-injection race to lose, no two hooks firing in the
-    // same frame. The gate inside (visibility + surface + 30-min elapsed, or a pending training
-    // catch-up) is what actually decides whether a call goes out; this just checks that cheaply
-    // and often.
     function startBackgroundSync() {
         if (runtime.bgSyncId) clearInterval(runtime.bgSyncId);
         runtime.bgSyncId = setInterval(heartbeatTick, 3000);
@@ -791,9 +655,6 @@
         return Math.floor(Formatter.parse(Formatter.dateLogical(ts * 1000)).getTime() / 1000);
     }
 
-    // Seeds/repairs the two group frontiers (trainEnergy, statHappy). Any stored shape that is not
-    // exactly the two-group form (e.g. the older per-code frontiers) is reseeded to "now" so the
-    // scan restarts cleanly; already-stored rows are deduped on the way back, so a reseed is safe.
     function ensureBackfillTargets(ds) {
         if (!ds.targets || typeof ds.targets !== 'object') ds.targets = {};
         const fr = ds.targets.frontiers;
@@ -818,7 +679,6 @@
         const existing = (typeof stored.meta.logStartDate === 'number') ? stored.meta.logStartDate : null;
         if (!stored.series.length) return existing;
 
-        // Oldest stored timestamp per scan group (gym codes -> trainEnergy, item codes per group).
         const perGroupOldest = {};
         stored.series.forEach(e => {
             const code = seriesEntryCode(e);
@@ -826,8 +686,6 @@
             if (g && (perGroupOldest[g] === undefined || e.ts < perGroupOldest[g])) perGroupOldest[g] = e.ts;
         });
 
-        // The shallowest still-incomplete group caps how far down we can trust: its oldest scanned
-        // day is only partially covered, so the first trusted day is the one after it.
         let shallowPartialDayStart = null;
         Object.keys(frontiers || {}).forEach(g => {
             const fr = frontiers[g];
@@ -847,9 +705,6 @@
         return newFloor;
     }
 
-    // Lightweight progress checkpoint: persists ONLY the backfill state (frontiers, window budget,
-    // cooldown, heartbeat lock) to the meta store. No series merge, no day rebuild, no UI refresh —
-    // cheap enough to call on every heartbeat tick.
     async function persistBackfillState(ds) {
         let meta;
         if (_historyCache && _historyCache.meta) {
@@ -861,14 +716,7 @@
         await DBManager.saveDays(meta, []);
     }
 
-    // Merges a batch of freshly scanned rows into the stored series (dedup across sessions),
-    // recomputes the baseline and origin floor, and persists the rebuilt day objects + meta.
-    // Does NOT touch the in-memory cache or render — that is deferred to finalizeBackfill so the UI
-    // is only rebuilt once the scan stops. Returns the persisted storage record.
     async function _persistBackfillSeries(ds, collected) {
-        // getStorage() already returns a sanitized record (meta populated, series an array) for an
-        // empty store — it only yields null when the DB itself failed to open, which is the single
-        // case the fallback covers. sanitizeStorageRecord(null) is that same canonical empty record.
         const stored = await DBManager.getStorage() || sanitizeStorageRecord(null);
 
         if (collected && collected.length > 0) {
@@ -931,9 +779,6 @@
         return stored;
     }
 
-    // Replaces the in-memory history cache from a just-persisted storage record and drops every
-    // derived cache. The one way a backfill write becomes visible to the UI — both the normal
-    // finalize path and the cancel-discard path end here.
     function _hydrateFromStored(stored) {
         const rebuilt = DataController._rebuildFromSeries(stored.series || [], stored.meta.baselineBreakdown || ZERO_BREAKDOWN);
         _historyCache = {
@@ -944,13 +789,10 @@
         DataController.invalidate();
     }
 
-    // Final save for a Deep Log Scan: persists any remaining rows, then rebuilds the in-memory
-    // history cache and invalidates derived caches so the UI reflects the freshly scanned history.
     async function finalizeBackfill(ds, collected) {
         _hydrateFromStored(await _persistBackfillSeries(ds, collected));
     }
 
-    // Called when you dismiss the 'Scan Complete' confirmation after a Deep Log Scan.
     async function acknowledgeBackfill() {
         if (runtime.demoMode || runtime.backfilling) return;
         const s = getActiveHistory();
@@ -962,9 +804,6 @@
         renderScanUI();
     }
 
-    // Called by 'Proceed to partial logs' on a paused/error/cap masked stop-state: the scanned rows
-    // are already flushed and live, so this just retires the mask. Persist + broadcast so every tab
-    // (and the next reload) agrees the mask is dismissed.
     async function proceedPartialBackfill() {
         if (runtime.demoMode || runtime.backfilling) return;
         const s = getActiveHistory();
@@ -979,26 +818,19 @@
         renderScanUI();
     }
 
-    // Cancel-discard: throw away the reconstructed pre-install history but keep everything tracked
-    // live since install. The install-time baseline is restored as (current battlestats − gains
-    // logged live since install), which is exact whether or not the user trained after installing.
-    // rowsUsed and cooldownUntil are deliberately preserved so a cancel-then-restart cannot dodge
-    // Torn's rolling budget. Frontiers are reseeded to "now" so a future scan re-reconstructs cleanly.
+    // If you cancel a Deep Log Scan, this throws away the older history it had reconstructed —
+    // only what's been tracked live since you installed the script is kept.
     async function discardBackfillData(ds) {
         const stored = await DBManager.getStorage() || sanitizeStorageRecord(null);
 
-        // Install cutoff (seconds): rewardStartDate is the fixed install anchor; fall back to
-        // privacyAgreed, then to now (keeps nothing older — still safe, never over-keeps).
         let cutoff = (typeof stored.meta.rewardStartDate === 'number') ? stored.meta.rewardStartDate : null;
         if (cutoff === null) {
             const p = Date.parse(userConfig.privacyAgreed);
             cutoff = isNaN(p) ? Math.floor(Date.now() / 1000) : Math.floor(p / 1000);
         }
 
-        // Keep only rows logged live since install; drop the reconstructed history (gym + item).
         stored.series = stored.series.filter(e => e.ts >= cutoff);
 
-        // Restore the install-time baseline from live battlestats minus post-install live gains.
         let curStats = null;
         try {
             const r = await tornGet('user/', { selections: 'battlestats', timestamp: Date.now() });
@@ -1018,16 +850,12 @@
                 dex: r2((curStats.dexterity || 0) - liveGain.dex)
             };
         }
-        // else: keep the existing baseline (best effort) rather than zeroing real data.
 
-        // Reseed both frontiers to "now" so a future scan restarts from scratch.
         ds.targets = {};
         ensureBackfillTargets(ds);
 
-        // Undo backfill's backward push of the origin floor.
         stored.meta.logStartDate = cutoff;
 
-        // Preserve anti-abuse budget; clear the masked flow.
         ds.lastResult = null;
         ds.stopReason = null;
         ds.completion = null;
@@ -1040,14 +868,6 @@
         _hydrateFromStored(stored);
     }
 
-    // One backward log page for a scan group, plus the stop/continue classification every caller
-    // needs. Returns { log, rowKeys } on success, or { halt: true } when the scan should stop softly:
-    // a network/HTTP failure, or Torn error code 14/5. Any other API error is thrown as fatal and
-    // lands in the scan loop's own catch.
-    //
-    // The &timestamp cache-buster is required, not cosmetic: Torn's ~29s response cache is NOT keyed
-    // on `to`, so without it a rapid sequence of paged calls can return a stale (even empty) earlier
-    // response — which the empty-page path would then misread as "this group is complete".
     async function _scanPage(param, cursor) {
         const r = await tornGet('user/', { selections: 'log', log: param, to: Math.floor(cursor), timestamp: Date.now() });
         if (r.netErr || r.http) {
@@ -1063,8 +883,8 @@
     }
 
     // Deep Log Scan: uses your API key to page back through your full training history on Torn's
-    // servers. Only reads gym training logs and a short list of item logs (energy cans, Xanax, ODs, etc.)
-    // — never reads your messages, money, or any other personal information.
+    // servers. It only reads gym training logs and a short list of item logs (energy cans, Xanax,
+    // overdoses, etc.) — it never reads your messages, money, or any other personal information.
     async function backfillLogs(btn) {
         if (runtime.demoMode) return;
         if (!userConfig.apiKey || userConfig.apiKey.length < 16) {
@@ -1079,9 +899,6 @@
         const ds = s.meta.backfill;
         const now = Date.now();
 
-        // Cap cooldown gate: armed only when a previous run hit the row cap. While it is live, block.
-        // Once it elapses, every counted row has aged out of Torn's rolling 24h — clear the counter
-        // and the cooldown so this run starts with a full budget.
         if (ds.cooldownUntil) {
             if (now < ds.cooldownUntil) {
                 renderScanUI();
@@ -1091,8 +908,6 @@
             ds.rowsUsed = 0;
         }
 
-        // Cross-tab guard: if another tab is mid-scan its heartbeat lock is fresh in storage. Stand
-        // down quietly rather than running two scans into the same store. Read the freshest copy.
         const freshStored = await DBManager.getStorage();
         const liveLock = freshStored && freshStored.meta && freshStored.meta.backfill && freshStored.meta.backfill.lock;
         if (liveLock && (Date.now() - liveLock) < BACKFILL.LOCK_STALE_MS) {
@@ -1100,10 +915,8 @@
             return;
         }
 
-        // Per-run budget is whatever is left of the cap; rowsUsed persists across resumes and cancels.
         const budget = Math.max(0, BACKFILL.SOFT_CAP - (ds.rowsUsed || 0));
         if (budget <= 0) {
-            // Budget already spent (e.g. resumed right at the boundary): arm the cooldown and bail.
             ds.lastResult = 'partial';
             ds.stopReason = 'cap';
             ds.acknowledged = false;
@@ -1122,14 +935,9 @@
         ds.lockOwner = _TAB_ID;
         runtime.backfillAbort = null;
         await persistBackfillState(ds);
-        // Flip backfilling on and raise the mask BEFORE the (potentially slow) faction fetches, so the
-        // Scanning overlay shows immediately rather than briefly resolving to the Error state. Set
-        // after the persist so a persist failure can't strand backfilling=true with no loop running.
         runtime.backfilling = true;
         renderScanOverlay();
 
-        // Build the faction membership timeline, then fetch ranked war history for each past
-        // faction. Sequential: past faction wars depend on the history being stored first.
         await fetchFactionHistory();
         await fetchPastFactionWars();
 
@@ -1140,12 +948,12 @@
             btn.innerText = 'Scanning... 0';
         }
 
-        let sessionRows = 0;       // rows fetched this run (failsafe against HARD_CAP)
+        let sessionRows = 0;
         let stoppedEarly = false;
-        let capHit = false;        // budget reached this run
-        let aborted = null;        // 'pause' | 'cancel' if the user stopped the scan
-        let drainDay = null;       // once the cap is hit, only finish the current day
-        let pending = [];          // rows not yet flushed to storage
+        let capHit = false;
+        let aborted = null;
+        let drainDay = null;
+        let pending = [];
         let lastHeartbeat = Date.now();
 
         const flush = async () => {
@@ -1158,14 +966,10 @@
 
         try {
             while (sessionRows < BACKFILL.HARD_CAP) {
-                // User-initiated stop: pause keeps what has been scanned, cancel throws it away.
-                // Checked first so a stop is honored before another page is fetched.
                 if (runtime.backfillAbort) {
                     aborted = runtime.backfillAbort;
                     break;
                 }
-                // Pick the still-incomplete group with the deepest (highest) cursor, honoring the
-                // drain boundary so we never start a day older than the one being finished.
                 let pick = null;
                 BACKFILL_GROUP_KEYS.forEach(g => {
                     const fr = frontiers[g];
@@ -1185,9 +989,6 @@
                 }
 
                 if (page.rowKeys.length === 0) {
-                    // An empty page only means "nothing retrievable past here" if it is real. Confirm
-                    // with one cache-busted retry before trusting it, so a stale/empty cache hit can't
-                    // falsely declare this group complete.
                     await new Promise(r => setTimeout(r, BACKFILL.THROTTLE_MS));
                     const confirm = await _scanPage(param, fr.cursor);
                     if (confirm.halt) {
@@ -1212,15 +1013,9 @@
                 }
                 fr.cursor = oldestTs - 1;
 
-                // Display the cumulative rowsUsed (survives pause/resume), not sessionRows (a
-                // this-run-only counter used purely for the HARD_CAP loop failsafe below) — otherwise
-                // resuming a paused scan visually resets the count to 0 instead of picking up where
-                // it left off.
                 if (btn) btn.innerText = `Scanning... ${ds.rowsUsed}`;
                 updateScanOverlayCount(ds.rowsUsed);
 
-                // Budget reached: stop STARTING new days, drain the current one across both
-                // groups so the persisted boundary is a fully complete day.
                 if (drainDay === null && ds.rowsUsed >= BACKFILL.SOFT_CAP) {
                     capHit = true;
                     let maxCursor = -Infinity;
@@ -1231,10 +1026,6 @@
                     if (maxCursor > -Infinity) drainDay = backfillDayStart(maxCursor);
                 }
 
-                // Both checkpoints are real flushes: the count-based one bounds memory, the
-                // time-based one bounds data-loss on interruption. Persisting the advanced cursor
-                // without the rows that advanced it (the old heartbeat path) silently dropped any
-                // rows still in `pending`, since resume picks up from the persisted cursor.
                 if (pending.length >= BACKFILL.CHECKPOINT_ROWS || Date.now() - lastHeartbeat >= BACKFILL.HEARTBEAT_MS) {
                     await flush();
                 }
@@ -1254,8 +1045,6 @@
         ds.lockOwner = null;
 
         if (aborted === 'cancel') {
-            // User discarded the scan: drop unflushed rows and wipe the backfilled history, keeping
-            // only rowsUsed/cooldownUntil so a restart cannot dodge the rolling budget.
             pending = [];
             runtime.backfilling = false;
             runtime.backfillAbort = null;
@@ -1280,15 +1069,11 @@
             ds.lastResult = 'partial';
             ds.acknowledged = false;
             if (aborted === 'pause') {
-                // Manual pause: keep progress, no cooldown — Resume is immediately available.
                 ds.stopReason = 'paused';
             } else if (capHit || (ds.rowsUsed || 0) >= BACKFILL.SOFT_CAP) {
-                // Budget spent: arm the cooldown at the moment of the cap-hit.
                 ds.stopReason = 'cap';
                 ds.cooldownUntil = Date.now() + BACKFILL.COOLDOWN_MS;
             } else {
-                // The scan's own code caught this (network/API failure), as opposed to the tab/browser
-                // closing outright (see recoverInterruptedBackfill's 'interrupted' classification).
                 ds.stopReason = 'error';
             }
         }
@@ -1302,9 +1087,6 @@
             runtime.backfillAbort = null;
         }
 
-        // Classify a completed scan now that the deepest rows (the final batch) are merged and the
-        // baseline reflects them: reaching ~10 across every stat means we hit the account's true
-        // origin; otherwise we merely exhausted the logs Torn still retains.
         if (ds.lastResult === 'complete') {
             const baseline = (_historyCache && _historyCache.meta && _historyCache.meta.baselineBreakdown) || ZERO_BREAKDOWN;
             const reachedOrigin = STAT_KEYS.every(k => (baseline[k] || 0) <= BACKFILL.ORIGIN_MAX_STAT);
@@ -1320,11 +1102,6 @@
         renderScanUI();
     }
 
-    // Crash/refresh recovery: on boot, a backfill heartbeat lock that has gone stale means a scan was
-    // interrupted (tab/browser closed outright — the running code never reached its own catch). This
-    // is the ONLY place that can classify that case. Release the lock and surface the interactive
-    // Interrupted mask (resume / proceed). A still-fresh lock means another live tab owns the scan, so
-    // we leave it be. A cleanly completed-but-unacknowledged scan is left untouched.
     async function recoverInterruptedBackfill() {
         if (runtime.demoMode || runtime.backfilling) return;
         const s = getActiveHistory();
@@ -1335,9 +1112,6 @@
         ds.lockOwner = null;
         if (ds.lastResult !== 'complete') {
             ds.lastResult = 'partial';
-            // Preserve a cap stop (its cooldown is real); otherwise this lock only goes stale when the
-            // tab/browser closed outright, distinct from an in-session network/API error (see the
-            // 'error' branch in the live finalize path above).
             if (ds.stopReason !== 'cap') ds.stopReason = 'interrupted';
             ds.acknowledged = false;
         }

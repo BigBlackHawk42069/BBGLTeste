@@ -37,7 +37,7 @@
     const CAP_PAD_X = 8, CAP_PAD_Y = 18, CAP_GAP = 7;
     const CAP_SLOT_W = (CAP_W - 2 * CAP_PAD_X - (CAP_N - 1) * CAP_GAP) / CAP_N;
     const CAP_SLOT_H = CAP_H - 2 * CAP_PAD_Y;
-    const CAP_TERM_W = 10; // terminal plate width at each end of the bay
+    const CAP_TERM_W = 10;
 
     // Gradients/patterns are pure functions of the bar's fixed dimensions above, so they're
     // identical on every call regardless of slots/lit/animated. Built once here (instead of
@@ -155,76 +155,52 @@
         const colorKey = { green: 'g', gold: 'o', diamond: 'd', silver: 's' };
         const f = (v) => v.toFixed(2);
         let out = `<rect width="${W}" height="${H}" fill="url(#bbc-housing)"/>`;
-        // Sweep windows are collected separately and appended as an HTML overlay (see
-        // .bbgl-cap-overlay in CSS_STYLES) instead of SVG content — inline SVG shapes don't
-        // reliably get their own GPU compositor layer for CSS transform/opacity animation, so an
-        // animated SVG sweep forces real per-frame repainting. A plain HTML div clipped with
-        // overflow:hidden does get that layer, reliably, so that's where the only animated part
-        // of this bar lives now.
+        // HTML overlay, not SVG: inline SVG doesn't reliably get its own GPU compositor layer for
+        // transform/opacity animation, but a clipped HTML div does.
         let overlay = '';
 
         for (let i = 0; i < n; i++) {
             const bx = padX + i * (slotW + gap);
             const by = padY;
 
-            // Bay recess (empty state: same material as housing but with inner shadow to look recessed)
-            // Darken the background to push it deeper, then add shadows.
+            // Bay recess: darken for depth, then inner shadow/highlight for the housing lip.
             out += `<rect x="${f(bx)}" y="${by}" width="${f(slotW)}" height="${slotH}" fill="#000" fill-opacity=".5"/>`;
             out += `<rect x="${f(bx)}" y="${by}" width="${f(slotW)}" height="${slotH}" fill="url(#bbc-recess-shadow)"/>`;
-            // Inner shadow on top edge to give depth to the empty housing recess
             out += `<rect x="${f(bx)}" y="${by}" width="${f(slotW)}" height="3" fill="#000" fill-opacity=".6"/>`;
-            // Subtle highlight on the bottom inner edge to define the bottom lip of the housing
             out += `<rect x="${f(bx)}" y="${f(by + slotH - 1.5)}" width="${f(slotW)}" height="1.5" fill="#fff" fill-opacity=".15"/>`;
 
             const color = slots[i];
             if (!color) continue;
 
-            // Terminal plates — part of the capsule, only rendered when a capsule is present
             out += `<rect x="${f(bx)}" y="${by}" width="${termW}" height="${slotH}" fill="url(#bbc-term)"/>`;
             out += `<rect x="${f(bx)}" y="${by}" width="${termW}" height="${slotH}" fill="url(#bbc-hatch)"/>`;
             out += `<rect x="${f(bx + slotW - termW)}" y="${by}" width="${termW}" height="${slotH}" fill="url(#bbc-term)"/>`;
             out += `<rect x="${f(bx + slotW - termW)}" y="${by}" width="${termW}" height="${slotH}" fill="url(#bbc-hatch)"/>`;
 
-            // Inner shadow on capsule top edge only (bottom uses recess shine on the fill)
             out += `<rect x="${f(bx)}" y="${by}" width="${f(slotW)}" height="2.5" fill="#000" fill-opacity=".4"/>`;
 
-            // Glass window — fills the middle section between the two terminal plates
             const gx = bx + termW, gw = slotW - 2 * termW;
             const gy = by, gh = slotH;
-            // railH: thickness of top/bottom metal rails (scaled for thicker housing)
             const railH = 18;
-            // Viewing window: the gap between the two rails
             const winY = gy + railH, winH = gh - railH * 2;
-            // Fill tube sits inside the viewing window, further inset by fillInset
             const fillInset = 3;
             const fy = winY + fillInset, fh = winH - fillInset * 2;
 
             const fid = colorKey[color];
             const fillId = fid === 's' ? 's' : (fid + (lit ? 'L' : 'D'));
 
-            // Rails drawn first so fill+glow bleeds over them on completed weeks (same as end-caps)
+            // Rails drawn first so fill+glow bleeds over them on completed weeks (same as end-caps).
             out += `<rect x="${f(gx)}" y="${gy}" width="${f(gw)}" height="${railH}" fill="url(#bbc-term)"/>`;
             out += `<rect x="${f(gx)}" y="${gy}" width="${f(gw)}" height="${railH}" fill="url(#bbc-hatch)"/>`;
             out += `<rect x="${f(gx)}" y="${f(gy + gh - railH)}" width="${f(gw)}" height="${railH}" fill="url(#bbc-term)"/>`;
             out += `<rect x="${f(gx)}" y="${f(gy + gh - railH)}" width="${f(gw)}" height="${railH}" fill="url(#bbc-hatch)"/>`;
 
-            // Colour fill — completed tubes get a glow bloom that bleeds past the tube edges. This
-            // filter is safe to keep static/per-capsule now: it's SVG content that never animates
-            // (the sweep lives in the HTML overlay below), so it's a one-time paint cost, not a
-            // per-frame one.
+            // Glow filter is safe to leave static — the sweep animation lives in the HTML overlay, not here.
             if (lit && color !== 'silver') out += `<g filter="url(#bbc-tube-glow)">`;
             out += `<rect x="${f(gx)}" y="${fy}" width="${f(gw)}" height="${fh}" fill="url(#bbc-${fillId})"/>`;
-            // Recess shadow — lighter on completed weeks so lit colors read brighter
             out += `<rect x="${f(gx)}" y="${fy}" width="${f(gw)}" height="${fh}" fill="url(#bbc-recess-shadow)" opacity="${lit ? 0.4 : 1}"/>`;
-            // Recess shine — faint bright line at very bottom edge (reflected ambient light)
             out += `<rect x="${f(gx)}" y="${fy}" width="${f(gw)}" height="${fh}" fill="url(#bbc-recess-shine)"/>`;
             if (lit && color !== 'silver') out += `</g>`;
-            // Inner sweep — one band travels all the way to the right end of the bar, then all
-            // the way back to the left. Each capsule plays its own local forward pass (delayed by
-            // CAP_WIN_DELAY_FWD_S, left-to-right order) and, once every capsule's forward pass has
-            // finished, its own local backward pass (CAP_WIN_DELAY_BWD_S, right-to-left order) —
-            // two one-way local passes per capsule instead of one capsule-local bounce, which is
-            // what actually makes it read as a single wave crossing the whole bar and returning.
             if (animated && color !== 'silver') {
                 overlay += `<div class="bbgl-cap-win" style="left:${CAP_WIN_LEFT_PCT[i].toFixed(2)}%;width:${CAP_WIN_WIDTH_PCT.toFixed(2)}%;top:${CAP_WIN_TOP_PCT.toFixed(2)}%;height:${CAP_WIN_HEIGHT_PCT.toFixed(2)}%">` +
                     `<div class="bbgl-cap-sweep bbgl-cap-sweep-pass-fwd bbgl-cap-sweep-${color}" style="animation-delay:${CAP_WIN_DELAY_FWD_S[i].toFixed(3)}s"></div>` +
@@ -393,7 +369,7 @@
 
     // Ranked-war calendar markers. Buckets each stored war's start/end timestamp into the same
     // logical date the calendar grid uses, memoized on the raw localStorage string so it only
-    // recomputes when the stored war data actually changes. Foundation for real markers later.
+    // recomputes when the stored war data actually changes.
     // `raw` starts as a sentinel (false) that no localStorage value can equal — otherwise an
     // absent key (getItem -> null) would match an initial null and return the uninitialized map.
     let _warMarkerCache = { raw: false, cutoff: -1, map: {} };
@@ -661,10 +637,6 @@
         const installDateKey = getInstallDateKey();
         const rewardStartTs = (h.meta && h.meta.rewardStartDate) || null;
         let todaySeries = h.today.series || [];
-        // On the exact install day, only entries at/after the precise install moment count —
-        // mirrors buildProgressionCache()'s handling of past days (06-section-v-logic.js).
-        // Without this, today's full eSpent.total (which can include pre-install-moment
-        // entries from the same calendar day) was being counted in full.
         if (installDateKey && today === installDateKey && rewardStartTs) {
             todaySeries = todaySeries.filter(s => s.ts >= rewardStartTs);
         }
@@ -758,13 +730,10 @@
 
     // Open rounded-rect outline, w x h, corner radius r, with a gap centred at gapCenterX on the
     // TOP edge only, gapW wide — starts just past the gap going clockwise through all 4 corners,
-    // ending just before the gap on the other side (no closing Z: the two open ends are
-    // deliberate, that's where the stat-name label straddles the line, see
-    // .bbgl-title-block-label / .bbgl-title-block-frame in 04-section-iii-styles.js). Unlike
-    // ICONS.TITLE_CROWN there's no stroke-dasharray/arc-length math anywhere here — this is
-    // always fully stroked, never partially traced, so there's nothing to re-measure if the shape
-    // changes; it's regenerated fresh from the block's own live pixel size every layout pass
-    // anyway (layoutTitleBlockFrames() below).
+    // ending just before the gap on the other side (no closing Z: the two open ends are where the
+    // stat-name label straddles the line, see .bbgl-title-block-label/-frame in 04-section-iii-styles.js).
+    // Always fully stroked and regenerated fresh from the block's live pixel size every layout pass
+    // (layoutTitleBlockFrames() below), so there's nothing to re-measure if the shape changes.
     function roundedRectGapPathD(w, h, r, gapCenterX, gapW) {
         r = Math.max(0, Math.min(r, w / 2, h / 2));
         const topRun = Math.max(0, w - 2 * r);
@@ -788,27 +757,18 @@
         ].join(' ');
     }
 
-    // Measures every stat block's own live pixel size and its label's rendered width, then
-    // redraws that block's neon frame (.bbgl-title-block-frame) with a gap sized to fit the
-    // label. Reads are batched before any writes (one forced layout for the whole pass, not one
-    // per block). Called synchronously right after the titles page's DOM is (re)built
-    // (achRefreshPageDom(), 06-section-v-logic.js) and again on every resize via
-    // observeTitleBlockFrames() below, since the blocks can still resize when panel mode or the
-    // active fixed page-width tier changes, with no other JS involvement.
+    // Measures every stat block's live pixel size and its label's rendered width, then redraws
+    // that block's neon frame (.bbgl-title-block-frame) with a gap sized to fit the label. Reads
+    // are batched before any writes. Called after the titles page DOM is (re)built
+    // (achRefreshPageDom(), 06-section-v-logic.js) and on every resize (observeTitleBlockFrames()
+    // below). Returns false if any block was still 0x0 (layout not settled yet) so the caller can
+    // retry next frame instead of guessing a delay.
     //
-    // Returns true only if every block found was actually measurable (nonzero size) and got a
-    // real path — false means at least one block was still 0x0 (e.g. the titles layout has not
-    // settled yet on the very first paint after a tab switch). achRefreshPageDom() uses this
-    // return value to keep retrying on the next frame instead of guessing a fixed delay.
-    //
-    // Deliberately offsetWidth/offsetHeight here, NOT getBoundingClientRect() — this page runs a
-    // scale(1, .005) CRT-style transform transition on page navigation (bbgl-crt-out/-in,
-    // 04-section-iii-styles.js), and getBoundingClientRect() reports the visually TRANSFORMED
-    // size, not the real layout box. Measuring mid-transition with it was locking in a squashed
-    // pill shape that never corrected itself afterward, since a transform never actually changes
-    // an element's own box size — nothing left for ResizeObserver to react to once the animation
-    // finished. offset*/clientWidth/-Height ignore transforms entirely and report the same real
-    // layout size throughout the whole animation, which is what the SVG viewBox actually needs.
+    // Uses offsetWidth/offsetHeight, NOT getBoundingClientRect(): this page runs a CRT-style scale
+    // transform on navigation (bbgl-crt-out/-in), and getBoundingClientRect() reports the visually
+    // squashed mid-transition size — which locked in a wrong shape that never self-corrected, since
+    // a transform doesn't change the element's own box size. offset*/client* ignore transforms and
+    // report the real layout size throughout.
     function layoutTitleBlockFrames() {
         const blocks = document.querySelectorAll('.bbgl-title-block');
         if (!blocks.length) return true;
@@ -871,49 +831,23 @@
     // ever consumed when the space is too short to actually centre the assembly in.
     const RANK_ASSEMBLY_FLOOR = 5;
 
-    // Reference placement used ONLY to derive the label-to-groove spacing — NOT where the bar
-    // actually ends up. 0 = assembly midpoint flush with the card bottoms above, 1 = flush with
-    // RANK_ASSEMBLY_FLOOR at the page's own bottom.
-    //
-    // This exists because the two things are genuinely separate concerns. The label gap is defined
-    // as a FRACTION of the cards-to-groove distance (TITLE_LABEL_BIAS below), so it only has a
-    // value once the groove has a position — which means simply moving the groove to reposition the
-    // bar silently rescaled the label gap along with it. Freezing the spacing against one fixed
-    // reference placement here lets the real placement (a plain centring, see layoutRankBarCenter)
-    // move the finished cluster around as a rigid unit without touching its internals.
+    // Reference bias (0-1, card-bottoms to page-bottom) used ONLY to measure the label-to-groove
+    // spacing before the real placement happens — moving the groove to reposition the bar would
+    // otherwise rescale the label gap along with it, since the gap is a fraction of that distance.
     const RANK_SPACING_REF_BIAS = 0.8;
 
-    // Where the plain-text rank labels (.bbgl-rank-title) sit within the gap between the card
-    // bottoms and the groove line, measured UP from the groove: 0 = flush with the line, 1 = flush
-    // with the cards. A plain 0.5 (true midpoint of that gap) reads fine when the gap is small, but
-    // the gap's absolute size grows whenever --bbgl-t-rank-h reclaims more room from the cards
-    // above, which floated the labels further and further from the line they're meant to annotate.
-    // Biased toward the line instead, so labels track the groove rather than an elastic midpoint.
+    // Where the rank labels (.bbgl-rank-title) sit in the gap between the cards and the groove,
+    // measured UP from the groove (0 = flush with it, 1 = flush with the cards). Biased toward the
+    // line rather than a true midpoint, so labels track the groove instead of floating away as
+    // --bbgl-t-rank-h grows the gap.
     const TITLE_LABEL_BIAS = 0.42;
 
-    // Positions the complete VISIBLE rank assembly within the actual geometric space below the lower
-    // stat cards. Measure the sliding readout and the groove (the plaques are hidden today — see
-    // .bbgl-rank-notches, 04-section-iii-styles.js — and filtered out below by the offsetParent
-    // check), fold in the text labels that hang above them, then centre that whole block.
-    //
-    // Two passes, because "how far above the groove do the labels sit" and "where does the finished
-    // cluster sit" have to be answered in that order. Pass 1 places the assembly at
-    // RANK_SPACING_REF_BIAS purely to read the label gap off it and freeze it. Pass 2 treats labels
-    // and groove as ONE rigid block and centres that block in the available space. Doing it in a
-    // single pass (just moving the groove and letting the labels re-derive from the new gap) is what
-    // made repositioning the bar also change its internal spacing.
-    //
-    // Clamped at both ends (ceiling first, since a too-short space must never drive labels into the
-    // stat cards above) so a return of the plaque shelf, or any future taller content, still
-    // degrades to hugging the floor rather than overflowing past either edge.
-    //
-    // The rank box stays in normal flow so --bbgl-t-rank-h can continue reclaiming space from the
-    // cards; only the visible groove's local Y coordinate is written here. All reads happen before
-    // the one custom-property write.
-    //
-    // All six plaques (Fully Bricked included) live inside .bbgl-rank-line again, so the single
-    // .bbgl-rank-notch-label query below already covers the complete ladder — no separate capstone
-    // element to fold in.
+    // Centres the visible rank assembly (groove + readout; plaques are hidden today, see
+    // .bbgl-rank-notches) in the space below the stat cards, in two passes: pass 1 freezes the
+    // label-to-groove spacing at a fixed reference placement, pass 2 treats labels+groove as one
+    // rigid block and centres that block. Doing it in one pass (just moving the groove) would let
+    // the label gap rescale with it. Clamped at both ends so a short space hugs the floor instead
+    // of overflowing. Only the groove's local Y is written; the box itself stays in normal flow.
     function layoutRankBarCenter() {
         const page = document.querySelector('.bbgl-titles-page');
         const scale = page && page.querySelector('.bbgl-rank-scale');
@@ -933,16 +867,10 @@
         const availableBottom = page.clientHeight - paddingBottom;
         if (!(availableBottom > availableTop)) return false;
 
-        // offsetParent filters out any display:none plaque part — which today means every cradle
-        // except the riding plaque's, deliberately absent rather than not-yet-measured. Leaving
-        // them in would make every measurement below abort on their zero height. What stays is
-        // exactly the VISIBLE assembly, which is what this centres.
-        //
-        // The cradle has to be measured in its own right: it is absolutely positioned, so it adds
-        // nothing to its label's offsetHeight, yet it hangs below the bar and is the lowest thing
-        // on the whole assembly — lower than the readout it wraps. Measuring only the labels would
-        // under-read the bottom by exactly the clearance under the digits and let the curve drift
-        // toward the page's clip edge.
+        // offsetParent filters out hidden plaque parts (every cradle but the riding one's, today)
+        // so only the VISIBLE assembly is measured. The cradle is measured separately since it's
+        // absolutely positioned and adds nothing to its label's offsetHeight, despite hanging
+        // lower than anything else in the assembly.
         const assemblyEls = [
             line,
             ...line.querySelectorAll('.bbgl-rank-notch-label, .bbgl-rank-notch-cradle, .bbgl-rank-knob')
@@ -966,9 +894,8 @@
         const assemblyFloor = Number.isFinite(floorValue) ? floorValue : RANK_ASSEMBLY_FLOOR;
 
         // ─── Pass 1: freeze the label-to-groove spacing ───────────────────────
-        // Solve for where the groove WOULD sit at the reference bias, purely to read off how far
-        // above it the labels sat there, and keep that distance. Nothing here is written out; only
-        // labelGap survives into the real placement below.
+        // Solve where the groove would sit at the reference bias, purely to read off labelGap.
+        // Nothing here is written; only labelGap survives into the real placement below.
         const assemblyMid = (assemblyTop + assemblyBottom) / 2;
         const refTarget = availableTop + (availableBottom - availableTop) * RANK_SPACING_REF_BIAS;
         let refDrop = refTarget - assemblyMid;
@@ -976,11 +903,10 @@
         refDrop = Math.min(refDrop, availableBottom - assemblyFloor - assemblyBottom);
         const labelGap = Math.max(0, (lineCenter + refDrop - availableTop) * TITLE_LABEL_BIAS);
 
-        // The labels are absolutely positioned off the groove, so they contribute nothing to the
-        // assembly bounds measured above — they have to be folded into the block explicitly, or the
-        // centring below would ignore the topmost part of what the eye actually reads as "the bar".
-        // Their own vertical position is what this function is solving for, so only their HEIGHT is
-        // read here (offsetHeight does not depend on the --bbgl-t-titles-y written at the end).
+        // Labels are absolutely positioned off the groove, so they add nothing to the assembly
+        // bounds above and must be folded in explicitly, or centring would ignore the part of the
+        // bar the eye sees first. Only their height is read — their position is what this function
+        // solves for (offsetHeight doesn't depend on the --bbgl-t-titles-y written at the end).
         const labelHeights = Array.from(line.querySelectorAll('.bbgl-rank-title'))
             .filter(el => el.offsetParent !== null && el.offsetHeight > 0)
             .map(el => el.offsetHeight);
@@ -993,18 +919,14 @@
             : assemblyBottom;
 
         // ─── Pass 2: centre the rigid block ──────────────────────────────────
-        // Labels and groove now move together, so this is a plain midpoint match on the block as a
-        // whole. Clamped against the BLOCK's edges rather than the bare assembly's, since the labels
-        // are the part that would reach the stat cards first.
+        // Labels and groove now move together, so this is a plain midpoint match on the block.
+        // Clamped against the block's edges, not the bare assembly's — labels reach the cards first.
         let drop = (availableTop + availableBottom) / 2 - (blockTop + blockBottom) / 2;
         drop = Math.max(drop, availableTop - blockTop);
         drop = Math.min(drop, availableBottom - assemblyFloor - blockBottom);
 
-        // Compact mode compresses the live marker by a couple of pixels and spends that recovered
-        // room on separation from the cards above. CSS owns the mode-specific amount; applying it
-        // here keeps the normal ceiling/floor clamps authoritative. No matching title correction is
-        // needed any more — titlesY below is a fixed offset from the groove, so the labels ride this
-        // nudge (and any other shift) automatically instead of absorbing half of it.
+        // Compact mode compresses the live marker slightly and spends the room on separation from
+        // the cards above; CSS owns the amount, this just keeps the ceiling/floor clamps authoritative.
         const requestedNudge = parseFloat(getComputedStyle(scale).getPropertyValue('--bbgl-t-rank-nudge-y')) || 0;
         drop += requestedNudge;
         drop = Math.max(drop, availableTop - blockTop);
@@ -1013,20 +935,11 @@
         const localY = lineCenter - scaleTop + drop;
         scale.style.setProperty('--bbgl-t-rank-line-y', `${localY.toFixed(3)}px`);
 
-        // Where the plain-text rank labels centre themselves (.bbgl-rank-title,
-        // 04-section-iii-styles.js): labelGap above the groove, frozen back in pass 1. Because it is
-        // stated relative to the groove and carries no term for the groove's own position, the
-        // labels are rigidly attached to it — every shift applied above (the centring, the compact
-        // nudge, any future one) carries them along at unchanged spacing, with no correction term.
-        //
-        // Expressed relative to .bbgl-rank-LINE's own box, NOT to the scale: .bbgl-rank-titles is a
-        // child of the line (see achBuildPageTitles(), 06-section-v-logic.js) and is inset:0 of it,
-        // so its containing block is the 1px groove itself. Anything scale-relative — a percentage,
-        // a height, or a scale-local px — resolves against that 1px box instead and pins the labels
-        // to the groove no matter what value is handed in. Hence the offset below is measured from
-        // the line's own top edge and is NEGATIVE: the labels sit entirely above it.
-        // Nothing in the rank chain clips (no overflow on the line, .bbgl-rank-scale or
-        // .bbgl-rank-track), so labels placed above the groove paint normally.
+        // labelGap above the groove, frozen in pass 1 — expressed relative to the groove itself so
+        // every later shift carries the labels along unchanged. Measured from .bbgl-rank-LINE's own
+        // top edge (NOT the scale): .bbgl-rank-titles is inset:0 of the line, so that 1px box is its
+        // containing block — anything scale-relative would pin to the groove regardless of the
+        // value given. Negative because the labels sit entirely above the line.
         const titlesY = line.offsetHeight / 2 - labelGap;
         scale.style.setProperty('--bbgl-t-titles-y', `${titlesY.toFixed(3)}px`);
         return true;
@@ -1036,38 +949,27 @@
     // Minimum clear space to leave between two neighbouring plaques, in untransformed layout px.
     const RANK_NOTCH_MIN_GAP = 3;
 
-    // Hard wall at each end of the rank section, in px inside the panel's own edge. No plaque may
-    // cross it in any mode. Measured from the PANEL edge, not the groove's — the groove is inset by
-    // --bbgl-t-track-side-pad specifically so end plaques can overhang it.
+    // Hard wall at each end of the rank section, in px inside the panel's own edge — measured from
+    // the panel edge, not the groove's, since the groove is inset so end plaques can overhang it.
     const RANK_SHELF_WALL = 7;
 
-    // Places every rank plaque on the trophy shelf. Three states, set in achTitleNotchesHTML()
-    // (06-section-v-logic.js), each with its own target position along the groove:
+    // Places every rank plaque on the trophy shelf. Three states (set in achTitleNotchesHTML(),
+    // 06-section-v-logic.js): .is-docked (earned and outgrown, parked in its permanent slot),
+    // .is-riding (the current rank, tracks the live readout), and locked (left where the markup
+    // put it, centred on its unlock level).
     //
-    //   .is-docked  earned and outgrown — parked in its permanent shelf slot.
-    //   .is-riding  the rank held right now — tracks the sliding level readout.
-    //   (locked)    left exactly where the markup put it: centred on the level it unlocks at.
+    // Slots are solved for ALL SIX plaques every time, never just the docked subset — that's the
+    // invariant the design rests on: a plaque docks straight into the position it'll still hold
+    // once the shelf is full, so earning a rank never nudges an already-placed one. Plaque widths
+    // vary too much for an even division, so measured widths are laid end to end and the leftover
+    // space is split into five even gaps (space-between in spirit, done in JS since the shelf must
+    // stay sized for all six while only some are present).
     //
-    // Shelf slots are solved for ALL SIX plaques every time, never for the subset currently
-    // docked. That is the guarantee the whole design rests on: a plaque docks straight into the
-    // position and spacing it will still hold when the shelf is full, so earning a rank only ever
-    // fills an empty slot and never nudges an already-placed one. Widths differ a lot across the
-    // ladder ("Dry Clay" vs "Competently Bricked"), so the slots cannot be a simple even division of
-    // the track — the plaques' own measured widths are laid end to end and the LEFTOVER space is
-    // what gets divided evenly, five gaps for six plaques, first flush left and last flush right.
-    // That is `justify-content: space-between` in spirit; it has to be done here in JS rather than
-    // by flexbox because the shelf must stay sized for all six while only some of them are on it.
-    //
-    // Everything is computed from measured widths plus each notch's own inline `left` percentage,
-    // never from a rect that already carries a previous shift — so the pass is idempotent and
-    // cannot drift across repeated runs or resizes.
-    //
-    // offsetWidth/clientWidth throughout, never getBoundingClientRect(), for the same reason
-    // layoutRankBarCenter() above uses offset metrics: the titles page carries a CRT scale
-    // transition, and rects are squashed by it mid-transition while offset metrics are not.
-    //
-    // Writes translateX, which does not change any observed element's size — so the
-    // ResizeObserver in observeTitleBlockFrames() cannot be retriggered by this pass's own output.
+    // Always computed from measured widths + each notch's own inline left%, never from a rect that
+    // already carries a previous shift — so the pass is idempotent across repeated runs/resizes.
+    // Uses offsetWidth/clientWidth, not getBoundingClientRect(), for the same CRT-transform reason
+    // as layoutRankBarCenter() above. Writes translateX only, which can't retrigger the
+    // ResizeObserver in observeTitleBlockFrames().
     function layoutRankShelf() {
         const line = document.querySelector('.bbgl-titles-page .bbgl-rank-line');
         if (!line) return false;
@@ -1076,14 +978,10 @@
         const trackW = line.clientWidth;
         if (!(trackW > 0)) return false;
 
-        // READ. Nothing is written until every measurement is taken.
-        //
-        // Every mode shows the full six-plaque shelf, so nothing hides a notch today. This stays
-        // as a guard because the shelf solve cannot survive one: a display:none notch reports
-        // offsetWidth 0, its slot collapses, and every plaque after it slides left. Measuring it
-        // anyway would mean briefly un-hiding it — a forced reflow mid-render. So if a plaque is ever
-        // hidden again, the shelf is skipped and only the riding plaque is placed, which degrades to
-        // "plaques sit on their milestones" rather than to a silently wrong shelf.
+        // Guard against a hidden notch: offsetWidth reads 0 for display:none, which would collapse
+        // its slot and slide every later plaque left. Measuring it anyway would mean briefly
+        // un-hiding it (a forced reflow), so instead the shelf solve is skipped entirely and only
+        // the riding plaque is placed — "plaques sit on their milestones" rather than a wrong shelf.
         const hidden = allNotches.some(n => n.offsetParent === null);
         const boxes = allNotches.map(notch => {
             const label = notch.querySelector('.bbgl-rank-notch-label');
@@ -1113,17 +1011,9 @@
         const wallL = -sidePad + RANK_SHELF_WALL;
         const wallR = trackW + sidePad - RANK_SHELF_WALL;
 
-        // The box the shelf is centred inside — which is NOT the same as the walls it is clamped to.
-        //
-        // Every mode centres on the groove itself, so the shelf reads as belonging to the bar —
-        // first plaque flush with the bar's left end, last with its right — rather than floating
-        // wider than the thing it annotates and hanging off into the side padding. Compact used to
-        // centre wall to wall instead (spending the groove's side padding as extra shelf room), but
-        // that let the docked plaques spill past the reserved rank-bar space by design rather than
-        // only as a last-resort overflow.
-        //
-        // The wall clamp still applies in every mode; it is now purely the last-resort overflow
-        // guard for when the ladder is too wide even for the full groove.
+        // The shelf centres on the groove itself (NOT the walls it's clamped to), so the first/last
+        // plaque lands flush with the bar's own ends rather than floating into the side padding. The
+        // wall clamp below is purely a last-resort guard for when the ladder is too wide for the groove.
         const boxL = 0;
         const boxR = trackW;
         const avail = boxR - boxL;
@@ -1151,9 +1041,8 @@
             let cursor = boxL + (avail - span) / 2;
 
             boxes.forEach((b, i) => {
-                // Slot centre. Every plaque advances the cursor even if it is not docked yet —
-                // that is what reserves its room so the later slots land where they eventually
-                // will, rather than where the currently-docked subset alone would put them.
+                // Every plaque advances the cursor even when not docked, reserving its room so
+                // later slots land correctly once it docks.
                 if (b.docked) targets[i] = cursor + b.w / 2;
                 cursor += b.w + gap;
             });
@@ -1169,8 +1058,7 @@
             });
         }
 
-        // WRITE. The wall clamp applies to every plaque without exception — docked, riding or
-        // locked — since it is the one rule that has no states.
+        // The wall clamp applies to every plaque without exception — the one rule with no states.
         boxes.forEach((b, i) => {
             const minCenter = wallL + b.w / 2;
             const maxCenter = wallR - b.w / 2;
@@ -1222,27 +1110,16 @@
     }
 
     // Shared toolbar-relative measurement for both pagination clusters that dock against the SVG
-    // icon toolbar (#bbgl-ach-footer, #bbgl-sticker-pagination-bar). Those icons
-    // (#bbgl-tall-toggle/#bbgl-ledger-toggle/#bbgl-graph-toggle/#bbgl-achievements-toggle/
-    // #bbgl-sticker-toggle) have no wrapping container and are each individually
-    // position:absolute with hand-tuned left/top per panel mode (04-section-iii-styles.js) — an
-    // out-of-flow element never contributes to a parent's auto-sizing regardless of layout mode
-    // (the same reason the Titles grid's identity card had to stop being position:absolute
-    // earlier), so "how wide/tall is the toolbar right now" can only be answered by reading these
-    // icons' own live positions.
+    // icon toolbar (#bbgl-ach-footer, #bbgl-sticker-pagination-bar). The toolbar icons are each
+    // individually position:absolute with hand-tuned coordinates (04-section-iii-styles.js), so
+    // "how wide/tall is the toolbar" can only be read off their own live positions, not a wrapper.
     //
-    // #bbgl-copy-btn is deliberately excluded from the icon list even though it's visually similar
-    // — it's right-anchored (right:Npx) in every mode, docked to the panel's far edge rather than
-    // clustered with the view-switcher icons, so including it would badly inflate "toolbar width"
-    // at wide panel sizes and defeat the whole point of the horizontal threshold below.
+    // #bbgl-copy-btn is excluded even though it looks similar: it's right-anchored to the panel's
+    // far edge in every mode, not clustered with the view-switcher icons, and including it would
+    // inflate "toolbar width" and defeat the horizontal threshold below.
     //
-    // Deliberately offsetLeft/offsetTop/offsetWidth/offsetHeight throughout, not
-    // getBoundingClientRect(), for the same reason layoutTitleBlockFrames() above uses them —
-    // simplest to stay consistent with that convention even though this row isn't subject to the
-    // Titles page's CRT transform.
-    //
-    // Returns null if the panel/toolbar haven't measured to a real size yet — callers should
-    // retry next frame in that case.
+    // Uses offset*, not getBoundingClientRect(), same convention as layoutTitleBlockFrames() above.
+    // Returns null if nothing has measured to a real size yet — callers should retry next frame.
     function measureToolbarCenter() {
         const topPanel = document.getElementById('bbgl-top-panel');
         if (!topPanel) return null;
@@ -1271,17 +1148,11 @@
         return { topPanel, centerX, centerY };
     }
 
-    // Writes --bbgl-ach-dot-x/-y (both clusters read the same two custom properties) onto a
-    // pagination cluster element, translated into ITS OWN containing block's coordinate space
-    // rather than #bbgl-top-panel's. Both #bbgl-ach-footer and #bbgl-sticker-pagination-bar are
-    // direct children of #bbgl-top-panel (siblings of the toolbar icons AND of their respective
-    // achievements-container/sticker-container — not nested inside either), so offsetParent === the
-    // same #bbgl-top-panel measureToolbarCenter() already measured against and dx/dy are always 0
-    // in practice. The subtraction is kept generically rather than assumed away, in case a future
-    // pagination cluster ever gets nested a level deeper than its icons the way an earlier version
-    // of the stickerbook bar was — that nesting was exactly what pushed the bar above the visible
-    // area and off-screen (the icons' Y-position, converted into a NESTED container's coordinate
-    // space, correctly came out negative, since the icons sit above where that container starts).
+    // Writes --bbgl-ach-dot-x/-y onto a pagination cluster, translated into ITS OWN containing
+    // block's coordinate space rather than #bbgl-top-panel's. In practice dx/dy are always 0 today
+    // (both clusters are direct children of #bbgl-top-panel), but the subtraction is kept generic
+    // rather than assumed away — an earlier, more-nested version of the stickerbook bar needed it,
+    // or its Y-position came out negative and the bar rendered off-screen.
     function writeToolbarPaginationVars(el, center) {
         const parent = el.offsetParent;
         const dx = (parent && parent !== center.topPanel) ? parent.offsetLeft : 0;
@@ -1290,17 +1161,14 @@
         el.style.setProperty('--bbgl-ach-dot-y', `${center.centerY - dy}px`);
     }
 
-    // Centres whichever pagination cluster is currently relevant — the achievements footer
-    // (#bbgl-ach-footer) or the stickerbook's own bar (#bbgl-sticker-pagination-bar) — against the
-    // SVG icon toolbar, off one shared measurement (measureToolbarCenter() above). Only one is
-    // ever visible at a time (view classes are mutually exclusive), but both are checked rather
-    // than assuming which, so one observer/call site covers whichever view is actually active.
+    // Centres whichever pagination cluster is currently relevant — achievements footer or the
+    // stickerbook's own bar — against the SVG icon toolbar, off one shared measurement
+    // (measureToolbarCenter() above). Both are checked rather than assumed, so one call site
+    // covers whichever view is active.
     //
-    // Returns true once everything relevant measured to a real, nonzero size (or neither cluster
-    // is currently shown, i.e. nothing to do) — false means a caller should retry next frame (see
-    // the eager calls in achRefreshPageDom()/renderStickers(), needed for the very first paint
-    // after display:none -> flex, before the ResizeObserver's first callback would otherwise
-    // land).
+    // Returns false if nothing relevant has measured to a real size yet — callers
+    // (achRefreshPageDom()/renderStickers()) retry next frame, needed for the very first paint
+    // after display:none -> flex.
     function layoutToolbarPaginationPosition() {
         const topPanel = document.getElementById('bbgl-top-panel');
         if (!topPanel) return true;
@@ -1385,20 +1253,10 @@
         // than every tier's cap: it's then a genuinely once-ever finish, and it almost never has to
         // share the plaque with a Phase 9 title's rainbow.
         const vitrified = isFullyBricked(atrophy, level) ? ' is-vitrified' : '';
-        // data-tooltip (not -html): the mobile touch handler only supports quick-tap-to-reveal
-        // for this attribute — data-tooltip-html only reveals via the 400ms tap-and-hold gesture.
-        // The markup still renders since both the hover and tap code paths wrap this value in a div
-        // and set it via innerHTML either way.
-        //
-        // This one tooltip opts out of the shared grey tooltip chrome and draws its own graphite
-        // plaque instead — #bbgl-tooltip:has(.bbgl-plaque) in 04-section-iii-styles.js strips the
-        // default background/padding/arrow so the plate can own the whole surface. That buys the
-        // dark, controlled backdrop the rank's earth tones and the title's glow both need, without
-        // touching TooltipController or affecting any other tooltip in the script.
-        //
-        // Rank leads, reading as a lead-in modifying the title beneath it (the same left-to-right
-        // logic as the composed stat title itself: adjective, then noun). The level/percent still
-        // anchors the bottom as an engraved spec line.
+        // data-tooltip (not -html): the mobile touch handler only reveals this attribute on a
+        // quick tap, not the 400ms hold -html needs. #bbgl-tooltip:has(.bbgl-plaque) in
+        // 04-section-iii-styles.js strips the shared tooltip chrome so this one can draw its own
+        // graphite plaque instead.
         bar.container.setAttribute('data-tooltip',
             `<div class="bbgl-plaque">` +
             `<i class="bbgl-lvl-rank${vitrified}" style="${rankHardenCSS(atrophy, level)}">${atrophyTitle(atrophy, level)}</i>` +
@@ -1936,28 +1794,17 @@
     function syncSidebarState() {
         const a = window.location.hash.includes('gymlog'),
             ids = [SB_DESKTOP.id, SB_MOBILE.id, SB_FLYOUT.id];
-        // Inert marker. This used to be what drove our own white icon glow via a
-        // [class*="active___"] rule, but Torn no longer lights its nav icons on the active page
-        // and BBGL follows suit, so nothing styles it any more — no CSS matches it. It's kept
-        // because it anchors the add/strip symmetry below (the else-branch clears every
-        // active___* class off our entries regardless of origin) and gives a stable hook if the
-        // active state ever needs its own styling again. The visible selected state now comes
-        // purely from Torn's own class, learned just below.
+        // Inert marker — Torn no longer lights its nav icons on the active page, so nothing styles
+        // this any more. Kept because it anchors the add/strip symmetry below (the else-branch
+        // clears every active___* class regardless of origin). The visible selected state now
+        // comes purely from Torn's own class, learned just below.
         const BBGL_ACTIVE = 'active___bbgl';
-        // Torn's native bar/background highlight is keyed on its exact hashed active
-        // class — one hash per build, shared across every sidebar entry. Opportunistically learn
-        // that hash from any genuinely-active nav item while browsing and cache it, so we can
-        // reapply it on the gym-log page and get the native bar. This is now the only thing that
-        // marks our entry as selected, so if it has never been seen this session (a direct load
-        // straight onto /calendar.php#gymlog, where Torn marks nothing active) the entry simply
-        // shows no selected state until the user visits a page that has one.
-        //
-        // Learn once and stop. That probe is the only unanchored selector on this path (no id to
-        // bucket on, so it walks the document) and syncSidebarState runs on every DOM-mutation
-        // batch, but the hash is baked into Torn's build and can't change while the page is loaded
-        // — once we have it there is nothing left to discover. If Torn ships a new build
-        // mid-session the cached hash goes stale and the native bar stops applying on our page
-        // until reload: cosmetic, and self-healing on refresh.
+        // Torn's native highlight is keyed on its own hashed active class (one hash per build).
+        // Opportunistically learn it from any genuinely-active nav item and cache it, so it can be
+        // reapplied on the gym-log page. If never seen this session (e.g. a direct load straight
+        // onto the gym log), the entry just shows no selected state. Learned once and stopped —
+        // this probe is the only unanchored selector on this path and syncSidebarState runs on
+        // every DOM mutation — so a stale hash after a Torn rebuild only costs cosmetics until reload.
         if (!runtime._sidebarActiveCls) {
             const probe = document.querySelector('[id^="nav-"][class*="active___"]');
             if (probe && !ids.includes(probe.id)) {
@@ -2089,14 +1936,9 @@
             if (tb) tb.classList.toggle('bbgl-tab-active', !!isPanelOpen);
             return;
         }
-        // Closed panel — the common steady state, and the one this function used to do full price
-        // for. Everything past this point either measures the page to position a panel that's
-        // display:none (recomputed from scratch the moment it opens: openPanel sets display:flex
-        // BEFORE calling us) or is a legacy transform cleanup. The only effects that actually have
-        // to land are the tab going inactive and the chat shove being released — both idempotent,
-        // so do them once per close and let every later layout event (chat traffic, resizes,
-        // Torn's own DOM churn) fast-path out instead of paying two document-wide queries and a
-        // forced reflow apiece. The flag clears below whenever the panel is genuinely open.
+        // Closed panel: the only effects that actually have to land are the tab going inactive
+        // and the chat shove being released — both idempotent, so do them once per close and let
+        // every later layout event fast-path out instead of re-measuring a display:none panel.
         if (!isPanelOpen) {
             if (tb) tb.classList.remove('bbgl-tab-active');
             if (!runtime._layoutClosedReset) {
@@ -2159,7 +2001,8 @@
         p.style.setProperty('max-height', `calc(100vh - ${topCeiling}px)`, 'important');
         p.style.right = pRight;
         p.style.opacity = pOpacity;
-        p.style.pointerEvents = pPointer; /* Cleanup: clear any stale parent-container transform from earlier approaches. */
+        p.style.pointerEvents = pPointer;
+        // Defensive: clears a stale transform the parent container might still carry.
         const _staleParent = (shoveTargets[0] && shoveTargets[0].parentElement) || null;
         if (_staleParent && _staleParent.style.transform) _staleParent.style.transform = '';
         _applyChatShove(shoveTargets, `${totalShift}px`);
@@ -2284,14 +2127,10 @@
         };
         const watchLayoutLifecycle = () => {
             const o = new MutationObserver((muts) => {
-                // The only thing this scan can conclude is "call onLayoutChange()" — and with a
-                // frame already queued that call returns immediately on its own guard. So when
-                // layoutRafId is set the whole scan is foregone work. This matters because it
-                // observes document.body's entire subtree: Torn delivers chat traffic as bursts of
-                // many records, and every record after the first used to re-scan its nodes (a
-                // per-node attribute-substring subtree probe) to reach a conclusion already
-                // reached. Nothing is missed — the queued frame reads live DOM state when it runs,
-                // not a snapshot from when it was scheduled.
+                // Skips the scan entirely once a frame is already queued — it observes
+                // document.body's whole subtree, and Torn delivers chat traffic in bursts, so
+                // re-scanning every record after the first was real wasted work. Nothing is missed:
+                // the queued frame reads live DOM state when it runs, not a snapshot.
                 if (runtime.layoutRafId) return;
                 for (const m of muts) {
                     if (m.type !== 'childList') continue;
