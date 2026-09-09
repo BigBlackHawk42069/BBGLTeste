@@ -530,13 +530,16 @@
         return s;
     });
 
+    // Atrophy 0/1 never show level 100 — the instant a tier's budget is exactly spent, this rolls
+    // straight into the next tier's starting level instead of landing on the cap first. Level 100
+    // is reachable only on atrophy 2 (see the atrophy>=3 catch below), since there is no further
+    // tier to roll into.
     function calculateLevelProgress(totalExp) {
         let remaining = totalExp;
         let atrophy = 0;
         for (let a = 0; a < 3; a++) {
             const budget = LEVEL_ATRO_BUDGETS[a];
             if (remaining < budget) { atrophy = a; break; }
-            if (remaining === budget && a < 2) return { atrophy: a, level: LEVEL_CAP, expInLevel: 0, expToNext: 0 };
             remaining -= budget;
             atrophy = a + 1;
         }
@@ -553,27 +556,31 @@
         return { atrophy, level, expInLevel, expToNext };
     }
 
-    // Level-band flavor titles: six bands per atrophy tier, walking a raw-clay-to-fired-brick
+    // Level-band flavor titles: five bands per atrophy tier, walking a raw-clay-to-fired-brick
     // metaphor. Columns are [atrophy0, atrophy1, atrophy2] — same band, escalating intensity per
     // tier. Bands key off the raw level number directly: negative pre-zero levels (atrophy 1/2's
     // earlier start) just fall into band 1 via its <= comparison, and the level-69 easter egg
     // lands on the literal displayed "69" for every atrophy tier regardless of where it started.
     // Level 100 is the universal finish line, but only atrophy 2 gets "Fully Bricked" — atrophy
-    // 0/1 auto-roll into the next tier, so they keep band 6's capstone title instead.
+    // 0/1 auto-roll into the next tier, so they keep band 5's capstone title instead.
     //
     // `max` is inclusive and doubles as the bracket axis on the titles page (levelRankBrackets()
     // below reads widths straight off these numbers), so edit a max here and the axis re-draws
-    // itself — no second list to keep in sync. Even 20-level bands throughout except the last two,
-    // which stay 10 apiece. Level 69's easter egg (LEVEL_TITLE_EASTER_EGG_LEVEL below) intercepts
-    // before any band lookup happens, so it isn't pinned to a boundary here — it just falls
-    // wherever it falls inside band 4.
+    // itself — no second list to keep in sync. Five even 20-level bands.
+    //
+    // Level 69's easter egg (LEVEL_TITLE_EASTER_EGG_LEVEL below) intercepts before any band
+    // lookup happens, so it isn't pinned to a boundary here — it just falls wherever it falls
+    // inside band 4, which still contains it.
     const LEVEL_TITLE_BANDS = [
         { max: 19, titles: ['Dry Clay', 'Parched Clay', 'Cracked Clay'] },
         { max: 39, titles: ['Moistened Clay', 'Saturated Clay', 'Dripping Wet Clay'] },
         { max: 59, titles: ['Hand-Jerked Clay', 'Foot-Pumped Clay', 'Vacuum-Milked Clay'] },
-        { max: 79, titles: ['Block-Molded Clay', 'Block-Pressed Clay', 'Block-Cut Clay'] },
-        { max: 89, titles: ['Pit-Fired Clay', 'Scove-Fired Clay', 'Kiln-Fired Clay'] },
-        { max: 99, titles: ['Half-Bricked', 'Mostly Bricked', 'Competently Bricked'] }
+        { max: 79, titles: ['Pit-Fired Clay', 'Scove-Fired Clay', 'Kiln-Fired Clay'] },
+        // "Half Bricked" is deliberately unhyphenated so it is two WORDS. Plaque labels wrap on
+        // whitespace (achRankPlaqueLabelHTML), so the hyphenated form was a single 12-character
+        // token that could only render as one long line — the widest plaque on the bar, in its
+        // most crowded slot. As two words it stacks like its siblings.
+        { max: 99, titles: ['Half Bricked', 'Mostly Bricked', 'Competently Bricked'] }
     ];
     const LEVEL_TITLE_EASTER_EGG_LEVEL = 69;
     const LEVEL_TITLE_EASTER_EGG = ['Nice ;)', 'Really Nice ;)', 'Super Nice ;)'];
@@ -673,62 +680,25 @@
         return out;
     }
 
-    // ─── Rank Bar Progression ───────────────────────────────────────────────
-    // The titles page's horizontal rank bar. Deliberately the OPPOSITE read of the rank text's
-    // hardening finish above: the text is a stamped impression that REFLECTS, the bar EMITS — it
-    // gets louder, glossier and eventually animated as you climb toward Fully Bricked.
+    // Whether any plaque is in the riding state right now — i.e. the player holds a rank that is
+    // not the terminal capstone. achTitleNotchesHTML() (06-section-v-logic.js) decides WHICH plaque
+    // rides; this answers only whether one does at all, which is what the rank line needs in order
+    // to know that the readout's digits are sitting inside a plaque skirt rather than on the bare
+    // groove. Derived from the same levelRankBrackets() the plaque states come from, so the two
+    // cannot drift into disagreeing about it.
     //
-    // Three channels, all monotonic in level (unlike the rank text's moisture channel), because the
-    // whole point is that every level feels like a step up:
-    //   • colour   — one continuous gradient spanning the entire journey, revealed left-to-right.
-    //                The bar never re-colours a stretch it already showed; climbing just uncovers
-    //                more of a gradient that was always there, so crossing a band has no visible
-    //                seam.
-    //   • glow     — linear in progress, concentrated at the fill's leading edge.
-    //   • shine    — absent through the dull-green stretch, fades in across the gold hand-off, and
-    //                runs its full sweep by the end. Gold already reads as shiny on its own, so the
-    //                animation is what's left to escalate with once the colour has peaked.
-    //
-    // Colour stops are pinned to LEVEL_TITLE_BANDS' own boundaries, so re-sizing a band moves the
-    // gradient with it and the colour keeps changing in step with the rank name. One entry per band
-    // start, plus a final stop for the cap.
-    const RANK_BAR_STOPS = [
-        '#3d5c42', // dull, desaturated — barely lit
-        '#4a7a4e', // green finding itself
-        '#5fa85c', // full clean green
-        '#9fc44f', // yellow-green, the hand-off
-        '#e0b348', // gold proper
-        '#ffd96b', // bright gold, first flecks of white
-        '#fff0b8'  // diamond teased, never fully delivered until Fully Bricked
-    ];
+    // Not simply `level >= 0`: atrophy 1/2 start below zero, and until the player climbs to level 0
+    // no band is unlocked at all, so nothing rides and the readout is genuinely bare.
+    function hasRidingRank(atrophy, level) {
+        if (isFullyBricked(atrophy, level)) return false;
+        return levelRankBrackets(atrophy, level).some(b => b.unlocked);
+    }
 
-    // Progress below this is the "no shine yet" stretch; from here to the cap the sweep fades in.
-    const RANK_BAR_SHINE_START = 0.45;
-
-    // Emits the inline custom properties .bbgl-rank-fill and friends consume. Same approach as
-    // rankHardenCSS() above — computed in JS so the whole curve stays tunable from the tables here
-    // and the gradient can be derived from the bands rather than hand-copied into the stylesheet.
-    function rankBarProgressCSS(atrophy, level) {
+    // The engraved rank track has no fill or colour progression: the sliding digital readout is the
+    // sole position indicator. This emits only that position as a custom property.
+    function rankBarProgressCSS(_atrophy, level) {
         const p = Math.max(0, Math.min(1, (level || 0) / LEVEL_CAP));
-        // Band starts as a percentage of the run, plus the cap — one position per RANK_BAR_STOPS
-        // entry. Left end of the bar is level 0, so these read left-to-right like the fill does.
-        const positions = [0].concat(LEVEL_TITLE_BANDS.slice(0, -1).map(b => ((b.max + 1) / LEVEL_CAP) * 100)).concat([100]);
-        const grad = RANK_BAR_STOPS
-            .map((c, i) => `${c} ${(positions[i] !== undefined ? positions[i] : 100).toFixed(2)}%`)
-            .join(',');
-        // Later atrophy tiers fire hotter, echoing rankHardenCSS()'s heat channel — the climb resets
-        // each tier but its ceiling rises.
-        const heat = Math.max(0, Math.min(2, atrophy || 0)) * p * 0.08;
-        const shine = Math.max(0, Math.min(1, (p - RANK_BAR_SHINE_START) / (1 - RANK_BAR_SHINE_START)));
-        return [
-            `--rank-fill-pct:${(p * 100).toFixed(2)}%`,
-            `--rank-grad:linear-gradient(to right,${grad})`,
-            `--rank-glow-blur:${(2 + p * 10).toFixed(2)}px`,
-            `--rank-glow-a:${Math.min(1, 0.15 + p * 0.65 + heat).toFixed(3)}`,
-            `--rank-shine-o:${(shine * 0.85).toFixed(3)}`,
-            // Sweep tightens from a slow drift to a brisk pass as the shine takes over.
-            `--rank-shine-dur:${(4.5 - shine * 2.5).toFixed(2)}s`
-        ].join(';');
+        return `--rank-fill-pct:${(p * 100).toFixed(2)}%`;
     }
 
     // ─── Stat Titles ────────────────────────────────────────────────────────

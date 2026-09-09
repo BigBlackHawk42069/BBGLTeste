@@ -573,6 +573,7 @@
         else if (tp.classList.contains('viewing-stickers')) cm = 'stickers';
         else if (tp.classList.contains('viewing-achievements')) cm = 'achievements';
         if (cm === tgt && !inst) return;
+        if (cm === 'achievements' && tgt !== 'achievements') resetTitlesPageAnimationClock();
         if (cm === 'stickers' && tgt !== 'stickers' && !inst) {
             runtime.currentStickerPage = 0;
             viewState.currentStickerPage = 0;
@@ -828,6 +829,7 @@
         if (wv) wv.classList.remove('active-view');
         if (tp) {
             tp.style.display = 'flex';
+            resetTitlesPageAnimationClock();
             tp.classList.remove('viewing-graph', 'viewing-stickers', 'viewing-achievements');
         }
         if (bp) bp.style.display = 'flex';
@@ -1718,22 +1720,60 @@
         const achContainer = get('bbgl-achievements-container');
         if (achContainer) {
             let _achX = 0,
-                _achY = 0;
+                _achY = 0,
+                _achTouchStar = null;
+            // Native hit-testing can choose the crown above a shared row edge. Resolve from the
+            // square geometry instead, preferring the locked crown when the point is exactly on
+            // that edge so its progress tooltip remains reachable.
+            const titleStarAtPoint = (x, y) => {
+                let match = null;
+                for (const star of achContainer.querySelectorAll('.bbgl-title-star')) {
+                    const r = star.getBoundingClientRect();
+                    if (x < r.left || x > r.right || y < r.top || y > r.bottom) continue;
+                    if (star.classList.contains('is-locked')) return star;
+                    match = star;
+                }
+                return match;
+            };
             achContainer.addEventListener('touchstart', (e) => {
                 _achX = e.touches[0].clientX;
                 _achY = e.touches[0].clientY;
+                _achTouchStar = titleStarAtPoint(_achX, _achY);
             }, {
                 passive: true
             });
             achContainer.addEventListener('touchend', (e) => {
                 if (window._bbglScrubbing) return;
-                const dx = e.changedTouches[0].clientX - _achX,
-                    dy = e.changedTouches[0].clientY - _achY;
+                const touch = e.changedTouches[0],
+                    dx = touch.clientX - _achX,
+                    dy = touch.clientY - _achY;
                 if (Math.abs(dx) > 40 && Math.abs(dx) > Math.abs(dy) * 1.5) {
                     gotoAchievementsPage(dx < 0 ? 1 : -1);
+                    _achTouchStar = null;
+                    return;
                 }
+                // Crown interaction on touch must not wait for the browser's synthetic click: the
+                // document-level tooltip handler processes this same gesture and mobile browsers
+                // can retarget/delay that click. Require a true tap (<=10px travel) that starts and
+                // finishes inside the exact same square crown box, then handle both outcomes here:
+                // unlocked selects the title word; locked shows its progress tooltip.
+                const releaseStar = titleStarAtPoint(touch.clientX, touch.clientY);
+                if (Math.hypot(dx, dy) <= 10 && releaseStar && releaseStar === _achTouchStar) {
+                    if (e.cancelable) e.preventDefault();
+                    e._bbglTitleStarHandled = true;
+                    if (releaseStar.classList.contains('is-unlocked')) {
+                        TooltipController.hide();
+                        handleTitleStarPick(releaseStar);
+                    } else {
+                        const html = TooltipController.htmlFor(releaseStar),
+                            text = releaseStar.getAttribute('data-tooltip');
+                        TooltipController.currentTarget = releaseStar;
+                        if (html || text) TooltipController.show(html || '<div style="text-align:center; color:#ddd;">' + text + '</div>', releaseStar.getBoundingClientRect());
+                    }
+                }
+                _achTouchStar = null;
             }, {
-                passive: true
+                passive: false
             });
             achContainer.addEventListener('click', (e) => {
                 // Titles page (page 0). Picking is two clicks straight on the stars — first word,
@@ -2144,6 +2184,13 @@
                 return;
             }
             _exitScrub();
+            // The achievements container already committed this crown tap directly. Its
+            // preventDefault() suppressed the synthetic click; skip tooltip toggling against the
+            // now-rebuilt (detached) crown node while still letting this handler clear its timer.
+            if (e._bbglTitleStarHandled) {
+                tSup = Date.now() + 500;
+                return;
+            }
             const dx = e.changedTouches[0].clientX - _tX,
                 dy = e.changedTouches[0].clientY - _tY;
             if (Math.sqrt(dx * dx + dy * dy) > 10) {

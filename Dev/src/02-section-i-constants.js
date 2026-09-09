@@ -346,6 +346,11 @@
         viewerRotation: 0,
         viewerSpeed: 0.3,
         currentOpenedItemId: null,
+        // Brand-mark placement on the sticker backing - see positionBrandMark()
+        // in 09-section-viii-stickers.js. brandAnchor is normalised to IMAGE space;
+        // brandResizeObserver re-projects it whenever the viewer box changes.
+        brandAnchor: null,
+        brandResizeObserver: null,
         lastFrameTime: 0,
         returnView: null,
         layoutRafId: null,
@@ -356,14 +361,17 @@
         devMode: false,
         _achCache: null,
         _achPage: 0,
+        // Monotonic start of the current Titles-page visit. DOM refreshes use its elapsed time as
+        // a negative CSS animation delay, so replacing live data never restarts ambient effects.
+        // Navigation away clears it; returning therefore begins a genuinely new animation session.
+        _titlesPageAnimationStartedAt: null,
         wasVersionWiped: false,
         careerLevelExp: 0,
         statTitleE: null,
         // Half-finished stat-title pick on the titles page: {stat, phase} once the first word has
         // been clicked, null otherwise. See handleTitleStarPick() in 07-section-vi-ui.js.
         _titlePick: null,
-        _devTitleOverride: null,
-        _devRankOverride: null
+        _devTitleOverride: null
     };
     const _TAB_ID = Math.random().toString(36).slice(2);
     let _historyCache = null;

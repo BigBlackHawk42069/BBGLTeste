@@ -1776,30 +1776,49 @@ function computeAchievements(s) {
     };
 }
 
+function resetTitlesPageAnimationClock(container) {
+    runtime._titlesPageAnimationStartedAt = null;
+    const el = container || document.getElementById('bbgl-achievements-container');
+    if (el) el.style.removeProperty('--bbgl-titles-animation-delay');
+}
+
+function syncTitlesPageAnimationClock(container) {
+    const now = performance.now();
+    if (!Number.isFinite(runtime._titlesPageAnimationStartedAt)) {
+        runtime._titlesPageAnimationStartedAt = now;
+    }
+    const elapsed = Math.max(0, now - runtime._titlesPageAnimationStartedAt);
+    container.style.setProperty('--bbgl-titles-animation-delay', `${-elapsed}ms`);
+}
+
 function achRefreshPageDom() {
     const container = document.getElementById('bbgl-achievements-container');
     if (!container || !runtime._achCache) return;
+    container.classList.toggle('bbgl-ach-titles-page', runtime._achPage === 0);
+    // Rebuilding this page is routine: live training, level-ups, title picks and layout changes all
+    // refresh its data. Anchor every new CSS animation to the start of the current page visit so
+    // fresh nodes resume the shared timeline instead of visibly starting over. Moving to any other
+    // achievements page ends the visit and clears the clock.
+    if (runtime._achPage === 0) syncTitlesPageAnimationClock(container);
+    else resetTitlesPageAnimationClock(container);
     // A half-finished title pick is deliberately NOT cleared here: it's plain runtime state rather
     // than a DOM node, so a heartbeat rebuilding this markup leaves the one-word preview standing.
     container.innerHTML = buildAchievementsPage(runtime._achPage, runtime._achCache);
     updateAchPageIndicator();
-    // Stat blocks' neon frames (.bbgl-title-block-frame) are generated from each block's own live
-    // pixel size and its label's rendered width — see layoutTitleBlockFrames()/
-    // observeTitleBlockFrames() (07-section-vi-ui.js). The layout call here is synchronous so the
-    // very first paint after this innerHTML swap already has the right gap, not a flash of an
-    // ungapped placeholder; the observer re-attaches to the fresh block elements this swap just
-    // created, since whatever it was watching before is now detached and garbage. Off the titles
-    // page, just drop the observer — nothing left for it to watch until page 0 is shown again.
+    // layoutTitlesPageGeometry() generates every stat block's label-gapped neon frame and centres
+    // the rank assembly in the live geometric space below the lower cards; see its component passes
+    // in 07-section-vi-ui.js. Running synchronously avoids a bad first paint, while the observer
+    // re-attaches to the fresh elements this innerHTML swap just created. Off the titles page, just
+    // drop the observer — nothing remains for it to watch until page 0 is shown again.
     if (runtime._achPage === 0) {
-        const ready = layoutTitleBlockFrames();
+        const ready = layoutTitlesPageGeometry();
         observeTitleBlockFrames();
-        // The synchronous pass above can still measure every block at 0x0 the very first time
-        // this page is shown — the titles page is its own container-type:size context that
-        // --bbgl-t-star's cqi/cqb clamps resolve against, and that box isn't guaranteed to have
-        // settled to a real size on the exact tick this markup lands (a plain double-rAF wasn't
+        // The synchronous pass above can still measure the layout at 0x0 the very first time
+        // this page is shown — the complete titles layout isn't guaranteed to have settled to a
+        // real size on the exact tick this markup lands (a plain double-rAF wasn't
         // enough in practice, so this doesn't guess a frame count at all): keep retrying on
-        // successive frames until layoutTitleBlockFrames() itself reports every block actually
-        // got measured, capped so a permanently-hidden/zero-size page can't loop forever. Without
+        // successive frames until the combined geometry pass reports every piece actually got
+        // measured, capped so a permanently-hidden/zero-size page can't loop forever. Without
         // this, the frames only ever got their real gap the next time something ELSE happened to
         // resize a block (e.g. the user resizing the panel), which is the bug being fixed.
         if (!ready) {
@@ -1807,7 +1826,7 @@ function achRefreshPageDom() {
             const retry = () => {
                 if (runtime._achPage !== 0) return; // navigated away — stop chasing it
                 attemptsLeft--;
-                if (!layoutTitleBlockFrames() && attemptsLeft > 0) window.requestAnimationFrame(retry);
+                if (!layoutTitlesPageGeometry() && attemptsLeft > 0) window.requestAnimationFrame(retry);
             };
             window.requestAnimationFrame(retry);
         }
@@ -2023,25 +2042,92 @@ function achTitlePlayerName() {
     return (h && h.meta && h.meta.playerName) || '—';
 }
 
-// Notches on the rank line, one per band plus one final notch for Fully Bricked. Each carries its
-// own label alternating above/below the line (Dry Clay under, Moistened Clay over, and so on) —
-// alternating rather than stacking every label on one side is what buys each pair enough horizontal
-// room to not collide, since only every OTHER notch shares a row.
+// Plaque words stack vertically, but never beyond two lines. For titles with three or more words,
+// choose the split whose two rendered lines are closest in character length; each resulting line
+// is kept intact by CSS so the browser cannot turn a three-word rank into three separate rows.
+function achRankPlaqueLabelHTML(label) {
+    const words = String(label || '').trim().split(/\s+/).filter(Boolean);
+    // Always wrapped, even for a single word: .bbgl-rank-notch-line is what carries the z-index
+    // that keeps lettering above the frame/field layer painted by .bbgl-rank-notch-fx. A bare text
+    // node cannot be given a z-index, so an unwrapped label would render UNDER the inner field.
+    if (words.length < 2) {
+        const text = achEsc(words[0] || '');
+        return `<span class="bbgl-rank-notch-line" data-rank-text="${text}">${text}</span>`;
+    }
+    let splitAt = 1;
+    let bestDiff = Infinity;
+    for (let i = 1; i < words.length; i++) {
+        const leftLen = words.slice(0, i).join(' ').length;
+        const rightLen = words.slice(i).join(' ').length;
+        const diff = Math.abs(leftLen - rightLen);
+        if (diff < bestDiff) {
+            bestDiff = diff;
+            splitAt = i;
+        }
+    }
+    return [words.slice(0, splitAt), words.slice(splitAt)]
+        .map(line => {
+            const text = achEsc(line.join(' '));
+            return `<span class="bbgl-rank-notch-line" data-rank-text="${text}">${text}</span>`;
+        })
+        .join('');
+}
+
+// Four nested boxes per plaque, because the ornate tiers need more paint layers than two elements'
+// worth of pseudo-elements can supply:
+//   -label  positioned wrapper. Carries the drop-shadow as a FILTER — a box-shadow here would be
+//           clipped away by the mask that cuts -face's silhouette. Being filtered also makes it the
+//           containing block -cradle hangs from.
+//   -face   the plate itself: masked silhouette, metal gradient, bevel. Its ::before is the
+//           grain/patina and its ::after the travelling specular sweep.
+//   -fx     ornament inside -face's mask: ::before the frame band (plus rivets/milling), ::after
+//           the recessed inner field the lettering sits on.
+//   -cradle the curved lobe that closes around the level readout, shown only while this plaque is
+//           the one riding the groove. Its own box rather than part of -face because a border-radius
+//           edge is the one thing the rectangular frame ring cannot follow; see .bbgl-rank-notch-
+//           cradle (04-section-iii-styles.js). Emitted for every plaque and revealed by CSS alone —
+//           which state rides is already settled in the class list, so there is nothing here to
+//           branch on.
+function achRankPlaqueHTML(cls, style, tip, revealed, label) {
+    const inner = revealed ? achRankPlaqueLabelHTML(label) : '<span class="bbgl-rank-notch-line">?</span>';
+    const styleAttr = style ? ` style="${style}"` : '';
+    return `<div class="${cls}"${styleAttr} data-tooltip="${achEsc(tip)}"><span class="bbgl-rank-notch-label"><span class="bbgl-rank-notch-face"><span class="bbgl-rank-notch-fx"></span>${inner}</span><span class="bbgl-rank-notch-cradle"></span></span></div>`;
+}
+
+// The rank line as a TROPHY SHELF. Six plaques — the five level bands plus the Fully Bricked
+// capstone — each in exactly one of three states, and the state alone decides where the plaque sits:
 //
-// Data comes straight from levelRankBrackets() (03-section-ii-utils.js), which derives everything
-// from LEVEL_TITLE_BANDS — nothing here needs touching if the bands change. Only `start` is used for
-// placement; `widthPct` (the band's share of the line) is what the old bracket-axis rendering
-// consumed and no longer applies here.
+//   locked  ("?")   parked on the axis at the exact level it unlocks at, same as it always was.
+//                   Nothing is known about it yet, so the milestone it marks is all it can say.
+//   riding          the rank you hold RIGHT NOW. Tracks the sliding level readout along the groove,
+//                   so the title you currently own literally travels with your level.
+//   docked          earned, then outgrown. Retired to its permanent slot on the shelf, left to
+//                   right in ladder order.
 //
-// Fully Bricked is appended as a 7th, synthetic entry rather than living in LEVEL_TITLE_BANDS: it
-// isn't one of the three per-atrophy-tier titles a band carries, it's the one destination every
-// tier is ultimately climbing toward, and unlike every band before it, its name is never masked
-// behind a "?" — even a brand-new log always shows Dry Clay (band 1, always unlocked at level 0)
-// and Fully Bricked (this notch) as its two named notches, everything between reads "?" until
-// reached.
+// The shelf's slot geometry is computed for all SIX plaques from the very first render (see
+// layoutRankShelf(), 07-section-vi-ui.js) — never for however many happen to be docked so far. That
+// is the whole point: a plaque docks once, into the exact position and spacing it will still occupy
+// when the shelf is full, and nothing on the shelf ever moves again. Earning a rank rearranges
+// nothing; it only ever fills one more empty slot.
+//
+// Fully Bricked is back on this axis rather than in its own column beside the bar. It is the sixth
+// slot, and because it is terminal there is no "next" rank for it to hand the slider to — earning it
+// docks it immediately, which is also what completes the shelf.
+//
+// Band data comes straight from levelRankBrackets() (03-section-ii-utils.js), derived from
+// LEVEL_TITLE_BANDS — nothing here needs touching if the bands change.
 function achTitleNotchesHTML(atrophy, level) {
+    // Fixed physical finish per milestone. Atrophy changes the WORDS on the plaques, never their
+    // material progression. The ladder escalates on two axes at once — the metal itself, and how
+    // ornate the plate is (frame band width, recessed inner field, corner rivets, milled edge).
+    // The first three are all the same aluminium/steel family and separate on WORKMANSHIP alone:
+    // a raw mill blank, then a machined-and-chamfered plate, then a polished one with a sunk field.
+    // Sixth is the capstone's iridescent nacre.
+    const finishes = ['mill', 'machined', 'polished', 'silver', 'gold', 'pearl'];
     const bricked = isFullyBricked(atrophy, level);
     const items = levelRankBrackets(atrophy, level).map(b => ({
+        // Centred on the exact level you cross to unlock the title, so a locked plaque marks the
+        // moment it will become true.
         pos: (b.start / LEVEL_CAP) * 100,
         label: b.label,
         unlocked: b.unlocked,
@@ -2049,18 +2135,76 @@ function achTitleNotchesHTML(atrophy, level) {
             ? `${b.label} · Levels ${b.start}-${b.end}`
             : `Levels ${b.start}-${b.end} — reach level ${b.start} to reveal`
     }));
+    // The capstone as the seventh entry on the same axis, pinned at the very end (level 100).
     items.push({
         pos: 100,
         label: 'Fully Bricked',
-        unlocked: true,
-        bricked,
+        unlocked: bricked,
+        isCap: true,
         tip: bricked ? 'Fully Bricked · Level 100' : 'Fully Bricked · reach Level 100 at the final atrophy tier'
     });
+
+    // Ranks are cumulative — every band at or below your level reads unlocked — so the rank you
+    // actually hold is just the last unlocked entry.
+    let currentIdx = -1;
+    items.forEach((it, i) => { if (it.unlocked) currentIdx = i; });
+
     return items.map((it, i) => {
-        const cls = ['bbgl-rank-notch', it.unlocked ? 'is-revealed' : '', it.bricked ? 'is-bricked' : '', i % 2 ? 'is-above' : 'is-below']
-            .filter(Boolean).join(' ');
-        return `<div class="${cls}" style="left:${it.pos.toFixed(4)}%" data-tooltip="${achEsc(it.tip)}"><span class="bbgl-rank-notch-label">${achEsc(it.label)}</span></div>`;
+        // Terminal state has nothing left to earn, so the capstone docks rather than riding and the
+        // shelf completes. Every other held rank rides the slider until the next one supersedes it.
+        const riding = i === currentIdx && !bricked;
+        const docked = it.unlocked && !riding;
+        const cls = [
+            'bbgl-rank-notch',
+            `finish-${finishes[i] || 'machined'}`,
+            it.unlocked ? 'is-revealed' : '',
+            'is-above',
+            riding ? 'is-riding' : '',
+            docked ? 'is-docked' : '',
+            // Whichever plaque names the rank held right now — the riding one normally, the docked
+            // capstone at the cap. Nothing styles this today; it stays because .is-riding alone
+            // cannot express "the rank you currently hold" once the capstone docks and stops riding.
+            i === currentIdx ? 'is-current' : '',
+            it.isCap ? 'is-cap' : '',
+            it.isCap && bricked ? 'is-bricked' : ''
+        ].filter(Boolean).join(' ');
+        return achRankPlaqueHTML(cls, `left:${it.pos.toFixed(4)}%`, it.tip, it.unlocked, it.label);
     }).join('');
+}
+
+// Plain-text milestone scale. Every title sits at the exact level that unlocks it rather than in a
+// visual range beginning at some other coordinate: 0, 20, 40, 60, 80, then Fully Bricked at 100.
+// The symmetric endpoint titles deliberately overhang the groove by half their rendered widths.
+function achTitleLabelsHTML(atrophy, level) {
+    const bricked = isFullyBricked(atrophy, level);
+    // Rank-name bands own a fixed material ladder on the visible scale. Atrophy changes the words,
+    // while the material order remains stable; future atrophy-specific flourishes can therefore be
+    // layered onto these classes without duplicating the base progression.
+    const materials = ['iron', 'steel', 'silver', 'bright-silver', 'gold'];
+    const bands = levelRankBrackets(atrophy, level).map((b, i) => {
+        const cls = [
+            'bbgl-rank-title',
+            'is-milestone',
+            `material-${materials[i] || 'iron'}`,
+            i === 0 ? 'is-endpoint' : '',
+            b.unlocked ? 'is-revealed' : 'is-locked'
+        ].filter(Boolean).join(' ');
+        const tip = b.unlocked
+            ? `${b.label} · Levels ${b.start}-${b.end}`
+            : `Levels ${b.start}-${b.end} — reach level ${b.start} to reveal`;
+        // Same closest-split two-line wrap the plaques used (achRankPlaqueLabelHTML above) — each
+        // line lands in its own .bbgl-rank-notch-line block, which is what makes it wrap instead of
+        // running the whole title across one line.
+        const inner = b.unlocked ? achRankPlaqueLabelHTML(b.label) : ICONS.LOCK;
+        const left = (b.start / LEVEL_CAP) * 100;
+        return `<div class="${cls}" style="left:${left.toFixed(4)}%" data-tooltip="${achEsc(tip)}"><span class="bbgl-rank-title-text">${inner}</span></div>`;
+    }).join('');
+    const capTip = bricked ? 'Fully Bricked · Level 100' : 'Fully Bricked · reach Level 100 at the final atrophy tier';
+    // The destination is always named. Its muted/finished state carries the lock information; a
+    // lock glyph here would sit on the finish divider and hide what the player is working toward.
+    const capInner = achRankPlaqueLabelHTML('Fully Bricked');
+    const cap = `<div class="bbgl-rank-title is-milestone is-endpoint is-capstone material-diamond ${bricked ? 'is-revealed' : 'is-locked'}" style="left:100%" data-tooltip="${achEsc(capTip)}"><span class="bbgl-rank-title-text">${capInner}</span></div>`;
+    return bands + cap;
 }
 
 // One star. Locked stars carry a partial fill and an "E so far / E needed" tooltip; only the very
@@ -2111,9 +2255,7 @@ function achTitleStarHTML(stat, phase, unlockedPhase, statE, role) {
 function achBuildPageTitles() {
     const totalExp = getLiveLevelExp();
     const { atrophy, level } = calculateLevelProgress(totalExp);
-    const rankAtrophy = (runtime.devMode && runtime._devRankOverride) ? runtime._devRankOverride.atrophy : atrophy;
-    const rankLevel = (runtime.devMode && runtime._devRankOverride) ? runtime._devRankOverride.level : level;
-    const rankName = atrophyTitle(rankAtrophy, rankLevel);
+    const rankName = atrophyTitle(atrophy, level);
 
     const eByStat = getLiveStatTitleE();
     const sel = getLiveStatTitleSelection();
@@ -2174,10 +2316,8 @@ function achBuildPageTitles() {
     // Identity card: name, then Rank and Title as two labelled lines. "The" is card text rather than
     // part of the composed title so the clipboard, aria labels and the level bar's own plaque all
     // keep emitting the bare title.
-    // Rank and Title live inside one plate ("emblem") styled after Torn's own native rank/title
-    // display. The gloss is a real sibling div (.bbgl-titles-reflection), not a ::before/::after,
-    // matching Torn's own structure (a separate .reflection element) - keeps it directly
-    // inspectable/tunable in devtools rather than hidden as generated content.
+    // Rank and Title occupy the two equal bays of one tall smoked-glass billboard. The reflection
+    // remains a real sibling div so its glass catch-light stays directly inspectable/tunable.
     //
     // The player name sits OUTSIDE the neon window (.bbgl-titles-head) entirely - a neon sign
     // mounted above the box rather than lettering inside it, with .bbgl-titles-wires the visible
@@ -2209,18 +2349,30 @@ function achBuildPageTitles() {
         `</div>` +
         `</div>`;
 
-    // Horizontal rank track: no separate Clay/Fully Bricked caps any more — Dry Clay is just band
-    // 1's notch like every other band, and Fully Bricked is a notch of its own pinned to the very
-    // end of the line. The fill runs left to right and the live level rides its leading edge.
-    // rankBarProgressCSS() (03-section-ii-utils.js) supplies the gradient, glow and shine intensity
-    // as custom properties, so the whole progression is tunable from that one table.
-    const bricked = isFullyBricked(rankAtrophy, rankLevel);
-    const bar = `<div class="bbgl-rank-track" style="${rankBarProgressCSS(rankAtrophy, rankLevel)}">` +
-        `<div class="bbgl-rank-line${bricked ? ' is-bricked' : ''}">` +
-        `<div class="bbgl-rank-fill"></div>` +
-        `<div class="bbgl-rank-shine"></div>` +
-        `<div class="bbgl-rank-notches">${achTitleNotchesHTML(rankAtrophy, rankLevel)}</div>` +
+    // Engraved rank scale: no shared backing plate. The thin groove is cut directly into the panel;
+    // the live level rides the channel as the low-profile slider knob. rankBarProgressCSS()
+    // (03-section-ii-utils.js) supplies its live readout position.
+    //
+    // Two parallel renderings of the same six bands + capstone sit on this axis right now:
+    // .bbgl-rank-notches, the ornate plaque shelf (achTitleNotchesHTML() above, positioned by
+    // layoutRankShelf(), 07-section-vi-ui.js) — hidden via CSS but left fully wired up, since the
+    // plan is to relocate the plaques onto the identity card rather than delete them — and
+    // .bbgl-rank-titles, the plain-text labels (achTitleLabelsHTML() above) that actually render on
+    // the bar in the meantime.
+    //
+    // is-wrapped says the riding plaque's skirt is currently drawn down around the readout's digits
+    // (see .bbgl-rank-notch.is-riding, 04-section-iii-styles.js). The readout reads it to drop the
+    // dark pool it normally paints behind itself: that pool exists only to swallow the 1px groove
+    // line where it would otherwise strike through the numerals, and the skirt already covers the
+    // groove there — leaving it on would just smear a dark blot across the plaque's metal field.
+    const bricked = isFullyBricked(atrophy, level);
+    const bar = `<div class="bbgl-rank-track" style="${rankBarProgressCSS(atrophy, level)}">` +
+        `<div class="bbgl-rank-scale">` +
+        `<div class="bbgl-rank-line${bricked ? ' is-bricked' : ''}${hasRidingRank(atrophy, level) ? ' is-wrapped' : ''}">` +
+        `<div class="bbgl-rank-notches">${achTitleNotchesHTML(atrophy, level)}</div>` +
+        `<div class="bbgl-rank-titles">${achTitleLabelsHTML(atrophy, level)}</div>` +
         `<div class="bbgl-rank-knob" data-tooltip="${achEsc(`"${rankName}"`)}"><span class="bbgl-rank-knob-lv">${level}</span></div>` +
+        `</div>` +
         `</div>` +
         `</div>`;
 
@@ -2419,11 +2571,14 @@ function achBuildPage2(d) {
         const helpers = HAPPY_LOGS.map(id => {
             const rec = d.happyItemTotals[id] || { count: 0, happy: 0 };
             const meta = ITEM_LOG_META[id];
+            const odRec = id === ECSTASY_LOG && d.odItemTotals ? d.odItemTotals[EX_OD_LOG] : null;
+            const odCount = (odRec && odRec.count) || 0;
             return {
                 id,
                 label: meta.achLabel || meta.label,
                 short: meta.short || meta.label,
-                count: rec.count,
+                count: rec.count + odCount,
+                odCount,
                 happy: rec.happy
             };
         }).filter(h => h.count > 0).sort((a, b) => (hhOrder[a.id] || 99) - (hhOrder[b.id] || 99));
@@ -2446,8 +2601,8 @@ function achBuildPage2(d) {
 
                     const exOdLabel = achOdLabel(ITEM_LOG_META[EX_OD_LOG].label);
                     const exTip = isExpanded ? `Amount of ${exOdLabel} · Happy / Energy Lost` : `Amount of ${exOdLabel}`;
-                    const exClip = `${ITEM_LOG_META[EX_OD_LOG].label}: ${exRec.count} (-${Formatter.number(exRec.happyLost)} H, -${Formatter.number(exRec.energyLost)} E)`;
-                    html += `<div class="bbgl-ach-row bbgl-ach-od-row bbgl-subgroup-row bbgl-subgroup-row-last" data-tooltip="${achEsc(exTip)}" data-ach-key="happy-od-${EX_OD_LOG}" data-clip="${achEsc(exClip)}"><div class="ach-row-main" style="align-items:flex-start;"><div class="ach-k-stack"><span class="ach-k"><span class="ach-title-long">ODs:</span><span class="ach-title-short">ODs:</span></span></div><div class="ach-v-wrap" style="align-items:flex-start;"><span class="ach-value" style="padding-top:1px;">${countHtml}</span><span class="ach-value ach-happy-col ach-enh-od">${gainedHtml}</span></div></div></div>`;
+                    const exClip = `- ${ITEM_LOG_META[EX_OD_LOG].label}: ${exRec.count} (-${Formatter.number(exRec.happyLost)} H, -${Formatter.number(exRec.energyLost)} E)`;
+                    html += `<div class="bbgl-ach-row bbgl-ach-od-row bbgl-subgroup-row bbgl-subgroup-row-last" data-tooltip="${achEsc(exTip)}" data-ach-key="happy-od-${EX_OD_LOG}" data-clip="${achEsc(exClip)}"><div class="ach-row-main" style="align-items:flex-start;"><div class="ach-k-stack"><span class="ach-k"><span class="ach-title-long">− ODs:</span><span class="ach-title-short">− ODs:</span></span></div><div class="ach-v-wrap" style="align-items:flex-start;"><span class="ach-value" style="padding-top:1px;">${countHtml}</span><span class="ach-value ach-happy-col ach-enh-od">${gainedHtml}</span></div></div></div>`;
                 }
                 return html;
             };
@@ -2462,7 +2617,11 @@ function achBuildPage2(d) {
                     cols.push(`<div class="bbgl-ach-col">${chunk.map(helperRow).join('')}</div>`);
                 }
             }
-            const clipHelpers = helpers.map(h => `${h.label}: ${h.count} (${Formatter.number(h.happy)} Happy)`).join('\n');
+            const clipHelpers = helpers.map(h => {
+                let line = `${h.label}: ${h.count} (${Formatter.number(h.happy)} Happy)`;
+                if (h.id === ECSTASY_LOG && h.odCount > 0) line += `\n  - ODs: ${h.odCount}`;
+                return line;
+            }).join('\n');
             clipAll += '\n\n— Happy Helpers —\n' + clipHelpers;
             helpersHTML = `<div class="bbgl-ach-cols" style="grid-template-columns:repeat(${colCount},minmax(0,1fr)); padding-top:1px; padding-bottom:0;">${cols.join('')}</div>`;
         }
@@ -2541,10 +2700,13 @@ function achBuildPageOverview(d) {
             tip = isExpanded ? `Amount of ${tipLabel} · ${achStatFull(sk)} Gained` : `Amount of ${tipLabel}`;
         } else {
             const rec = enrg[id] || { count: 0, energy: 0 };
-            countHtml = rec.count > 0 ? achEsc(Formatter.number(rec.count)) : NULL;
+            const odId = OD_AFTER[id];
+            const odCount = (odId && od[odId] && od[odId].count) || 0;
+            const totalTaken = rec.count + odCount;
+            countHtml = totalTaken > 0 ? achEsc(Formatter.number(totalTaken)) : NULL;
             const gainNum = rec.energy > 0 ? `+${achEsc(Formatter.achAbbr(rec.energy, ACH_FMT.enhancers))}` : NULL;
             gainedHtml = `${gainNum} <span class="ach-enh-e-label">E</span>`;
-            clipVal = `${label}: ${rec.count} (+${Formatter.achAbbr(rec.energy, ACH_FMT.enhancers)} Energy)`;
+            clipVal = `${label}: ${totalTaken} (+${Formatter.achAbbr(rec.energy, ACH_FMT.enhancers)} Energy)`;
             tip = isExpanded ? `Amount of ${tipLabel} · Energy Gained` : `Amount of ${tipLabel}`;
         }
 
@@ -2560,9 +2722,9 @@ function achBuildPageOverview(d) {
         const gainedHtml = `${lostNum} <span class="ach-enh-e-label">E</span>`;
         const odLabel = achOdLabel(meta.label);
         const tip = isExpanded ? `Amount of ${odLabel} · Energy Lost` : `Amount of ${odLabel}`;
-        const clipVal = `${meta.label}: ${rec.count} (-${Formatter.number(rec.energyLost)} Energy Lost)`;
+        const clipVal = `- ${meta.label}: ${rec.count} (-${Formatter.number(rec.energyLost)} Energy Lost)`;
         const key = `enh-${odId}`;
-        return `<div class="bbgl-ach-row bbgl-ach-enh-row bbgl-ach-od-row bbgl-subgroup-row bbgl-subgroup-row-last" data-tooltip="${achEsc(tip)}" data-ach-key="${key}" data-clip="${achEsc(clipVal)}"><div class="ach-row-main"><div class="ach-k-stack"><span class="ach-k"><span class="ach-title-long">ODs:</span><span class="ach-title-short">ODs:</span></span></div><div class="ach-v-wrap"><span class="ach-value">${countHtml}</span><span class="ach-value ach-enh-gained ach-enh-od">${gainedHtml}</span></div></div></div>`;
+        return `<div class="bbgl-ach-row bbgl-ach-enh-row bbgl-ach-od-row bbgl-subgroup-row bbgl-subgroup-row-last" data-tooltip="${achEsc(tip)}" data-ach-key="${key}" data-clip="${achEsc(clipVal)}"><div class="ach-row-main"><div class="ach-k-stack"><span class="ach-k"><span class="ach-title-long">− ODs:</span><span class="ach-title-short">− ODs:</span></span></div><div class="ach-v-wrap"><span class="ach-value">${countHtml}</span><span class="ach-value ach-enh-gained ach-enh-od">${gainedHtml}</span></div></div></div>`;
     };
 
     const buildColHTML = (col) => col.map(id => {
@@ -2585,7 +2747,11 @@ function achBuildPageOverview(d) {
             return `${label}: ${rec.count} (+${Formatter.achAbbr(rec.gain, ACH_FMT.enhancers)} ${STAT_ABBR[sk]})`;
         }
         const rec = enrg[id] || { count: 0, energy: 0 };
-        return `${label}: ${rec.count} (+${Formatter.achAbbr(rec.energy, ACH_FMT.enhancers)} Energy)`;
+        const odId = OD_AFTER[id];
+        const odCount = (odId && od[odId] && od[odId].count) || 0;
+        let line = `${label}: ${rec.count + odCount} (+${Formatter.achAbbr(rec.energy, ACH_FMT.enhancers)} Energy)`;
+        if (odCount > 0) line += `\n  - ODs: ${odCount}`;
+        return line;
     }).join('\n');
 
     const cols = `<div class="bbgl-ach-col">${leftHTML}</div><div class="bbgl-ach-col">${rightHTML}</div>`;

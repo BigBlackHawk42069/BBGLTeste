@@ -143,13 +143,35 @@
             window.dispatchEvent(new CustomEvent('bbgl:dataUpdated'));
         });
 
-        return buildDevSection('Triggers', [trainRow, dayTierRow, lvlUpBtn, atroBtn]);
+        // Jumps straight to atrophy 2 / level 100 — every band plaque plus Fully Bricked, all
+        // unlocked at once — using the same net-out-today's-real-exp trick as Complete Atrophy
+        // above so the DISPLAYED total lands exactly at the cap.
+        const maxBtn = buildDevButton('Max Out', () => {
+            const displayed = typeof getLiveLevelExp === 'function' ? getLiveLevelExp() : (runtime.careerLevelExp || 0);
+            const todayReal = displayed - (runtime.careerLevelExp || 0);
+            const target = LEVEL_ATRO_BUDGETS[0] + LEVEL_ATRO_BUDGETS[1] + LEVEL_ATRO_BUDGETS[2];
+            runtime.careerLevelExp = Math.max(0, target - todayReal);
+            const newTotal = typeof getLiveLevelExp === 'function' ? getLiveLevelExp() : runtime.careerLevelExp;
+            runtime._lastLevelExp = newTotal;
+            if (typeof getLevelBars === 'function' && typeof renderLevelBar === 'function') {
+                getLevelBars().forEach(b => renderLevelBar(b, newTotal));
+            }
+            window.dispatchEvent(new CustomEvent('bbgl:dataUpdated'));
+        });
+
+        return buildDevSection('Triggers', [trainRow, dayTierRow, lvlUpBtn, atroBtn, maxBtn]);
     }
 
     // ─── Rank Preview section (atrophy/level-band testing) ─────────────────
-    // Overrides just the atrophyTitle() text lookup in renderLevelBar() (07-section-vi-ui.js) so
-    // every atrophy/level-band combination can be previewed without real EXP. Gated behind
-    // runtime.devMode at the read site, and this whole file is stripped from release builds.
+    // Jumps straight to the chosen atrophy/level by writing the equivalent real EXP into
+    // runtime.careerLevelExp (same net-out-today's-real-exp trick as Complete Atrophy/Max Out
+    // above), rather than cosmetically overriding what the bar displays. A display-only override
+    // used to live here, but Level Up/Train/Complete Atrophy all advance runtime.careerLevelExp
+    // directly and had no idea the override existed — so setting an override then clicking Level
+    // Up silently advanced a second, invisible progress track underneath the frozen preview,
+    // ticking the level number up without ever moving the rank slider or unlocking a plaque.
+    // Writing real EXP instead means every trigger button keeps working from wherever this jumps
+    // to, since they all share the same one source of truth.
     function buildRankPreviewSection() {
         const rowStyle = 'display:flex;gap:6px;';
         const selectStyle = 'flex:1;background:#333;color:#fff;border:1px solid #666;border-radius:4px;padding:5px 6px;font-family:sans-serif;font-size:12px;';
@@ -171,34 +193,37 @@
         levelInput.value = '0';
         levelInput.style.cssText = inputStyle;
 
-        function applyOverride() {
+        function applyJump() {
+            const atrophy = parseInt(atrophySelect.value, 10);
+            const floor = LEVEL_ATRO_START[atrophy];
             let lvl = parseInt(levelInput.value, 10);
-            if (!Number.isFinite(lvl)) lvl = 0;
-            lvl = Math.min(100, Math.max(-10, lvl));
+            if (!Number.isFinite(lvl)) lvl = floor;
+            lvl = Math.min(100, Math.max(floor, lvl));
             levelInput.value = lvl;
-            runtime._devRankOverride = { atrophy: parseInt(atrophySelect.value, 10), level: lvl };
-            const total = typeof getLiveLevelExp === 'function' ? getLiveLevelExp() : 0;
+
+            const displayed = typeof getLiveLevelExp === 'function' ? getLiveLevelExp() : (runtime.careerLevelExp || 0);
+            const todayReal = displayed - (runtime.careerLevelExp || 0);
+            let target = 0;
+            for (let a = 0; a < atrophy; a++) target += LEVEL_ATRO_BUDGETS[a];
+            for (let lv = floor; lv < lvl; lv++) target += computeLevelExpCost(lv, atrophy);
+            runtime.careerLevelExp = Math.max(0, target - todayReal);
+
+            const newTotal = typeof getLiveLevelExp === 'function' ? getLiveLevelExp() : runtime.careerLevelExp;
+            runtime._lastLevelExp = newTotal;
             if (typeof getLevelBars === 'function' && typeof renderLevelBar === 'function') {
-                getLevelBars().forEach(b => renderLevelBar(b, total));
+                getLevelBars().forEach(b => renderLevelBar(b, newTotal));
             }
+            window.dispatchEvent(new CustomEvent('bbgl:dataUpdated'));
         }
-        atrophySelect.addEventListener('change', applyOverride);
-        levelInput.addEventListener('change', applyOverride);
+        atrophySelect.addEventListener('change', applyJump);
+        levelInput.addEventListener('change', applyJump);
 
         const row = document.createElement('div');
         row.style.cssText = rowStyle;
         row.appendChild(atrophySelect);
         row.appendChild(levelInput);
 
-        const clearBtn = buildDevButton('Clear Override', () => {
-            runtime._devRankOverride = null;
-            const total = typeof getLiveLevelExp === 'function' ? getLiveLevelExp() : 0;
-            if (typeof getLevelBars === 'function' && typeof renderLevelBar === 'function') {
-                getLevelBars().forEach(b => renderLevelBar(b, total));
-            }
-        });
-
-        return buildDevSection('Rank Preview', [row, clearBtn]);
+        return buildDevSection('Rank Preview', [row]);
     }
 
     // ─── Title Preview section (stat-title slot testing) ───────────────────

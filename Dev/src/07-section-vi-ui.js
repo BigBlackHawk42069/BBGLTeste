@@ -793,12 +793,11 @@
     // label. Reads are batched before any writes (one forced layout for the whole pass, not one
     // per block). Called synchronously right after the titles page's DOM is (re)built
     // (achRefreshPageDom(), 06-section-v-logic.js) and again on every resize via
-    // observeTitleBlockFrames() below, since the blocks resize purely through CSS
-    // clamp()/cqi/cqb with no other JS involvement.
+    // observeTitleBlockFrames() below, since the blocks can still resize when panel mode or the
+    // active fixed page-width tier changes, with no other JS involvement.
     //
     // Returns true only if every block found was actually measurable (nonzero size) and got a
-    // real path — false means at least one block was still 0x0 (e.g. the titles page's own
-    // container-type:size box, which --bbgl-t-star's cqi/cqb clamps resolve against, hasn't
+    // real path — false means at least one block was still 0x0 (e.g. the titles layout has not
     // settled yet on the very first paint after a tab switch). achRefreshPageDom() uses this
     // return value to keep retrying on the next frame instead of guessing a fixed delay.
     //
@@ -842,16 +841,384 @@
         return allMeasured;
     }
 
-    // (Re)establishes the ResizeObserver watching every current .bbgl-title-block — must be
-    // called fresh on every titles-page DOM rebuild, since achRefreshPageDom()'s innerHTML swap
-    // destroys whatever this was previously observing. disconnect() at the top makes repeated
-    // calls safe without the caller having to remember to tear down first.
+    // Returns an element's untransformed layout top in ancestor-local coordinates. offsetTop is
+    // intentional here: unlike getBoundingClientRect(), it is not squashed by the titles page's
+    // CRT scaleY transition. null means the expected offset-parent chain was not established yet.
+    function titleLayoutTopWithin(el, ancestor) {
+        let top = 0;
+        let node = el;
+        while (node && node !== ancestor) {
+            top += node.offsetTop;
+            node = node.offsetParent;
+        }
+        return node === ancestor ? top : null;
+    }
+
+    // offsetTop ignores transforms, but the stat columns deliberately carry one local translateY.
+    // Add every descendant transform's Y component back without reading the page's own CRT transform
+    // (the walk stops before ancestor), so the result is the real resting geometry in every mode.
+    function titleTranslateYWithin(el, ancestor) {
+        let y = 0;
+        for (let node = el; node && node !== ancestor; node = node.parentElement) {
+            const transform = getComputedStyle(node).transform;
+            if (!transform || transform === 'none') continue;
+            try { y += new DOMMatrixReadOnly(transform).m42; } catch (_) { /* malformed/unsupported */ }
+        }
+        return y;
+    }
+
+    // Last-resort clearance held between the assembly and the floor of its available space, only
+    // ever consumed when the space is too short to actually centre the assembly in.
+    const RANK_ASSEMBLY_FLOOR = 5;
+
+    // Reference placement used ONLY to derive the label-to-groove spacing — NOT where the bar
+    // actually ends up. 0 = assembly midpoint flush with the card bottoms above, 1 = flush with
+    // RANK_ASSEMBLY_FLOOR at the page's own bottom.
+    //
+    // This exists because the two things are genuinely separate concerns. The label gap is defined
+    // as a FRACTION of the cards-to-groove distance (TITLE_LABEL_BIAS below), so it only has a
+    // value once the groove has a position — which means simply moving the groove to reposition the
+    // bar silently rescaled the label gap along with it. Freezing the spacing against one fixed
+    // reference placement here lets the real placement (a plain centring, see layoutRankBarCenter)
+    // move the finished cluster around as a rigid unit without touching its internals.
+    const RANK_SPACING_REF_BIAS = 0.8;
+
+    // Where the plain-text rank labels (.bbgl-rank-title) sit within the gap between the card
+    // bottoms and the groove line, measured UP from the groove: 0 = flush with the line, 1 = flush
+    // with the cards. A plain 0.5 (true midpoint of that gap) reads fine when the gap is small, but
+    // the gap's absolute size grows whenever --bbgl-t-rank-h reclaims more room from the cards
+    // above, which floated the labels further and further from the line they're meant to annotate.
+    // Biased toward the line instead, so labels track the groove rather than an elastic midpoint.
+    const TITLE_LABEL_BIAS = 0.42;
+
+    // Positions the complete VISIBLE rank assembly within the actual geometric space below the lower
+    // stat cards. Measure the sliding readout and the groove (the plaques are hidden today — see
+    // .bbgl-rank-notches, 04-section-iii-styles.js — and filtered out below by the offsetParent
+    // check), fold in the text labels that hang above them, then centre that whole block.
+    //
+    // Two passes, because "how far above the groove do the labels sit" and "where does the finished
+    // cluster sit" have to be answered in that order. Pass 1 places the assembly at
+    // RANK_SPACING_REF_BIAS purely to read the label gap off it and freeze it. Pass 2 treats labels
+    // and groove as ONE rigid block and centres that block in the available space. Doing it in a
+    // single pass (just moving the groove and letting the labels re-derive from the new gap) is what
+    // made repositioning the bar also change its internal spacing.
+    //
+    // Clamped at both ends (ceiling first, since a too-short space must never drive labels into the
+    // stat cards above) so a return of the plaque shelf, or any future taller content, still
+    // degrades to hugging the floor rather than overflowing past either edge.
+    //
+    // The rank box stays in normal flow so --bbgl-t-rank-h can continue reclaiming space from the
+    // cards; only the visible groove's local Y coordinate is written here. All reads happen before
+    // the one custom-property write.
+    //
+    // All six plaques (Fully Bricked included) live inside .bbgl-rank-line again, so the single
+    // .bbgl-rank-notch-label query below already covers the complete ladder — no separate capstone
+    // element to fold in.
+    function layoutRankBarCenter() {
+        const page = document.querySelector('.bbgl-titles-page');
+        const scale = page && page.querySelector('.bbgl-rank-scale');
+        const line = scale && scale.querySelector('.bbgl-rank-line');
+        const lowerCards = page && page.querySelectorAll('.bbgl-titles-corner-col > .bbgl-title-block:last-child');
+        if (!page || !scale || !line || !lowerCards || lowerCards.length !== 2 || !(page.clientHeight > 0)) return false;
+
+        const cardBottoms = Array.from(lowerCards, card => {
+            const top = titleLayoutTopWithin(card, page);
+            return top === null ? null : top + card.offsetHeight + titleTranslateYWithin(card, page);
+        });
+        const scaleTop = titleLayoutTopWithin(scale, page);
+        if (cardBottoms.some(v => v === null) || scaleTop === null || !(scale.offsetHeight > 0)) return false;
+
+        const paddingBottom = parseFloat(getComputedStyle(page).paddingBottom) || 0;
+        const availableTop = Math.max(...cardBottoms);
+        const availableBottom = page.clientHeight - paddingBottom;
+        if (!(availableBottom > availableTop)) return false;
+
+        // offsetParent filters out any display:none plaque part — which today means every cradle
+        // except the riding plaque's, deliberately absent rather than not-yet-measured. Leaving
+        // them in would make every measurement below abort on their zero height. What stays is
+        // exactly the VISIBLE assembly, which is what this centres.
+        //
+        // The cradle has to be measured in its own right: it is absolutely positioned, so it adds
+        // nothing to its label's offsetHeight, yet it hangs below the bar and is the lowest thing
+        // on the whole assembly — lower than the readout it wraps. Measuring only the labels would
+        // under-read the bottom by exactly the clearance under the digits and let the curve drift
+        // toward the page's clip edge.
+        const assemblyEls = [
+            line,
+            ...line.querySelectorAll('.bbgl-rank-notch-label, .bbgl-rank-notch-cradle, .bbgl-rank-knob')
+        ].filter(el => el === line || el.offsetParent !== null);
+        const assemblyBounds = assemblyEls.map(el => {
+            const top = titleLayoutTopWithin(el, page);
+            if (top === null || !(el.offsetHeight > 0)) return null;
+            const visualTop = top + titleTranslateYWithin(el, page);
+            return { top: visualTop, bottom: visualTop + el.offsetHeight };
+        });
+        if (assemblyBounds.some(v => v === null)) return false;
+
+        const assemblyTop = Math.min(...assemblyBounds.map(v => v.top));
+        const assemblyBottom = Math.max(...assemblyBounds.map(v => v.bottom));
+
+        const lineTop = titleLayoutTopWithin(line, page);
+        if (lineTop === null) return false;
+        const lineCenter = lineTop + titleTranslateYWithin(line, page) + line.offsetHeight / 2;
+
+        const floorValue = parseFloat(getComputedStyle(scale).getPropertyValue('--bbgl-t-rank-floor'));
+        const assemblyFloor = Number.isFinite(floorValue) ? floorValue : RANK_ASSEMBLY_FLOOR;
+
+        // ─── Pass 1: freeze the label-to-groove spacing ───────────────────────
+        // Solve for where the groove WOULD sit at the reference bias, purely to read off how far
+        // above it the labels sat there, and keep that distance. Nothing here is written out; only
+        // labelGap survives into the real placement below.
+        const assemblyMid = (assemblyTop + assemblyBottom) / 2;
+        const refTarget = availableTop + (availableBottom - availableTop) * RANK_SPACING_REF_BIAS;
+        let refDrop = refTarget - assemblyMid;
+        refDrop = Math.max(refDrop, availableTop - assemblyTop);
+        refDrop = Math.min(refDrop, availableBottom - assemblyFloor - assemblyBottom);
+        const labelGap = Math.max(0, (lineCenter + refDrop - availableTop) * TITLE_LABEL_BIAS);
+
+        // The labels are absolutely positioned off the groove, so they contribute nothing to the
+        // assembly bounds measured above — they have to be folded into the block explicitly, or the
+        // centring below would ignore the topmost part of what the eye actually reads as "the bar".
+        // Their own vertical position is what this function is solving for, so only their HEIGHT is
+        // read here (offsetHeight does not depend on the --bbgl-t-titles-y written at the end).
+        const labelHeights = Array.from(line.querySelectorAll('.bbgl-rank-title'))
+            .filter(el => el.offsetParent !== null && el.offsetHeight > 0)
+            .map(el => el.offsetHeight);
+        const labelCenter = lineCenter - labelGap;
+        const blockTop = labelHeights.length
+            ? Math.min(assemblyTop, labelCenter - Math.max(...labelHeights) / 2)
+            : assemblyTop;
+        const blockBottom = labelHeights.length
+            ? Math.max(assemblyBottom, labelCenter + Math.max(...labelHeights) / 2)
+            : assemblyBottom;
+
+        // ─── Pass 2: centre the rigid block ──────────────────────────────────
+        // Labels and groove now move together, so this is a plain midpoint match on the block as a
+        // whole. Clamped against the BLOCK's edges rather than the bare assembly's, since the labels
+        // are the part that would reach the stat cards first.
+        let drop = (availableTop + availableBottom) / 2 - (blockTop + blockBottom) / 2;
+        drop = Math.max(drop, availableTop - blockTop);
+        drop = Math.min(drop, availableBottom - assemblyFloor - blockBottom);
+
+        // Compact mode compresses the live marker by a couple of pixels and spends that recovered
+        // room on separation from the cards above. CSS owns the mode-specific amount; applying it
+        // here keeps the normal ceiling/floor clamps authoritative. No matching title correction is
+        // needed any more — titlesY below is a fixed offset from the groove, so the labels ride this
+        // nudge (and any other shift) automatically instead of absorbing half of it.
+        const requestedNudge = parseFloat(getComputedStyle(scale).getPropertyValue('--bbgl-t-rank-nudge-y')) || 0;
+        drop += requestedNudge;
+        drop = Math.max(drop, availableTop - blockTop);
+        drop = Math.min(drop, availableBottom - assemblyFloor - blockBottom);
+
+        const localY = lineCenter - scaleTop + drop;
+        scale.style.setProperty('--bbgl-t-rank-line-y', `${localY.toFixed(3)}px`);
+
+        // Where the plain-text rank labels centre themselves (.bbgl-rank-title,
+        // 04-section-iii-styles.js): labelGap above the groove, frozen back in pass 1. Because it is
+        // stated relative to the groove and carries no term for the groove's own position, the
+        // labels are rigidly attached to it — every shift applied above (the centring, the compact
+        // nudge, any future one) carries them along at unchanged spacing, with no correction term.
+        //
+        // Expressed relative to .bbgl-rank-LINE's own box, NOT to the scale: .bbgl-rank-titles is a
+        // child of the line (see achBuildPageTitles(), 06-section-v-logic.js) and is inset:0 of it,
+        // so its containing block is the 1px groove itself. Anything scale-relative — a percentage,
+        // a height, or a scale-local px — resolves against that 1px box instead and pins the labels
+        // to the groove no matter what value is handed in. Hence the offset below is measured from
+        // the line's own top edge and is NEGATIVE: the labels sit entirely above it.
+        // Nothing in the rank chain clips (no overflow on the line, .bbgl-rank-scale or
+        // .bbgl-rank-track), so labels placed above the groove paint normally.
+        const titlesY = line.offsetHeight / 2 - labelGap;
+        scale.style.setProperty('--bbgl-t-titles-y', `${titlesY.toFixed(3)}px`);
+        return true;
+    }
+
+
+    // Minimum clear space to leave between two neighbouring plaques, in untransformed layout px.
+    const RANK_NOTCH_MIN_GAP = 3;
+
+    // Hard wall at each end of the rank section, in px inside the panel's own edge. No plaque may
+    // cross it in any mode. Measured from the PANEL edge, not the groove's — the groove is inset by
+    // --bbgl-t-track-side-pad specifically so end plaques can overhang it.
+    const RANK_SHELF_WALL = 7;
+
+    // Places every rank plaque on the trophy shelf. Three states, set in achTitleNotchesHTML()
+    // (06-section-v-logic.js), each with its own target position along the groove:
+    //
+    //   .is-docked  earned and outgrown — parked in its permanent shelf slot.
+    //   .is-riding  the rank held right now — tracks the sliding level readout.
+    //   (locked)    left exactly where the markup put it: centred on the level it unlocks at.
+    //
+    // Shelf slots are solved for ALL SIX plaques every time, never for the subset currently
+    // docked. That is the guarantee the whole design rests on: a plaque docks straight into the
+    // position and spacing it will still hold when the shelf is full, so earning a rank only ever
+    // fills an empty slot and never nudges an already-placed one. Widths differ a lot across the
+    // ladder ("Dry Clay" vs "Competently Bricked"), so the slots cannot be a simple even division of
+    // the track — the plaques' own measured widths are laid end to end and the LEFTOVER space is
+    // what gets divided evenly, five gaps for six plaques, first flush left and last flush right.
+    // That is `justify-content: space-between` in spirit; it has to be done here in JS rather than
+    // by flexbox because the shelf must stay sized for all six while only some of them are on it.
+    //
+    // Everything is computed from measured widths plus each notch's own inline `left` percentage,
+    // never from a rect that already carries a previous shift — so the pass is idempotent and
+    // cannot drift across repeated runs or resizes.
+    //
+    // offsetWidth/clientWidth throughout, never getBoundingClientRect(), for the same reason
+    // layoutRankBarCenter() above uses offset metrics: the titles page carries a CRT scale
+    // transition, and rects are squashed by it mid-transition while offset metrics are not.
+    //
+    // Writes translateX, which does not change any observed element's size — so the
+    // ResizeObserver in observeTitleBlockFrames() cannot be retriggered by this pass's own output.
+    function layoutRankShelf() {
+        const line = document.querySelector('.bbgl-titles-page .bbgl-rank-line');
+        if (!line) return false;
+        const allNotches = Array.from(line.querySelectorAll('.bbgl-rank-notch'));
+        if (!allNotches.length) return false;
+        const trackW = line.clientWidth;
+        if (!(trackW > 0)) return false;
+
+        // READ. Nothing is written until every measurement is taken.
+        //
+        // Every mode shows the full six-plaque shelf, so nothing hides a notch today. This stays
+        // as a guard because the shelf solve cannot survive one: a display:none notch reports
+        // offsetWidth 0, its slot collapses, and every plaque after it slides left. Measuring it
+        // anyway would mean briefly un-hiding it — a forced reflow mid-render. So if a plaque is ever
+        // hidden again, the shelf is skipped and only the riding plaque is placed, which degrades to
+        // "plaques sit on their milestones" rather than to a silently wrong shelf.
+        const hidden = allNotches.some(n => n.offsetParent === null);
+        const boxes = allNotches.map(notch => {
+            const label = notch.querySelector('.bbgl-rank-notch-label');
+            const w = label ? label.offsetWidth : 0;
+            // Height is read for the riding plaque's cradle alone — see the --rank-plate-h write
+            // below. Taken here rather than in a pass of its own so it lands in this function's
+            // single READ phase, before anything is written.
+            const h = label ? label.offsetHeight : 0;
+            const pct = parseFloat(notch.style.left);
+            if (!label || !Number.isFinite(pct)) return null;
+            return {
+                notch,
+                w,
+                h,
+                natural: trackW * (pct / 100),
+                docked: notch.classList.contains('is-docked'),
+                riding: notch.classList.contains('is-riding')
+            };
+        });
+        if (boxes.some(b => b === null)) return false;
+
+        // Everything here is in the groove's own coordinate space: 0 is its left end, trackW its
+        // right. The groove is inset from the panel by --bbgl-t-track-side-pad on each side (that is
+        // exactly what offsetLeft reads), so the panel edges sit at -sidePad and trackW + sidePad,
+        // and the walls are RANK_SHELF_WALL inside those.
+        const sidePad = line.offsetLeft;
+        const wallL = -sidePad + RANK_SHELF_WALL;
+        const wallR = trackW + sidePad - RANK_SHELF_WALL;
+
+        // The box the shelf is centred inside — which is NOT the same as the walls it is clamped to.
+        //
+        // Every mode centres on the groove itself, so the shelf reads as belonging to the bar —
+        // first plaque flush with the bar's left end, last with its right — rather than floating
+        // wider than the thing it annotates and hanging off into the side padding. Compact used to
+        // centre wall to wall instead (spending the groove's side padding as extra shelf room), but
+        // that let the docked plaques spill past the reserved rank-bar space by design rather than
+        // only as a last-resort overflow.
+        //
+        // The wall clamp still applies in every mode; it is now purely the last-resort overflow
+        // guard for when the ladder is too wide even for the full groove.
+        const boxL = 0;
+        const boxR = trackW;
+        const avail = boxR - boxL;
+
+        // Locked plaques stay on the milestone the markup put them on; the two solves below
+        // override that for the plaques whose state calls for it.
+        const targets = boxes.map(b => b.natural);
+
+        if (!hidden && avail > 0) {
+            // Solve the full six-slot shelf. Total plaque width laid end to end, then the
+            // remainder split into equal gaps. A gap below RANK_NOTCH_MIN_GAP means the ladder
+            // simply cannot fit in the box — hold the gap at that floor rather than letting the
+            // plaques overlap into an unreadable pile, and accept that the ends may then be pushed
+            // back inside by the wall clamp below.
+            if (boxes.some(b => !(b.w > 0))) return false;
+            const totalW = boxes.reduce((sum, b) => sum + b.w, 0);
+            const even = boxes.length > 1 ? (avail - totalW) / (boxes.length - 1) : 0;
+            const gap = Math.max(RANK_NOTCH_MIN_GAP, even);
+
+            // Centred in the box. When the ladder fits, `gap` IS the even division, so the span
+            // works out to exactly `avail` and the shelf lands flush against both of the box's
+            // edges. When it does not, the span is wider and the overshoot is split evenly off both
+            // ends instead of piling up entirely on the right.
+            const span = totalW + gap * (boxes.length - 1);
+            let cursor = boxL + (avail - span) / 2;
+
+            boxes.forEach((b, i) => {
+                // Slot centre. Every plaque advances the cursor even if it is not docked yet —
+                // that is what reserves its room so the later slots land where they eventually
+                // will, rather than where the currently-docked subset alone would put them.
+                if (b.docked) targets[i] = cursor + b.w / 2;
+                cursor += b.w + gap;
+            });
+        }
+
+        // The riding plaque tracks the level readout. Same --rank-fill-pct the knob itself reads
+        // (rankBarProgressCSS(), 03-section-ii-utils.js), so the two stay locked together by
+        // construction instead of by two separately-maintained position formulas.
+        const fillPct = parseFloat(getComputedStyle(line).getPropertyValue('--rank-fill-pct'));
+        if (Number.isFinite(fillPct)) {
+            boxes.forEach((b, i) => {
+                if (b.riding) targets[i] = trackW * (fillPct / 100);
+            });
+        }
+
+        // WRITE. The wall clamp applies to every plaque without exception — docked, riding or
+        // locked — since it is the one rule that has no states.
+        boxes.forEach((b, i) => {
+            const minCenter = wallL + b.w / 2;
+            const maxCenter = wallR - b.w / 2;
+            // A single plaque wider than the whole usable width has no satisfying position; pin it
+            // to the left wall so it overflows in one predictable direction rather than jittering.
+            const center = maxCenter >= minCenter
+                ? Math.max(minCenter, Math.min(maxCenter, targets[i]))
+                : minCenter;
+            const shift = center - b.natural;
+            if (Math.abs(shift) < 0.01) b.notch.style.removeProperty('--rank-shift');
+            else b.notch.style.setProperty('--rank-shift', `${shift.toFixed(3)}px`);
+
+            // The plate and its cradle share ONE metal ramp spanning both, so the gradient runs
+            // unbroken across the join instead of restarting in the cradle (see
+            // .bbgl-rank-notch-cradle, 04-section-iii-styles.js). The plate can size that ramp
+            // from its own box in pure CSS; the cradle cannot — it has to know how far down the
+            // shared ramp its own slice begins, which is exactly the plate's height. Only the
+            // riding plaque has a cradle, so only it carries the value, and it is cleared off the
+            // rest so a plaque that stops riding cannot leave a stale one behind.
+            if (b.riding && b.h > 0) b.notch.style.setProperty('--rank-plate-h', `${b.h.toFixed(2)}px`);
+            else b.notch.style.removeProperty('--rank-plate-h');
+        });
+        return true;
+    }
+
+    function layoutTitlesPageGeometry() {
+        const framesReady = layoutTitleBlockFrames();
+        // Before the vertical centring, which measures the assembly's bounding box — the shelf
+        // pass can only move plaques horizontally, but running it first keeps the two passes in a
+        // fixed order rather than an incidental one.
+        const spacingReady = layoutRankShelf();
+        const rankReady = layoutRankBarCenter();
+        return framesReady && spacingReady && rankReady;
+    }
+
+    // (Re)establishes the ResizeObserver watching the current title blocks and visible rank parts —
+    // must be called fresh on every titles-page DOM rebuild, since achRefreshPageDom()'s innerHTML
+    // swap destroys whatever this was previously observing. Watching the plaque labels themselves
+    // lets a late font measurement recenter the complete assembly even though their absolute layout
+    // does not change .bbgl-rank-scale's fixed border-box size. disconnect() at the top makes
+    // repeated calls safe without the caller having to remember to tear down first.
     function observeTitleBlockFrames() {
         if (runtime.titleFrameResizeObserver) runtime.titleFrameResizeObserver.disconnect();
         runtime.titleFrameResizeObserver = new ResizeObserver(() => {
-            window.requestAnimationFrame(layoutTitleBlockFrames);
+            window.requestAnimationFrame(layoutTitlesPageGeometry);
         });
-        document.querySelectorAll('.bbgl-title-block').forEach(b => runtime.titleFrameResizeObserver.observe(b));
+        document.querySelectorAll('.bbgl-title-block, .bbgl-titles-page, .bbgl-rank-scale, .bbgl-rank-notch-label, .bbgl-rank-knob')
+            .forEach(el => runtime.titleFrameResizeObserver.observe(el));
     }
 
     // Shared toolbar-relative measurement for both pagination clusters that dock against the SVG
@@ -888,12 +1255,12 @@
         const fullWidth = topPanel.offsetWidth;
         const toolbarWidth = Math.max(0, ...icons.map(el => el.offsetLeft + el.offsetWidth));
         if (!(fullWidth > 0) || !(toolbarWidth > 0) || !visibleIcons.length) return null;
-        // Horizontal placement rule: if the toolbar's occupied width is <=35% of the panel's own
+        // Horizontal placement rule: if the toolbar's occupied width is <=25% of the panel's own
         // width, centre dead in the middle of the panel's own full width, as if the icons weren't
         // there at all — centring within just the icons' own occupied width was tried first and
         // rejected, since it puts a docked cluster directly on top of the icons rather than near
-        // them. Otherwise (toolbar >35%) centre within the remaining space to the right of it.
-        const threshold = fullWidth * 0.35;
+        // them. Otherwise (toolbar >25%) centre within the remaining space to the right of it.
+        const threshold = fullWidth * 0.25;
         const centerX = toolbarWidth <= threshold
             ? fullWidth / 2
             : toolbarWidth + (fullWidth - toolbarWidth) / 2;
@@ -1014,18 +1381,10 @@
         // a Phase 1 adjective can sit next to a Phase 9 noun and each shows its own tier.
         const statTitleWords = composeStatTitleHTML(getLiveStatTitleSelection());
         const statTitleHtml = statTitleWords ? `<i class="bbgl-lvl-title">${statTitleWords}</i>` : '';
-        // Dev-only rank preview override (11-section-x-devtools.js, stripped from release builds)
-        // — feeds an arbitrary atrophy/level into atrophyTitle() only, so every rank band can be
-        // previewed on demand. Deliberately scoped to just the text lookup: the numeric level,
-        // percent, bar fill, and data-atrophy/data-level (which drive the fill gradient/glow CSS)
-        // all keep showing your real progress, untouched.
-        const rankOverride = runtime.devMode && runtime._devRankOverride;
-        const rankAtrophy = rankOverride ? runtime._devRankOverride.atrophy : atrophy;
-        const rankLevel = rankOverride ? runtime._devRankOverride.level : level;
         // Vitrified glaze is reserved for the true end state (A2 at the cap, "Fully Bricked") rather
         // than every tier's cap: it's then a genuinely once-ever finish, and it almost never has to
         // share the plaque with a Phase 9 title's rainbow.
-        const vitrified = isFullyBricked(rankAtrophy, rankLevel) ? ' is-vitrified' : '';
+        const vitrified = isFullyBricked(atrophy, level) ? ' is-vitrified' : '';
         // data-tooltip (not -html): the mobile touch handler only supports quick-tap-to-reveal
         // for this attribute — data-tooltip-html only reveals via the 400ms tap-and-hold gesture.
         // The markup still renders since both the hover and tap code paths wrap this value in a div
@@ -1042,7 +1401,7 @@
         // anchors the bottom as an engraved spec line.
         bar.container.setAttribute('data-tooltip',
             `<div class="bbgl-plaque">` +
-            `<i class="bbgl-lvl-rank${vitrified}" style="${rankHardenCSS(rankAtrophy, rankLevel)}">${atrophyTitle(rankAtrophy, rankLevel)}</i>` +
+            `<i class="bbgl-lvl-rank${vitrified}" style="${rankHardenCSS(atrophy, level)}">${atrophyTitle(atrophy, level)}</i>` +
             `${statTitleHtml}` +
             `<div class="bbgl-plaque-spec">${lvLine}</div></div>`);
     }
@@ -2024,9 +2383,10 @@
             dom.bestGym = existing;
             return;
         }
-        if (!document.getElementById('gymroot')) return;
-        const host = document.getElementById('top-page-links-list');
-        if (!host) return;
+        const gymRoot = document.getElementById('gymroot');
+        if (!gymRoot) return;
+        const gymContent = gymRoot.querySelector('[class*="gymContent___"]');
+        if (!gymContent) return;
         const pill = document.createElement('div');
         pill.id = 'bbgl-bestgym';
         pill.className = 'bbgl-bestgym';
@@ -2034,7 +2394,7 @@
         const cb = pill.querySelector('#bbgl-bestgym-input');
         cb.checked = !!userConfig.bestGym;
         cb.onchange = () => setBestGym(cb.checked);
-        host.appendChild(pill);
+        gymContent.insertAdjacentElement('afterend', pill);
         dom.bestGym = pill;
     }
 
@@ -2675,7 +3035,7 @@
     function getDashboardHTML() {
         const weekDays = userConfig.weekStartMode === 'mon' ? ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'] : ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
         const weekRowHTML = weekDays.map(d => `<span>${d}</span>`).join('');
-        return `<div class="bbgl-header" id="bbgl-header-bar"><div class="bbgl-header-left">${ICONS.LOGO}<span class="bbgl-header-text"><span class="bbgl-short-title">Big Black Log</span><span class="bbgl-long-title">Big Black Gym Log</span></span></div><div class="bbgl-header-right"><span id="bbgl-demo-exit-btn" class="close-settings-btn bbgl-close-purple" style="display:${runtime.demoMode ? 'flex' : 'none'};" data-tooltip-html="${TOOLTIPS.DEMO_EXIT_HTML}"><span class="bbgl-demo-x-label">Demo</span>${ICONS.CLOSE}</span><span id="bbgl-settings-btn" class="bbgl-custom-icon">⚙</span><span id="bbgl-close-btn" class="bbgl-native-icon">${ICONS.MINIMIZE}</span><span id="bbgl-pop-btn" class="bbgl-native-icon">${viewState.expanded ? ICONS.COMPRESS : ICONS.POPOUT}</span></div></div><div id="bbgl-content-wrapper"><div id="bbgl-top-panel"><div id="bbgl-tall-toggle">${viewState.isTall ? '–' : '+'}</div><div id="bbgl-ledger-toggle" data-tooltip="${TOOLTIPS.LEDGER_VIEW}">${ICONS.LEDGER}</div><div id="bbgl-graph-toggle" data-tooltip="${TOOLTIPS.GRAPH_VIEW}">${ICONS.GRAPH}</div><div id="bbgl-achievements-toggle" data-tooltip="${TOOLTIPS.ACHIEVEMENTS}">${ICONS.ACHIEVEMENTS}</div><div id="bbgl-sticker-toggle" data-tooltip="${TOOLTIPS.STICKERBOOK}">${ICONS.STICKERBOOK}</div><div id="bbgl-item-counters"></div><div id="bbgl-copy-btn" class="copy-hist-btn" data-tooltip="${TOOLTIPS.COPY_SESSION}">${ICONS.CLIPBOARD}</div><div id="bbgl-sticker-title"></div><div class="ui-floating-label" id="bbgl-date-label">LOADING...</div><div class="ui-floating-summary" id="bbgl-summary-label"></div><div id="bbgl-ledger-view" class="ledger-content"></div><div id="bbgl-graph-container"><div class="g-hud"><div class="g-toggles"><div class="g-pill active" data-type="mode" data-val="values">Gains</div><div class="g-pill" data-type="mode" data-val="rates">Rates</div></div><div class="g-toggles"><div class="g-pill p-str active" data-type="stat" data-val="str">STR</div><div class="g-pill p-def" data-type="stat" data-val="def">DEF</div><div class="g-pill p-spd active" data-type="stat" data-val="spd">SPD</div><div class="g-pill p-dex" data-type="stat" data-val="dex">DEX</div><div class="g-pill p-tot" data-type="stat" data-val="total">TOT</div></div></div><svg id="bbgl-graph-svg"></svg></div><div id="bbgl-achievements-container" class="ledger-content"></div><div id="bbgl-ach-footer"><button type="button" class="bbgl-ach-nav bbgl-ach-prev" aria-label="Previous achievements page">${ICONS.CHEVRON}</button><div id="bbgl-ach-pageindicator"></div><button type="button" class="bbgl-ach-nav bbgl-ach-next" aria-label="Next achievements page">${ICONS.CHEVRON}</button></div><div id="bbgl-sticker-bg"></div><div id="bbgl-sticker-container"><div id="sticker-prev-btn" class="sticker-nav-btn">❮</div><div id="sticker-next-btn" class="sticker-nav-btn">❯</div><div id="bbgl-sticker-grid"></div></div><div id="bbgl-sticker-pagination-bar"><button type="button" id="sticker-mini-prev-btn" class="bbgl-ach-nav bbgl-ach-prev" aria-label="Previous sticker page">${ICONS.CHEVRON}</button><div id="bbgl-sticker-pagination"></div><button type="button" id="sticker-mini-next-btn" class="bbgl-ach-nav bbgl-ach-next" aria-label="Next sticker page">${ICONS.CHEVRON}</button></div><div class="glass-overlay"></div></div><div id="bbgl-bottom-panel"><div id="bbgl-demo-exit" style="display: ${runtime.demoMode ? 'flex' : 'none'};" data-tooltip="${TOOLTIPS.DEMO_EXIT}" data-tooltip-html="${TOOLTIPS.DEMO_EXIT_HTML}">DEMO MODE</div><div class="bbgl-header-wrapper"><div class="bbgl-month-header"><div class="title-group"><div class="title-stack"><div class="header-row header-row--alltime"><div class="stats-btn" id="all-time-btn">${ICONS.CHART}</div><div class="header-trigger" id="all-time-trigger">∞</div></div><div class="header-row header-row--year"><div class="stats-btn" id="year-stats-btn">${ICONS.CHART}</div><div class="header-trigger" id="year-trigger"></div><div id="bbgl-year-dropdown" class="bbgl-dropdown-menu"></div></div><div class="header-row header-row--month"><div class="stats-btn" id="month-stats-btn">${ICONS.CHART}</div><div class="header-trigger" id="month-trigger"></div><div id="bbgl-month-dropdown" class="bbgl-dropdown-menu"></div></div></div></div><button class="arrow-btn" id="prev-month-btn">❮</button><button class="arrow-btn" id="next-month-btn">❯</button></div><div id="bbgl-level-bg">${buildEmptyLevelTrackSVG()}</div><div id="bbgl-level-container"><div id="bbgl-level-flag-clip"><span id="bbgl-level-num">Lv 1</span></div><div id="bbgl-level-track"><div id="bbgl-level-fill"></div></div></div></div><div class="bbgl-grid-container"><div class="bbgl-week-row">${weekRowHTML}</div><div class="calendar-wrapper" id="swipe-area"><div id="bbgl-cal-container" class="bbgl-cal-container"></div></div></div></div><div id="bbgl-item-viewer"><div class="viewer-window"><div class="viewer-stage"><div class="viewer-pedestal" id="vi-pedestal-wrapper"><div class="viewer-obj" id="vi-obj-target"><div class="layer-front"></div><div class="layer-back"></div></div></div></div></div><div class="viewer-info-overlay"><div class="vi-name" id="vi-name-target">Item Name</div></div></div><div id="bbgl-settings-view">${getSettingsHTML()}</div><div id="bbgl-welcome-view"></div></div>`;
+        return `<div class="bbgl-header" id="bbgl-header-bar"><div class="bbgl-header-left">${ICONS.LOGO}<span class="bbgl-header-text"><span class="bbgl-short-title">Big Black Log</span><span class="bbgl-long-title">Big Black Gym Log</span></span></div><div class="bbgl-header-right"><span id="bbgl-demo-exit-btn" class="close-settings-btn bbgl-close-purple" style="display:${runtime.demoMode ? 'flex' : 'none'};" data-tooltip-html="${TOOLTIPS.DEMO_EXIT_HTML}"><span class="bbgl-demo-x-label">Demo</span>${ICONS.CLOSE}</span><span id="bbgl-settings-btn" class="bbgl-custom-icon">⚙</span><span id="bbgl-close-btn" class="bbgl-native-icon">${ICONS.MINIMIZE}</span><span id="bbgl-pop-btn" class="bbgl-native-icon">${viewState.expanded ? ICONS.COMPRESS : ICONS.POPOUT}</span></div></div><div id="bbgl-content-wrapper"><div id="bbgl-top-panel"><div id="bbgl-tall-toggle">${viewState.isTall ? '–' : '+'}</div><div id="bbgl-ledger-toggle" data-tooltip="${TOOLTIPS.LEDGER_VIEW}">${ICONS.LEDGER}</div><div id="bbgl-graph-toggle" data-tooltip="${TOOLTIPS.GRAPH_VIEW}">${ICONS.GRAPH}</div><div id="bbgl-achievements-toggle" data-tooltip="${TOOLTIPS.ACHIEVEMENTS}">${ICONS.ACHIEVEMENTS}</div><div id="bbgl-sticker-toggle" data-tooltip="${TOOLTIPS.STICKERBOOK}">${ICONS.STICKERBOOK}</div><div id="bbgl-item-counters"></div><div id="bbgl-copy-btn" class="copy-hist-btn" data-tooltip="${TOOLTIPS.COPY_SESSION}">${ICONS.CLIPBOARD}</div><div id="bbgl-sticker-title"></div><div class="ui-floating-label" id="bbgl-date-label">LOADING...</div><div class="ui-floating-summary" id="bbgl-summary-label"></div><div id="bbgl-ledger-view" class="ledger-content"></div><div id="bbgl-graph-container"><div class="g-hud"><div class="g-toggles"><div class="g-pill active" data-type="mode" data-val="values">Gains</div><div class="g-pill" data-type="mode" data-val="rates">Rates</div></div><div class="g-toggles"><div class="g-pill p-str active" data-type="stat" data-val="str">STR</div><div class="g-pill p-def" data-type="stat" data-val="def">DEF</div><div class="g-pill p-spd active" data-type="stat" data-val="spd">SPD</div><div class="g-pill p-dex" data-type="stat" data-val="dex">DEX</div><div class="g-pill p-tot" data-type="stat" data-val="total">TOT</div></div></div><svg id="bbgl-graph-svg"></svg></div><div id="bbgl-achievements-container" class="ledger-content"></div><div id="bbgl-ach-footer"><button type="button" class="bbgl-ach-nav bbgl-ach-prev" aria-label="Previous achievements page">${ICONS.CHEVRON}</button><div id="bbgl-ach-pageindicator"></div><button type="button" class="bbgl-ach-nav bbgl-ach-next" aria-label="Next achievements page">${ICONS.CHEVRON}</button></div><div id="bbgl-sticker-bg"></div><div id="bbgl-sticker-container"><div id="sticker-prev-btn" class="sticker-nav-btn">❮</div><div id="sticker-next-btn" class="sticker-nav-btn">❯</div><div id="bbgl-sticker-grid"></div></div><div id="bbgl-sticker-pagination-bar"><button type="button" id="sticker-mini-prev-btn" class="bbgl-ach-nav bbgl-ach-prev" aria-label="Previous sticker page">${ICONS.CHEVRON}</button><div id="bbgl-sticker-pagination"></div><button type="button" id="sticker-mini-next-btn" class="bbgl-ach-nav bbgl-ach-next" aria-label="Next sticker page">${ICONS.CHEVRON}</button></div><div class="glass-overlay"></div></div><div id="bbgl-bottom-panel"><div id="bbgl-demo-exit" style="display: ${runtime.demoMode ? 'flex' : 'none'};" data-tooltip="${TOOLTIPS.DEMO_EXIT}" data-tooltip-html="${TOOLTIPS.DEMO_EXIT_HTML}">DEMO MODE</div><div class="bbgl-header-wrapper"><div class="bbgl-month-header"><div class="title-group"><div class="title-stack"><div class="header-row header-row--alltime"><div class="stats-btn" id="all-time-btn">${ICONS.CHART}</div><div class="header-trigger" id="all-time-trigger">∞</div></div><div class="header-row header-row--year"><div class="stats-btn" id="year-stats-btn">${ICONS.CHART}</div><div class="header-trigger" id="year-trigger"></div><div id="bbgl-year-dropdown" class="bbgl-dropdown-menu"></div></div><div class="header-row header-row--month"><div class="stats-btn" id="month-stats-btn">${ICONS.CHART}</div><div class="header-trigger" id="month-trigger"></div><div id="bbgl-month-dropdown" class="bbgl-dropdown-menu"></div></div></div></div><button class="arrow-btn" id="prev-month-btn">❮</button><button class="arrow-btn" id="next-month-btn">❯</button></div><div id="bbgl-level-bg">${buildEmptyLevelTrackSVG()}</div><div id="bbgl-level-container"><div id="bbgl-level-flag-clip"><span id="bbgl-level-num">Lv 1</span></div><div id="bbgl-level-track"><div id="bbgl-level-fill"></div></div></div></div><div class="bbgl-grid-container"><div class="bbgl-week-row">${weekRowHTML}</div><div class="calendar-wrapper" id="swipe-area"><div id="bbgl-cal-container" class="bbgl-cal-container"></div></div></div></div><div id="bbgl-item-viewer"><div class="viewer-window"><div class="viewer-stage"><div class="viewer-pedestal" id="vi-pedestal-wrapper"><div class="viewer-obj" id="vi-obj-target"><div class="layer-front"></div><div class="layer-back"><div class="lb-brand"><span class="lb-brand-sm">Fully</span><span class="lb-brand-lg">Bricked</span><span class="lb-brand-sm">Fitness<sup class="lb-brand-tm">™</sup></span><span class="lb-brand-tag">Authentic</span></div></div></div></div></div></div><div class="viewer-info-overlay"><div class="vi-name" id="vi-name-target">Item Name</div></div></div><div id="bbgl-settings-view">${getSettingsHTML()}</div><div id="bbgl-welcome-view"></div></div>`;
     }
 
     /**

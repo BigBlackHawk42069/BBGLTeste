@@ -176,6 +176,145 @@
         }
     });
 
+    /**
+     *  Brand-mark placement
+     *  ------------------------------------------------------------------------
+     *  The maker's mark printed on a sticker's paper backing (.lb-brand) is centred
+     *  on the silhouette's pole of inaccessibility - the centre of the largest circle
+     *  that fits entirely inside the opaque area. That lands it on the widest stretch
+     *  of backing rather than the bounding-box centre, which on a limbed figure is
+     *  usually a gap between an arm and the torso.
+     *
+     *  The mark is a FIXED size on purpose: scaling it to the circle would make the
+     *  branding a different size on every sticker, which stops reading as branding.
+     *  Only its position adapts.
+     *
+     *  Anchors are normalised to IMAGE space and cached per URL, since that half is
+     *  pure image analysis. Projecting one into ELEMENT space depends on the live box
+     *  (.layer-back masks with contain, so the sprite is letterboxed and centred), so
+     *  that half re-runs on every resize.
+     */
+    const _brandAnchors = new Map();
+
+    // Two-pass chamfer distance transform over the alpha channel. Downscaled to MAX on
+    // the longest edge first: the anchor only needs to be accurate to a few percent and
+    // this keeps the whole pass in the low single-digit milliseconds.
+    function _poleOfInaccessibility(img, MAX = 128) {
+        const iw = img.naturalWidth, ih = img.naturalHeight;
+        if (!iw || !ih) return null;
+        const k = Math.min(1, MAX / Math.max(iw, ih)),
+            w = Math.max(1, Math.round(iw * k)),
+            h = Math.max(1, Math.round(ih * k)),
+            cv = document.createElement('canvas');
+        cv.width = w;
+        cv.height = h;
+        const g = cv.getContext('2d', { willReadFrequently: true });
+        g.drawImage(img, 0, 0, w, h);
+        const px = g.getImageData(0, 0, w, h).data,
+            INF = 1e9,
+            D = 1,
+            DG = 1.414,
+            d = new Float32Array(w * h);
+        // Seed: opaque pixels start unknown, transparent ones are already distance 0.
+        for (let i = 0; i < w * h; i++) d[i] = px[i * 4 + 3] > 128 ? INF : 0;
+        // Anything outside the bitmap counts as background (the ternaries fall back to
+        // 0), so a silhouette running off the edge is measured to that edge rather than
+        // treated as continuing forever.
+        for (let y = 0; y < h; y++) {
+            for (let x = 0; x < w; x++) {
+                const i = y * w + x;
+                if (d[i] === 0) continue;
+                let m = d[i];
+                m = Math.min(m, (y > 0 ? d[i - w] : 0) + D);
+                m = Math.min(m, (x > 0 ? d[i - 1] : 0) + D);
+                m = Math.min(m, (y > 0 && x > 0 ? d[i - w - 1] : 0) + DG);
+                m = Math.min(m, (y > 0 && x < w - 1 ? d[i - w + 1] : 0) + DG);
+                d[i] = m;
+            }
+        }
+        // Backward pass completes each distance, so the running max is only valid here.
+        let best = -1, bi = -1;
+        for (let y = h - 1; y >= 0; y--) {
+            for (let x = w - 1; x >= 0; x--) {
+                const i = y * w + x;
+                if (d[i] === 0) continue;
+                let m = d[i];
+                m = Math.min(m, (y < h - 1 ? d[i + w] : 0) + D);
+                m = Math.min(m, (x < w - 1 ? d[i + 1] : 0) + D);
+                m = Math.min(m, (y < h - 1 && x < w - 1 ? d[i + w + 1] : 0) + DG);
+                m = Math.min(m, (y < h - 1 && x > 0 ? d[i + w - 1] : 0) + DG);
+                d[i] = m;
+                if (m > best) { best = m; bi = i; }
+            }
+        }
+        if (bi < 0 || best <= 0) return null;
+        return {
+            x: ((bi % w) + 0.5) / w,
+            y: ((bi / w | 0) + 0.5) / h,
+            ar: iw / ih
+        };
+    }
+
+    // jsDelivr serves these PNGs with Access-Control-Allow-Origin:*, so an anonymous
+    // crossOrigin request keeps the canvas untainted and getImageData() readable. If
+    // that ever stops holding, the read throws, the anchor caches as null, and the mark
+    // falls back to the centre of the box.
+    function _loadBrandAnchor(url) {
+        if (_brandAnchors.has(url)) return Promise.resolve(_brandAnchors.get(url));
+        return new Promise(resolve => {
+            const img = new Image();
+            img.crossOrigin = 'anonymous';
+            img.onload = () => {
+                let a = null;
+                try { a = _poleOfInaccessibility(img); }
+                catch (e) { Log.debug('[brand] anchor failed for ' + url, e); }
+                _brandAnchors.set(url, a);
+                resolve(a);
+            };
+            img.onerror = () => { _brandAnchors.set(url, null); resolve(null); };
+            img.src = url;
+        });
+    }
+
+    // Projects runtime.brandAnchor from image space into element space. .layer-back's
+    // mask is contain-fitted and centred, so the sprite occupies a letterboxed rect
+    // inside the element - this reproduces that fit and expresses the result as the
+    // percentages the .lb-brand rule consumes through --lb-x / --lb-y.
+    function applyBrandAnchor() {
+        const lb = dom.itemViewer && dom.itemViewer.querySelector('.layer-back');
+        if (!lb) return;
+        const a = runtime.brandAnchor;
+        if (!a) {
+            lb.style.removeProperty('--lb-x');
+            lb.style.removeProperty('--lb-y');
+            return;
+        }
+        const W = lb.clientWidth, H = lb.clientHeight;
+        if (!W || !H) return;
+        let fw, fh;
+        if (W / H > a.ar) { fh = H; fw = H * a.ar; }
+        else { fw = W; fh = W / a.ar; }
+        const ox = (W - fw) / 2, oy = (H - fh) / 2;
+        lb.style.setProperty('--lb-x', (((ox + a.x * fw) / W) * 100).toFixed(3) + '%');
+        lb.style.setProperty('--lb-y', (((oy + a.y * fh) / H) * 100).toFixed(3) + '%');
+    }
+
+    function positionBrandMark(lb, it) {
+        runtime.brandAnchor = null;
+        applyBrandAnchor();
+        if (!runtime.brandResizeObserver && typeof ResizeObserver === 'function' && dom.itemViewer) {
+            runtime.brandResizeObserver = new ResizeObserver(() => applyBrandAnchor());
+            runtime.brandResizeObserver.observe(dom.itemViewer);
+        }
+        const id = it.id;
+        _loadBrandAnchor(it.url).then(a => {
+            // A different sticker may have been opened while the image was decoding.
+            if (runtime.currentOpenedItemId !== id) return;
+            runtime.brandAnchor = a;
+            applyBrandAnchor();
+        });
+    }
+
     function openItemViewer(it, sv = true) {
         if (runtime.currentOpenedItemId === it.id) return;
         if (sv) {
@@ -212,6 +351,7 @@
                 lb.style.webkitMaskImage = `url('${it.url}')`;
                 lb.style.maskImage = `url('${it.url}')`;
             }
+            positionBrandMark(lb, it);
         }
         runtime.viewerRotation = 0;
         runtime.viewerSpeed = 0.3;
