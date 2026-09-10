@@ -1067,15 +1067,20 @@
             let xLabDrop;
             if (cmp) {
                 xLabDrop = 8 + 1;
-            } else if (expandedPanel) {
-                xLabDrop = 9 + 1;
-            } else if (isPageMode) {
-                // Page-mode x-label font-size is a --bbgl-page-t clamp (8px narrow to 10px wide,
-                // see .g-text.x-label in the styles). getComputedStyle can't resolve a plain
-                // custom property's clamp()/cqi math — it only returns the unresolved specified
-                // string — so measure the label's actual rendered font-size instead, the same
-                // way _yFontPx does above, and ease the drop down with it as the page narrows
-                // (8px font -> 6, 10px font -> 11, the confirmed-good value at each end).
+            } else if (expandedPanel || isPageMode) {
+                // The only two modes whose x-label font-size is a clamp rather than a constant
+                // (--bbgl-dock-t in expanded, --bbgl-page-t in page mode; see .g-text.x-label in
+                // the styles), so the only two whose drop has to be measured rather than picked.
+                // getComputedStyle can't resolve a plain custom property's clamp()/cqi math — it
+                // only returns the unresolved specified string — so measure the label's actual
+                // rendered font-size instead, the same way _yFontPx does above, and ease the drop
+                // down with it as the panel narrows (8px font -> 6, 10px font -> 11, the
+                // confirmed-good value at each end).
+                //
+                // One shared line for both: expanded's own confirmed pairing (9px font, drop 10)
+                // sits within half a pixel of it. Compact and the default branch stay constants
+                // because their font sizes are constants — they are calibrated 3px off this line
+                // and have nothing to track.
                 const _xLabT = document.createElementNS('http://www.w3.org/2000/svg', 'text');
                 _xLabT.setAttribute('class', 'g-text x-label');
                 _xLabT.style.cssText = 'visibility:hidden;pointer-events:none;';

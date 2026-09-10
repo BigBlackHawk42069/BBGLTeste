@@ -2137,11 +2137,53 @@ function achPearlMarqueeHTML() {
     </svg>`;
 }
 
+function achBronzePlaqueHTML() {
+    const id = `bbgl-bronze-${achBronzePlaqueHTML.serial = (achBronzePlaqueHTML.serial || 0) + 1}`;
+    return `<svg class="bbgl-rank-bronze-plaque" viewBox="0 0 200 120" preserveAspectRatio="none" aria-hidden="true">
+        <defs>
+            <linearGradient id="${id}-rim" x1="0" y1="0" x2=".25" y2="1"><stop stop-color="#d9ad75"/><stop offset=".13" stop-color="#a57443"/><stop offset=".23" stop-color="#51321f"/><stop offset=".34" stop-color="#9f683b"/><stop offset=".48" stop-color="#d9ad75"/><stop offset=".56" stop-color="#c2945f"/><stop offset=".65" stop-color="#784a29"/><stop offset=".8" stop-color="#b58450"/><stop offset=".92" stop-color="#382317"/><stop offset="1" stop-color="#c99b64"/></linearGradient>
+            <linearGradient id="${id}-face" x1="0" y1="0" x2=".8" y2="1"><stop stop-color="#d9ad75"/><stop offset=".16" stop-color="#87522e"/><stop offset=".3" stop-color="#bc8b54"/><stop offset=".42" stop-color="#634025"/><stop offset=".49" stop-color="#a16a3b"/><stop offset=".55" stop-color="#d9ad75"/><stop offset=".62" stop-color="#bb8d58"/><stop offset=".77" stop-color="#80502d"/><stop offset=".9" stop-color="#ad7b45"/><stop offset="1" stop-color="#593820"/></linearGradient>
+
+            <radialGradient id="${id}-rust"><stop stop-color="#ae502b" stop-opacity=".65"/><stop offset=".45" stop-color="#80371f" stop-opacity=".4"/><stop offset="1" stop-color="#572817" stop-opacity="0"/></radialGradient>
+            <radialGradient id="${id}-tarnish"><stop stop-color="#49291b" stop-opacity=".5"/><stop offset="1" stop-color="#683c24" stop-opacity="0"/></radialGradient>
+        </defs>
+        <path d="M100 3C83 3 80 14 63 14H29Q26 30 9 33L3 60L9 87Q26 90 29 106H63C80 106 83 117 100 117C117 117 120 106 137 106H171Q174 90 191 87L197 60L191 33Q174 30 171 14H137C120 14 117 3 100 3Z" fill="url(#${id}-rim)" stroke="#624029" stroke-width="1"/>
+        <path d="M100 9C84 9 80 20 63 20H34Q29 34 15 38L9 60L15 82Q29 86 34 100H63C80 100 84 111 100 111C116 111 120 100 137 100H166Q171 86 185 82L191 60L185 38Q171 34 166 20H137C120 20 116 9 100 9Z" fill="url(#${id}-face)" stroke="#4c311f" stroke-width="1.7"/>
+        <g fill="url(#${id}-tarnish)"><ellipse cx="32" cy="43" rx="17" ry="17"/><ellipse cx="164" cy="84" rx="20" ry="14"/><ellipse cx="105" cy="103" rx="23" ry="6"/></g>
+        <g fill="url(#${id}-rust)"><ellipse cx="31" cy="40" rx="14" ry="15"/><ellipse cx="48" cy="25" rx="19" ry="6"/><ellipse cx="165" cy="82" rx="13" ry="13"/><ellipse cx="147" cy="97" rx="24" ry="6"/></g>
+        <g fill="none" stroke="#99411f" stroke-opacity=".5" stroke-width="1.1" stroke-linecap="round"><path d="M24 43Q31 38 35 29M40 24L47 24M153 96L162 95Q165 87 173 82"/><path d="M31 39L34 35M146 97L149 97" stroke="#cd7940" stroke-width=".6"/></g>
+        <g fill="#78321c" opacity=".55"><circle cx="28" cy="36" r=".8"/><circle cx="33" cy="32" r=".55"/><circle cx="30" cy="43" r=".65"/><circle cx="43" cy="25" r=".6"/><circle cx="167" cy="84" r=".9"/><circle cx="163" cy="90" r=".6"/><circle cx="151" cy="96" r=".75"/></g>
+        <path d="M12 59L18 39Q31 35 36 22H63C80 22 85 11 100 11C115 11 120 22 137 22H164Q169 35 182 39M18 82Q31 87 36 98H63C80 98 85 109 100 109C115 109 120 98 137 98H164" fill="none" stroke="#d9ad75" stroke-opacity=".9" stroke-width=".9"/>
+        <path d="M85 19Q100 5 115 19M85 101Q100 115 115 101" fill="none" stroke="#d6a970" stroke-width="1.2"/>
+        <path d="M83 23H39Q34 38 23 41M117 23H161Q166 38 177 41M23 79Q34 82 39 97H83M177 79Q166 82 161 97H117" fill="none" stroke="#704c2e" stroke-width=".8"/>
+        <g fill="none" stroke="#cda16a" stroke-width=".7"><path d="M79 26H41Q36 40 26 43M121 26H159Q164 40 174 43M26 77Q36 80 41 94H79M174 77Q164 80 159 94H121"/></g>
+        <g fill="none" stroke="#7c5735" stroke-width=".75"><path d="M51 88Q65 84 76 92Q66 91 62 87M149 88Q135 84 124 92Q134 91 138 87"/></g>
+    </svg>`;
+}
+
+function achSilverShieldJewelsHTML() {
+    const id = `bbgl-silver-shield-${achSilverShieldJewelsHTML.serial = (achSilverShieldJewelsHTML.serial || 0) + 1}`;
+    const jewels = [[29, 30, -12], [171, 30, 12]].map(([x, y, angle]) => `<g transform="translate(${x} ${y}) rotate(${angle}) scale(1.05)">
+        <path d="M-5-10H5L9-5V5L5 10H-5L-9 5V-5Z" fill="url(#${id}-rim)" stroke="#52666a" stroke-width=".7"/>
+        <path d="M-4-8H4L7-4V4L4 8H-4L-7 4V-4Z" fill="#087743"/>
+        <path d="M-4-8H4L3-4H-3L-7-4Z" fill="#b0ffd5"/>
+        <path d="M4-8L7-4V4L3 4V-4Z" fill="#23c87a"/>
+        <path d="M7 4L4 8H-4L-3 4Z" fill="#004d30"/>
+        <path d="M-7-4L-3-4V4L-4 8L-7 4Z" fill="#149657"/>
+        <path d="M-3-4H3V4H-3Z" fill="url(#${id}-gem)"/>
+        <path d="M-4-7H3M-6-3V1" fill="none" stroke="#e1ffed" stroke-width=".8"/>
+    </g>`).join('');
+    return `<svg class="bbgl-rank-silver-shield-jewels" viewBox="0 0 200 120" preserveAspectRatio="none" aria-hidden="true"><defs>
+            <linearGradient id="${id}-rim" x1="0" y1="0" x2=".25" y2="1"><stop stop-color="#fff"/><stop offset=".13" stop-color="#d7e3e9"/><stop offset=".23" stop-color="#536975"/><stop offset=".34" stop-color="#c7d5dd"/><stop offset=".48" stop-color="#fff"/><stop offset=".56" stop-color="#eef7fb"/><stop offset=".65" stop-color="#718995"/><stop offset=".8" stop-color="#dce9ef"/><stop offset=".92" stop-color="#435b68"/><stop offset="1" stop-color="#e6f1f6"/></linearGradient>
+            <linearGradient id="${id}-gem" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#8fffc4"/><stop offset=".4" stop-color="#14b969"/><stop offset="1" stop-color="#00582e"/></linearGradient>
+    </defs>${jewels}</svg>`;
+}
+
 function achRankPlaqueHTML(cls, style, tip, revealed, label, textWrapperClass = '') {
     const nameTag = revealed && cls.split(/\s+/).includes('bbgl-title-card-rank-plaque') && cls.split(/\s+/).includes('finish-mill');
     const lightbox = revealed && cls.split(/\s+/).includes('bbgl-title-card-rank-plaque') && cls.split(/\s+/).includes('finish-machined');
-    const steelCrest = revealed && cls.split(/\s+/).includes('bbgl-title-card-rank-plaque') && cls.split(/\s+/).includes('finish-polished');
-    const copperPlaque = revealed && cls.split(/\s+/).includes('bbgl-title-card-rank-plaque') && cls.split(/\s+/).includes('finish-silver');
+    const bronzePlaque = revealed && cls.split(/\s+/).includes('bbgl-title-card-rank-plaque') && cls.split(/\s+/).includes('finish-polished');
+    const silverShield = revealed && cls.split(/\s+/).includes('bbgl-title-card-rank-plaque') && cls.split(/\s+/).includes('finish-silver');
     const goldCrown = revealed && cls.split(/\s+/).includes('bbgl-title-card-rank-plaque') && cls.split(/\s+/).includes('finish-gold');
     const pearlMarquee = revealed && cls.split(/\s+/).includes('bbgl-title-card-rank-plaque') && cls.split(/\s+/).includes('finish-pearl');
     const lines = nameTag
@@ -2149,8 +2191,8 @@ function achRankPlaqueHTML(cls, style, tip, revealed, label, textWrapperClass = 
         : revealed ? achRankPlaqueLabelHTML(label) : '<span class="bbgl-rank-notch-line">?</span>';
     const greeting = nameTag ? '<span class="bbgl-rank-name-tag-heading">Hello, my RANK is...</span>'
         : lightbox ? '<span class="bbgl-rank-lightbox-heading"><span>RANK</span></span>'
-        : steelCrest ? '<span class="bbgl-rank-steel-heading">RANK</span>'
-        : copperPlaque ? '<span class="bbgl-rank-copper-heading">RANK</span>'
+        : bronzePlaque ? `${achBronzePlaqueHTML()}<span class="bbgl-rank-bronze-heading">RANK</span>`
+        : silverShield ? `${achSilverShieldJewelsHTML()}<span class="bbgl-rank-silver-shield-heading">RANK</span>`
         : goldCrown ? `${achGoldCrownHTML()}<span class="bbgl-rank-crown-heading">RANK</span>`
         : pearlMarquee ? `${achPearlMarqueeHTML()}<span class="bbgl-rank-marquee-heading">RANK</span>` : '';
     const inner = greeting + (textWrapperClass ? `<span class="${textWrapperClass}">${lines}</span>` : lines);
@@ -2259,9 +2301,37 @@ function achCurrentRankPlaqueData(atrophy, level) {
     };
 }
 
+function achTitleIdentityHTML(currentRank, titleValue) {
+    return `<div class="bbgl-titles-center">` +
+        `<div class="bbgl-titles-sign"><div class="bbgl-titles-sign-inner">` +
+        `<div class="bbgl-titles-name">${achEsc(achTitlePlayerName())}</div><div class="bbgl-titles-wires"></div>` +
+        `</div></div>` +
+        `<div class="bbgl-title-card" data-sign-stage="0" data-rank-finish="${currentRank.finish}" data-rank-material="${currentRank.material}">` +
+        `<div class="bbgl-title-card-sign"><div class="bbgl-title-card-sign-face">` +
+        `<span class="bbgl-title-card-title-label">The</span><span class="bbgl-title-card-value">${titleValue}</span>` +
+        `</div></div><div class="bbgl-title-card-connector" aria-hidden="true"></div>` +
+        `<div class="bbgl-title-card-rank"><span class="bbgl-title-card-rank-label">Rank</span>${currentRank.html}</div>` +
+        `</div></div>`;
+}
+
+function achLevelBarTooltipHTML(atrophy, level) {
+    const titleHtml = composeStatTitleHTML(getLiveStatTitleSelection());
+    const titleValue = titleHtml
+        ? `<i class="bbgl-lvl-title bbgl-titles-title">${titleHtml}</i>`
+        : `<span class="bbgl-title-card-empty">Unequipped</span>`;
+    return `<div class="bbgl-level-title-tooltip">${achTitleIdentityHTML(achCurrentRankPlaqueData(atrophy, level), titleValue)}</div>`;
+}
+
 // Plain-text milestone scale. Every title sits at the exact level that unlocks it rather than in a
 // visual range beginning at some other coordinate: 0, 20, 40, 60, 80, then Fully Bricked at 100.
 // The symmetric endpoint titles deliberately overhang the groove by half their rendered widths.
+//
+// Each title is boxed in its own .bbgl-rank-title-slot: six equal cells of a grid that is DELIBERATELY
+// wider than the groove (see .bbgl-rank-titles, 04-section-iii-styles.js). The extra width is what the
+// two end titles hang into — a track exactly as wide as the groove would put the 0% and 100% cells
+// half outside it. Slot centres land on the milestones, so this is the same placement the per-title
+// left:N% used to compute inline, now expressed as a box each title owns and can be clipped, wrapped
+// or shrunk inside independently at narrow widths.
 function achTitleLabelsHTML(atrophy, level) {
     const bricked = isFullyBricked(atrophy, level);
     // Rank-name bands own a fixed material ladder on the visible scale — atrophy changes the
@@ -2282,14 +2352,15 @@ function achTitleLabelsHTML(atrophy, level) {
         // line lands in its own .bbgl-rank-notch-line block, which is what makes it wrap instead of
         // running the whole title across one line.
         const inner = b.unlocked ? achRankPlaqueLabelHTML(b.label) : ICONS.LOCK;
-        const left = (b.start / LEVEL_CAP) * 100;
-        return `<div class="${cls}" style="left:${left.toFixed(4)}%" data-tooltip="${achEsc(tip)}"><span class="bbgl-rank-title-text">${inner}</span></div>`;
+        // No inline left any more: the slot's own position on the grid IS the milestone coordinate,
+        // so a hardcoded percentage here would be a second, silently divergent source for it.
+        return `<div class="bbgl-rank-title-slot"><div class="${cls}" data-tooltip="${achEsc(tip)}"><span class="bbgl-rank-title-text">${inner}</span></div></div>`;
     }).join('');
     const capTip = bricked ? 'Fully Bricked · Level 100' : 'Fully Bricked · reach Level 100 at the final atrophy tier';
     // The destination is always named. Its muted/finished state carries the lock information; a
     // lock glyph here would sit on the finish divider and hide what the player is working toward.
     const capInner = achRankPlaqueLabelHTML('Fully Bricked');
-    const cap = `<div class="bbgl-rank-title is-milestone is-endpoint is-capstone material-diamond ${bricked ? 'is-revealed' : 'is-locked'}" style="left:100%" data-tooltip="${achEsc(capTip)}"><span class="bbgl-rank-title-text">${capInner}</span></div>`;
+    const cap = `<div class="bbgl-rank-title-slot"><div class="bbgl-rank-title is-milestone is-endpoint is-capstone material-diamond ${bricked ? 'is-revealed' : 'is-locked'}" data-tooltip="${achEsc(capTip)}"><span class="bbgl-rank-title-text">${capInner}</span></div></div>`;
     return bands + cap;
 }
 
@@ -2396,24 +2467,7 @@ function achBuildPageTitles() {
     const titleValue = titleHtml
         ? `<i class="bbgl-lvl-title bbgl-titles-title">${titleHtml}</i>${resetBtn}`
         : `<span class="bbgl-title-card-empty">Unequipped</span>`;
-    const head = `<div class="bbgl-titles-center">` +
-        `<div class="bbgl-titles-sign">` +
-        `<div class="bbgl-titles-sign-inner">` +
-        `<div class="bbgl-titles-name">${achEsc(achTitlePlayerName())}</div>` +
-        `<div class="bbgl-titles-wires"></div>` +
-        `</div>` +
-        `</div>` +
-        `<div class="bbgl-title-card" data-sign-stage="0" data-rank-finish="${currentRank.finish}" data-rank-material="${currentRank.material}">` +
-        `<div class="bbgl-title-card-sign">` +
-        `<div class="bbgl-title-card-sign-face">` +
-        `<span class="bbgl-title-card-title-label">The</span>` +
-        `<span class="bbgl-title-card-value">${titleValue}</span>` +
-        `</div>` +
-        `</div>` +
-        `<div class="bbgl-title-card-connector" aria-hidden="true"></div>` +
-        `<div class="bbgl-title-card-rank"><span class="bbgl-title-card-rank-label">Rank</span>${currentRank.html}</div>` +
-        `</div>` +
-        `</div>`;
+    const head = achTitleIdentityHTML(currentRank, titleValue);
 
     // Engraved rank scale: no shared backing plate. The thin groove is cut directly into the panel;
     // the live level rides the channel as the low-profile slider knob. rankBarProgressCSS()

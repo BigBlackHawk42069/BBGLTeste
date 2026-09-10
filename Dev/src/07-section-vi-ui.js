@@ -930,8 +930,11 @@
         return y;
     }
 
-    // Last-resort clearance held between the assembly and the floor of its available space, only
-    // ever consumed when the space is too short to actually centre the assembly in.
+    // Clearance held between the assembly and the floor of its available space. At the default
+    // placement bias this is a last resort, only consumed when the space is too short to centre the
+    // assembly in; at a bias of 1 it stops being an emergency measure and becomes the resting gap
+    // itself — the "certain padding off the bottom" a bottom-anchored bar sits at. Overridable per
+    // mode with --bbgl-t-rank-floor.
     const RANK_ASSEMBLY_FLOOR = 5;
 
     // Reference bias (0-1, card-bottoms to page-bottom) used ONLY to measure the label-to-groove
@@ -939,18 +942,30 @@
     // otherwise rescale the label gap along with it, since the gap is a fraction of that distance.
     const RANK_SPACING_REF_BIAS = 0.8;
 
+    // Where the finished block comes to rest in that same 0-1 space, when a mode does not say.
+    // 0.5 is a true midpoint, which is what every mode did before --bbgl-t-rank-bias existed.
+    const RANK_PLACEMENT_BIAS = 0.5;
+
     // Where the rank labels (.bbgl-rank-title) sit in the gap between the cards and the groove,
     // measured UP from the groove (0 = flush with it, 1 = flush with the cards). Biased toward the
     // line rather than a true midpoint, so labels track the groove instead of floating away as
     // --bbgl-t-rank-h grows the gap.
     const TITLE_LABEL_BIAS = 0.42;
 
-    // Centres the visible rank assembly (groove + readout; plaques are hidden today, see
+    // Places the visible rank assembly (groove + readout; plaques are hidden today, see
     // .bbgl-rank-notches) in the space below the stat cards, in two passes: pass 1 freezes the
     // label-to-groove spacing at a fixed reference placement, pass 2 treats labels+groove as one
-    // rigid block and centres that block. Doing it in one pass (just moving the groove) would let
+    // rigid block and places that block. Doing it in one pass (just moving the groove) would let
     // the label gap rescale with it. Clamped at both ends so a short space hugs the floor instead
     // of overflowing. Only the groove's local Y is written; the box itself stays in normal flow.
+    //
+    // WHERE pass 2 puts the block is --bbgl-t-rank-bias, on the same 0-1 card-bottoms-to-page-bottom
+    // scale pass 1 already used. It matters because the space this solves in is not fixed: as a
+    // panel narrows, the stat cards above shrink and hand their height back, which grows the region
+    // from the top. Centring in a growing region means the bar climbs away from the page's bottom
+    // edge and the freed height is split into dead air above and below it. A bias of 1 pins the
+    // block to the floor instead, so that height stays in one piece at the top where the cards can
+    // be given it back. Modes that want the old midpoint simply say nothing.
     function layoutRankBarCenter() {
         const page = document.querySelector('.bbgl-titles-page');
         const scale = page && page.querySelector('.bbgl-rank-scale');
@@ -1023,10 +1038,15 @@
             ? Math.max(assemblyBottom, labelCenter + Math.max(...labelHeights) / 2)
             : assemblyBottom;
 
-        // ─── Pass 2: centre the rigid block ──────────────────────────────────
-        // Labels and groove now move together, so this is a plain midpoint match on the block.
+        // ─── Pass 2: place the rigid block ───────────────────────────────────
+        // Labels and groove now move together, so this is a plain target match on the block, at the
+        // same bias shape pass 1 used above. At the 0.5 default the target IS the midpoint, exactly
+        // what this computed before the bias existed; at 1 the floor clamp below is what the result
+        // lands on, which is precisely the bottom-anchored resting position.
         // Clamped against the block's edges, not the bare assembly's — labels reach the cards first.
-        let drop = (availableTop + availableBottom) / 2 - (blockTop + blockBottom) / 2;
+        const biasValue = parseFloat(getComputedStyle(scale).getPropertyValue('--bbgl-t-rank-bias'));
+        const placeBias = Number.isFinite(biasValue) ? biasValue : RANK_PLACEMENT_BIAS;
+        let drop = availableTop + (availableBottom - availableTop) * placeBias - (blockTop + blockBottom) / 2;
         drop = Math.max(drop, availableTop - blockTop);
         drop = Math.min(drop, availableBottom - assemblyFloor - blockBottom);
 
@@ -1111,9 +1131,11 @@
         if (boxes.some(b => b === null)) return false;
 
         // Everything here is in the groove's own coordinate space: 0 is its left end, trackW its
-        // right. The groove is inset from the panel by --bbgl-t-track-side-pad on each side (that is
-        // exactly what offsetLeft reads), so the panel edges sit at -sidePad and trackW + sidePad,
-        // and the walls are RANK_SHELF_WALL inside those.
+        // right. The groove is inset from the panel by --bbgl-t-rank-edge plus half a title slot on
+        // each side (see .bbgl-rank-line, 04-section-iii-styles.js), and that inset is exactly what
+        // offsetLeft reads, so the panel edges sit at -sidePad and trackW + sidePad, and the walls
+        // are RANK_SHELF_WALL inside those. Read, never assumed, so the derived inset above can
+        // change shape without this needing to know the formula.
         const sidePad = line.offsetLeft;
         const wallL = -sidePad + RANK_SHELF_WALL;
         const wallR = trackW + sidePad - RANK_SHELF_WALL;
@@ -1352,27 +1374,7 @@
         }
         bar.container.dataset.atrophy = atrophy;
         bar.container.dataset.level = level;
-        // Single-spaced around the bullet: the spec line renders letterspaced in the plaque, so the
-        // old double spaces read as a gap there.
-        const lvLine = level >= 100 ? 'Level 100 • Max' : `Level ${level} • ${Math.round(pct)}%`;
-        // Each word carries its own data-title-phase, driving the dull-silver-to-iridescent-diamond
-        // finish per word in 04-section-iii-styles.js — the two slots are chosen independently, so
-        // a Phase 1 adjective can sit next to a Phase 9 noun and each shows its own tier.
-        const statTitleWords = composeStatTitleHTML(getLiveStatTitleSelection());
-        const statTitleHtml = statTitleWords ? `<i class="bbgl-lvl-title">${statTitleWords}</i>` : '';
-        // Vitrified glaze is reserved for the true end state (A2 at the cap, "Fully Bricked") rather
-        // than every tier's cap: it's then a genuinely once-ever finish, and it almost never has to
-        // share the plaque with a Phase 9 title's rainbow.
-        const vitrified = isFullyBricked(atrophy, level) ? ' is-vitrified' : '';
-        // data-tooltip (not -html): the mobile touch handler only reveals this attribute on a
-        // quick tap, not the 400ms hold -html needs. #bbgl-tooltip:has(.bbgl-plaque) in
-        // 04-section-iii-styles.js strips the shared tooltip chrome so this one can draw its own
-        // graphite plaque instead.
-        bar.container.setAttribute('data-tooltip',
-            `<div class="bbgl-plaque">` +
-            `<i class="bbgl-lvl-rank${vitrified}" style="${rankHardenCSS(atrophy, level)}">${atrophyTitle(atrophy, level)}</i>` +
-            `${statTitleHtml}` +
-            `<div class="bbgl-plaque-spec">${lvLine}</div></div>`);
+        bar.container.setAttribute('data-tooltip', achLevelBarTooltipHTML(atrophy, level));
     }
 
     // renderLevelBar() alone always animates the width change via the fill's CSS transition —
