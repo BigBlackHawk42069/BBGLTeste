@@ -1,6 +1,6 @@
 # AGENTS.md
 
-This file provides guidance to Codex (Codex.ai/code) when working with code in this repository.
+This file provides guidance to any coding agent (Claude Code, Codex, or similar) when working with code in this repository.
 
 ## Build System
 
@@ -82,7 +82,7 @@ All localStorage keys are namespaced under `bbgl_` and defined in the `KEYS` con
 
 `meta.rewardStartDate` (Unix seconds, stored in DB meta) is the single source of truth for when reward eligibility begins. It's stamped to "now" exactly once, the first time `logStartDate` is unset — i.e. on the first sync after a fresh install *or* after Clear Data/Factory Reset. `getInstallWeekKey()` converts it to a week key; both sticker awards and `careerLevelExp` are gated to weeks on or after this key.
 
-`rewardStartDate` is deliberately decoupled from `userConfig.privacyAgreed`: `privacyAgreed` survives Clear Data (so the privacy modal doesn't re-trigger), but `rewardStartDate` does not — it resets on every clear so a cleared-and-reconstructed log can't re-farm rewards for days it was already credited for. `logStartDate` (also in DB meta) tracks the oldest reconstructed log entry and *can* be pushed earlier by Backfill — `rewardStartDate` never moves, backfilled pre-reward-date days display normally but are not reward-eligible. `getInstallWeekKey()` falls back to `null` (no gating) only if `rewardStartDate` is missing, which init()'s self-healing of `privacyAgreed` makes rare in practice but does not itself set.
+`rewardStartDate` is deliberately decoupled from `userConfig.privacyAgreed`: `privacyAgreed` survives Clear Data (so the privacy modal doesn't re-trigger), but `rewardStartDate` does not — it resets on every clear so a cleared-and-reconstructed log can't re-farm rewards for days it was already credited for. `logStartDate` (also in DB meta) tracks the oldest reconstructed log entry and *can* be pushed earlier by Backfill — `rewardStartDate` never moves, backfilled pre-reward-date days display normally but are not reward-eligible. `getInstallWeekKey()` falls back to `null` (no gating) only if `rewardStartDate` is missing — `importData()`'s self-healing of `privacyAgreed` (06-section-v-logic.js, not `init()`) makes an undefined `privacyAgreed` rare in practice, but does not itself set `rewardStartDate`.
 
 ### CSS
 
@@ -99,3 +99,13 @@ All dev-only tooling lives in `Dev/src/11-section-x-devtools.js` and nowhere els
 The only production-code contact point is a single guarded call in `init()` (`10-section-ix-init.js`): `if (typeof window.initDevTools === 'function') window.initDevTools();`. In the release build that guard just short-circuits.
 
 `Perf`, `Log.debug`/`Log.group`, and `isDevMode()`/`runtime.devMode` are deliberately **not** part of this split — they're inert no-ops when `devMode` is off, and their call sites are threaded through too many production hot paths (graph draw, panel render, sync, etc.) to be worth stripping for negligible size savings. They ship in both builds.
+
+## Comment & Documentation Policy
+
+Source comments exist for developer sanity, with one exception: `05-section-iv-data.js` is the sole **user-facing** section. Its notes exist purely so a non-programmer can read the source and verify the project's claims about how their Torn API key and training log data are handled. Keep those notes short, in plain language, and scoped only to API key handling, what's fetched/sent over the network, and where/how log data is stored or deleted — everything else in that file is ordinary internal commentary and follows the general rule below.
+
+Everywhere else, comments should stay terse: no restating what the code already says, no "was X, now Y" change history, no speculative "intended for" / "plan is to" language describing unconfirmed future work, and no embedded multi-line code examples (a one-line structural shape like `{ id, date, value }` is fine; a duplicated code block is not). Keep a comment only when it encodes something the code can't say for itself — a hidden constraint, an invariant, an ordering dependency, or the reason a rejected alternative didn't work.
+
+`04-section-iii-styles.js` (Styles) has nothing security-relevant in it, so it doesn't serve the transparency purpose the Data section exists for — in source, its comments just follow the general terse-dev-comment rule above like any other file. The **shipped release build** is held to a stricter standard, though: no prose at all should reach `Dev/BBGLRelease.js` / `BigBlackGymLog.js` for this file. The only things that belong in the built output's `CSS_STYLES` template literal are the CSS rules themselves and the purely decorative ASCII (the head art, the shaft's `/*---*/` fill, and the balls art at the bottom) — plus the file's own `[SECTION III]` banner, same as every other section's banner. Today nothing in `build-root.js` actually enforces this distinction (it preserves every comment in this file verbatim, decorative or not) — so until that's built, the practical way to guarantee the release output is clean is to keep the source itself free of prose here, or add real strip logic to `build-root.js`. Whichever path is taken, don't assume this is already handled.
+
+**Build-time mechanics** (`build-root.js`): `04-section-iii-styles.js` and `05-section-iv-data.js` are both in `VERBATIM_FILES` — emitted whole into both minified builds (`Dev/BBGLRelease.js` and the root `BigBlackGymLog.js`), never comment-stripped. Every other section's comments are stripped by the collapse-to-one-line pass, except each file's `[SECTION ...]` banner, which `isSectionHeader()` preserves everywhere regardless. Because Styles and Data ship verbatim, their comment content directly affects shipped file size — keep that in mind before adding anything to either one.

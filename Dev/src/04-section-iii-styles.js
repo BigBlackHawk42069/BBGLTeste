@@ -669,7 +669,6 @@
                         --bbgl-f-top-mb: 1px;
                         --bbgl-bot-minh: 12px;
                         --bbgl-col-gap: 8px;
-                        --bbgl-gx: clamp(7px, calc(7px + 5px * var(--bbgl-dock-t, 0)), 12px);
                         --bbgl-label-case: uppercase;
                         container-type: inline-size;
                         container-name: bbgl-panel;
@@ -695,20 +694,31 @@
                     }
 
                     #bbgl-panel.bbgl-expanded {
-                        --bbgl-f-label: clamp(12px, calc(12px + 1.5px * var(--bbgl-dock-t)), 13.5px);
-                        --bbgl-f-top: clamp(12px, calc(12px + 1.5px * var(--bbgl-dock-t)), 13.5px);
-                        --bbgl-f-bot: clamp(10px, calc(10px + 1.5px * var(--bbgl-dock-t)), 11.5px);
+                        --bbgl-f-label: clamp(13px, calc(13px + 1.5px * var(--bbgl-dock-t)), 14.5px);
+                        --bbgl-f-top: clamp(13px, calc(13px + 1.5px * var(--bbgl-dock-t)), 14.5px);
+                        --bbgl-f-bot: clamp(11px, calc(11px + 1.5px * var(--bbgl-dock-t)), 12.5px);
                         --bbgl-f-top-mb: 3px;
                         --bbgl-bot-minh: 14px;
                         --bbgl-label-case: none;
-                        --bbgl-top-h: 177px;
-                        --bbgl-top-h-tall: 241px;
+                        --bbgl-top-h: 241px;
                         /* Toolbar band height, and since #bbgl-toolbar's children all centre against it, the
                            icon row's vertical position in this mode. Derived, not eyeballed: it is the gap the
                            icons used to carry above them, plus the tallest SVG, plus that same gap again
                            (5.5 + 16 + 5.5). Centring in a band built that way lands the row on precisely the
                            top offset it had before it was centred, with matching clearance underneath. */
                         --bbgl-toolbar-h: 27px;
+                        --bbgl-ledger-footer-pb: 4px;
+                        /* Left inset of the icon row, and the even gap between its icons. The pad
+                           mirrors #bbgl-copy-btn's right offset in this mode, so the band's two
+                           clusters sit symmetrically against their edges. */
+                        /* #bbgl-top-panel's own top padding. Named because the graph box subtracts
+                           it to line its ceiling up with the bottom of the toolbar band. */
+                        --bbgl-top-pt: 20px;
+                        --bbgl-toolbar-pad: 10px;
+                        --bbgl-toolbar-gap: 11px;
+                        /* Minimum clearance the band's space-between keeps between its left cluster
+                           (icons + graph mode pills) and the right-hand stat pills. */
+                        --bbgl-toolbar-min-gap: 12px;
                         width: min(576px, calc(100vw - 20px));
                         height: 633px;
                         max-height: calc(100vh - 50px) !important;
@@ -717,27 +727,26 @@
                     }
 
                     /* #bbgl-top-panel's non-flow (position:absolute) height and #bbgl-bottom-panel/
-                       #bbgl-item-viewer's offset both read these two variables, so the header can
-                       never grow (tall mode) without the panels beneath it staying put in lockstep -
-                       see the #bbgl-top-panel rules below for how they're consumed. */
+                       #bbgl-item-viewer's offset both read this one variable, so the header can
+                       never change height without the panels beneath it staying put in lockstep -
+                       see the #bbgl-top-panel rules below for how it's consumed. */
                     #bbgl-panel.bbgl-compact {
-                        --bbgl-top-h: 30%;
-                        --bbgl-top-h-tall: 40%;
-                        /* 5.5 + 14 + 5.5, same derivation as --bbgl-toolbar-h on .bbgl-expanded above. */
-                        --bbgl-toolbar-h: 25px;
-                    }
-
-                    #bbgl-panel.bbgl-tall {
+                        /* These four were on .bbgl-tall, which matched compact and expanded alike -
+                           but expanded overrode every one of them, so compact was the only mode they
+                           ever reached. They belong here now: left at panel level they would sit after
+                           .bbgl-expanded at equal specificity and win by source order. */
                         --bbgl-f-label: 11px;
                         --bbgl-f-top: 11px;
                         --bbgl-f-bot: 10px;
                         --bbgl-col-gap: 13px;
-                    }
-
-                    #bbgl-panel.bbgl-tall.bbgl-expanded {
-                        --bbgl-f-label: clamp(13px, calc(13px + 1.5px * var(--bbgl-dock-t)), 14.5px);
-                        --bbgl-f-top: clamp(13px, calc(13px + 1.5px * var(--bbgl-dock-t)), 14.5px);
-                        --bbgl-f-bot: clamp(11px, calc(11px + 1.5px * var(--bbgl-dock-t)), 12.5px);
+                        --bbgl-top-h: 40%;
+                        /* 5.5 + 14 + 5.5, same derivation as --bbgl-toolbar-h on .bbgl-expanded above. */
+                        --bbgl-toolbar-h: 25px;
+                        --bbgl-ledger-footer-pb: 3px;
+                        --bbgl-top-pt: 18px;
+                        --bbgl-toolbar-pad: 8px;
+                        --bbgl-toolbar-gap: 11px;
+                        --bbgl-toolbar-min-gap: 12px;
                     }
 
                     #bbgl-panel.bbgl-mode-page {
@@ -746,6 +755,18 @@
                            same gap + SVG + gap derivation: 4.5 + 14.5 + 4.5 = 23.5 at the low end, 10 + 18 + 10
                            = 38 at the high end. */
                         --bbgl-toolbar-h: clamp(23.5px, calc(23.5px + 14.5px * var(--bbgl-page-t)), 38px);
+                        --bbgl-ledger-footer-pb: clamp(4px, calc(4px + 2px * var(--bbgl-page-t)), 6px);
+                        --bbgl-sticker-footer-h: clamp(24px, calc(24px + 10px * var(--bbgl-page-t)), 34px);
+                        --bbgl-sticker-footer-gap: clamp(2px, calc(2px + 2px * var(--bbgl-page-t)), 4px);
+                        --bbgl-sticker-row-gap: clamp(4px, calc(4px + 4px * var(--bbgl-page-t)), 8px);
+                        /* Page mode grows its header padding with --bbgl-page-t rather than holding
+                           the 2px base, so the graph box subtracts the same curve the header is laid
+                           out against - see #bbgl-panel.bbgl-mode-page #bbgl-top-panel above, which
+                           reads this now instead of restating the clamp. */
+                        --bbgl-top-pt: clamp(2px, calc(2px + 18px * var(--bbgl-page-t)), 20px);
+                        --bbgl-toolbar-pad: 12px;
+                        --bbgl-toolbar-gap: clamp(10px, calc(10px + 4px * var(--bbgl-page-t)), 14px);
+                        --bbgl-toolbar-min-gap: 16px;
                         position: relative !important;
                         top: 0 !important;
                         left: 0 !important;
@@ -803,7 +824,7 @@
                         border-radius: 0;
                         display: flex;
                         flex-direction: column;
-                        padding-top: clamp(2px, calc(2px + 18px * var(--bbgl-page-t)), 20px) !important;
+                        padding-top: var(--bbgl-top-pt, 2px) !important;
                         overflow: hidden !important;
                         box-shadow: inset 0 0 40px rgba(0, 0, 0, .95);
                     }
@@ -882,17 +903,6 @@
                         width: 100% !important;
                     }
 
-                    #bbgl-panel.bbgl-mode-page .ledger-content:not(#bbgl-achievements-container) {
-                        height: auto;
-                        overflow: visible !important;
-                        align-content: flex-start;
-                        grid-template-rows: 1fr;
-                        padding-top: clamp(12px, calc(18px - 6px * var(--bbgl-page-t)), 18px) !important;
-                        padding-bottom: clamp(8px, calc(8px + 15px * var(--bbgl-page-t)), 23px);
-                        padding-left: 4px !important;
-                        padding-right: 4px !important;
-                    }
-
                     #bbgl-panel.bbgl-mode-page #bbgl-achievements-container {
                         --bbgl-ach-container-pt: clamp(19px, calc(28px - 9px * var(--bbgl-page-t)), 28px);
                     }
@@ -933,13 +943,6 @@
                         bottom: clamp(4px, calc(4px + 2px * var(--bbgl-page-t)), 6px);
                     }
 
-                    #bbgl-panel.bbgl-mode-page #bbgl-graph-container {
-                        padding-top: clamp(12px, calc(19px - 7px * var(--bbgl-page-t)), 19px);
-                        padding-bottom: clamp(10px, calc(10px + 2px * var(--bbgl-page-t)), 13px);
-                        padding-left: clamp(4px, calc(4px + 5px * var(--bbgl-page-t)), 10px);
-                        padding-right: clamp(4px, calc(4px + 5px * var(--bbgl-page-t)), 10px);
-                    }
-
                     @container bbgl-panel (max-width:499px) {
 
                         #bbgl-panel.bbgl-mode-page .bbgl-header-wrapper,
@@ -950,34 +953,8 @@
                     }
 
                     .bbgl-mode-page #bbgl-close-btn,
-                    .bbgl-mode-page #bbgl-pop-btn,
-                    .bbgl-mode-page #bbgl-tall-toggle {
+                    .bbgl-mode-page #bbgl-pop-btn {
                         display: none !important;
-                    }
-
-                    .bbgl-mode-page #bbgl-ledger-toggle,
-                    .bbgl-mode-page #bbgl-graph-toggle,
-                    .bbgl-mode-page #bbgl-achievements-toggle,
-                    .bbgl-mode-page #bbgl-sticker-toggle,
-                    .bbgl-mode-page #bbgl-copy-btn {
-                        opacity: 1 !important;
-                        pointer-events: auto !important;
-                    }
-
-                    .bbgl-mode-page #bbgl-ledger-toggle {
-                        left: 10px !important;
-                    }
-
-                    .bbgl-mode-page #bbgl-graph-toggle {
-                        left: clamp(34px, calc(34px + 6px * var(--bbgl-page-t)), 40px) !important;
-                    }
-
-                    .bbgl-mode-page #bbgl-achievements-toggle {
-                        left: clamp(58px, calc(58px + 12px * var(--bbgl-page-t)), 70px) !important;
-                    }
-
-                    .bbgl-mode-page #bbgl-sticker-toggle {
-                        left: clamp(82px, calc(82px + 18px * var(--bbgl-page-t)), 100px) !important;
                     }
 
                     body.bbgl-page-mode-active {
@@ -1204,6 +1181,7 @@
                         pointer-events: none;
                         display: none;
                         white-space: normal;
+                        box-sizing: border-box;
                         height: auto;
                         width: -moz-fit-content;
                         width: fit-content;
@@ -1609,15 +1587,15 @@
                         overflow: hidden;
                         display: flex;
                         flex-direction: column;
-                        padding-top: 2px;
+                        padding-top: var(--bbgl-top-pt, 2px);
                         padding-bottom: 0px;
                         transition: height .3s, padding-top .3s;
                         z-index: 25;
                     }
 
-                    /* Taken out of flex flow so its height (incl. tall mode's growth) never
-                       displaces #bbgl-bottom-panel/#bbgl-item-viewer below it - they read the
-                       same --bbgl-top-h instead of flexing in response to this element. Page
+                    /* Taken out of flex flow so its height never displaces
+                       #bbgl-bottom-panel/#bbgl-item-viewer below it - they read the same
+                       --bbgl-top-h instead of flexing in response to this element. Page
                        mode is excluded: #bbgl-content-wrapper is display:contents there, so this
                        element flows as a direct flex child of #bbgl-panel via its own rule. */
                     #bbgl-panel:not(.bbgl-mode-page) #bbgl-top-panel {
@@ -1626,17 +1604,8 @@
                         left: 0;
                         right: 0;
                         height: var(--bbgl-top-h);
-                    }
-
-                    #bbgl-panel.bbgl-tall:not(.bbgl-mode-page) #bbgl-top-panel {
-                        height: var(--bbgl-top-h-tall);
                         box-shadow: 0 5px 15px rgba(0, 0, 0, .5), inset 0 0 40px rgba(0, 0, 0, .95);
                         border-bottom: 1px solid #333;
-                        padding-top: 18px;
-                    }
-
-                    #bbgl-panel.bbgl-expanded.bbgl-tall:not(.bbgl-mode-page) #bbgl-top-panel {
-                        padding-top: 20px;
                     }
 
                     /* #bbgl-item-viewer takes #bbgl-bottom-panel's slot while viewing an active
@@ -1653,15 +1622,6 @@
                         bottom: 0;
                         height: auto;
                         transition: top .3s;
-                    }
-
-                    /* Tall mode grows #bbgl-top-panel to --bbgl-top-h-tall (above), so the panels
-                       beneath it must offset from that same taller value instead of the short
-                       --bbgl-top-h - otherwise their top edge sits under the header at the short-mode
-                       boundary regardless of how tall the header actually grew. */
-                    #bbgl-panel.bbgl-tall:not(.bbgl-mode-page) #bbgl-bottom-panel,
-                    #bbgl-panel.bbgl-tall:not(.bbgl-mode-page) #bbgl-item-viewer {
-                        top: var(--bbgl-top-h-tall);
                     }
 
                     /* Dedicated box for the SVG toolbar row (view-switcher icons, item counters,
@@ -1702,29 +1662,85 @@
                         height: var(--bbgl-toolbar-h, 20px);
                         z-index: 60;
                         pointer-events: none;
+                        /* Laid out as a row with its two in-flow clusters pushed to opposite ends:
+                           #bbgl-toolbar-icons on the left (which carries the graph's .g-mode pills
+                           behind the icons in graph view), .g-stat on the right. space-between puts
+                           the leftover width in the middle, which is why neither cluster needs its
+                           width measured or its position tuned per mode, and this gap is the floor
+                           on how close they can ever get. #bbgl-item-counters and #bbgl-copy-btn
+                           stay absolutely positioned and sit outside this flow entirely; neither is
+                           ever on screen at the same time as the pills (both are display:none in
+                           graph view).
+
+                           The left/right insets are margins on the children rather than padding
+                           here, deliberately: padding would move the padding box that those two
+                           absolutely positioned children resolve their right: offsets against. */
+                        display: flex;
+                        align-items: center;
+                        justify-content: space-between;
+                        gap: var(--bbgl-toolbar-min-gap, 12px);
                         background: linear-gradient(180deg,
                             rgba(0, 0, 0, var(--bbgl-toolbar-shade, .5)) 0%,
                             rgba(0, 0, 0, calc(var(--bbgl-toolbar-shade, .5) * .42)) 55%,
                             rgba(0, 0, 0, 0) 100%);
                     }
 
-                    #bbgl-tall-toggle,
+                    /* The four view-switcher icons: one left-justified row with an even gap. Their
+                       horizontal placement is now two numbers - --bbgl-toolbar-pad and
+                       --bbgl-toolbar-gap - in place of the twenty hand-tuned left values spread
+                       across five rule sets that this replaced. flex:0 0 auto holds each icon at its
+                       declared width instead of letting a narrow panel squeeze the row.
+
+                       In #bbgl-toolbar's flex flow rather than positioned, so space-between can hold
+                       it and .g-stat apart; the band's align-items:center puts it on the same
+                       centreline every other child of the band sits on. In graph view this row also
+                       carries .g-mode, which picks up the gap below and so trails the icons at the
+                       same spacing they keep between themselves.
+
+                       No z-index on purpose: leaving it auto keeps this from opening a stacking
+                       context of its own, so the icons' z-index:59 still resolves inside
+                       #bbgl-toolbar's context exactly as it did when they were its direct children. */
+                    #bbgl-toolbar-icons {
+                        /* Neither cluster shrinks. If they ever did outgrow the band together, a
+                           shrinking row would spill its nowrap pills back over its neighbour; held
+                           rigid, a flex overflow runs off the end instead and everything keeps its
+                           position and its clearance. */
+                        flex: 0 0 auto;
+                        /* Spans the band's full height rather than shrinking to its tallest child,
+                           so .g-hud-sep's percentage height is measured against the band. The row's
+                           own align-items:center still puts the icons on the band's centreline. */
+                        align-self: stretch;
+                        margin-left: var(--bbgl-toolbar-pad, 8px);
+                        display: flex;
+                        align-items: center;
+                        gap: var(--bbgl-toolbar-gap, 11px);
+                    }
+
+                    #bbgl-toolbar-icons > div {
+                        flex: 0 0 auto;
+                    }
+
+                    /* #bbgl-copy-btn keeps the absolute centring the icons used to share with it: it
+                       is right-anchored to the panel edge in every mode, not part of the left
+                       cluster. Pinned to both edges with auto block margins, which is what centres an
+                       absolutely positioned box of known height in its containing block - done this
+                       way rather than top:50% + translateY(-50%) so it never collides with the
+                       transform:scale(1.15) it carries in tall mode. */
+                    #bbgl-copy-btn {
+                        position: absolute;
+                        top: 0;
+                        bottom: 0;
+                        margin-top: auto;
+                        margin-bottom: auto;
+                    }
+
+                    /* Shared look for every toolbar control. Position deliberately isn't here any
+                       more - see the two rules above. */
                     #bbgl-ledger-toggle,
                     #bbgl-graph-toggle,
                     #bbgl-achievements-toggle,
                     #bbgl-sticker-toggle,
                     #bbgl-copy-btn {
-                        position: absolute;
-                        /* Vertical placement for every toolbar child is this one rule now: pinned to both
-                           edges of #bbgl-toolbar with auto block margins, which is what centres an absolutely
-                           positioned box of known height inside its containing block. Done this way rather
-                           than top:50% + translateY(-50%) so it never collides with the transform:scale(1.15)
-                           the active view's icon carries. Every hand-tuned per-mode top value that used to
-                           live across four rule sets is gone - move --bbgl-toolbar-h and the row follows. */
-                        top: 0;
-                        bottom: 0;
-                        margin-top: auto;
-                        margin-bottom: auto;
                         color: rgba(255, 255, 255, .55);
                         cursor: pointer;
                         z-index: 60;
@@ -1736,7 +1752,6 @@
                         justify-content: center;
                     }
 
-                    #bbgl-tall-toggle:hover,
                     #bbgl-ledger-toggle:hover,
                     #bbgl-graph-toggle:hover,
                     #bbgl-achievements-toggle:hover,
@@ -1745,25 +1760,19 @@
                         color: rgba(255, 255, 255, 1);
                     }
 
-                    #bbgl-tall-toggle {
-                        left: 3px;
-                        font-size: 15px;
-                        font-weight: 700;
-                        width: 19px;
-                        height: 19px;
-                        /* #bbgl-toolbar is pointer-events:none; every other child of it already
-                           re-enables its own, this one relied on the default. */
-                        pointer-events: auto;
-                    }
-
                     #bbgl-ledger-toggle,
                     #bbgl-graph-toggle,
                     #bbgl-achievements-toggle,
                     #bbgl-sticker-toggle,
                     #bbgl-copy-btn {
                         z-index: 59;
-                        opacity: 0;
-                        pointer-events: none;
+                        /* Visible unconditionally now. These used to start hidden and be revealed
+                           by .bbgl-tall (plus an !important page-mode copy of the same thing); with
+                           the short header gone there is no state left in which a toolbar icon is
+                           hidden. pointer-events has to be re-stated here rather than left at the
+                           default because #bbgl-toolbar is pointer-events:none. */
+                        opacity: 1;
+                        pointer-events: auto;
                         transition: opacity .3s cubic-bezier(.25, .8, .25, 1), color .15s, filter .15s, transform .15s;
                     }
 
@@ -1807,69 +1816,32 @@
                         transform: scale(1.15);
                     }
 
-                    .bbgl-tall #bbgl-ledger-toggle {
-                        left: 32px;
-                        opacity: 1;
-                        pointer-events: auto;
-                    }
-
-                    .bbgl-tall #bbgl-graph-toggle {
-                        left: 57px;
-                        opacity: 1;
-                        pointer-events: auto;
-                    }
-
-                    .bbgl-tall #bbgl-achievements-toggle {
-                        left: 82px;
-                        opacity: 1;
-                        pointer-events: auto;
-                    }
-
-                    .bbgl-tall #bbgl-sticker-toggle {
-                        left: 107px;
-                        opacity: 1;
-                        pointer-events: auto;
-                    }
-
-                    .bbgl-tall #bbgl-copy-btn {
+                    #bbgl-panel:not(.bbgl-mode-page) #bbgl-copy-btn {
                         right: 8px;
-                        opacity: 1;
-                        pointer-events: auto;
                         transform: scale(1.15);
                     }
 
-                    .bbgl-expanded #bbgl-tall-toggle {
-                        left: 3px;
-                        font-size: 15px;
-                        width: 19px;
-                        height: 19px;
-                    }
-
-                    .bbgl-expanded.bbgl-tall #bbgl-ledger-toggle {
+                    .bbgl-expanded #bbgl-ledger-toggle {
                         width: 15.5px;
                         height: 15.5px;
-                        left: 32px;
                     }
 
-                    .bbgl-expanded.bbgl-tall #bbgl-graph-toggle {
+                    .bbgl-expanded #bbgl-graph-toggle {
                         width: 16px;
                         height: 15px;
-                        left: clamp(56px, calc(56px + 4px * var(--bbgl-dock-t)), 60px);
                     }
 
-                    .bbgl-expanded.bbgl-tall #bbgl-achievements-toggle {
+                    .bbgl-expanded #bbgl-achievements-toggle {
                         width: 15.5px;
                         height: 15.5px;
-                        left: clamp(80px, calc(80px + 8px * var(--bbgl-dock-t)), 88px);
                     }
 
-                    .bbgl-expanded.bbgl-tall #bbgl-sticker-toggle {
+                    .bbgl-expanded #bbgl-sticker-toggle {
                         width: 16px;
                         height: 15px;
-                        left: clamp(104px, calc(104px + 12px * var(--bbgl-dock-t)), 116px);
                     }
 
-                    .bbgl-expanded.bbgl-tall #bbgl-copy-btn {
+                    #bbgl-panel.bbgl-expanded:not(.bbgl-mode-page) #bbgl-copy-btn {
                         width: 15.5px;
                         height: 15.5px;
                         right: 10px;
@@ -1882,22 +1854,6 @@
                     #bbgl-panel.bbgl-mode-page #bbgl-copy-btn {
                         width: clamp(14.5px, calc(14.5px + 3.5px * var(--bbgl-page-t)), 18px);
                         height: clamp(14.5px, calc(14.5px + 3.5px * var(--bbgl-page-t)), 18px);
-                    }
-
-                    #bbgl-panel.bbgl-mode-page #bbgl-ledger-toggle {
-                        left: 32px;
-                    }
-
-                    #bbgl-panel.bbgl-mode-page #bbgl-graph-toggle {
-                        left: 62px;
-                    }
-
-                    #bbgl-panel.bbgl-mode-page #bbgl-achievements-toggle {
-                        left: 92px;
-                    }
-
-                    #bbgl-panel.bbgl-mode-page #bbgl-sticker-toggle {
-                        left: 122px;
                     }
 
                     #bbgl-panel.bbgl-mode-page #bbgl-copy-btn {
@@ -1956,6 +1912,29 @@
                         pointer-events: none;
                         z-index: 50;
                         transition: font-size .3s;
+                    }
+
+                    #bbgl-ledger-footer {
+                        position: absolute;
+                        right: 0;
+                        bottom: 0;
+                        left: 0;
+                        height: var(--bbgl-toolbar-h);
+                        padding: 0 8px var(--bbgl-ledger-footer-pb);
+                        box-sizing: border-box;
+                        display: flex;
+                        align-items: flex-end;
+                        justify-content: space-between;
+                        gap: 8px;
+                        pointer-events: none;
+                        z-index: 50;
+                    }
+
+                    #bbgl-ledger-footer .ui-floating-label,
+                    #bbgl-ledger-footer .ui-floating-summary {
+                        position: static;
+                        min-width: 0;
+                        white-space: nowrap;
                     }
 
                     .ui-floating-label {
@@ -2033,16 +2012,35 @@
                         padding-bottom: 26px;
                     }
 
+                    #bbgl-panel #bbgl-ledger-view {
+                        position: absolute;
+                        top: var(--bbgl-toolbar-h);
+                        right: 0;
+                        bottom: var(--bbgl-toolbar-h);
+                        left: 0;
+                        height: auto;
+                        flex: none;
+                        grid-template-rows: minmax(0, 1fr);
+                        padding: 0 2px;
+                        overflow: hidden;
+                    }
+
+                    #bbgl-panel.bbgl-mode-page #bbgl-ledger-view {
+                        padding: 0 4px !important;
+                        overflow: hidden !important;
+                        align-content: normal;
+                    }
+
                     /* Achievements keeps its own flat top padding in tall mode (unlike the
                        ledger, which no longer needs a tall-specific override - see .stat-column).
                        Bumped up from a flat 3px to push content down into the vertical space
                        freed by the pagination dots moving into the toolbar row - compact gets a
                        smaller bump than expanded since it has less room to spare. */
-                    #bbgl-panel.bbgl-tall.bbgl-expanded #bbgl-achievements-container {
+                    #bbgl-panel.bbgl-expanded #bbgl-achievements-container {
                         --bbgl-ach-container-pt: 18px;
                     }
 
-                    #bbgl-panel.bbgl-tall.bbgl-compact #bbgl-achievements-container {
+                    #bbgl-panel.bbgl-compact #bbgl-achievements-container {
                         --bbgl-ach-container-pt: 11px;
                     }
 
@@ -2157,7 +2155,7 @@
                     }
 
                     .bbgl-mode-page .rate-pct,
-                    .bbgl-expanded.bbgl-tall .rate-pct {
+                    .bbgl-expanded .rate-pct {
                         display: inline !important;
                     }
 
@@ -2248,16 +2246,12 @@
                     }
 
                     .viewing-graph #bbgl-graph-container {
-                        padding: 3px calc(var(--bbgl-gx, 10px) - 2px) 9px calc(var(--bbgl-gx, 10px) - 2px);
+                        padding: calc(var(--bbgl-toolbar-h) - var(--bbgl-top-pt) + 4px) calc(var(--bbgl-toolbar-pad) + 2px) 12px var(--bbgl-toolbar-pad);
                         z-index: 40;
                         transform-origin: center;
                         touch-action: none;
                         cursor: crosshair;
                         min-height: 0;
-                        /* The container is the hard boundary: the graph's x-axis labels render in the
-                           SVG's bottom margin (#bbgl-graph-svg keeps overflow:visible for that), and
-                           the bottom padding here is sized to hold them — so clipping at the container
-                           edge contains everything without cutting a label. */
                         overflow: hidden;
                     }
 
@@ -2279,18 +2273,50 @@
                         padding-bottom: 2px !important;
                     }
 
-                    .g-hud {
+                    /* The graph's mode/stat pills. They live in #bbgl-toolbar now rather than at the
+                       top of #bbgl-graph-container, which is what lets the graph body use its full
+                       height (see GraphController.draw(), which no longer subtracts a HUD height).
+
+                       The two groups sit at opposite ends of the band. .g-mode is a member of
+                       #bbgl-toolbar-icons, so it inherits that row's own gap and trails the
+                       view-switcher icons at exactly the spacing the icons keep between themselves;
+                       .g-stat is the band's right-hand flex child. Whatever width is left over is
+                       absorbed by the space-between gap in the middle, so nothing here depends on
+                       the pills measuring to any particular width in any mode.
+
+                       Both are hidden outside graph view - the only view-specific children of the
+                       band. pointer-events is restated because the band is pointer-events:none. */
+                    .g-toggles.g-mode,
+                    .g-toggles.g-stat {
+                        display: none;
+                        flex: 0 0 auto;
+                        pointer-events: auto;
+                    }
+
+                    .g-toggles.g-stat {
+                        margin-right: var(--bbgl-toolbar-pad, 8px);
+                    }
+
+                    #bbgl-top-panel.viewing-graph .g-toggles.g-mode,
+                    #bbgl-top-panel.viewing-graph .g-toggles.g-stat {
                         display: flex;
-                        flex-direction: row;
-                        flex-wrap: nowrap;
-                        justify-content: space-between;
-                        align-items: center;
-                        margin-bottom: 2px;
-                        z-index: 60;
-                        position: relative;
-                        min-width: 0;
-                        width: 100%;
-                        box-sizing: border-box;
+                    }
+
+                    /* Hairline marking where the view switcher ends and the graph's own controls
+                       begin - the one place in the band where two kinds of control sit side by side
+                       at the same spacing. Deliberately short of the band's full height so it reads
+                       as a separator rather than a second border under the header. */
+                    .g-hud-sep {
+                        display: none;
+                        flex: 0 0 auto;
+                        width: 1px;
+                        height: 62%;
+                        background: rgba(255, 255, 255, .22);
+                        border-radius: 1px;
+                    }
+
+                    #bbgl-top-panel.viewing-graph .g-hud-sep {
+                        display: block;
                     }
 
                     .g-toggles {
@@ -2360,13 +2386,18 @@
                         --pill-bg: rgba(255, 255, 255, .1);
                     }
 
-                    #bbgl-panel.bbgl-compact .g-hud {
-                        margin-top: 1px;
+                    /* Smaller than in the other modes: compact is the tightest width the pills have
+                       to live at, sharing 300px with the icon row and the divider. Measured, the two
+                       groups come to 152.7px against a budget of 161px - what is left of the band
+                       once the end insets, the icons, the divider with its two gaps and the minimum
+                       centre gap are taken out. */
+                    #bbgl-panel.bbgl-compact .g-toggles {
+                        gap: 1px;
                     }
 
-                    #bbgl-panel.bbgl-compact #bbgl-graph-container .g-pill {
-                        font-size: 8px;
-                        padding: 2px 5px;
+                    #bbgl-panel.bbgl-compact .g-pill {
+                        font-size: 7px;
+                        padding: 1.5px;
                         line-height: 1;
                         display: inline-flex;
                         align-items: center;
@@ -2414,8 +2445,15 @@
                         font-size: 10px;
                     }
 
-                    .g-text.y-label {
+                    /* The zero label is the one that reads better tucked against its gridline than
+                       lined up with the rest of the column - see the y-label block in
+                       08-section-vii-graph.js, which pairs this with an x of -3. */
+                    .g-text.y-label.y-label-zero {
                         text-anchor: end;
+                    }
+
+                    .g-text.y-label {
+                        text-anchor: start;
                         font-family: 'Barlow Condensed', 'Arial Narrow', 'Nimbus Sans Narrow', Tahoma, sans-serif;
                         font-weight: 500;
                         letter-spacing: .005em;
@@ -2581,14 +2619,14 @@
                     }
 
                     #bbgl-panel.bbgl-mode-page .sticker-slot {
-                        height: clamp(65px, calc(65px + 40px * var(--bbgl-page-t)), 105px);
+                        height: min(
+                            clamp(65px, calc(65px + 40px * var(--bbgl-page-t)), 105px),
+                            calc((100cqb - var(--bbgl-sticker-row-gap)) / 2)
+                        );
                     }
 
-                    /* No padding-top here: that would be one-sided clearance the container justify-content:
-                           centre cannot see, so it would bias this grid below true centre by that amount. The
-                           container top padding (4px, shared with every mode) already clears the toolbar. */
                     #bbgl-panel.bbgl-mode-page #bbgl-sticker-grid {
-                        row-gap: clamp(4px, calc(4px + 4px * var(--bbgl-page-t)), 8px);
+                        row-gap: var(--bbgl-sticker-row-gap);
                     }
 
                     .sticker-slot.has-item:hover {
@@ -2754,7 +2792,14 @@
 
                     #bbgl-panel.bbgl-mode-page #bbgl-sticker-title {
                         font-size: clamp(12px, calc(12px + 8px * var(--bbgl-page-t)), 20px);
-                        bottom: clamp(11px, calc(11px + 3px * var(--bbgl-page-t)), 14px);
+                        left: 0;
+                        right: 0;
+                        bottom: 0;
+                        height: var(--bbgl-sticker-footer-h);
+                        padding-bottom: clamp(11px, calc(11px + 3px * var(--bbgl-page-t)), 14px);
+                        box-sizing: border-box;
+                        justify-content: center;
+                        transform: none;
                     }
 
                     .copy-hist-btn {
@@ -2767,14 +2812,9 @@
                         transition: all .2s;
                         user-select: none;
                         opacity: .6;
-                        display: none;
+                        display: flex;
                         align-items: center;
                         justify-content: center;
-                    }
-
-                    .bbgl-tall .copy-hist-btn,
-                    .bbgl-mode-page .copy-hist-btn {
-                        display: flex;
                     }
 
                     .copy-hist-btn svg {
@@ -2807,7 +2847,7 @@
                         margin-top: auto;
                         margin-bottom: auto;
                         right: 10%;
-                        display: none;
+                        display: flex;
                         gap: 10px;
                         align-items: center;
                         z-index: 60;
@@ -2819,11 +2859,6 @@
                         font-variant-numeric: tabular-nums;
                         height: 14px;
                         pointer-events: auto;
-                    }
-
-                    .bbgl-tall #bbgl-item-counters,
-                    .bbgl-mode-page #bbgl-item-counters {
-                        display: flex;
                     }
 
                     .viewing-graph #bbgl-item-counters,
@@ -2881,18 +2916,13 @@
                         height: clamp(16px, calc(16px + 2px * var(--bbgl-page-t)), 18px);
                     }
 
-                    #bbgl-panel.bbgl-mode-page #bbgl-graph-container .g-hud {
-                        margin-top: clamp(2px, calc(3px - 1px * var(--bbgl-page-t)), 3px);
-                        margin-bottom: clamp(2px, calc(2px + 1px * var(--bbgl-page-t)), 3px);
-                    }
-
-                    #bbgl-panel.bbgl-mode-page #bbgl-graph-container .g-pill {
+                    #bbgl-panel.bbgl-mode-page .g-pill {
                         font-size: clamp(8.8px, calc(8.8px + 1.2px * var(--bbgl-page-t)), 10px);
                         padding: clamp(.5px, calc(.5px + 1px * var(--bbgl-page-t)), 1.5px) clamp(3px, calc(3px + 5px * var(--bbgl-page-t)), 8px);
                         line-height: calc(1.18 + .26 * (1 - var(--bbgl-page-t)));
                     }
 
-                    #bbgl-panel.bbgl-mode-page #bbgl-graph-container .g-toggles {
+                    #bbgl-panel.bbgl-mode-page .g-toggles {
                         gap: clamp(4px, calc(4px + 2px * var(--bbgl-page-t)), 6px);
                         align-items: center;
                     }
@@ -2915,9 +2945,17 @@
 
                     #bbgl-panel.bbgl-mode-page #bbgl-sticker-container {
                         --bbgl-sticker-arrow-w: clamp(22px, calc(22px + 18px * var(--bbgl-page-t)), 40px);
-                        --bbgl-sticker-title-clear: clamp(24px, calc(24px + 10px * var(--bbgl-page-t)), 34px);
+                        position: absolute;
+                        top: var(--bbgl-toolbar-h);
+                        right: 0;
+                        bottom: calc(var(--bbgl-sticker-footer-h) + var(--bbgl-sticker-footer-gap));
+                        left: 0;
+                        padding: 0 var(--bbgl-sticker-arrow-w);
+                        container-type: size;
                     }
                     #bbgl-panel.bbgl-mode-page .sticker-nav-btn {
+                        top: 0;
+                        bottom: 0;
                         font-size: clamp(24px, calc(24px + 8px * var(--bbgl-page-t)), 32px);
                         width: var(--bbgl-sticker-arrow-w);
                         height: clamp(26px, calc(26px + 6px * var(--bbgl-page-t)), 32px);
@@ -5748,12 +5786,8 @@
                     }
 
                     #bbgl-panel.bbgl-expanded:not(.bbgl-mode-page) {
-                        --bbgl-col-gap: 18px;
-                        --bbgl-f-top-mb: clamp(3px, calc(3px + 3px * (1 - var(--bbgl-dock-t, 0))), 6px);
-                    }
-
-                    #bbgl-panel.bbgl-expanded.bbgl-tall:not(.bbgl-mode-page) {
                         --bbgl-col-gap: 24px;
+                        --bbgl-f-top-mb: clamp(3px, calc(3px + 3px * (1 - var(--bbgl-dock-t, 0))), 6px);
                     }
 
                     #bbgl-panel:not(.bbgl-mode-page) #bbgl-bottom-panel {
@@ -5809,22 +5843,6 @@
                         height: 16px !important;
                     }
 
-                    #bbgl-panel.bbgl-expanded:not(.bbgl-mode-page) #bbgl-ledger-toggle {
-                        left: 32px !important;
-                    }
-
-                    #bbgl-panel.bbgl-expanded:not(.bbgl-mode-page) #bbgl-graph-toggle {
-                        left: clamp(56px, calc(56px + 4px * var(--bbgl-dock-t)), 60px) !important;
-                    }
-
-                    #bbgl-panel.bbgl-expanded:not(.bbgl-mode-page) #bbgl-achievements-toggle {
-                        left: clamp(80px, calc(80px + 8px * var(--bbgl-dock-t)), 88px) !important;
-                    }
-
-                    #bbgl-panel.bbgl-expanded:not(.bbgl-mode-page) #bbgl-sticker-toggle {
-                        left: clamp(104px, calc(104px + 12px * var(--bbgl-dock-t)), 116px) !important;
-                    }
-
                     #bbgl-panel.bbgl-expanded:not(.bbgl-mode-page) .arrow-btn {
                         font-size: clamp(18px, calc(18px + 3px * var(--bbgl-dock-t)), 21px);
                     }
@@ -5857,9 +5875,13 @@
                         height: clamp(18px, calc(18px + 7px * var(--bbgl-dock-t)), 25px);
                     }
                     /* Expanded panel graph view: fluid scaling to replace hard 620px breakpoint ---------------------*/
-                    #bbgl-panel.bbgl-expanded:not(.bbgl-mode-page) #bbgl-graph-container .g-pill {
-                        font-size: clamp(8.45px, calc(8.45px + 1.55px * var(--bbgl-dock-t)), 10px);
-                        padding: clamp(.5px, calc(.5px + 1px * var(--bbgl-dock-t)), 1.5px) clamp(5px, calc(5px + 3px * var(--bbgl-dock-t)), 8px);
+                    #bbgl-panel.bbgl-expanded:not(.bbgl-mode-page) .g-pill {
+                        /* The top of this curve is unchanged; only its floor moved. A 300px-wide
+                           expanded panel is the tightest case in the app - the two groups get 149px
+                           there once everything fixed comes out of the band, and the old 8.45px/5px
+                           floor wanted 151.3px. At 6.25px/1.5px they want 140.2px. */
+                        font-size: clamp(6.25px, calc(6.25px + 3.75px * var(--bbgl-dock-t)), 10px);
+                        padding: clamp(.5px, calc(.5px + 1px * var(--bbgl-dock-t)), 1.5px) clamp(1.5px, calc(1.5px + 6.5px * var(--bbgl-dock-t)), 8px);
                         line-height: 1;
                         display: inline-flex !important;
                         align-items: center;
@@ -5867,21 +5889,13 @@
                         box-sizing: border-box;
                     }
 
-                    #bbgl-panel.bbgl-expanded:not(.bbgl-mode-page) #bbgl-graph-container .g-toggles {
-                        gap: clamp(4px, calc(4px + 2px * var(--bbgl-dock-t)), 6px);
+                    #bbgl-panel.bbgl-expanded:not(.bbgl-mode-page) .g-toggles {
+                        gap: clamp(1px, calc(1px + 5px * var(--bbgl-dock-t)), 6px);
                         align-items: center;
-                    }
-
-                    #bbgl-panel.bbgl-expanded:not(.bbgl-mode-page) #bbgl-graph-container .g-hud {
-                        margin-bottom: clamp(4px, calc(4px + 2px * var(--bbgl-dock-t)), 6px);
                     }
 
                     #bbgl-panel.bbgl-expanded:not(.bbgl-mode-page) #bbgl-graph-container .g-text {
                         font-size: clamp(10px, calc(10px + 1px * var(--bbgl-dock-t)), 11px);
-                    }
-
-                    #bbgl-panel.bbgl-expanded:not(.bbgl-mode-page) #bbgl-graph-container {
-                        padding: clamp(5px, calc(5px + 4px * var(--bbgl-dock-t)), 9px) calc(var(--bbgl-gx, 10px) - 2px) clamp(12px, calc(12px + 3px * var(--bbgl-dock-t)), 15px) calc(var(--bbgl-gx, 10px) - 2px);
                     }
 
                     /* Expanded panel sticker grid: fluid sticker slot sizing to keep proportions --------------------*/
@@ -6663,7 +6677,8 @@
                         --bbgl-t-gap-v: 3px;
                         --bbgl-t-block-gap: 1px;
                         --bbgl-t-corner-gap: 128px;
-                        --bbgl-t-corner-shift-y: 0px;
+                        --bbgl-t-corner-shift-y: 4px;
+                        --bbgl-t-rank-card-overhang: 8px;
                         --bbgl-t-cards-lift: 0px;
                         --bbgl-t-corner-vgap: 0px;
                         --bbgl-t-main-pb: 0px;
@@ -6685,6 +6700,7 @@
                         --bbgl-t-slider-gap: 1px;
                         --bbgl-t-knob-lh: .9;
                         --bbgl-t-rank-nudge-y: 4px;
+                        --bbgl-t-rank-label-drop: 2px;
                         --bbgl-t-rank-floor: 3px;
 
                         --bbgl-t-star: 13px;
@@ -6707,7 +6723,7 @@
                         --bbgl-t-fs-block-label: 8.5px;
                         --bbgl-t-label-clear: calc(var(--bbgl-t-fs-block-label) * .6 + 2px + 2.5px);
                         --bbgl-t-win-pad: 3.25px;
-                        --bbgl-t-win-pad-y: 2px;
+                        --bbgl-t-win-pad-y: 4px;
                         --bbgl-t-win-radius: 5.5px;
                     }
 
@@ -6823,14 +6839,14 @@
                         flex-direction: column;
                         align-items: center;
                         text-align: center;
-                        width: clamp(78px, 18cqi, 122px);
+                        width: clamp(86px, 19cqi, 132px);
                         margin-top: var(--bbgl-t-stack-frame-offset);
                         min-width: 0;
                         max-width: 100%;
                     }
 
                     #bbgl-panel.bbgl-expanded .bbgl-titles-center {
-                        width: clamp(78px, 22cqi, 110px);
+                        width: clamp(86px, 23cqi, 120px);
                     }
 
                     #bbgl-panel.bbgl-compact .bbgl-titles-center {
@@ -6999,7 +7015,7 @@
                         position: relative;
                         isolation: isolate;
                         display: grid;
-                        grid-template-rows: minmax(0, calc(35% - var(--bbgl-title-connector-space) * .35)) calc(var(--bbgl-title-connector-space) * .5) minmax(0, 1fr);
+                        grid-template-rows: minmax(0, 35%) 4px minmax(0, 1fr);
                         justify-items: center;
                         align-items: stretch;
                         flex: 1 1 auto;
@@ -7007,9 +7023,19 @@
                         height: 100%;
                         min-width: 0;
                         min-height: 0;
-                        padding: 0;
-                        border-radius: max(3px, calc(var(--bbgl-t-win-radius) * .65));
+                        padding: 4px 6px;
+                        border: 1px solid #21120d;
+                        border-radius: 3px;
                         box-sizing: border-box;
+                        background:
+                            repeating-linear-gradient(92deg, transparent 0 5px, rgba(16, 6, 2, .18) 6px, transparent 7px 13px),
+                            repeating-linear-gradient(88deg, rgba(211, 151, 88, .045) 0 1px, transparent 1px 3px),
+                            radial-gradient(ellipse 28% 120% at 24% 35%, #56331f00 45%, #22120c55 70%, transparent 78%),
+                            linear-gradient(100deg, #382116, #62412b 38%, #472a1b 72%, #342017);
+                        box-shadow:
+                            inset 1px 1px 0 rgba(227, 174, 108, .32),
+                            inset -1px -1px 0 rgba(0, 0, 0, .65),
+                            inset 0 0 0 3px rgba(26, 13, 6, .24);
                     }
 
                     .bbgl-title-card::before {
@@ -7076,11 +7102,9 @@
                         top: 0;
                         padding: 0 .45em;
                         transform: translateX(-50%);
-                        background: #0b0d0e;
+                        background: transparent;
                     }
 
-                    /* Two narrow mounting rods. The highlight is intentionally off-centre so they
-                       read as round steel hardware instead of another pair of glowing neon lines. */
                     .bbgl-title-card-connector {
                         position: relative;
                         z-index: 3;
@@ -7093,7 +7117,7 @@
 
                     .bbgl-title-card-connector::before,
                     .bbgl-title-card-connector::after {
-                        content: '';
+                        content: none;
                         position: absolute;
                         top: 0;
                         bottom: 0;
@@ -7120,13 +7144,13 @@
                         line-height: 1;
                         letter-spacing: .02em;
                         text-transform: none;
-                        color: #c3beb2;
-                        text-shadow: 0 1px 1px #050607;
+                        color: #343332;
+                        text-shadow: 0 1px 0 rgba(255, 255, 255, .45);
                     }
 
                     .bbgl-title-card-sign {
-                        --bbgl-title-sign-edge: #41464a;
-                        --bbgl-title-sign-highlight: rgba(223, 204, 246, .3);
+                        --bbgl-title-sign-edge: #898a87;
+                        --bbgl-title-sign-highlight: rgba(255, 255, 255, .65);
                         --bbgl-title-sign-inset: 1px;
                         position: relative;
                         z-index: 2;
@@ -7137,17 +7161,15 @@
                         min-height: 0;
                         padding: var(--bbgl-title-sign-inset);
                         border: 1px solid #101114;
-                        border-radius: max(3px, calc(var(--bbgl-t-win-radius) * .55));
+                        border-radius: 1px;
                         box-sizing: border-box;
                         background:
-                            radial-gradient(ellipse 70% 55% at 50% 0%, rgba(185, 126, 234, .3), transparent 100%),
-                            linear-gradient(110deg, #777b7d, var(--bbgl-title-sign-edge) 19%, #24272b 72%, #56595b);
+                            linear-gradient(135deg, #ecebe4, var(--bbgl-title-sign-edge) 32%, #565955 65%, #c5c6bf);
                         box-shadow:
                             inset 0 1px 0 var(--bbgl-title-sign-highlight),
                             inset 0 -1px 0 rgba(0, 0, 0, .75),
-                            0 2px 0 #24262a,
-                            0 3px 0 #08090b,
-                            0 4px 5px rgba(0, 0, 0, .55);
+                            0 1px 0 #302c25,
+                            0 2px 2px rgba(0, 0, 0, .5);
                     }
 
                     .bbgl-title-card-sign-face {
@@ -7163,19 +7185,17 @@
                         min-width: 0;
                         min-height: 0;
                         padding: 2px max(2px, calc(var(--bbgl-t-gap) * .45));
-                        border: 1px solid rgba(5, 6, 8, .9);
-                        border-radius: max(2px, calc(var(--bbgl-t-win-radius) * .3));
+                        border: 1px solid rgba(67, 68, 62, .45);
+                        border-radius: 0;
                         box-sizing: border-box;
                         background:
-                            radial-gradient(circle at 3px 3px, #737077 0 .45px, #15171b .7px 1px, transparent 1.2px),
-                            radial-gradient(circle at calc(100% - 3px) 3px, #737077 0 .45px, #15171b .7px 1px, transparent 1.2px),
-                            radial-gradient(ellipse 85% 50% at 50% 0%, rgba(168, 85, 247, .13), transparent 100%),
-                            linear-gradient(165deg, rgba(211, 218, 226, .055), transparent 42%),
-                            linear-gradient(180deg, #191c22, #0b0e12 55%, #101419);
+                            radial-gradient(circle at 2px 2px, #e0dfd6 0 .5px, #555750 .7px 1px, transparent 1.2px),
+                            radial-gradient(circle at calc(100% - 2px) 2px, #e0dfd6 0 .5px, #555750 .7px 1px, transparent 1.2px),
+                            repeating-linear-gradient(0deg, rgba(255, 255, 255, .065) 0 1px, rgba(46, 47, 40, .035) 1px 2px),
+                            linear-gradient(115deg, #b1b2aa, #d0d0c7 30%, #a1a49c 65%, #bfc0b6);
                         box-shadow:
-                            inset 0 1px 1px rgba(220, 201, 241, .1),
-                            inset 0 -1px 1px rgba(0, 0, 0, .8),
-                            inset 0 0 5px rgba(0, 0, 0, .3);
+                            inset 0 1px 0 rgba(255, 255, 255, .35),
+                            inset 0 -1px 0 rgba(48, 49, 42, .2);
                     }
 
                     .bbgl-title-card-value {
@@ -7199,6 +7219,16 @@
                         font-size: var(--bbgl-t-fs-line);
                         line-height: 1.25;
                         white-space: normal;
+                    }
+
+                    .bbgl-title-card-sign-face .bbgl-title-word {
+                        filter: drop-shadow(0 1px 0 rgba(24, 25, 22, .85)) drop-shadow(0 0 1px rgba(24, 25, 22, .65));
+                    }
+
+                    .bbgl-title-card-sign-face .bbgl-title-reset,
+                    .bbgl-title-card-sign-face .bbgl-title-card-empty {
+                        color: #41443e;
+                        text-shadow: 0 1px 0 rgba(255, 255, 255, .3);
                     }
 
                     .bbgl-title-card-empty {
@@ -7265,6 +7295,7 @@
                         width: 100%;
                         box-sizing: border-box;
                         padding: 0;
+                        pointer-events: none;
                     }
 
                     .bbgl-rank-scale {
@@ -7455,6 +7486,7 @@
                         color: #000;
                         background: none;
                         -webkit-text-fill-color: currentColor;
+                        font-family: 'Patrick Hand', 'Segoe Print', 'Comic Sans MS', cursive;
                         font-weight: 400;
                         text-shadow: none;
                         filter: none;
@@ -7896,6 +7928,7 @@
                         background: none;
                         box-shadow: none;
                         cursor: help;
+                        pointer-events: auto;
                         line-height: var(--bbgl-t-knob-lh, 1);
                         text-align: center;
                         z-index: 3;
@@ -8754,41 +8787,6 @@
                         76%, 100% { opacity: 1; }
                     }
 
-                    .bbgl-title-card-rank-plaque.finish-machined .bbgl-rank-notch-label {
-                        filter:
-                            drop-shadow(0 0 4px rgba(232, 239, 242, .38))
-                            drop-shadow(0 0 8px rgba(216, 229, 234, .20))
-                            drop-shadow(0 0 14px rgba(201, 219, 225, .08));
-                        animation: bbgl-rank-lightbox-glow-on 2.5s step-end 1 both;
-                        animation-delay: var(--bbgl-titles-animation-delay, 0ms);
-                    }
-
-                    @keyframes bbgl-rank-lightbox-glow-on {
-                        0%, 30%, 33%, 40%, 45%, 64%, 74% {
-                            filter: none;
-                        }
-                        30.01%, 38%, 44% {
-                            filter:
-                                drop-shadow(0 0 3px rgba(224, 232, 235, .10))
-                                drop-shadow(0 0 5px rgba(207, 221, 226, .04));
-                        }
-                        53%, 72% {
-                            filter:
-                                drop-shadow(0 0 4px rgba(224, 232, 235, .23))
-                                drop-shadow(0 0 7px rgba(207, 221, 226, .10));
-                        }
-                        76%, 100% {
-                            filter:
-                                drop-shadow(0 0 4px rgba(232, 239, 242, .38))
-                                drop-shadow(0 0 8px rgba(216, 229, 234, .20))
-                                drop-shadow(0 0 14px rgba(201, 219, 225, .08));
-                        }
-                    }
-
-                    #bbgl-panel.bbgl-no-animations .bbgl-title-card-rank-plaque.finish-machined .bbgl-rank-notch-label {
-                        animation: none;
-                    }
-
                     #bbgl-panel.bbgl-no-animations .bbgl-title-card-rank-plaque.finish-machined .bbgl-rank-notch-face::before {
                         animation: none;
                         opacity: 1;
@@ -8876,13 +8874,102 @@
                         display: none;
                     }
 
-                    .bbgl-rank-emerald-crystal {
-                        display: block;
-                        width: 100%;
-                        height: 100%;
-                        overflow: hidden;
+                    .bbgl-title-card-rank-plaque.finish-silver {
+                        container-type: size;
+                        --rank-drop: none;
                     }
 
+                    .bbgl-title-card-rank-plaque.finish-silver .bbgl-rank-notch-face {
+                        box-sizing: border-box;
+                        padding: 24cqh 10cqw 16cqh;
+                        border: 1px solid #d99c78;
+                        border-radius: 3px;
+                        mask: none;
+                        -webkit-mask: none;
+                        overflow: hidden;
+                        background:
+                            linear-gradient(116deg, transparent 15%, rgba(255, 228, 192, .5) 31%, transparent 44%, rgba(74, 33, 23, .3) 66%, transparent 85%),
+                            linear-gradient(165deg, #f6c59f, #bb7350 23%, #e4a780 48%, #945338 74%, #eab48a);
+                        box-shadow: inset 0 1px 0 #ffe4c6, inset 1px 0 0 #ecc29e, inset 0 -2px 2px #683c2b, 0 2px 3px rgba(0, 0, 0, .4);
+                    }
+
+                    .bbgl-title-card-rank-plaque.finish-silver .bbgl-rank-notch-fx {
+                        inset: 4px;
+                        border: 1px solid rgba(89, 50, 35, .65);
+                        border-radius: 1px;
+                        mask: none;
+                        -webkit-mask: none;
+                        background:
+                            radial-gradient(ellipse at 2% 5%, rgba(117, 187, 166, .95), transparent 29%),
+                            radial-gradient(ellipse at 25% 0%, rgba(36, 110, 99, .85), transparent 35%),
+                            radial-gradient(ellipse at 100% 95%, rgba(88, 158, 139, .95), transparent 37%),
+                            radial-gradient(ellipse at 83% 100%, rgba(23, 87, 79, .9), transparent 34%),
+                            radial-gradient(ellipse at 0% 86%, rgba(47, 113, 98, .65), transparent 21%),
+                            linear-gradient(125deg, #b67957, #d79b76 32%, #9b6147 66%, #cb9370);
+                        box-shadow: 0 1px 0 rgba(255, 224, 185, .8), inset 0 1px 3px rgba(51, 34, 25, .5);
+                    }
+
+                    .bbgl-title-card-rank-plaque.finish-silver .bbgl-rank-notch-fx::before {
+                        content: '';
+                        position: absolute;
+                        inset: 3px;
+                        border: 1px solid rgba(247, 199, 153, .65);
+                        border-radius: 0;
+                        background: none;
+                        box-shadow: none;
+                    }
+
+                    .bbgl-title-card-rank-plaque.finish-silver .bbgl-rank-notch-fx::after {
+                        content: '';
+                        position: absolute;
+                        inset: 6px;
+                        border: 0;
+                        border-radius: 0;
+                        background:
+                            linear-gradient(#e7b88d, #e7b88d) left top / 12px 1px,
+                            linear-gradient(#e7b88d, #e7b88d) left top / 1px 8px,
+                            linear-gradient(#e7b88d, #e7b88d) right bottom / 12px 1px,
+                            linear-gradient(#e7b88d, #e7b88d) right bottom / 1px 8px;
+                        background-repeat: no-repeat;
+                        box-shadow: none;
+                        opacity: .8;
+                    }
+
+                    .bbgl-title-card-rank-plaque.finish-silver .bbgl-rank-notch-face::before {
+                        inset: 0;
+                        background:
+                            linear-gradient(115deg, transparent 25%, rgba(255, 233, 203, .16) 40%, transparent 53%),
+                            repeating-linear-gradient(0deg, rgba(255, 226, 197, .035) 0 .5px, transparent .5px 2px);
+                        opacity: 1;
+                        mix-blend-mode: normal;
+                    }
+
+                    .bbgl-title-card-rank-plaque.finish-silver .bbgl-rank-notch-face::after {
+                        display: none;
+                    }
+
+                    .bbgl-rank-copper-heading {
+                        position: absolute;
+                        top: 11cqh;
+                        left: 50%;
+                        transform: translateX(-50%);
+                        z-index: 2;
+                        font-family: 'Barlow Condensed', 'Arial Narrow', sans-serif;
+                        font-size: min(9cqw, 11cqh);
+                        font-weight: 600;
+                        line-height: 1;
+                        letter-spacing: .2em;
+                        color: #563c2c;
+                        text-shadow: 0 1px 0 rgba(255, 220, 181, .6);
+                    }
+
+                    .bbgl-title-card-rank-plaque.finish-silver .bbgl-rank-title-text {
+                        min-width: 0;
+                        min-height: 0;
+                        max-width: 100%;
+                        font-size: min(9cqw, 23cqh);
+                        line-height: 1.18;
+                    }
                     .bbgl-title-card[data-rank-finish="gold"] .bbgl-title-card-rank-label {
                         display: none;
                     }
@@ -10411,7 +10498,7 @@
             const link = document.createElement('link');
             link.id = 'bbgl-fonts';
             link.rel = 'stylesheet';
-            link.href = 'https://fonts.googleapis.com/css2?family=Aldrich&family=Barlow+Condensed:wght@400;500;700&family=Dancing+Script:wght@700&family=Fjalla+One&family=Inconsolata:wght@400;500;600;700&family=Neonderthaw&family=Roboto+Mono:wght@400;500;700&family=VT323&display=swap';
+            link.href = 'https://fonts.googleapis.com/css2?family=Aldrich&family=Barlow+Condensed:wght@400;500;700&family=Dancing+Script:wght@700&family=Fjalla+One&family=Inconsolata:wght@400;500;600;700&family=Neonderthaw&family=Patrick+Hand&family=Roboto+Mono:wght@400;500;700&family=VT323&display=swap';
             root.appendChild(link);
         }
         const style = document.createElement('style');
@@ -10432,11 +10519,17 @@
         dom.itemViewer = root.querySelector('#bbgl-item-viewer');
         dom.dateLabel = root.querySelector('#bbgl-date-label');
         dom.summaryLabel = root.querySelector('#bbgl-summary-label');
+        dom.ledgerFooter = root.querySelector('#bbgl-ledger-footer');
+        if (!dom.ledgerFooter && dom.dateLabel && dom.summaryLabel) {
+            dom.ledgerFooter = document.createElement('div');
+            dom.ledgerFooter.id = 'bbgl-ledger-footer';
+            dom.dateLabel.before(dom.ledgerFooter);
+            dom.ledgerFooter.append(dom.dateLabel, dom.summaryLabel);
+        }
         dom.ledgerView = root.querySelector('#bbgl-ledger-view');
         dom.graphContainer = root.querySelector('#bbgl-graph-container');
         dom.graphSvg = root.querySelector('#bbgl-graph-svg');
         dom.calContainer = root.querySelector('#bbgl-cal-container');
-        dom.tallToggle = root.querySelector('#bbgl-tall-toggle');
         dom.copyBtn = root.querySelector('#bbgl-copy-btn');
         dom.itemCounters = root.querySelector('#bbgl-item-counters');
         dom.popBtn = root.querySelector('#bbgl-pop-btn');

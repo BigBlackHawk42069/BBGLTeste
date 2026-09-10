@@ -1799,6 +1799,11 @@ function achRefreshPageDom() {
     // A half-finished title pick is deliberately NOT cleared here: it's plain runtime state rather
     // than a DOM node, so a heartbeat rebuilding this markup leaves the one-word preview standing.
     container.innerHTML = buildAchievementsPage(runtime._achPage, runtime._achCache);
+    // Baseline for renderRankReadoutLive()'s fast path (07-section-vi-ui.js) — null off the titles
+    // page so a later switch back to page 0 can't compare against a stale, unrelated snapshot and
+    // wrongly skip the rebuild/patch it actually needs.
+    runtime._achLiveFingerprint = runtime._achPage === 0 ? achLiveInputsFingerprint() : null;
+    runtime._achLiveRankKey = runtime._achPage === 0 ? liveRankState().key : null;
     updateAchPageIndicator();
     // layoutTitlesPageGeometry() generates every stat block's label-gapped neon frame and centres
     // the rank assembly in the live geometric space below the lower cards; see its component passes
@@ -2079,36 +2084,6 @@ function achRankPlaqueLabelHTML(label) {
 //           its own box since border-radius can't follow the rectangular frame ring (see
 //           .bbgl-rank-notch-cradle, 04-section-iii-styles.js). Emitted for every plaque, revealed
 //           by CSS alone off the class list.
-function achEmeraldPlaqueHTML(label) {
-    const id = `bbgl-emerald-${achEmeraldPlaqueHTML.serial = (achEmeraldPlaqueHTML.serial || 0) + 1}`;
-    const words = String(label).trim().split(/\s+/);
-    const rows = words.length > 1 ? [words.slice(0, -1).join(' '), words[words.length - 1]] : words;
-    const text = rows.map((row, i) => `<text x="100" y="${rows.length > 1 ? 53 + i * 31 : 67}" text-anchor="middle" font-family="Aldrich, Arial Black, sans-serif" font-weight="bold" font-size="28" textLength="${Math.min(154, row.length * 16)}" lengthAdjust="spacingAndGlyphs">${achEsc(row)}</text>`).join('');
-    return `<svg class="bbgl-rank-emerald-crystal" viewBox="0 0 200 110" preserveAspectRatio="none" role="img" aria-label="${achEsc(label)} — carved emerald rank">
-        <defs>
-            <linearGradient id="${id}-body" x2=".8" y2="1"><stop stop-color="#65ffc1" stop-opacity=".38"/><stop offset=".23" stop-color="#04884a" stop-opacity=".64"/><stop offset=".48" stop-color="#14c47c" stop-opacity=".22"/><stop offset=".72" stop-color="#00482e" stop-opacity=".56"/><stop offset="1" stop-color="#53e9a8" stop-opacity=".4"/></linearGradient>
-            <linearGradient id="${id}-cut" x1="0" y1="0" x2=".25" y2="1"><stop stop-color="#002b19" stop-opacity=".9"/><stop offset=".35" stop-color="#08693c" stop-opacity=".6"/><stop offset=".64" stop-color="#8effc0" stop-opacity=".8"/><stop offset=".8" stop-color="#effff6"/><stop offset="1" stop-color="#21ae68" stop-opacity=".7"/></linearGradient>
-            <linearGradient id="${id}-reflection" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#dbfff0" stop-opacity="0"/><stop offset=".38" stop-color="#dbfff0" stop-opacity="0"/><stop offset=".43" stop-color="#edfff5" stop-opacity=".32"/><stop offset=".46" stop-color="#fff" stop-opacity=".6"/><stop offset=".48" stop-color="#b6ffdc" stop-opacity=".05"/><stop offset="1" stop-color="#b6ffdc" stop-opacity="0"/></linearGradient>
-            <mask id="${id}-holes" maskUnits="userSpaceOnUse" x="0" y="0" width="200" height="110" style="mask-type:luminance"><rect width="200" height="110" fill="white"/><g fill="black" stroke="black" stroke-width="1.2" stroke-linejoin="round">${text}</g></mask>
-        </defs>
-        <g mask="url(#${id}-holes)">
-            <path d="M22 1H178L199 21V89L178 109H22L1 89V21Z" fill="url(#${id}-body)" stroke="#8cf3c3" stroke-opacity=".7" stroke-width=".7"/>
-            <path d="M22 1H178L166 15H34Z" fill="#b7ffda" opacity=".44"/>
-            <path d="M1 21L22 1L34 15L15 29V81L1 89Z" fill="#3ed99c" opacity=".5"/>
-            <path d="M178 1L199 21V89L185 81V29L166 15Z" fill="#013d25" opacity=".62"/>
-            <path d="M1 89L22 109H178L199 89L185 81L166 95H34L15 81Z" fill="#004428" opacity=".55"/>
-            <path d="M22 1L34 15L15 29L1 21Z M178 109L166 95L185 81L199 89Z" fill="#c7ffe4" opacity=".48"/>
-            <path d="M178 1L166 15L185 29L199 21Z M22 109L34 95L15 81L1 89Z" fill="#004026" opacity=".55"/>
-            <path d="M27 6H173L193 24V86L173 103H27L7 86V24Z" fill="none" stroke="#c1ffdd" stroke-opacity=".36" stroke-width=".7"/>
-            <path d="M34 15H166L185 29V81L166 95H34L15 81V29Z" fill="url(#${id}-reflection)" stroke="#96f6c5" stroke-opacity=".55" stroke-width=".65"/>
-            <path d="M23 2H176 M2 23V85 M35 96H164" fill="none" stroke="#e4fff1" stroke-opacity=".8" stroke-width=".65"/>
-            <g fill="none" stroke="#002e1c" stroke-opacity=".65" stroke-width="2" stroke-linejoin="round" transform="translate(0 1.1)">${text}</g>
-            <g fill="none" stroke="url(#${id}-cut)" stroke-width="3" stroke-linejoin="round">${text}</g>
-            <text x="100" y="15" text-anchor="middle" font-family="Arial, sans-serif" font-size="10" font-weight="bold" letter-spacing="2" fill="#064832">RANK</text>
-        </g>
-    </svg>`;
-}
-
 function achGoldCrownHTML() {
     const id = `bbgl-crown-${achGoldCrownHTML.serial = (achGoldCrownHTML.serial || 0) + 1}`;
     return `<svg class="bbgl-rank-gold-crown" viewBox="0 0 200 120" preserveAspectRatio="none" aria-hidden="true">
@@ -2163,12 +2138,10 @@ function achPearlMarqueeHTML() {
 }
 
 function achRankPlaqueHTML(cls, style, tip, revealed, label, textWrapperClass = '') {
-    if (revealed && cls.split(/\s+/).includes('bbgl-title-card-rank-plaque') && cls.split(/\s+/).includes('finish-silver')) {
-        return `<div class="${cls}"${style ? ` style="${style}"` : ''} data-tooltip="${achEsc(tip)}">${achEmeraldPlaqueHTML(label)}</div>`;
-    }
     const nameTag = revealed && cls.split(/\s+/).includes('bbgl-title-card-rank-plaque') && cls.split(/\s+/).includes('finish-mill');
     const lightbox = revealed && cls.split(/\s+/).includes('bbgl-title-card-rank-plaque') && cls.split(/\s+/).includes('finish-machined');
     const steelCrest = revealed && cls.split(/\s+/).includes('bbgl-title-card-rank-plaque') && cls.split(/\s+/).includes('finish-polished');
+    const copperPlaque = revealed && cls.split(/\s+/).includes('bbgl-title-card-rank-plaque') && cls.split(/\s+/).includes('finish-silver');
     const goldCrown = revealed && cls.split(/\s+/).includes('bbgl-title-card-rank-plaque') && cls.split(/\s+/).includes('finish-gold');
     const pearlMarquee = revealed && cls.split(/\s+/).includes('bbgl-title-card-rank-plaque') && cls.split(/\s+/).includes('finish-pearl');
     const lines = nameTag
@@ -2177,6 +2150,7 @@ function achRankPlaqueHTML(cls, style, tip, revealed, label, textWrapperClass = 
     const greeting = nameTag ? '<span class="bbgl-rank-name-tag-heading">Hello, my RANK is...</span>'
         : lightbox ? '<span class="bbgl-rank-lightbox-heading"><span>RANK</span></span>'
         : steelCrest ? '<span class="bbgl-rank-steel-heading">RANK</span>'
+        : copperPlaque ? '<span class="bbgl-rank-copper-heading">RANK</span>'
         : goldCrown ? `${achGoldCrownHTML()}<span class="bbgl-rank-crown-heading">RANK</span>`
         : pearlMarquee ? `${achPearlMarqueeHTML()}<span class="bbgl-rank-marquee-heading">RANK</span>` : '';
     const inner = greeting + (textWrapperClass ? `<span class="${textWrapperClass}">${lines}</span>` : lines);

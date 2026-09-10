@@ -169,40 +169,78 @@
             this.el.appendChild(this.arrow);
             this.el.style.display = 'block';
             this.el.className = '';
-            const ttRect = this.el.getBoundingClientRect(),
-                pad = 12,
+            this.el.style.left = '0px';
+            this.el.style.top = '0px';
+            this.el.style.width = '';
+            const gap = 12,
+                edge = 5,
                 view = {
                     w: window.innerWidth,
                     h: window.innerHeight
-                };
-            let side = 'top';
-            const fitsTop = (rect.top - ttRect.height - pad >= 0),
-                fitsBot = (rect.bottom + ttRect.height + pad <= view.h);
-            if (forceSide) side = forceSide;
-            else if (fitsTop) side = 'top';
-            else if (fitsBot) side = 'bottom';
-            else side = 'left';
-            let x = 0,
-                y = 0;
-            if (side === 'top') {
-                x = rect.left + (rect.width / 2) - (ttRect.width / 2);
-                y = rect.top - ttRect.height - pad;
-            } else if (side === 'bottom') {
-                x = rect.left + (rect.width / 2) - (ttRect.width / 2);
-                y = rect.bottom + pad;
-            } else {
-                x = rect.left - ttRect.width - pad;
-                y = rect.top + (rect.height / 2) - (ttRect.height / 2);
+                },
+                targetRight = Number.isFinite(rect.right) ? rect.right : rect.left + rect.width;
+            let ttRect = this.el.getBoundingClientRect();
+            this.el.style.width = Math.min(Math.ceil(ttRect.width), view.w - edge * 2) + 'px';
+            ttRect = this.el.getBoundingClientRect();
+            const placements = {
+                top: {
+                    x: rect.left + rect.width / 2 - ttRect.width / 2,
+                    y: rect.top - ttRect.height - gap
+                },
+                bottom: {
+                    x: rect.left + rect.width / 2 - ttRect.width / 2,
+                    y: rect.bottom + gap
+                },
+                left: {
+                    x: rect.left - ttRect.width - gap,
+                    y: rect.top + rect.height / 2 - ttRect.height / 2
+                },
+                right: {
+                    x: targetRight + gap,
+                    y: rect.top + rect.height / 2 - ttRect.height / 2
+                }
+            };
+            const fits = p => p.x >= edge && p.y >= edge &&
+                p.x + ttRect.width <= view.w - edge &&
+                p.y + ttRect.height <= view.h - edge;
+            const overflow = p =>
+                Math.max(0, edge - p.x) +
+                Math.max(0, p.x + ttRect.width - (view.w - edge)) +
+                Math.max(0, edge - p.y) +
+                Math.max(0, p.y + ttRect.height - (view.h - edge));
+            const orders = {
+                top: ['top', 'bottom', 'left', 'right'],
+                bottom: ['bottom', 'top', 'left', 'right'],
+                left: ['left', 'right', 'top', 'bottom'],
+                right: ['right', 'left', 'top', 'bottom']
+            };
+            const preferred = orders[forceSide] ? forceSide : 'top',
+                order = orders[preferred];
+            let side = order.find(candidate => fits(placements[candidate]));
+            if (!side) {
+                side = order.reduce((best, candidate) =>
+                    overflow(placements[candidate]) < overflow(placements[best]) ? candidate : best
+                );
             }
-            if (x < 5) x = 5;
-            if (x + ttRect.width > view.w - 5) x = view.w - ttRect.width - 5;
-            if (y < 5) y = 5;
-            if (y + ttRect.height > view.h - 5) y = view.h - ttRect.height - 5;
+            let { x, y } = placements[side];
+            if (!fits(placements[side])) {
+                x = Math.max(edge, Math.min(x, view.w - ttRect.width - edge));
+                y = Math.max(edge, Math.min(y, view.h - ttRect.height - edge));
+            }
             this.el.style.left = x + 'px';
             this.el.style.top = y + 'px';
             this.el.classList.add('pos-' + side);
             this.arrow.style.marginLeft = '';
             this.arrow.style.marginTop = '';
+            if (side === 'top' || side === 'bottom') {
+                const anchorX = rect.left + rect.width / 2 - x;
+                this.arrow.style.left = Math.max(10, Math.min(anchorX, ttRect.width - 10)) + 'px';
+                this.arrow.style.top = '';
+            } else {
+                const anchorY = rect.top + rect.height / 2 - y;
+                this.arrow.style.top = Math.max(10, Math.min(anchorY, ttRect.height - 10)) + 'px';
+                this.arrow.style.left = '';
+            }
         },
         resolve(target) {
             return target.closest('[data-tooltip], [data-tooltip-html]');

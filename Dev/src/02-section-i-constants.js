@@ -391,7 +391,6 @@
     let viewState = {
         expanded: false,
         isOpen: false,
-        isTall: false,
         subView: 'ledger',
         graphMode: 'values',
         calYear: null,

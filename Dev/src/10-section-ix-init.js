@@ -408,7 +408,6 @@
                 viewState.subView = 'ledger';
                 viewState.activeItemId = null;
                 viewState.activeViewLabel = null;
-                viewState.isTall = false;
                 calendarState.selectedData = null;
                 calendarState.selectedLabel = null;
             }
@@ -464,7 +463,6 @@
             p.id = 'bbgl-panel';
             if (viewState.expanded) p.classList.add('bbgl-expanded');
             else p.classList.add('bbgl-compact');
-            if (viewState.isTall) p.classList.add('bbgl-tall');
             p.innerHTML = getDashboardHTML();
             document.body.appendChild(p);
             setupEventListeners(p);
@@ -491,7 +489,6 @@
     }
 
     function restoreInternalState() {
-        const mp = dom.panel;
         if (viewState.calYear && viewState.calMonth !== undefined && viewState.calMonth !== null) {
             calendarState.year = viewState.calYear;
             calendarState.month = viewState.calMonth;
@@ -520,24 +517,13 @@
             }
         }
         renderPanelContent();
-        const et = () => {
-            if (mp && !mp.classList.contains('bbgl-mode-page') && !mp.classList.contains('bbgl-tall')) {
-                mp.classList.add('bbgl-tall');
-                const t = dom.tallToggle;
-                if (t) t.innerText = "–";
-                viewState.isTall = true;
-                saveViewState();
-            }
-        };
         const _hasData = _historyCache && (_historyCache.history.length > 0 || (_historyCache.meta && _historyCache.meta.logStartDate));
         if (viewState.subView === 'settings') switchView('settings', true);
         else if (viewState.subView === 'welcome' || (!runtime.demoMode && !_hasData && !localStorage.getItem('bbgl_initialized'))) switchView('welcome', true);
         else if (viewState.subView === 'graph') {
-            et();
             switchView('graph', true);
             setTimeout(() => window.requestAnimationFrame(() => GraphController.draw()), 350);
         } else if (viewState.subView === 'stickers') {
-            et();
             if (!runtime.stickerData || runtime.stickerData.length === 0) loadStickerData();
             let ti = Number(viewState.activeItemId);
             if (!ti || ti < 1) {
@@ -553,7 +539,6 @@
                 setTimeout(() => openItemViewer(i, false), 50);
             }
         } else if (viewState.subView === 'achievements') {
-            et();
             switchView('achievements', true);
         } else switchView('ledger', true);
     }
@@ -806,7 +791,6 @@
         if (!p) return;
         runtime.isClosing = true;
         viewState.isOpen = false;
-        viewState.isTall = false;
         viewState.subView = 'ledger';
         viewState.activeViewLabel = null;
         viewState.achEnhPeriodMode = false;
@@ -839,9 +823,6 @@
         if (b) b.classList.remove('bbgl-tab-active');
         updateTransformOrigin();
         p.classList.remove('bbgl-animate-pop');
-        p.classList.remove('bbgl-tall');
-        const tt = dom.tallToggle;
-        if (tt) tt.innerText = "+";
         if (userConfig.animations) {
             p.classList.add('bbgl-animate-vanish');
             setTimeout(() => {
@@ -857,26 +838,6 @@
         }
     }
 
-    function toggleTall() {
-        const p = dom.panel,
-            b = dom.tallToggle;
-        if (p.classList.contains('bbgl-mode-page')) return;
-        p.classList.toggle('bbgl-tall');
-        const t = p.classList.contains('bbgl-tall');
-        b.innerText = t ? "–" : "+";
-        viewState.isTall = t;
-        saveViewState();
-        const tp = dom.topPanel;
-        if (!t) {
-            if (tp.classList.contains('viewing-graph') || tp.classList.contains('viewing-stickers') || tp.classList.contains('viewing-achievements')) switchView('ledger');
-        } else {
-            if (tp.classList.contains('viewing-graph')) {
-                GraphController.draw();
-                setTimeout(GraphController.draw, 320);
-            }
-        }
-    }
-
     function toggleLedgerView() {
         switchView('ledger');
         saveViewState();
@@ -888,13 +849,6 @@
     }
 
     function toggleStickerView() {
-        const mp = dom.panel,
-            tb = dom.tallToggle;
-        if (!viewState.isTall && !mp.classList.contains('bbgl-mode-page')) {
-            viewState.isTall = true;
-            if (mp) mp.classList.add('bbgl-tall');
-            if (tb) tb.innerText = "–";
-        }
         viewState.activeItemId = 1;
         switchView('stickers');
         setTimeout(() => {
@@ -906,13 +860,6 @@
     }
 
     function toggleAchievementsView() {
-        const mp = dom.panel,
-            tb = dom.tallToggle;
-        if (!viewState.isTall && !mp.classList.contains('bbgl-mode-page')) {
-            viewState.isTall = true;
-            if (mp) mp.classList.add('bbgl-tall');
-            if (tb) tb.innerText = "–";
-        }
         switchView('achievements');
         saveViewState();
     }
@@ -1353,8 +1300,6 @@
                 setTimeout(GraphController.draw, 320);
             }
         };
-        const tt = get('bbgl-tall-toggle');
-        if (tt) tt.onclick = toggleTall;
         const lt = get('bbgl-ledger-toggle');
         if (lt) lt.onclick = toggleLedgerView;
         const cpb = dom.copyBtn;
@@ -1827,7 +1772,6 @@
                 const openC = ns.isOpen !== viewState.isOpen,
                     viewC = ns.subView !== viewState.subView,
                     expandedC = ns.expanded !== viewState.expanded,
-                    tallC = ns.isTall !== viewState.isTall,
                     stickerPC = ns.currentStickerPage !== viewState.currentStickerPage,
                     labelC = ns.activeViewLabel !== viewState.activeViewLabel,
                     calC = (ns.calMonth !== viewState.calMonth || ns.calYear !== viewState.calYear),
@@ -1840,7 +1784,7 @@
                     runtime.isSyncing = false;
                     return;
                 }
-                if (!openC && !viewC && !expandedC && !tallC && !stickerPC && !labelC && !calC && !itemC && !gMC && !gSC) {
+                if (!openC && !viewC && !expandedC && !stickerPC && !labelC && !calC && !itemC && !gMC && !gSC) {
                     runtime.isSyncing = false;
                     return;
                 }
@@ -1906,13 +1850,7 @@
                         const pb = dom.popBtn;
                         if (pb) pb.innerHTML = ns.expanded ? ICONS.COMPRESS : ICONS.POPOUT;
                     }
-                    if (tallC) {
-                        if (ns.isTall) p.classList.add('bbgl-tall');
-                        else p.classList.remove('bbgl-tall');
-                        const tb = dom.tallToggle;
-                        if (tb) tb.innerText = ns.isTall ? "–" : "+";
-                    }
-                    if (expandedC || tallC) handleLayout();
+                    if (expandedC) handleLayout();
                 }
                 if (ns.subView === 'stickers' || ns.subView === 'viewer') {
                     const ti = ns.activeItemId ? Number(ns.activeItemId) : null;

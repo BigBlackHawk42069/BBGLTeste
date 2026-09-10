@@ -351,7 +351,19 @@
         if (tp) {
             if (tp.classList.contains('viewing-graph')) GraphController.draw();
             else if (tp.classList.contains('viewing-stickers')) renderStickers();
-            else if (tp.classList.contains('viewing-achievements')) renderAchievements();
+            else if (tp.classList.contains('viewing-achievements')) {
+                // Most calls here are a routine data tick (heartbeat, dev Level Up, today's exp
+                // climbing) with nothing about the titles page actually different — those get the
+                // cheap in-place rank-readout patch instead of achRefreshPageDom()'s full rebuild
+                // (see renderRankReadoutLive()/achLiveInputsFingerprint() above). Anything that
+                // really changes the page (new E, a title pick, the mode toggle, switching
+                // sub-pages) already calls achRefreshPageDom()/renderAchievements() directly at its
+                // own call site, which also means the fingerprint here is stale for it — falling
+                // through to the real rebuild is the correct outcome, not just a safe fallback.
+                const canPatchLive = runtime._achPage === 0 && runtime._achCache &&
+                    achLiveInputsFingerprint() === runtime._achLiveFingerprint;
+                if (!canPatchLive || !renderRankReadoutLive()) renderAchievements();
+            }
         }
         if (!calendarState.selectedData) renderStats(DataController.getSlice('DAY', Formatter.dateLogical()), Formatter.dateLogical());
         else renderStats(calendarState.selectedData, calendarState.selectedLabel);
@@ -697,6 +709,97 @@
         if (runtime._achPage === 0) achRefreshPageDom();
     }
 
+    // Fingerprint of every titles-page input EXCEPT the live level/rank — stat E, the composed
+    // title pick (committed or mid-pick), and the enhancements period toggle. achRefreshPageDom()
+    // stamps this after every real rebuild (runtime._achLiveFingerprint); a routine data tick
+    // (heartbeat, dev Level Up, today's exp climbing) that reproduces the SAME fingerprint has
+    // nothing to show here but a level/rank change, so renderPanelContent() (below) can hand it to
+    // renderRankReadoutLive() instead of paying for a full rebuild. Anything that actually changes
+    // this — new E, a title pick, the mode toggle — still falls through to the real rebuild so
+    // stat cards/title text can't go stale.
+    function achLiveInputsFingerprint() {
+        const eByStat = getLiveStatTitleE();
+        const sel = getLiveStatTitleSelection();
+        const pending = runtime._titlePick;
+        return STAT_KEYS.map(k => Math.round(eByStat[k] || 0)).join(',') + '|' +
+            sel.mode + ':' + (sel.primary ? sel.primary.stat + sel.primary.phase : '') + ':' + (sel.secondary ? sel.secondary.stat + sel.secondary.phase : '') + '|' +
+            (pending ? pending.stat + pending.phase : '') + '|' +
+            (viewState.achEnhPeriodMode ? 1 : 0);
+    }
+
+    // Single source for "what level/rank the live exp total currently resolves to", as a cheap
+    // string key — lets renderRankReadoutLive()/achRefreshPageDom() tell whether the readout needs
+    // touching at all before doing any DOM work, instead of two separate call sites each deriving
+    // it (and risking drifting out of sync with each other).
+    function liveRankState() {
+        const { atrophy, level } = calculateLevelProgress(getLiveLevelExp());
+        return { atrophy, level, key: atrophy + ':' + level };
+    }
+
+    // Patches the titles page's live rank readout — the ladder's sliding knob/plaques and the
+    // identity card's current-rank badge — from the live level, in place, instead of
+    // achRefreshPageDom()'s full innerHTML rebuild. That rebuild used to run on every routine data
+    // tick just to move this readout, tearing the whole titles page down and rebuilding it; the
+    // ladder would briefly repaint at its CSS fallback position (`top: var(--bbgl-t-rank-line-y,
+    // 50%)`, 04-section-iii-styles.js) before layoutRankBarCenter() corrected it, which read as a
+    // visible jump-then-settle in compact mode's tighter layout (its resting position sits much
+    // further from that 50% fallback than expanded/page mode's does). Nothing else on the page
+    // changes here, so nothing is torn down or recreated — the existing ResizeObserver just sees
+    // whatever real size change (if any) the patch below causes. Returns false (caller should fall
+    // back to the real rebuild) if the titles page isn't even in the DOM yet.
+    function renderRankReadoutLive() {
+        const { atrophy, level, key } = liveRankState();
+        const container = document.getElementById('bbgl-achievements-container');
+        const page = container && container.querySelector('.bbgl-titles-page');
+        if (!page) return false;
+        // The overwhelming majority of ticks that reach here are a dataUpdated firing for some
+        // reason that has nothing to do with the ladder at all (backfill progress, a settings
+        // change, another silent sync) while sitting on the same level — bail before touching the
+        // DOM at all rather than re-parsing the same notch/label HTML and re-measuring geometry
+        // that's already correct.
+        if (key === runtime._achLiveRankKey) return true;
+        const track = page.querySelector(':scope > .bbgl-rank-track');
+        const line = track && track.querySelector('.bbgl-rank-line');
+        const knob = line && line.querySelector('.bbgl-rank-knob');
+        const knobLv = knob && knob.querySelector('.bbgl-rank-knob-lv');
+        const notches = line && line.querySelector('.bbgl-rank-notches');
+        const titles = line && line.querySelector('.bbgl-rank-titles');
+        const card = page.querySelector('.bbgl-title-card');
+        const cardRank = card && card.querySelector('.bbgl-title-card-rank');
+        if (!track || !line || !knob || !knobLv || !notches || !titles || !card || !cardRank) return false;
+
+        runtime._achLiveRankKey = key;
+        const bricked = isFullyBricked(atrophy, level);
+        const currentRank = achCurrentRankPlaqueData(atrophy, level);
+
+        // Same shared-clock trick achRefreshPageDom() uses: keeps runtime._titlesPageAnimationStartedAt
+        // running and restamps --bbgl-titles-animation-delay to the (more negative) elapsed time BEFORE
+        // the notches/titles below are replaced, so the freshly-created nodes resume the page's existing
+        // animation timeline instead of restarting their reveal/shimmer from 0.
+        syncTitlesPageAnimationClock(container);
+
+        track.style.cssText = rankBarProgressCSS(atrophy, level);
+        line.classList.toggle('is-bricked', bricked);
+        line.classList.toggle('is-wrapped', hasRidingRank(atrophy, level));
+        notches.innerHTML = achTitleNotchesHTML(atrophy, level);
+        titles.innerHTML = achTitleLabelsHTML(atrophy, level);
+        knobLv.textContent = level;
+        // setAttribute, not the achEsc()'d HTML-string form achBuildPageTitles() uses — this is
+        // going straight through the DOM API, not through an innerHTML parse, so the raw quotes
+        // belong here unescaped.
+        knob.setAttribute('data-tooltip', `"${currentRank.label}"`);
+        card.dataset.rankFinish = currentRank.finish;
+        card.dataset.rankMaterial = currentRank.material;
+        cardRank.innerHTML = `<span class="bbgl-title-card-rank-label">Rank</span>${currentRank.html}`;
+
+        // Same synchronous re-measure achRefreshPageDom() runs right after its own DOM writes.
+        // Nothing above destroys/recreates any of the elements observeTitleBlockFrames() is
+        // watching, so this can't retrigger its ResizeObserver the way a full rebuild does — it
+        // just accounts for any real size change (e.g. a longer rank name) the patch just caused.
+        layoutTitlesPageGeometry();
+        return true;
+    }
+
     // Two-click title picking, which replaced the old Primary/Secondary/Both popover. Clicking an
     // unlocked star clears the current title and places that word first (the adjective); the next
     // click places the second (the noun) and commits the pair. Clicking the same star twice puts
@@ -863,7 +966,9 @@
         if (cardBottoms.some(v => v === null) || scaleTop === null || !(scale.offsetHeight > 0)) return false;
 
         const paddingBottom = parseFloat(getComputedStyle(page).paddingBottom) || 0;
-        const availableTop = Math.max(...cardBottoms);
+        // Card growth may occupy the gap without moving the rank cluster's reference bounds.
+        const cardOverhang = parseFloat(getComputedStyle(page).getPropertyValue('--bbgl-t-rank-card-overhang')) || 0;
+        const availableTop = Math.max(...cardBottoms) - cardOverhang;
         const availableBottom = page.clientHeight - paddingBottom;
         if (!(availableBottom > availableTop)) return false;
 
@@ -940,7 +1045,9 @@
         // top edge (NOT the scale): .bbgl-rank-titles is inset:0 of the line, so that 1px box is its
         // containing block — anything scale-relative would pin to the groove regardless of the
         // value given. Negative because the labels sit entirely above the line.
-        const titlesY = line.offsetHeight / 2 - labelGap;
+        // Apply label tightening after centring so it cannot move the slider.
+        const labelDrop = parseFloat(getComputedStyle(scale).getPropertyValue('--bbgl-t-rank-label-drop')) || 0;
+        const titlesY = line.offsetHeight / 2 - labelGap + labelDrop;
         scale.style.setProperty('--bbgl-t-titles-y', `${titlesY.toFixed(3)}px`);
         return true;
     }
@@ -1110,31 +1217,33 @@
     }
 
     // Shared toolbar-relative measurement for both pagination clusters that dock against the SVG
-    // icon toolbar (#bbgl-ach-footer, #bbgl-sticker-pagination-bar). The toolbar icons are each
-    // individually position:absolute with hand-tuned coordinates (04-section-iii-styles.js), so
-    // "how wide/tall is the toolbar" is read off their own live positions. They sit inside
-    // #bbgl-toolbar now, but that wrapper is pinned to 0,0 at full width with no border or
-    // padding precisely so the offset* reads below still land in #bbgl-top-panel coordinates -
-    // give it any offset of its own and both docked clusters silently move with it.
+    // icon toolbar (#bbgl-ach-footer, #bbgl-sticker-pagination-bar). The icons no longer carry
+    // hand-tuned individual coordinates that had to be reduced over one by one — they are a flex
+    // row inside #bbgl-toolbar-icons, so that element's own box IS the answer to "how wide is the
+    // toolbar", and #bbgl-toolbar's box is the answer to "where is its centreline".
+    //
+    // Both wrappers are pinned to 0,0 of their parent (#bbgl-toolbar to #bbgl-top-panel,
+    // #bbgl-toolbar-icons to #bbgl-toolbar), which is what lets the reads below stay in
+    // #bbgl-top-panel's coordinate space with no correction. Give either one a top/left offset of
+    // its own and both docked clusters silently move with it.
     //
     // #bbgl-copy-btn is excluded even though it looks similar: it's right-anchored to the panel's
-    // far edge in every mode, not clustered with the view-switcher icons, and including it would
-    // inflate "toolbar width" and defeat the horizontal threshold below.
+    // far edge in every mode, not part of the left cluster, and including it would inflate
+    // "toolbar width" and defeat the horizontal threshold below. Being outside
+    // #bbgl-toolbar-icons, it now falls out of this measurement by construction.
     //
     // Uses offset*, not getBoundingClientRect(), same convention as layoutTitleBlockFrames() above.
     // Returns null if nothing has measured to a real size yet — callers should retry next frame.
     function measureToolbarCenter() {
         const topPanel = document.getElementById('bbgl-top-panel');
         if (!topPanel) return null;
-        const iconIds = ['bbgl-tall-toggle', 'bbgl-ledger-toggle', 'bbgl-graph-toggle', 'bbgl-achievements-toggle', 'bbgl-sticker-toggle'];
-        const icons = iconIds.map(id => document.getElementById(id)).filter(Boolean);
-        // display:none icons (e.g. #bbgl-tall-toggle in page mode) read 0 for both offsetWidth and
-        // offsetHeight, so this filter drops them from the vertical-centre average the same way
-        // Math.max() below already naturally drops them from the horizontal toolbarWidth figure.
-        const visibleIcons = icons.filter(el => el.offsetWidth > 0 && el.offsetHeight > 0);
+        const toolbar = document.getElementById('bbgl-toolbar');
+        const iconRow = document.getElementById('bbgl-toolbar-icons');
+        if (!toolbar || !iconRow) return null;
         const fullWidth = topPanel.offsetWidth;
-        const toolbarWidth = Math.max(0, ...icons.map(el => el.offsetLeft + el.offsetWidth));
-        if (!(fullWidth > 0) || !(toolbarWidth > 0) || !visibleIcons.length) return null;
+        const toolbarWidth = iconRow.offsetLeft + iconRow.offsetWidth;
+        const bandHeight = toolbar.offsetHeight;
+        if (!(fullWidth > 0) || !(toolbarWidth > 0) || !(bandHeight > 0)) return null;
         // Horizontal placement rule: if the toolbar's occupied width is <=25% of the panel's own
         // width, centre dead in the middle of the panel's own full width, as if the icons weren't
         // there at all — centring within just the icons' own occupied width was tried first and
@@ -1144,10 +1253,10 @@
         const centerX = toolbarWidth <= threshold
             ? fullWidth / 2
             : toolbarWidth + (fullWidth - toolbarWidth) / 2;
-        // Vertical placement: dead centre with the icons themselves, averaged across every
-        // currently-visible one rather than reading just one, in case a future icon set ever
-        // isn't perfectly row-aligned.
-        const centerY = visibleIcons.reduce((sum, el) => sum + el.offsetTop + el.offsetHeight / 2, 0) / visibleIcons.length;
+        // Vertical placement: the band's own centreline. Every child of #bbgl-toolbar is centred
+        // against it (auto block margins, 04-section-iii-styles.js), so this is the icon row's
+        // centre by construction rather than something averaged back out of the icons.
+        const centerY = bandHeight / 2;
         return { topPanel, centerX, centerY };
     }
 
@@ -1189,9 +1298,8 @@
     // observeTitleBlockFrames() above) — the toolbar icons and both pagination clusters are never
     // destroyed/recreated the way .bbgl-title-block is on achRefreshPageDom()'s innerHTML swap, so
     // one persistent observer is enough. #bbgl-top-panel's own box changes on every mode switch
-    // that matters here (tall toggle changes its height via --bbgl-top-h-tall, expanded/compact
-    // toggle, page mode's responsive width), so this alone covers all of them without needing to
-    // hook every individual toggle's call site.
+    // that matters here (the expanded/compact toggle, page mode's responsive width), so this
+    // alone covers all of them without needing to hook every individual toggle's call site.
     function observeToolbarPaginationPosition() {
         const topPanel = document.getElementById('bbgl-top-panel');
         if (!topPanel) return;
@@ -2877,7 +2985,7 @@
     function getDashboardHTML() {
         const weekDays = userConfig.weekStartMode === 'mon' ? ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'] : ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
         const weekRowHTML = weekDays.map(d => `<span>${d}</span>`).join('');
-        return `<div class="bbgl-header" id="bbgl-header-bar"><div class="bbgl-header-left">${ICONS.LOGO}<span class="bbgl-header-text"><span class="bbgl-short-title">Big Black Log</span><span class="bbgl-long-title">Big Black Gym Log</span></span></div><div class="bbgl-header-right"><span id="bbgl-demo-exit-btn" class="close-settings-btn bbgl-close-purple" style="display:${runtime.demoMode ? 'flex' : 'none'};" data-tooltip-html="${TOOLTIPS.DEMO_EXIT_HTML}"><span class="bbgl-demo-x-label">Demo</span>${ICONS.CLOSE}</span><span id="bbgl-settings-btn" class="bbgl-custom-icon">⚙</span><span id="bbgl-close-btn" class="bbgl-native-icon">${ICONS.MINIMIZE}</span><span id="bbgl-pop-btn" class="bbgl-native-icon">${viewState.expanded ? ICONS.COMPRESS : ICONS.POPOUT}</span></div></div><div id="bbgl-content-wrapper"><div id="bbgl-top-panel"><div id="bbgl-toolbar"><div id="bbgl-tall-toggle">${viewState.isTall ? '–' : '+'}</div><div id="bbgl-ledger-toggle" data-tooltip="${TOOLTIPS.LEDGER_VIEW}">${ICONS.LEDGER}</div><div id="bbgl-graph-toggle" data-tooltip="${TOOLTIPS.GRAPH_VIEW}">${ICONS.GRAPH}</div><div id="bbgl-achievements-toggle" data-tooltip="${TOOLTIPS.ACHIEVEMENTS}">${ICONS.ACHIEVEMENTS}</div><div id="bbgl-sticker-toggle" data-tooltip="${TOOLTIPS.STICKERBOOK}">${ICONS.STICKERBOOK}</div><div id="bbgl-item-counters"></div><div id="bbgl-copy-btn" class="copy-hist-btn" data-tooltip="${TOOLTIPS.COPY_SESSION}">${ICONS.CLIPBOARD}</div></div><div id="bbgl-sticker-title"></div><div class="ui-floating-label" id="bbgl-date-label">LOADING...</div><div class="ui-floating-summary" id="bbgl-summary-label"></div><div id="bbgl-ledger-view" class="ledger-content"></div><div id="bbgl-graph-container"><div class="g-hud"><div class="g-toggles"><div class="g-pill active" data-type="mode" data-val="values">Gains</div><div class="g-pill" data-type="mode" data-val="rates">Rates</div></div><div class="g-toggles"><div class="g-pill p-str active" data-type="stat" data-val="str">STR</div><div class="g-pill p-def" data-type="stat" data-val="def">DEF</div><div class="g-pill p-spd active" data-type="stat" data-val="spd">SPD</div><div class="g-pill p-dex" data-type="stat" data-val="dex">DEX</div><div class="g-pill p-tot" data-type="stat" data-val="total">TOT</div></div></div><svg id="bbgl-graph-svg"></svg></div><div id="bbgl-achievements-container" class="ledger-content"></div><div id="bbgl-ach-footer"><button type="button" class="bbgl-ach-nav bbgl-ach-prev" aria-label="Previous achievements page">${ICONS.CHEVRON}</button><div id="bbgl-ach-pageindicator"></div><button type="button" class="bbgl-ach-nav bbgl-ach-next" aria-label="Next achievements page">${ICONS.CHEVRON}</button></div><div id="bbgl-sticker-bg"></div><div id="bbgl-sticker-container"><div id="sticker-prev-btn" class="sticker-nav-btn">❮</div><div id="sticker-next-btn" class="sticker-nav-btn">❯</div><div id="bbgl-sticker-grid"></div></div><div id="bbgl-sticker-pagination-bar"><button type="button" id="sticker-mini-prev-btn" class="bbgl-ach-nav bbgl-ach-prev" aria-label="Previous sticker page">${ICONS.CHEVRON}</button><div id="bbgl-sticker-pagination"></div><button type="button" id="sticker-mini-next-btn" class="bbgl-ach-nav bbgl-ach-next" aria-label="Next sticker page">${ICONS.CHEVRON}</button></div><div class="glass-overlay"></div></div><div id="bbgl-bottom-panel"><div id="bbgl-demo-exit" style="display: ${runtime.demoMode ? 'flex' : 'none'};" data-tooltip="${TOOLTIPS.DEMO_EXIT}" data-tooltip-html="${TOOLTIPS.DEMO_EXIT_HTML}">DEMO MODE</div><div class="bbgl-header-wrapper"><div class="bbgl-month-header"><div class="title-group"><div class="title-stack"><div class="header-row header-row--alltime"><div class="stats-btn" id="all-time-btn">${ICONS.CHART}</div><div class="header-trigger" id="all-time-trigger">∞</div></div><div class="header-row header-row--year"><div class="stats-btn" id="year-stats-btn">${ICONS.CHART}</div><div class="header-trigger" id="year-trigger"></div><div id="bbgl-year-dropdown" class="bbgl-dropdown-menu"></div></div><div class="header-row header-row--month"><div class="stats-btn" id="month-stats-btn">${ICONS.CHART}</div><div class="header-trigger" id="month-trigger"></div><div id="bbgl-month-dropdown" class="bbgl-dropdown-menu"></div></div></div></div><button class="arrow-btn" id="prev-month-btn">❮</button><button class="arrow-btn" id="next-month-btn">❯</button></div><div id="bbgl-level-bg">${buildEmptyLevelTrackSVG()}</div><div id="bbgl-level-container"><div id="bbgl-level-flag-clip"><span id="bbgl-level-num">Lv 1</span></div><div id="bbgl-level-track"><div id="bbgl-level-fill"></div></div></div></div><div class="bbgl-grid-container"><div class="bbgl-week-row">${weekRowHTML}</div><div class="calendar-wrapper" id="swipe-area"><div id="bbgl-cal-container" class="bbgl-cal-container"></div></div></div></div><div id="bbgl-item-viewer"><div class="viewer-window"><div class="viewer-stage"><div class="viewer-pedestal" id="vi-pedestal-wrapper"><div class="viewer-obj" id="vi-obj-target"><div class="layer-front"></div><div class="layer-back"><div class="lb-brand"><span class="lb-brand-sm">Fully</span><span class="lb-brand-lg">Bricked</span><span class="lb-brand-sm">Fitness<sup class="lb-brand-tm">™</sup></span><span class="lb-brand-tag">Authentic</span></div></div></div></div></div></div><div class="viewer-info-overlay"><div class="vi-name" id="vi-name-target">Item Name</div></div></div><div id="bbgl-settings-view">${getSettingsHTML()}</div><div id="bbgl-welcome-view"></div></div>`;
+        return `<div class="bbgl-header" id="bbgl-header-bar"><div class="bbgl-header-left">${ICONS.LOGO}<span class="bbgl-header-text"><span class="bbgl-short-title">Big Black Log</span><span class="bbgl-long-title">Big Black Gym Log</span></span></div><div class="bbgl-header-right"><span id="bbgl-demo-exit-btn" class="close-settings-btn bbgl-close-purple" style="display:${runtime.demoMode ? 'flex' : 'none'};" data-tooltip-html="${TOOLTIPS.DEMO_EXIT_HTML}"><span class="bbgl-demo-x-label">Demo</span>${ICONS.CLOSE}</span><span id="bbgl-settings-btn" class="bbgl-custom-icon">⚙</span><span id="bbgl-close-btn" class="bbgl-native-icon">${ICONS.MINIMIZE}</span><span id="bbgl-pop-btn" class="bbgl-native-icon">${viewState.expanded ? ICONS.COMPRESS : ICONS.POPOUT}</span></div></div><div id="bbgl-content-wrapper"><div id="bbgl-top-panel"><div id="bbgl-toolbar"><div id="bbgl-toolbar-icons"><div id="bbgl-ledger-toggle" data-tooltip="${TOOLTIPS.LEDGER_VIEW}">${ICONS.LEDGER}</div><div id="bbgl-graph-toggle" data-tooltip="${TOOLTIPS.GRAPH_VIEW}">${ICONS.GRAPH}</div><div id="bbgl-achievements-toggle" data-tooltip="${TOOLTIPS.ACHIEVEMENTS}">${ICONS.ACHIEVEMENTS}</div><div id="bbgl-sticker-toggle" data-tooltip="${TOOLTIPS.STICKERBOOK}">${ICONS.STICKERBOOK}</div><div class="g-hud-sep"></div><div class="g-toggles g-mode"><div class="g-pill active" data-type="mode" data-val="values">Gains</div><div class="g-pill" data-type="mode" data-val="rates">Rates</div></div></div><div id="bbgl-item-counters"></div><div id="bbgl-copy-btn" class="copy-hist-btn" data-tooltip="${TOOLTIPS.COPY_SESSION}">${ICONS.CLIPBOARD}</div><div class="g-toggles g-stat"><div class="g-pill p-str active" data-type="stat" data-val="str">STR</div><div class="g-pill p-def" data-type="stat" data-val="def">DEF</div><div class="g-pill p-spd active" data-type="stat" data-val="spd">SPD</div><div class="g-pill p-dex" data-type="stat" data-val="dex">DEX</div><div class="g-pill p-tot" data-type="stat" data-val="total">TOT</div></div></div><div id="bbgl-sticker-title"></div><div class="ui-floating-label" id="bbgl-date-label">LOADING...</div><div class="ui-floating-summary" id="bbgl-summary-label"></div><div id="bbgl-ledger-view" class="ledger-content"></div><div id="bbgl-graph-container"><svg id="bbgl-graph-svg"></svg></div><div id="bbgl-achievements-container" class="ledger-content"></div><div id="bbgl-ach-footer"><button type="button" class="bbgl-ach-nav bbgl-ach-prev" aria-label="Previous achievements page">${ICONS.CHEVRON}</button><div id="bbgl-ach-pageindicator"></div><button type="button" class="bbgl-ach-nav bbgl-ach-next" aria-label="Next achievements page">${ICONS.CHEVRON}</button></div><div id="bbgl-sticker-bg"></div><div id="bbgl-sticker-container"><div id="sticker-prev-btn" class="sticker-nav-btn">❮</div><div id="sticker-next-btn" class="sticker-nav-btn">❯</div><div id="bbgl-sticker-grid"></div></div><div id="bbgl-sticker-pagination-bar"><button type="button" id="sticker-mini-prev-btn" class="bbgl-ach-nav bbgl-ach-prev" aria-label="Previous sticker page">${ICONS.CHEVRON}</button><div id="bbgl-sticker-pagination"></div><button type="button" id="sticker-mini-next-btn" class="bbgl-ach-nav bbgl-ach-next" aria-label="Next sticker page">${ICONS.CHEVRON}</button></div><div class="glass-overlay"></div></div><div id="bbgl-bottom-panel"><div id="bbgl-demo-exit" style="display: ${runtime.demoMode ? 'flex' : 'none'};" data-tooltip="${TOOLTIPS.DEMO_EXIT}" data-tooltip-html="${TOOLTIPS.DEMO_EXIT_HTML}">DEMO MODE</div><div class="bbgl-header-wrapper"><div class="bbgl-month-header"><div class="title-group"><div class="title-stack"><div class="header-row header-row--alltime"><div class="stats-btn" id="all-time-btn">${ICONS.CHART}</div><div class="header-trigger" id="all-time-trigger">∞</div></div><div class="header-row header-row--year"><div class="stats-btn" id="year-stats-btn">${ICONS.CHART}</div><div class="header-trigger" id="year-trigger"></div><div id="bbgl-year-dropdown" class="bbgl-dropdown-menu"></div></div><div class="header-row header-row--month"><div class="stats-btn" id="month-stats-btn">${ICONS.CHART}</div><div class="header-trigger" id="month-trigger"></div><div id="bbgl-month-dropdown" class="bbgl-dropdown-menu"></div></div></div></div><button class="arrow-btn" id="prev-month-btn">❮</button><button class="arrow-btn" id="next-month-btn">❯</button></div><div id="bbgl-level-bg">${buildEmptyLevelTrackSVG()}</div><div id="bbgl-level-container"><div id="bbgl-level-flag-clip"><span id="bbgl-level-num">Lv 1</span></div><div id="bbgl-level-track"><div id="bbgl-level-fill"></div></div></div></div><div class="bbgl-grid-container"><div class="bbgl-week-row">${weekRowHTML}</div><div class="calendar-wrapper" id="swipe-area"><div id="bbgl-cal-container" class="bbgl-cal-container"></div></div></div></div><div id="bbgl-item-viewer"><div class="viewer-window"><div class="viewer-stage"><div class="viewer-pedestal" id="vi-pedestal-wrapper"><div class="viewer-obj" id="vi-obj-target"><div class="layer-front"></div><div class="layer-back"><div class="lb-brand"><span class="lb-brand-sm">Fully</span><span class="lb-brand-lg">Bricked</span><span class="lb-brand-sm">Fitness<sup class="lb-brand-tm">™</sup></span><span class="lb-brand-tag">Authentic</span></div></div></div></div></div></div><div class="viewer-info-overlay"><div class="vi-name" id="vi-name-target">Item Name</div></div></div><div id="bbgl-settings-view">${getSettingsHTML()}</div><div id="bbgl-welcome-view"></div></div>`;
     }
 
     /**

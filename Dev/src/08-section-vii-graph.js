@@ -984,9 +984,10 @@
             const _padV = (parseFloat(_cStyle.paddingTop) || 0) + (parseFloat(_cStyle.paddingBottom) || 0);
             let w = Math.round(cont.clientWidth - _padH);
             if (!(w > 0)) w = svg.clientWidth || cont.clientWidth;
-            const _hudEl = cont.querySelector('.g-hud');
-            const _hudH = _hudEl ? Math.ceil(_hudEl.getBoundingClientRect().height) : 28;
-            let h = (cont.clientHeight > _hudH + _padV ? cont.clientHeight - _hudH - _padV : 0) || svg.clientHeight;
+            // Full inner height: the mode/stat pills used to sit above the plot inside this
+            // container and had their measured height carved out here, but they live in
+            // #bbgl-toolbar now, so only this container's own padding comes off.
+            let h = (cont.clientHeight > _padV ? cont.clientHeight - _padV : 0) || svg.clientHeight;
             if (w <= 0 || h <= 0) {
                 Perf.end('graphDraw');
                 requestAnimationFrame(() => GraphController.draw());
@@ -1045,7 +1046,21 @@
             svg.appendChild(_yMT);
             _yMT.textContent = _yMaxStr;
             const _yFontPx = parseFloat(window.getComputedStyle(_yMT).fontSize) || ((expandedPanel || cont.closest('.bbgl-mode-page')) ? 11 : (cmp ? 9 : 11));
-            let _yLW = Math.ceil(_yMaxStr.length * _yFontPx * 0.40);
+            // Real rendered width of the widest label rather than a guess from character count.
+            // This matters now that the labels are left-aligned: the column width is the only thing
+            // holding the widest one off the gridlines, and a character-count estimate under-reads a
+            // proportional face by enough to push it into them. Back when they were right-aligned a
+            // bad estimate only cost slack against the wall, so the guess was good enough.
+            //
+            // Every label is measured, not just the longest string - in a proportional face the
+            // longest is not necessarily the widest.
+            let _yLW = 0;
+            for (const _s of pL) {
+                _yMT.textContent = _s;
+                const _w = _yMT.getComputedTextLength ? _yMT.getComputedTextLength() : 0;
+                if (_w > _yLW) _yLW = _w;
+            }
+            _yLW = Math.ceil(_yLW) || Math.ceil(_yMaxStr.length * _yFontPx * 0.40);
             const _yCap = Math.max(20, Math.floor(w * 0.28) - 5);
             if (_yLW > _yCap) _yLW = _yCap;
             svg.removeChild(_yMT);
@@ -1075,8 +1090,15 @@
             let mar = {
                 top: _topMar,
                 bottom: Math.max(2, xLabDrop - 3),
-                left: _yLW + 7,
-                right: 5
+                // Widest label plus the 3px gap it keeps from its gridline - nothing else, since
+                // the labels start hard against this margin's left edge.
+                left: _yLW + 3,
+                // No right margin: #bbgl-graph-container's padding-right is --bbgl-toolbar-pad, the
+                // same inset the last stat pill uses, so zero here puts the gridlines' right end
+                // exactly under the end of that pill. The last x-axis label is text-anchor:middle
+                // and so still overhangs by half its width, which it spends in that padding - the
+                // container's overflow:hidden clips at the padding edge, not at the plot edge.
+                right: 0
             };
             const cw = w - mar.left - mar.right,
                 ch = h - mar.top - mar.bottom;
@@ -1105,10 +1127,21 @@
                 l.setAttribute("class", "g-axis");
                 g.appendChild(l);
                 const t = document.createElementNS("http://www.w3.org/2000/svg", "text");
-                t.setAttribute("x", -6);
-                t.setAttribute("y", expandedPanel ? y - 1 : y + 3);
-                t.setAttribute("class", "g-text y-label");
-                t.textContent = Formatter.axis(v, _yForceWhole);
+                const _txt = Formatter.axis(v, _yForceWhole);
+                // A bare "0" is the single exception to the left-aligned column: it sits against its
+                // own gridline instead, right-anchored 3px off it (see .y-label-zero in the styles).
+                // Matched on the rendered string rather than the value, so a small non-zero that
+                // formats as "0.0" keeps the normal treatment - only a literal 0 moves.
+                const _zero = _txt === '0';
+                // Everything else is flush left: the group is translated by mar.left, so -mar.left is
+                // the SVG's x=0 and therefore the container's own content edge - the same line the
+                // leftmost toolbar icon starts on. Every label begins there, so the slack a short
+                // label leaves opens between it and its gridline instead of against the wall, and the
+                // widest label still clears the line by the 3px built into mar.left.
+                t.setAttribute("x", _zero ? -3 : -mar.left);
+                t.setAttribute("y", y - 1);
+                t.setAttribute("class", _zero ? "g-text y-label y-label-zero" : "g-text y-label");
+                t.textContent = _txt;
                 g.appendChild(t);
             }
             const gx = (v) => {
@@ -1429,7 +1462,6 @@
                 TooltipController.hide();
             };
             const os = (e) => {
-                if (e.type === 'touchstart' && e.target.closest('.g-hud')) return;
                 if (e.type === 'touchstart') e.preventDefault();
                 const p = gp(e),
                     cl = f(p.x, p.y);
