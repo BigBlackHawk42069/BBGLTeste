@@ -1999,6 +1999,10 @@
             _scrubMoveBound = null,
             _toolbarTipTimer = null;
         const _TOOLBAR_TOGGLE_IDS = new Set(['bbgl-ledger-toggle', 'bbgl-graph-toggle', 'bbgl-achievements-toggle', 'bbgl-sticker-toggle']);
+        // Anything that acts on tap keeps its plain-text tooltip for tap-and-hold only (the 400ms
+        // timer in touchstart); a tap tooltip would just pop up over whatever the tap did.
+        const _isTapAction = (target, tipEl) => !!target.closest('button, a[href], input, select, textarea, [role="button"]') ||
+            getComputedStyle(tipEl).cursor === 'pointer';
         const _onScrubMove = (e) => {
             if (!_scrubMode) return;
             if (e.cancelable) e.preventDefault();
@@ -2159,7 +2163,7 @@
                 if (h) {
                     if (TooltipController.currentTarget === t) TooltipController.hide();
                 } else if (txt) {
-                    if (TooltipController.currentTarget === t) TooltipController.hide();
+                    if (TooltipController.currentTarget === t || _isTapAction(e.target, t)) TooltipController.hide();
                     else {
                         TooltipController.currentTarget = t;
                         TooltipController.show('<div style="text-align:center; color:#ddd;">' + txt + '</div>', t.getBoundingClientRect());

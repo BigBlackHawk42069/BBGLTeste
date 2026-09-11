@@ -762,11 +762,10 @@
         const line = track && track.querySelector('.bbgl-rank-line');
         const knob = line && line.querySelector('.bbgl-rank-knob');
         const knobLv = knob && knob.querySelector('.bbgl-rank-knob-lv');
-        const notches = line && line.querySelector('.bbgl-rank-notches');
         const titles = line && line.querySelector('.bbgl-rank-titles');
         const card = page.querySelector('.bbgl-title-card');
         const cardRank = card && card.querySelector('.bbgl-title-card-rank');
-        if (!track || !line || !knob || !knobLv || !notches || !titles || !card || !cardRank) return false;
+        if (!track || !line || !knob || !knobLv || !titles || !card || !cardRank) return false;
 
         runtime._achLiveRankKey = key;
         const bricked = isFullyBricked(atrophy, level);
@@ -774,20 +773,18 @@
 
         // Same shared-clock trick achRefreshPageDom() uses: keeps runtime._titlesPageAnimationStartedAt
         // running and restamps --bbgl-titles-animation-delay to the (more negative) elapsed time BEFORE
-        // the notches/titles below are replaced, so the freshly-created nodes resume the page's existing
+        // the titles below are replaced, so the freshly-created nodes resume the page's existing
         // animation timeline instead of restarting their reveal/shimmer from 0.
         syncTitlesPageAnimationClock(container);
 
         track.style.cssText = rankBarProgressCSS(atrophy, level);
         line.classList.toggle('is-bricked', bricked);
-        line.classList.toggle('is-wrapped', hasRidingRank(atrophy, level));
-        notches.innerHTML = achTitleNotchesHTML(atrophy, level);
         titles.innerHTML = achTitleLabelsHTML(atrophy, level);
         knobLv.textContent = level;
         // setAttribute, not the achEsc()'d HTML-string form achBuildPageTitles() uses — this is
-        // going straight through the DOM API, not through an innerHTML parse, so the raw quotes
-        // belong here unescaped.
-        knob.setAttribute('data-tooltip', `"${currentRank.label}"`);
+        // going straight through the DOM API, not through an innerHTML parse, so no attribute
+        // escaping is needed.
+        knob.setAttribute('data-tooltip', currentRank.tip);
         card.dataset.rankFinish = currentRank.finish;
         card.dataset.rankMaterial = currentRank.material;
         cardRank.innerHTML = `<span class="bbgl-title-card-rank-label">Rank</span>${currentRank.html}`;
@@ -881,27 +878,8 @@
             if (icons.length) {
                 const tallest = Math.max(...icons.map(el => el.offsetHeight));
                 const topPad = Math.max(0, (toolbar.offsetHeight - tallest) / 2);
-                // Keep the icons' top clearance; the name row begins at their lower edge.
+                // Keep the toolbar icons' top clearance.
                 titlesContainer.style.setProperty('--bbgl-t-toolbar-bottom', `${toolbar.offsetTop + tallest + topPad}px`);
-            }
-        }
-        const nameRow = document.querySelector('.bbgl-titles-name-row');
-        const name = nameRow && nameRow.querySelector('.bbgl-titles-name');
-        if (name && nameRow.clientHeight > 0) {
-            // Reserve a small share of the row beneath the full text line, including descenders.
-            const expanded = nameRow.closest('#bbgl-panel')?.classList.contains('bbgl-expanded');
-            nameRow.style.paddingBottom = `${nameRow.clientHeight * (expanded ? .075 : .11)}px`;
-            const style = getComputedStyle(nameRow);
-            const width = nameRow.clientWidth - parseFloat(style.paddingLeft) - parseFloat(style.paddingRight);
-            const height = nameRow.clientHeight - parseFloat(style.paddingTop) - parseFloat(style.paddingBottom);
-            name.style.setProperty('--bbgl-name-fit', '100px');
-            const fit = Math.max(1, 100 * Math.min(width / Math.max(1, name.scrollWidth), height / Math.max(1, name.offsetHeight)));
-            name.style.setProperty('--bbgl-name-fit', `${fit}px`);
-            if (document.fonts && document.fonts.status === 'loading' && !nameRow.dataset.fontFitPending) {
-                nameRow.dataset.fontFitPending = '1';
-                document.fonts.ready.then(() => {
-                    if (nameRow.isConnected) layoutTitleBlockFrames();
-                });
             }
         }
         const main = document.querySelector('.bbgl-titles-main');
@@ -909,16 +887,44 @@
             const height = main.clientHeight;
             // Tooltip card: (176px outer width - 18px border/padding) * .86 by 132px.
             main.style.setProperty('--bbgl-title-max-width', `${height * (158 * .86 / 132)}px`);
+            const center = main.querySelector('.bbgl-titles-center');
+            let cardHeight = height;
+            if (center) {
+                const widthLoss = Math.max(0, height * .85 - center.clientWidth);
+                const expanded = main.closest('#bbgl-panel')?.classList.contains('bbgl-expanded');
+                const heightTrim = expanded
+                    ? Math.min(42, height * .27, widthLoss * .55)
+                    : Math.min(38, height * .24, widthLoss * .5);
+                main.style.setProperty('--bbgl-title-height-trim', `${heightTrim}px`);
+                main.style.setProperty('--bbgl-stat-padding-y', `${Math.min(3, heightTrim * .1)}px`);
+                main.style.setProperty('--bbgl-stat-row-extra', `${Math.min(3, heightTrim * .1)}px`);
+                cardHeight -= heightTrim;
+            }
             main.querySelectorAll('.bbgl-titles-corner-col').forEach(col => {
                 const label = col.querySelector('.bbgl-title-block-label');
                 const row = col.querySelector('.bbgl-title-star-row');
                 if (!label || !row) return;
                 const gap = parseFloat(getComputedStyle(row).columnGap) || 0;
                 const labelHeight = label.offsetHeight;
-                const vertical = (height - labelHeight * 2 - 7) / 4;
-                const horizontal = (col.clientWidth - gap * 4 - 4) / 5;
+                const expanded = main.closest('#bbgl-panel')?.classList.contains('bbgl-expanded');
+                const paddingY = parseFloat(getComputedStyle(col).getPropertyValue('--bbgl-stat-padding-y')) || 0;
+                const rowExtra = parseFloat(getComputedStyle(col).getPropertyValue('--bbgl-stat-row-extra')) || 0;
+                const vertical = (cardHeight - labelHeight * 2 - 7 - paddingY * 4 - rowExtra * 2) / (expanded ? 3.8 : 4);
+                const emblemScale = parseFloat(getComputedStyle(col).getPropertyValue('--bbgl-t-emblem-scale')) || 1.12;
+                // The grid reserves clearance outside the plate's 3px overhang.
+                const horizontal = (col.clientWidth - gap * 4) / (5 * emblemScale);
                 col.style.setProperty('--bbgl-t-star', `${Math.max(1, Math.min(vertical, horizontal))}px`);
             });
+            // The level-bar tooltip's title text copies the expanded page's size. That text is
+            // min(14cqw, 25cqh) of its size-container sign (.bbgl-title-card-value .bbgl-titles-title,
+            // 04-section-iii-styles.js); the tooltip lives on <body>, outside that container, so the
+            // resolved px goes on the root. Only measured in expanded, so other modes keep the last
+            // expanded value.
+            const sign = main.closest('#bbgl-panel.bbgl-expanded') && main.querySelector('.bbgl-title-card-sign');
+            if (sign && sign.clientWidth > 0 && sign.clientHeight > 0) {
+                const fs = Math.min(sign.clientWidth * .14, sign.clientHeight * .25);
+                document.documentElement.style.setProperty('--bbgl-tip-title-fs', `${fs.toFixed(2)}px`);
+            }
         }
         const blocks = document.querySelectorAll('.bbgl-title-block');
         if (!blocks.length) return true;
@@ -999,8 +1005,8 @@
     // --bbgl-t-rank-h grows the gap.
     const TITLE_LABEL_BIAS = 0.42;
 
-    // Places the visible rank assembly (groove + readout; plaques are hidden today, see
-    // .bbgl-rank-notches) in the space below the stat cards, in two passes: pass 1 freezes the
+    // Places the visible rank assembly (groove + readout) in the space below the stat cards, in
+    // two passes: pass 1 freezes the
     // label-to-groove spacing at a fixed reference placement, pass 2 treats labels+groove as one
     // rigid block and places that block. Doing it in one pass (just moving the groove) would let
     // the label gap rescale with it. Clamped at both ends so a short space hugs the floor instead
@@ -1034,13 +1040,9 @@
         const availableBottom = page.clientHeight - paddingBottom;
         if (!(availableBottom > availableTop)) return false;
 
-        // offsetParent filters out hidden plaque parts (every cradle but the riding one's, today)
-        // so only the VISIBLE assembly is measured. The cradle is measured separately since it's
-        // absolutely positioned and adds nothing to its label's offsetHeight, despite hanging
-        // lower than anything else in the assembly.
         const assemblyEls = [
             line,
-            ...line.querySelectorAll('.bbgl-rank-notch-label, .bbgl-rank-notch-cradle, .bbgl-rank-knob')
+            ...line.querySelectorAll('.bbgl-rank-knob')
         ].filter(el => el === line || el.offsetParent !== null);
         const assemblyBounds = assemblyEls.map(el => {
             const top = titleLayoutTopWithin(el, page);
@@ -1100,7 +1102,10 @@
         // Compact mode compresses the live marker slightly and spends the room on separation from
         // the cards above; CSS owns the amount, this just keeps the ceiling/floor clamps authoritative.
         const requestedNudge = parseFloat(getComputedStyle(scale).getPropertyValue('--bbgl-t-rank-nudge-y')) || 0;
-        drop += requestedNudge;
+        const expanded = page.closest('#bbgl-panel')?.classList.contains('bbgl-expanded');
+        const main = expanded && page.querySelector('.bbgl-titles-main');
+        const heightTrim = main ? parseFloat(getComputedStyle(main).getPropertyValue('--bbgl-title-height-trim')) || 0 : 0;
+        drop += requestedNudge - Math.min(7, heightTrim * .18);
         drop = Math.max(drop, availableTop - blockTop);
         drop = Math.min(drop, availableBottom - assemblyFloor - blockBottom);
 
@@ -1140,154 +1145,10 @@
     }
 
 
-    // Minimum clear space to leave between two neighbouring plaques, in untransformed layout px.
-    const RANK_NOTCH_MIN_GAP = 3;
-
-    // Hard wall at each end of the rank section, in px inside the panel's own edge — measured from
-    // the panel edge, not the groove's, since the groove is inset so end plaques can overhang it.
-    const RANK_SHELF_WALL = 7;
-
-    // Places every rank plaque on the trophy shelf. Three states (set in achTitleNotchesHTML(),
-    // 06-section-v-logic.js): .is-docked (earned and outgrown, parked in its permanent slot),
-    // .is-riding (the current rank, tracks the live readout), and locked (left where the markup
-    // put it, centred on its unlock level).
-    //
-    // Slots are solved for ALL SIX plaques every time, never just the docked subset — that's the
-    // invariant the design rests on: a plaque docks straight into the position it'll still hold
-    // once the shelf is full, so earning a rank never nudges an already-placed one. Plaque widths
-    // vary too much for an even division, so measured widths are laid end to end and the leftover
-    // space is split into five even gaps (space-between in spirit, done in JS since the shelf must
-    // stay sized for all six while only some are present).
-    //
-    // Always computed from measured widths + each notch's own inline left%, never from a rect that
-    // already carries a previous shift — so the pass is idempotent across repeated runs/resizes.
-    // Uses offsetWidth/clientWidth, not getBoundingClientRect(), for the same CRT-transform reason
-    // as layoutRankBarCenter() above. Writes translateX only, which can't retrigger the
-    // ResizeObserver in observeTitleBlockFrames().
-    function layoutRankShelf() {
-        const line = document.querySelector('.bbgl-titles-page .bbgl-rank-line');
-        if (!line) return false;
-        const allNotches = Array.from(line.querySelectorAll('.bbgl-rank-notch'));
-        if (!allNotches.length) return false;
-        const trackW = line.clientWidth;
-        if (!(trackW > 0)) return false;
-
-        // Guard against a hidden notch: offsetWidth reads 0 for display:none, which would collapse
-        // its slot and slide every later plaque left. Measuring it anyway would mean briefly
-        // un-hiding it (a forced reflow), so instead the shelf solve is skipped entirely and only
-        // the riding plaque is placed — "plaques sit on their milestones" rather than a wrong shelf.
-        const hidden = allNotches.some(n => n.offsetParent === null);
-        const boxes = allNotches.map(notch => {
-            const label = notch.querySelector('.bbgl-rank-notch-label');
-            const w = label ? label.offsetWidth : 0;
-            // Height is read for the riding plaque's cradle alone — see the --rank-plate-h write
-            // below. Taken here rather than in a pass of its own so it lands in this function's
-            // single READ phase, before anything is written.
-            const h = label ? label.offsetHeight : 0;
-            const pct = parseFloat(notch.style.left);
-            if (!label || !Number.isFinite(pct)) return null;
-            return {
-                notch,
-                w,
-                h,
-                natural: trackW * (pct / 100),
-                docked: notch.classList.contains('is-docked'),
-                riding: notch.classList.contains('is-riding')
-            };
-        });
-        if (boxes.some(b => b === null)) return false;
-
-        // Everything here is in the groove's own coordinate space: 0 is its left end, trackW its
-        // right. The groove is inset from the panel by --bbgl-t-rank-edge plus half a title slot on
-        // each side (see .bbgl-rank-line, 04-section-iii-styles.js), and that inset is exactly what
-        // offsetLeft reads, so the panel edges sit at -sidePad and trackW + sidePad, and the walls
-        // are RANK_SHELF_WALL inside those. Read, never assumed, so the derived inset above can
-        // change shape without this needing to know the formula.
-        const sidePad = line.offsetLeft;
-        const wallL = -sidePad + RANK_SHELF_WALL;
-        const wallR = trackW + sidePad - RANK_SHELF_WALL;
-
-        // The shelf centres on the groove itself (NOT the walls it's clamped to), so the first/last
-        // plaque lands flush with the bar's own ends rather than floating into the side padding. The
-        // wall clamp below is purely a last-resort guard for when the ladder is too wide for the groove.
-        const boxL = 0;
-        const boxR = trackW;
-        const avail = boxR - boxL;
-
-        // Locked plaques stay on the milestone the markup put them on; the two solves below
-        // override that for the plaques whose state calls for it.
-        const targets = boxes.map(b => b.natural);
-
-        if (!hidden && avail > 0) {
-            // Solve the full six-slot shelf. Total plaque width laid end to end, then the
-            // remainder split into equal gaps. A gap below RANK_NOTCH_MIN_GAP means the ladder
-            // simply cannot fit in the box — hold the gap at that floor rather than letting the
-            // plaques overlap into an unreadable pile, and accept that the ends may then be pushed
-            // back inside by the wall clamp below.
-            if (boxes.some(b => !(b.w > 0))) return false;
-            const totalW = boxes.reduce((sum, b) => sum + b.w, 0);
-            const even = boxes.length > 1 ? (avail - totalW) / (boxes.length - 1) : 0;
-            const gap = Math.max(RANK_NOTCH_MIN_GAP, even);
-
-            // Centred in the box. When the ladder fits, `gap` IS the even division, so the span
-            // works out to exactly `avail` and the shelf lands flush against both of the box's
-            // edges. When it does not, the span is wider and the overshoot is split evenly off both
-            // ends instead of piling up entirely on the right.
-            const span = totalW + gap * (boxes.length - 1);
-            let cursor = boxL + (avail - span) / 2;
-
-            boxes.forEach((b, i) => {
-                // Every plaque advances the cursor even when not docked, reserving its room so
-                // later slots land correctly once it docks.
-                if (b.docked) targets[i] = cursor + b.w / 2;
-                cursor += b.w + gap;
-            });
-        }
-
-        // The riding plaque tracks the level readout. Same --rank-fill-pct the knob itself reads
-        // (rankBarProgressCSS(), 03-section-ii-utils.js), so the two stay locked together by
-        // construction instead of by two separately-maintained position formulas.
-        const fillPct = parseFloat(getComputedStyle(line).getPropertyValue('--rank-fill-pct'));
-        if (Number.isFinite(fillPct)) {
-            boxes.forEach((b, i) => {
-                if (b.riding) targets[i] = trackW * (fillPct / 100);
-            });
-        }
-
-        // The wall clamp applies to every plaque without exception — the one rule with no states.
-        boxes.forEach((b, i) => {
-            const minCenter = wallL + b.w / 2;
-            const maxCenter = wallR - b.w / 2;
-            // A single plaque wider than the whole usable width has no satisfying position; pin it
-            // to the left wall so it overflows in one predictable direction rather than jittering.
-            const center = maxCenter >= minCenter
-                ? Math.max(minCenter, Math.min(maxCenter, targets[i]))
-                : minCenter;
-            const shift = center - b.natural;
-            if (Math.abs(shift) < 0.01) b.notch.style.removeProperty('--rank-shift');
-            else b.notch.style.setProperty('--rank-shift', `${shift.toFixed(3)}px`);
-
-            // The plate and its cradle share ONE metal ramp spanning both, so the gradient runs
-            // unbroken across the join instead of restarting in the cradle (see
-            // .bbgl-rank-notch-cradle, 04-section-iii-styles.js). The plate can size that ramp
-            // from its own box in pure CSS; the cradle cannot — it has to know how far down the
-            // shared ramp its own slice begins, which is exactly the plate's height. Only the
-            // riding plaque has a cradle, so only it carries the value, and it is cleared off the
-            // rest so a plaque that stops riding cannot leave a stale one behind.
-            if (b.riding && b.h > 0) b.notch.style.setProperty('--rank-plate-h', `${b.h.toFixed(2)}px`);
-            else b.notch.style.removeProperty('--rank-plate-h');
-        });
-        return true;
-    }
-
     function layoutTitlesPageGeometry() {
         const framesReady = layoutTitleBlockFrames();
-        // Before the vertical centring, which measures the assembly's bounding box — the shelf
-        // pass can only move plaques horizontally, but running it first keeps the two passes in a
-        // fixed order rather than an incidental one.
-        const spacingReady = layoutRankShelf();
         const rankReady = layoutRankBarCenter();
-        return framesReady && spacingReady && rankReady;
+        return framesReady && rankReady;
     }
 
     // (Re)establishes the ResizeObserver watching the current title blocks and visible rank parts —
@@ -1441,7 +1302,7 @@
         }
         bar.container.dataset.atrophy = atrophy;
         bar.container.dataset.level = level;
-        bar.container.setAttribute('data-tooltip', achLevelBarTooltipHTML(atrophy, level));
+        bar.container.setAttribute('data-tooltip', achLevelBarTooltipHTML(atrophy, level, pct));
     }
 
     // renderLevelBar() alone always animates the width change via the fill's CSS transition —
@@ -2353,13 +2214,6 @@
         if (!gymRoot) return;
         if (document.getElementById('bbgl-gym-level-container')) return;
 
-        for (const p of gymRoot.querySelectorAll('p')) {
-            if (p.textContent.trim() === 'What would you like to train today?') {
-                (p.parentElement?.parentElement ?? p).remove();
-                break;
-            }
-        }
-
         const container = document.createElement('div');
         container.id = 'bbgl-gym-level-container';
 
@@ -2402,10 +2256,12 @@
             dom.bestGym = existing;
             return;
         }
-        const gymRoot = document.getElementById('gymroot');
-        if (!gymRoot) return;
-        const gymContent = gymRoot.querySelector('[class*="gymContent___"]');
-        if (!gymContent) return;
+        // Lives in the empty top-right of the gym EXP bar's top margin, absolutely positioned
+        // (#bbgl-gym-level-container .bbgl-bestgym, 04-section-iii-styles.js) so the bar's sizing
+        // is untouched. handleDomMutation() injects the bar first; if it isn't there yet, the
+        // next mutation retries.
+        const levelContainer = document.getElementById('bbgl-gym-level-container');
+        if (!levelContainer) return;
         const pill = document.createElement('div');
         pill.id = 'bbgl-bestgym';
         pill.className = 'bbgl-bestgym';
@@ -2413,7 +2269,7 @@
         const cb = pill.querySelector('#bbgl-bestgym-input');
         cb.checked = !!userConfig.bestGym;
         cb.onchange = () => setBestGym(cb.checked);
-        gymContent.insertAdjacentElement('afterend', pill);
+        levelContainer.appendChild(pill);
         dom.bestGym = pill;
     }
 

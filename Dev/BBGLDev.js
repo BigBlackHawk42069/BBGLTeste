@@ -488,17 +488,19 @@
         privacyAgreed: '',
         // Stat title. Two independent things, so the Earned/Custom switch can flip between them
         // without either destroying the other:
-        //   titleMode    - 'earned' (auto-follows your top two stats) or 'custom' (your saved pick)
+        //   titleMode    - 'earned' (highest earned title) or 'custom' (your saved pick)
         //   titleCustom  - the manual pick itself, {primary:{stat,phase}, secondary:{stat,phase}},
         //                  where primary supplies the noun and secondary the adjective. Null until
         //                  the first pick, which is also what flips titleMode to 'custom'.
-        //   titleAutoPair / titleAutoPairChangedAt - earned-mode bookkeeping: the pair currently
-        //                  held and when it last swapped, enforcing the 72h swap cooldown.
-        // See resolveStatTitleSelection() in 03-section-ii-utils.js.
+        //   titleAutoPair / titleAutoRecent / titleAutoPhases - earned-mode bookkeeping: the pair
+        //                  held, the two most recently unlocked stats, and the phase high-water mark
+        //                  unlocks are detected against.
+        // See resolveAutoTitlePair() in 03-section-ii-utils.js.
         titleMode: 'earned',
         titleCustom: null,
         titleAutoPair: null,
-        titleAutoPairChangedAt: 0
+        titleAutoRecent: null,
+        titleAutoPhases: null
     };
     const ALLOWED_CONFIG_KEYS = Object.keys(userConfig);
     const r2 = (v) => Math.round(v * 100) / 100;
@@ -1223,20 +1225,6 @@
         return out;
     }
 
-    // Whether any plaque is in the riding state right now — i.e. the player holds a rank that is
-    // not the terminal capstone. achTitleNotchesHTML() (06-section-v-logic.js) decides WHICH plaque
-    // rides; this answers only whether one does at all, which is what the rank line needs in order
-    // to know that the readout's digits are sitting inside a plaque skirt rather than on the bare
-    // groove. Derived from the same levelRankBrackets() the plaque states come from, so the two
-    // cannot drift into disagreeing about it.
-    //
-    // Not simply `level >= 0`: atrophy 1/2 start below zero, and until the player climbs to level 0
-    // no band is unlocked at all, so nothing rides and the readout is genuinely bare.
-    function hasRidingRank(atrophy, level) {
-        if (isFullyBricked(atrophy, level)) return false;
-        return levelRankBrackets(atrophy, level).some(b => b.unlocked);
-    }
-
     // The engraved rank track has no fill or colour progression: the sliding digital readout is the
     // sole position indicator. This emits only that position as a custom property.
     function rankBarProgressCSS(_atrophy, level) {
@@ -1259,11 +1247,6 @@
     // Ten tiers, indexed 0-9 internally but displayed as 1-10 everywhere the player sees them
     // (achTitleStarHTML(), 06-section-v-logic.js) — the free tier reads as "1" rather than "0".
     const STAT_TITLE_THRESHOLDS = [0, 10000, 22500, 37500, 55000, 75000, 105000, 140000, 185000, 240000];
-
-    // While the player has never made a manual pick, the displayed pair auto-follows their top two
-    // stats. Phase bumps apply the moment they unlock, but WHICH stats hold the two slots may only
-    // change this often.
-    const STAT_TITLE_AUTO_PAIR_COOLDOWN_MS = 72 * 3600 * 1000;
 
     // One evolving noun+adjective ladder per stat, indexed by phase (0-9). Undecided phases are
     // `null` — statTitleWord() clamps down to the highest defined phase at or below the one asked
@@ -1411,24 +1394,62 @@
         };
     }
 
-    function persistAutoTitlePair(pair, now) {
-        if (runtime.demoMode) return;
-        userConfig.titleAutoPair = { primary: pair[0], secondary: pair[1] };
-        userConfig.titleAutoPairChangedAt = now;
-        saveConfig();
+    // Earned mode's pair: the two stats that most recently unlocked a new tier (titleAutoRecent,
+    // oldest first). Install seeds it with the top two battle stats, the lower one oldest so the
+    // first unlock replaces it. Word order is fixed at each change — the higher battle stat supplies
+    // the noun (second word) — and nothing moves between unlocks, so the title never changes mid-tier.
+    //
+    // titleAutoPhases is the per-stat phase high-water mark unlocks are detected against. It never
+    // drops, so a transiently low E read while data loads can't register as a fresh unlock later.
+    function resolveAutoTitlePair(phases, breakdown) {
+        const valid = s => !!STAT_TITLE_WORDS[s];
+        const byStat = (a, b) => ((breakdown[a] || 0) >= (breakdown[b] || 0)
+            ? { primary: a, secondary: b }
+            : { primary: b, secondary: a });
+        const stored = userConfig.titleAutoPair;
+        const storedPair = stored && valid(stored.primary) && valid(stored.secondary) ? stored : null;
+        // Before battle stats load, rankTopTwoStats() is just STAT_KEYS order — never seed from it.
+        const hasStats = STAT_KEYS.some(k => (breakdown[k] || 0) > 0);
+        if (!hasStats || runtime.demoMode) {
+            if (storedPair) return storedPair;
+            const top = rankTopTwoStats(breakdown);
+            return byStat(top[0], top[1]);
+        }
+        let recent = Array.isArray(userConfig.titleAutoRecent)
+            ? [...new Set(userConfig.titleAutoRecent.filter(valid))].slice(-2)
+            : [];
+        if (recent.length < 2) {
+            if (storedPair) recent = [storedPair.secondary, storedPair.primary];
+            else {
+                const top = rankTopTwoStats(breakdown);
+                recent = [top[1], top[0]];
+            }
+        }
+        const seen = userConfig.titleAutoPhases;
+        const unlocked = seen ? STAT_KEYS.filter(k => (phases[k] || 0) > (seen[k] || 0)) : [];
+        unlocked.forEach(k => { recent = recent.filter(s => s !== k).concat(k).slice(-2); });
+        const pairChanged = unlocked.length > 0 || !storedPair ||
+            !recent.includes(storedPair.primary) || !recent.includes(storedPair.secondary);
+        const pair = pairChanged ? byStat(recent[0], recent[1]) : storedPair;
+        const nextSeen = {};
+        STAT_KEYS.forEach(k => { nextSeen[k] = Math.max(phases[k] || 0, (seen && seen[k]) || 0); });
+        const before = JSON.stringify([userConfig.titleAutoRecent, userConfig.titleAutoPhases, userConfig.titleAutoPair]);
+        userConfig.titleAutoRecent = recent;
+        userConfig.titleAutoPhases = nextSeen;
+        userConfig.titleAutoPair = { primary: pair.primary, secondary: pair.secondary };
+        if (JSON.stringify([recent, nextSeen, userConfig.titleAutoPair]) !== before) saveConfig();
+        return userConfig.titleAutoPair;
     }
 
     // The selection actually displayed, given per-stat E and the current stat breakdown.
     //
-    // Custom mode: the saved manual pick, clamped to what's unlocked. Earned mode: the top two
-    // stats, each at its own highest unlocked phase — so a phase bump shows up the instant it
-    // unlocks — except that WHICH stats hold the two slots may only change once per
-    // STAT_TITLE_AUTO_PAIR_COOLDOWN_MS.
-    //
-    // The two are stored separately (titleCustom vs titleAutoPair) precisely so the reset arrow is
-    // non-destructive: going back to Earned never overwrites the custom pick waiting behind it.
+    // Custom mode: the saved manual pick, clamped to what's unlocked. Earned mode: the pair from
+    // resolveAutoTitlePair(), each stat at its highest unlocked phase. The auto pair is tracked even
+    // while a custom pick is showing, so unlocks earned meanwhile are there when the reset arrow
+    // goes back to it — and the custom pick is stored separately, so resetting never destroys it.
     function resolveStatTitleSelection(eByStat, breakdown) {
         const phases = statTitlePhases(eByStat);
+        const auto = resolveAutoTitlePair(phases, breakdown || {});
         const custom = userConfig.titleCustom;
         const hasCustom = !!(custom && custom.primary && custom.secondary);
         if (userConfig.titleMode === 'custom' && hasCustom) {
@@ -1436,29 +1457,9 @@
             const secondary = clampTitleSlot(custom.secondary, phases);
             if (primary && secondary) return { primary, secondary, phases, mode: 'custom' };
         }
-        let pair = rankTopTwoStats(breakdown || {});
-        const auto = userConfig.titleAutoPair;
-        const prev = (auto && STAT_TITLE_WORDS[auto.primary] && STAT_TITLE_WORDS[auto.secondary])
-            ? [auto.primary, auto.secondary]
-            : null;
-        // Before any battle stats have loaded, rankTopTwoStats() falls back to STAT_KEYS order.
-        // Seeding (and stamping the 72h cooldown) off that would lock str/def in for three days on
-        // every fresh install, so hold whatever is stored and don't persist until stats are real.
-        const hasStats = STAT_KEYS.some(k => (breakdown && breakdown[k]) > 0);
-        if (!hasStats) {
-            if (prev) pair = prev;
-        } else {
-            const now = Date.now();
-            if (!prev) {
-                persistAutoTitlePair(pair, now);
-            } else if (prev[0] !== pair[0] || prev[1] !== pair[1]) {
-                if (now - (userConfig.titleAutoPairChangedAt || 0) < STAT_TITLE_AUTO_PAIR_COOLDOWN_MS) pair = prev;
-                else persistAutoTitlePair(pair, now);
-            }
-        }
         return {
-            primary: { stat: pair[0], phase: phases[pair[0]] },
-            secondary: { stat: pair[1], phase: phases[pair[1]] },
+            primary: { stat: auto.primary, phase: phases[auto.primary] },
+            secondary: { stat: auto.secondary, phase: phases[auto.secondary] },
             phases,
             mode: 'earned'
         };
@@ -1479,12 +1480,9 @@
         return next;
     }
 
-    // Drives the titles page's reset arrow — picking a star sets 'custom' on its own. Zeroing the
-    // cooldown stamp on the way back to Earned lets it snap straight to the real top two instead of
-    // sitting on a stale pair for 72h.
+    // Drives the titles page's reset arrow — picking a star sets 'custom' on its own.
     function setStatTitleMode(mode) {
         userConfig.titleMode = mode === 'custom' ? 'custom' : 'earned';
-        if (userConfig.titleMode === 'earned') userConfig.titleAutoPairChangedAt = 0;
         saveConfig();
     }
 
@@ -1917,6 +1915,18 @@
                         line-height: 24px;
                         color: #999;
                         margin-top: 8px;
+                    }
+
+                    /* Gym page: sits in the empty top-right of the EXP bar top margin (30px, see
+                       #bbgl-gym-level-container). Absolute, so the bar layout and size never move;
+                       top -24px sits the 24px pill just above the bar. The container clip-path only
+                       clips the sides and bottom, so the pill shows above the bar. */
+                    #bbgl-gym-level-container .bbgl-bestgym {
+                        position: absolute;
+                        top: -24px;
+                        right: 0;
+                        z-index: 4;
+                        margin-top: 0;
                     }
 
                     .bbgl-bestgym-logo {
@@ -2770,7 +2780,7 @@
                         padding: 0;
                         border-radius: 0;
                         filter: none;
-                        max-width: 196px;
+                        max-width: 268px;
                     }
 
                     #bbgl-tooltip:has(.bbgl-level-title-tooltip) #bbgl-tooltip-arrow {
@@ -2778,7 +2788,8 @@
                     }
 
                     .bbgl-level-title-tooltip {
-                        --bbgl-t-fs-name: 14px;
+                        position: relative;
+                        --bbgl-t-fs-name: 15px;
                         --bbgl-t-name-scale: 1.45;
                         --bbgl-t-fs-line: 9px;
                         --bbgl-t-fs-line-label: 6px;
@@ -2789,7 +2800,7 @@
                         --bbgl-t-win-hum: 11.3s;
                         --bbgl-t-wire-h: 8px;
                         --bbgl-t-wire-lift: 4px;
-                        width: 176px;
+                        width: 268px;
                         padding: 37px 8px 8px;
                         border: 1px solid rgba(145, 115, 176, .32);
                         border-radius: 6px;
@@ -2800,21 +2811,127 @@
                         box-sizing: border-box;
                     }
 
+                    .bbgl-tooltip-rank-progress {
+                        margin: 9px 18px 0;
+                        font: 10px/1.3 'Barlow Condensed', sans-serif;
+                        color: #c8c4ce;
+                        text-align: center;
+                    }
+                    .bbgl-tooltip-level-readout { color: #eee9f2; font-size: 12px; }
+                    .bbgl-tooltip-rank-track {
+                        position: relative;
+                        height: 1px;
+                        margin: 7px 0 5px;
+                        background: #8a7b99;
+                    }
+                    .bbgl-tooltip-rank-track::before,
+                    .bbgl-tooltip-rank-track::after {
+                        content: '';
+                        position: absolute;
+                        top: -3px;
+                        width: 1px;
+                        height: 7px;
+                        background: #b7a6ca;
+                    }
+                    .bbgl-tooltip-rank-track::before { left: 0; }
+                    .bbgl-tooltip-rank-track::after { right: 0; }
+                    .bbgl-tooltip-rank-track > span {
+                        position: absolute;
+                        left: var(--rank-progress);
+                        top: 50%;
+                        width: 5px;
+                        height: 5px;
+                        border-radius: 50%;
+                        background: #d5b4f5;
+                        box-shadow: 0 0 0 1px #25202c;
+                        transform: translate(-50%, -50%);
+                    }
+                    /* Lv start | level readout | Lv end on one row under the rank track. Baseline
+                       aligned so the larger readout lines up with the smaller endpoint labels. */
+                    .bbgl-tooltip-rank-endpoints { display: flex; justify-content: space-between; align-items: baseline; }
+
                     .bbgl-level-title-tooltip .bbgl-titles-center {
-                        width: 100%;
+                        flex: 1 1 auto;
+                        width: auto;
+                        min-width: 0;
                         height: 132px;
                         margin: 0;
                         transform: none;
                     }
 
+                    /* In-progress stat emblems flanking the identity card: str+spd left,
+                       def+dex right, same grouping as the titles page. */
+                    .bbgl-tooltip-identity-row {
+                        display: flex;
+                        align-items: center;
+                        gap: 4px;
+                    }
+                    .bbgl-tooltip-emblem-col {
+                        flex: 0 0 40px;
+                        display: flex;
+                        flex-direction: column;
+                        justify-content: space-around;
+                        align-self: stretch;
+                    }
+                    .bbgl-tooltip-emblem {
+                        display: flex;
+                        flex-direction: column;
+                        align-items: center;
+                        gap: 3px;
+                    }
+                    .bbgl-tooltip-emblem .bbgl-stat-emblem {
+                        width: 36px;
+                        height: 27px;
+                        transform: none;
+                    }
+                    .bbgl-tooltip-emblem.ach-stat-str { --bbgl-t-win-color: #3264c6; }
+                    .bbgl-tooltip-emblem.ach-stat-def { --bbgl-t-win-color: #dc3912; }
+                    .bbgl-tooltip-emblem.ach-stat-spd { --bbgl-t-win-color: #ff9900; }
+                    .bbgl-tooltip-emblem.ach-stat-dex { --bbgl-t-win-color: #109618; }
+                    .bbgl-tooltip-emblem.is-unlocked .bbgl-stat-emblem {
+                        color: color-mix(in srgb, var(--bbgl-t-win-color) 65%, #84919d);
+                    }
+                    .bbgl-tooltip-emblem.is-unlocked .bbgl-emblem-gloss { opacity: .85; }
+                    .bbgl-tooltip-emblem.is-unlocked .bbgl-emblem-detail {
+                        stroke: #d6dce0;
+                        opacity: .75;
+                    }
+                    .bbgl-tooltip-emblem-pct {
+                        font: 11.5px/1 'Fjalla One', 'Arial Narrow', sans-serif;
+                        letter-spacing: .02em;
+                        white-space: nowrap;
+                        color: color-mix(in srgb, var(--bbgl-t-win-color) 45%, #eee9f2);
+                    }
+
+                    .bbgl-level-title-tooltip .bbgl-tooltip-player-name {
+                        position: absolute;
+                        top: 5px;
+                        left: 2px;
+                        right: 2px;
+                        width: auto;
+                        max-width: none;
+                        transform: none;
+                        padding-left: .2em;
+                        padding-right: .2em;
+                        text-align: center;
+                    }
+
                     .bbgl-level-title-tooltip .bbgl-title-card {
-                        width: 86%;
+                        width: 135.88px;
+                        max-width: 100%;
                         flex: 1 1 auto;
                         align-self: center;
                     }
 
+                    /* Title text matches the expanded titles page: --bbgl-tip-title-fs is its
+                       measured px, set on the root by layoutTitleBlockFrames() (07-section-vi-ui.js).
+                       Until that page has been laid out, the normal plaque-relative size applies.
+                       line-height restores the plaque value that .bbgl-lvl-title.bbgl-titles-title
+                       (1.55, later in the file) overrides; its extra leading opened a gap under The. */
                     #bbgl-tooltip .bbgl-level-title-tooltip .bbgl-titles-title {
                         font-style: normal;
+                        font-size: var(--bbgl-tip-title-fs, min(14cqw, 25cqh));
+                        line-height: 1.05;
                     }
 
                     /* Title finish progression, Phase 0-9 — dull silver to iridescent diamond.
@@ -7978,7 +8095,6 @@
                            readout's HEIGHT is just its own line box, so there is no -display-h. */
                         --bbgl-t-display-w: clamp(25px, 5cqi, 34px);
                         --bbgl-t-display-fs: clamp(9px, 1.8cqi, 13px);
-                        --bbgl-t-notch-gap: clamp(5px, .9cqb, 8px);
                         /* The anchored gap held at the far left and far right of the rank area. This
                            is now the ONLY number placing the rank axis horizontally: everything
                            inside it — track width, slot width, groove length, end-title clearance —
@@ -8113,7 +8229,6 @@
                             --bbgl-t-rank-tag-cut: 1.1146px;
                             --bbgl-t-display-w: 23.5px;
                             --bbgl-t-display-fs: 8.5px;
-                            --bbgl-t-notch-gap: 4.75px;
 
                             --bbgl-t-star: 15px;
                             --bbgl-t-star-cgap: 1.6875px;
@@ -8182,7 +8297,6 @@
                             --bbgl-t-rank-tag-cut: 1.3456px;
                             --bbgl-t-display-w: 23.5px;
                             --bbgl-t-display-fs: 8.5px;
-                            --bbgl-t-notch-gap: 4.75px;
 
                             --bbgl-t-star: 18.5px;
                             --bbgl-t-star-cgap: 2.0625px;
@@ -8230,7 +8344,6 @@
                             --bbgl-t-rank-tag-cut: 2.7386px;
                             --bbgl-t-display-w: 34px;
                             --bbgl-t-display-fs: 13px;
-                            --bbgl-t-notch-gap: 6px;
 
                             --bbgl-t-star: 28px;
                             --bbgl-t-star-cgap: 3.75px;
@@ -8400,7 +8513,6 @@
                         --bbgl-t-bar-h: 1px;
                         --bbgl-t-display-w: 22px;
                         --bbgl-t-display-fs: 8px;
-                        --bbgl-t-notch-gap: 0px;
                         /* Tighter than the shared value: compact's rank area is the narrowest in the
                            app, so it buys back a little groove length at the ends. */
                         --bbgl-t-rank-edge: 4px;
@@ -8450,7 +8562,7 @@
                     #bbgl-panel.bbgl-expanded .bbgl-titles-corner-col {
                         --bbgl-t-star: clamp(14px, calc(14px + 11px * var(--bbgl-t-cards)), 25px);
                         --bbgl-t-star-cgap: clamp(1.5px, calc(1.5px + 1.5px * var(--bbgl-t-cards)), 3px);
-                        --bbgl-t-fs-block-label: clamp(7.2px, calc(7.2px + 5.8px * var(--bbgl-t-cards)), 13px);
+                        --bbgl-t-fs-block-label: clamp(8.5px, calc(8.5px + 3px * var(--bbgl-t-cards)), 11.5px);
                         --bbgl-t-label-clear: calc(var(--bbgl-t-fs-block-label) * .6 + 2px + 2.5px);
                         --bbgl-t-win-pad: clamp(3.25px, calc(3.25px + 2.75px * var(--bbgl-t-cards)), 6px);
                         --bbgl-t-win-pad-y: clamp(1.8px, calc(1.8px + 1.2px * var(--bbgl-t-cards)), 3px);
@@ -8800,18 +8912,19 @@
                         min-width: 0;
                         min-height: 0;
                         padding: 0 0 4px;
-                        border: 1px solid #21120d;
+                        border: 1px solid #140b07;
                         border-radius: 3px;
                         box-sizing: border-box;
+                        /* Dark walnut: deep cool chocolate base, darker grain streaks, faint light figure. */
                         background:
-                            repeating-linear-gradient(92deg, transparent 0 5px, rgba(16, 6, 2, .18) 6px, transparent 7px 13px),
-                            repeating-linear-gradient(88deg, rgba(211, 151, 88, .045) 0 1px, transparent 1px 3px),
-                            radial-gradient(ellipse 28% 120% at 24% 35%, #56331f00 45%, #22120c55 70%, transparent 78%),
-                            linear-gradient(100deg, #382116, #62412b 38%, #472a1b 72%, #342017);
+                            repeating-linear-gradient(92deg, transparent 0 5px, rgba(8, 4, 2, .28) 6px, transparent 7px 13px),
+                            repeating-linear-gradient(88deg, rgba(176, 128, 92, .04) 0 1px, transparent 1px 3px),
+                            radial-gradient(ellipse 28% 120% at 24% 35%, #3a241800 45%, #140a0666 70%, transparent 78%),
+                            linear-gradient(100deg, #24160f, #3d281d 38%, #2f1e15 72%, #20140d);
                         box-shadow:
-                            inset 1px 1px 0 rgba(227, 174, 108, .32),
-                            inset -1px -1px 0 rgba(0, 0, 0, .65),
-                            inset 0 0 0 3px rgba(26, 13, 6, .24);
+                            inset 1px 1px 0 rgba(186, 138, 100, .22),
+                            inset -1px -1px 0 rgba(0, 0, 0, .7),
+                            inset 0 0 0 3px rgba(16, 8, 4, .28);
                     }
 
                     .bbgl-title-card::before {
@@ -8915,14 +9028,14 @@
                         transform: none;
                         flex: 0 0 auto;
                         font-family: Georgia, 'Times New Roman', serif;
-                        font-size: min(8cqw, 13cqh);
+                        font-size: min(10cqw, 17cqh);
                         font-style: italic;
                         font-weight: 500;
                         line-height: 1;
                         letter-spacing: .02em;
                         text-transform: none;
                         color: #f6dc98;
-                        text-shadow: 0 1px 1px rgba(75, 3, 19, .8);
+                        text-shadow: 0 1px 1px rgba(38, 8, 52, .82);
                     }
 
                     .bbgl-title-card-sign {
@@ -8936,7 +9049,7 @@
                         min-width: 0;
                         min-height: 0;
                         box-sizing: border-box;
-                        filter: drop-shadow(0 3px 2px rgba(35, 3, 9, .5));
+                        filter: drop-shadow(0 3px 2px rgba(0, 0, 0, .65));
                     }
 
                     .bbgl-title-card-sign-face {
@@ -8959,11 +9072,10 @@
                         content: '';
                         position: absolute;
                         inset: 0;
-                        background: url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%204%20240%2096%22%20preserveAspectRatio%3D%22none%22%3E%3Cdefs%3E%3ClinearGradient%20id%3D%22face%22%20x1%3D%220%22%20y1%3D%220%22%20x2%3D%22.3%22%20y2%3D%221%22%3E%3Cstop%20stop-color%3D%22%23ca1235%22%2F%3E%3Cstop%20offset%3D%22.48%22%20stop-color%3D%22%23b7072b%22%2F%3E%3Cstop%20offset%3D%221%22%20stop-color%3D%22%23920723%22%2F%3E%3C%2FlinearGradient%3E%3ClinearGradient%20id%3D%22side%22%3E%3Cstop%20stop-color%3D%22%23ff2947%22%2F%3E%3Cstop%20offset%3D%22.5%22%20stop-color%3D%22%23e91036%22%2F%3E%3Cstop%20offset%3D%221%22%20stop-color%3D%22%23a70727%22%2F%3E%3C%2FlinearGradient%3E%3ClinearGradient%20id%3D%22gold%22%20x2%3D%22.15%22%20y2%3D%221%22%3E%3Cstop%20stop-color%3D%22%23fff0a0%22%2F%3E%3Cstop%20offset%3D%22.35%22%20stop-color%3D%22%23f9cf49%22%2F%3E%3Cstop%20offset%3D%22.75%22%20stop-color%3D%22%23da961d%22%2F%3E%3Cstop%20offset%3D%221%22%20stop-color%3D%22%23ffe477%22%2F%3E%3C%2FlinearGradient%3E%3ClinearGradient%20id%3D%22curl%22%20x2%3D%220%22%20y2%3D%221%22%3E%3Cstop%20stop-color%3D%22%23770d20%22%2F%3E%3Cstop%20offset%3D%22.5%22%20stop-color%3D%22%23c11b30%22%2F%3E%3Cstop%20offset%3D%221%22%20stop-color%3D%22%23640e1e%22%2F%3E%3C%2FlinearGradient%3E%3ClinearGradient%20id%3D%22top-roll%22%20x1%3D%220%22%20y1%3D%220%22%20x2%3D%220%22%20y2%3D%221%22%3E%3Cstop%20stop-color%3D%22%23640b20%22%2F%3E%3Cstop%20offset%3D%22.18%22%20stop-color%3D%22%23ad1832%22%2F%3E%3Cstop%20offset%3D%22.38%22%20stop-color%3D%22%23ef4960%22%2F%3E%3Cstop%20offset%3D%22.53%22%20stop-color%3D%22%23db2b48%22%2F%3E%3Cstop%20offset%3D%22.76%22%20stop-color%3D%22%23ab0d2d%22%2F%3E%3Cstop%20offset%3D%221%22%20stop-color%3D%22%238b0625%22%20stop-opacity%3D%220%22%2F%3E%3C%2FlinearGradient%3E%3C%2Fdefs%3E%3Cpath%20d%3D%22M17%204L8%2073Q18%2063%2038%2072L53%2079Z%22%20fill%3D%22url(%23side)%22%2F%3E%3Cpath%20d%3D%22M223%204L232%2073Q222%2063%20202%2072L187%2079Z%22%20fill%3D%22url(%23side)%22%2F%3E%3Cpath%20d%3D%22M17%2066Q30%2059%2046%2072L53%2079Q32%2090%2017%2079Z%22%20fill%3D%22url(%23curl)%22%2F%3E%3Cpath%20d%3D%22M223%2066Q210%2059%20194%2072L187%2079Q208%2090%20223%2079Z%22%20fill%3D%22url(%23curl)%22%2F%3E%3Cpath%20d%3D%22M17%204H223L205%2079Q166%2096%20120%2098Q74%2096%2035%2079Z%22%20fill%3D%22url(%23face)%22%20stroke%3D%22%238f1129%22%20stroke-width%3D%22.65%22%2F%3E%3Cpath%20d%3D%22M18%205L54%2074L37%2074Z%22%20fill%3D%22%23d6203c%22%20opacity%3D%22.55%22%2F%3E%3Cpath%20d%3D%22M222%205L186%2074L203%2074Z%22%20fill%3D%22%238f0927%22%20opacity%3D%22.42%22%2F%3E%3Cpath%20d%3D%22M36%2078Q75%2093%20120%2094Q165%2093%20204%2078%22%20fill%3D%22none%22%20stroke%3D%22url(%23gold)%22%20stroke-width%3D%221.8%22%2F%3E%3Cpath%20d%3D%22M9%2071Q19%2062%2035%2069Q43%2075%2018%2077Q34%2072%2053%2074M231%2071Q221%2062%20205%2069Q197%2075%20222%2077Q206%2072%20187%2074%22%20fill%3D%22none%22%20stroke%3D%22url(%23gold)%22%20stroke-width%3D%221.4%22%2F%3E%3Cpath%20d%3D%22M19%2080Q31%2085%2049%2078M221%2080Q209%2085%20191%2078%22%20fill%3D%22none%22%20stroke%3D%22%23e1a52c%22%20stroke-width%3D%22.7%22%2F%3E%3Cpath%20d%3D%22M17%204H223L222%2015Q120%2013%2018%2015Z%22%20fill%3D%22url(%23top-roll)%22%2F%3E%3Cpath%20d%3D%22M19%207Q120%206%20221%207%22%20fill%3D%22none%22%20stroke%3D%22%23ff8793%22%20stroke-opacity%3D%22.35%22%20stroke-width%3D%22.6%22%2F%3E%3Cpath%20d%3D%22M17%204L18%2012M223%204L222%2012%22%20fill%3D%22none%22%20stroke%3D%22%23710b22%22%20stroke-opacity%3D%22.6%22%20stroke-width%3D%22.8%22%2F%3E%3C%2Fsvg%3E") center / 100% 100% no-repeat;
+                        background: url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%204%20240%2096%22%20preserveAspectRatio%3D%22none%22%3E%3Cdefs%3E%3ClinearGradient%20id%3D%22face%22%20x2%3D%22.2%22%20y2%3D%221%22%3E%3Cstop%20stop-color%3D%22%23363735%22%2F%3E%3Cstop%20offset%3D%22.45%22%20stop-color%3D%22%23262826%22%2F%3E%3Cstop%20offset%3D%221%22%20stop-color%3D%22%23171917%22%2F%3E%3C%2FlinearGradient%3E%3ClinearGradient%20id%3D%22side%22%3E%3Cstop%20stop-color%3D%22%23101210%22%2F%3E%3Cstop%20offset%3D%22.35%22%20stop-color%3D%22%2330332f%22%2F%3E%3Cstop%20offset%3D%22.7%22%20stop-color%3D%22%23242623%22%2F%3E%3Cstop%20offset%3D%221%22%20stop-color%3D%22%230a0c0a%22%2F%3E%3C%2FlinearGradient%3E%3ClinearGradient%20id%3D%22purple%22%20x1%3D%220%22%20y1%3D%220%22%20x2%3D%22.3%22%20y2%3D%221%22%3E%3Cstop%20stop-color%3D%22%2317101d%22%2F%3E%3Cstop%20offset%3D%22.28%22%20stop-color%3D%22%23684672%22%2F%3E%3Cstop%20offset%3D%22.55%22%20stop-color%3D%22%2370497c%22%2F%3E%3Cstop%20offset%3D%22.8%22%20stop-color%3D%22%2351335e%22%2F%3E%3Cstop%20offset%3D%221%22%20stop-color%3D%22%23271b2d%22%2F%3E%3C%2FlinearGradient%3E%3ClinearGradient%20id%3D%22crease%22%3E%3Cstop%20stop-color%3D%22%23000%22%20stop-opacity%3D%22.8%22%2F%3E%3Cstop%20offset%3D%221%22%20stop-color%3D%22%23000%22%20stop-opacity%3D%220%22%2F%3E%3C%2FlinearGradient%3E%3Cpattern%20id%3D%22weave%22%20width%3D%223%22%20height%3D%223%22%20patternUnits%3D%22userSpaceOnUse%22%3E%3Cpath%20d%3D%22M0%200L3%203M-1%202L1%204%22%20stroke%3D%22%23c7c4b6%22%20stroke-opacity%3D%22.055%22%20stroke-width%3D%22.5%22%2F%3E%3Cpath%20d%3D%22M0%203L3%200%22%20stroke%3D%22%23000%22%20stroke-opacity%3D%22.16%22%20stroke-width%3D%22.5%22%2F%3E%3C%2Fpattern%3E%3C%2Fdefs%3E%3Cpath%20d%3D%22M17%205H223L210%2078Q166%2096%20120%2098Q74%2096%2030%2078Z%22%20fill%3D%22url%28%23face%29%22%20stroke%3D%22%23111310%22%20stroke-width%3D%221%22%2F%3E%3Cpath%20d%3D%22M17%205H223L210%2078Q166%2096%20120%2098Q74%2096%2030%2078Z%22%20fill%3D%22url%28%23weave%29%22%2F%3E%3Cpath%20d%3D%22M18%207C22%2036%2038%2056%2046%2076L35%2080C33%2056%2020%2033%2018%207Z%22%20fill%3D%22url%28%23crease%29%22%2F%3E%3Cpath%20d%3D%22M222%207C218%2036%20202%2056%20194%2076L205%2080C207%2056%20220%2033%20222%207Z%22%20fill%3D%22url%28%23crease%29%22%2F%3E%3Cpath%20d%3D%22M30%2077Q74%2092%20120%2094Q166%2092%20210%2077%22%20fill%3D%22none%22%20stroke%3D%22%23806578%22%20stroke-opacity%3D%22.65%22%20stroke-width%3D%22.65%22%20stroke-dasharray%3D%223%202%22%2F%3E%3Cpath%20d%3D%22M17%205C17%2029%2029%2048%2039%2070C29%2063%2015%2065%206%2074C10%2057%2014%2031%2017%205Z%22%20fill%3D%22url%28%23side%29%22%20stroke%3D%22%23141612%22%20stroke-width%3D%22.6%22%2F%3E%3Cpath%20d%3D%22M223%205C223%2029%20211%2048%20201%2070C211%2063%20225%2065%20234%2074C230%2057%20226%2031%20223%205Z%22%20fill%3D%22url%28%23side%29%22%20stroke%3D%22%23141612%22%20stroke-width%3D%22.6%22%2F%3E%3Cpath%20d%3D%22M17%205C17%2029%2029%2048%2039%2070C29%2063%2015%2065%206%2074C10%2057%2014%2031%2017%205ZM223%205C223%2029%20211%2048%20201%2070C211%2063%20225%2065%20234%2074C230%2057%20226%2031%20223%205Z%22%20fill%3D%22url%28%23weave%29%22%2F%3E%3Cpath%20d%3D%22M6%2074C15%2066%2029%2064%2039%2070C43%2076%2031%2082%2018%2085L17%2078C12%2078%208%2076%206%2074Z%22%20fill%3D%22url%28%23purple%29%22%20stroke%3D%22%23151015%22%20stroke-width%3D%22.7%22%2F%3E%3Cpath%20d%3D%22M234%2074C225%2066%20211%2064%20201%2070C197%2076%20209%2082%20222%2085L223%2078C228%2078%20232%2076%20234%2074Z%22%20fill%3D%22url%28%23purple%29%22%20stroke%3D%22%23151015%22%20stroke-width%3D%22.7%22%2F%3E%3Cpath%20d%3D%22M6%2074C15%2066%2029%2064%2039%2070M234%2074C225%2066%20211%2064%20201%2070%22%20fill%3D%22none%22%20stroke%3D%22%230b0d0a%22%20stroke-width%3D%222%22%2F%3E%3Cpath%20d%3D%22M7%2070C17%2062%2028%2061%2037%2066M233%2070C223%2062%20212%2061%20203%2066%22%20fill%3D%22none%22%20stroke%3D%22%23806578%22%20stroke-width%3D%22.65%22%20stroke-dasharray%3D%223%202%22%20stroke-opacity%3D%22.65%22%2F%3E%3Cpath%20d%3D%22M18%207Q120%208%20222%207%22%20fill%3D%22none%22%20stroke%3D%22%23777669%22%20stroke-opacity%3D%22.25%22%20stroke-width%3D%221%22%2F%3E%3Cpath%20d%3D%22M17%2078C23%2080%2034%2076%2039%2071M223%2078C217%2080%20206%2076%20201%2071%22%20fill%3D%22none%22%20stroke%3D%22%23201524%22%20stroke-width%3D%221.3%22%2F%3E%3Cpath%20d%3D%22M18%2079L19%2083M222%2079L221%2083%22%20fill%3D%22none%22%20stroke%3D%22%239976a1%22%20stroke-opacity%3D%22.3%22%20stroke-width%3D%22.7%22%2F%3E%3C%2Fsvg%3E") center / 100% 100% no-repeat;
                         pointer-events: none;
                         z-index: -1;
                     }
-
                     .bbgl-title-card-value {
                         position: relative;
                         z-index: 1;
@@ -8992,7 +9104,7 @@
                         color: #fff0c7;
                         background: none;
                         -webkit-text-fill-color: currentColor;
-                        text-shadow: 0 1px 1px rgba(75, 3, 19, .9);
+                        text-shadow: 0 1px 1px rgba(38, 8, 52, .9);
                         filter: none;
                         animation: none;
                     }
@@ -9000,7 +9112,7 @@
                     .bbgl-title-card-sign-face .bbgl-title-reset,
                     .bbgl-title-card-sign-face .bbgl-title-card-empty {
                         color: #f6dc98;
-                        text-shadow: 0 1px 1px rgba(75, 3, 19, .8);
+                        text-shadow: 0 1px 1px rgba(38, 8, 52, .82);
                     }
 
                     .bbgl-title-card-empty {
@@ -9036,6 +9148,18 @@
                         width: 100%;
                         height: 100%;
                         display: block;
+                    }
+
+                    /* Hangs off the right edge of the card's The label. Absolutely positioned, so it
+                       never shifts that label or the title under it; the label itself is
+                       pointer-events none, so the button opts back in. */
+                    .bbgl-title-card-title-label .bbgl-title-reset {
+                        position: absolute;
+                        left: 100%;
+                        top: 50%;
+                        margin-left: .35em;
+                        translate: 0 -50%;
+                        pointer-events: auto;
                     }
 
                     body:not(.is-touch-device) .bbgl-title-reset:hover {
@@ -9105,10 +9229,9 @@
                            because BOTH need it now — that child sizes its slots from it, and the
                            groove's own inset above is derived from it. */
                         --bbgl-t-title-count: 6;
-                        /* Knob geometry lives here, not on .bbgl-rank-knob itself, so
-                           .bbgl-rank-notch's .is-above rule (a separate sibling below) can read the
-                           same numbers when it reserves clearance above the knob — one measurement
-                           feeding both the knob's own size and the gap the plaques keep off it. */
+                        /* Knob geometry lives here rather than on .bbgl-rank-knob itself, so any
+                           sibling that needs to reserve clearance around it can read the same
+                           numbers. */
                         --bbgl-t-knob-fs: calc(var(--bbgl-t-display-fs) * .82);
                         --bbgl-t-tick-h: var(--bbgl-t-tick-h-override, calc(var(--bbgl-t-fs-notch, 10px) * .56));
                         --bbgl-t-slider-tick-h: var(--bbgl-t-slider-tick-h-override, calc(var(--bbgl-t-fs-notch, 10px) * .28));
@@ -9166,8 +9289,8 @@
                        tethers behave like ruler marks: they anchor the words without implying that
                        a title unlocks at the edge of a surrounding box. */
                     /* Positioned against .bbgl-rank-LINE, not the scale — this container is a child of
-                       the groove (achBuildPageTitles(), 06-section-v-logic.js), exactly like
-                       .bbgl-rank-notches. So its own box is the 1px groove itself, and every vertical
+                       the groove (achBuildPageTitles(), 06-section-v-logic.js). So its own box is
+                       the 1px groove itself, and every vertical
                        value on the labels below resolves against THAT. A percentage or a height here
                        can only ever describe 1px of groove; only an explicit (negative) offset can
                        reach up into the gap above it.
@@ -9343,63 +9466,47 @@
                         animation: none;
                     }
 
+                    .bbgl-rank-title.material-iron.is-revealed .bbgl-rank-notch-line {
+                        color: #eee9dc;
+                    }
+
                     /* T2 — illuminated typography, still flat rather than materially constructed.
                        The uneven one-shot ignition briefly falls back to its gray unlit face before
                        settling into a modest off-white lamp glow. It never flickers again once lit,
                        keeping T3's brighter aluminum face and reflected streak as a clear promotion. */
                     :is(.bbgl-rank-title, .bbgl-title-card-rank-plaque).material-steel.is-revealed .bbgl-rank-notch-line {
+                        font-family: 'Barlow Condensed', 'Arial Narrow', sans-serif;
                         color: #d9dddf;
                         background: none;
                         -webkit-text-fill-color: currentColor;
                         font-weight: 500;
                         text-shadow:
+                            var(--rank-steel-outline, 0 0 0 transparent),
                             0 1px 1px rgba(0, 0, 0, .68),
                             0 0 3px rgba(232, 239, 242, .82),
                             0 0 8px rgba(216, 229, 234, .48),
                             0 0 14px rgba(201, 219, 225, .20);
                         filter: none;
                         animation: bbgl-rank-name-fluorescent-on 2.5s step-end 1 both;
-                        animation-delay: var(--bbgl-titles-animation-delay, 0ms);
+                        animation-delay: var(--bbgl-rank-lightbox-delay, 0ms);
                     }
 
-                    /* T3 is painted once on the shared two-line wrapper rather than once on every
-                       .bbgl-rank-notch-line. Both rows therefore belong to one aluminum block and
-                       receive one reflection centred across the complete title. */
                     :is(.bbgl-rank-title, .bbgl-title-card-rank-plaque).material-silver.is-revealed .bbgl-rank-title-text {
-                        /* Polished aluminum blocks. The angular Aldrich face and hard underside
-                           step square the lettering off into small metal-cut forms rather than the
-                           softer condensed type used by the surrounding ranks. A narrow value range
-                           keeps the metal one uniform silver color; the single white strip through
-                           its centre is reflected light contained inside the complete title. */
-                        --rank-aluminum-light: linear-gradient(12deg,
-                                transparent 0%, transparent 42%,
-                                rgba(255, 255, 255, .18) 45%,
-                                rgba(255, 255, 255, .76) 48%,
-                                #ffffff 50%,
-                                rgba(255, 255, 255, .72) 52%,
-                                rgba(255, 255, 255, .16) 55%,
-                                transparent 58%, transparent 100%);
-                        background-image:
-                            var(--rank-aluminum-light),
-                            linear-gradient(180deg,
-                                #edf1f2 0%,
-                                #d7dde0 42%,
-                                #f7f9fa 55%,
-                                #cbd3d6 100%);
-                        background-size: 100% 100%, 100% 100%;
-                        background-position: 0 0, 0 0;
-                        background-repeat: no-repeat, no-repeat;
+                        background-image: linear-gradient(141deg,
+                            #d9ad75 0%, #87522e 16%, #bc8b54 30%, #634025 42%,
+                            #a16a3b 49%, #d9ad75 55%, #bb8d58 62%, #80502d 77%,
+                            #ad7b45 90%, #593820 100%);
+                        background-size: 100% 100%;
+                        background-repeat: no-repeat;
                         background-clip: text;
                         -webkit-background-clip: text;
                         color: transparent;
                         -webkit-text-fill-color: transparent;
                         font-family: 'Aldrich', 'Arial Black', sans-serif;
                         font-weight: 400;
-                        letter-spacing: .025em;
-                        -webkit-text-stroke: .1px rgba(236, 242, 244, .30);
-                        text-shadow:
-                            0 1px 0 #737d81,
-                            0 1.5px 0 rgba(33, 40, 44, .78);
+                        letter-spacing: .015em;
+                        -webkit-text-stroke: .1px rgba(217, 173, 117, .3);
+                        text-shadow: 0 1px 0 #624029, 0 1.5px 0 #4c311f;
                         filter: none;
                         animation: none;
                     }
@@ -9415,32 +9522,51 @@
                         filter: none;
                         animation: none;
                     }
-
-                    /* Glow is a blurred, text-clipped copy of the SAME reflection — never a shape
-                       behind the title. Each line box is widened to the shared wrapper width, then
-                       samples its own half of one 200%-tall gradient, preserving the streak's single
-                       continuous angle while allowing light to escape only beside the glyph slices
-                       it actually strikes. */
-                    :is(.bbgl-rank-title, .bbgl-title-card-rank-plaque).material-silver.is-revealed .bbgl-rank-notch-line::before {
-                        content: attr(data-rank-text);
-                        position: absolute;
-                        inset: 0;
-                        z-index: -1;
-                        color: transparent;
-                        -webkit-text-fill-color: transparent;
-                        background-image: var(--rank-aluminum-light);
-                        background-size: 100% 200%;
-                        background-position: 0 0;
-                        background-repeat: no-repeat;
-                        background-clip: text;
-                        -webkit-background-clip: text;
-                        filter: blur(2px) drop-shadow(0 0 1.5px rgba(225, 242, 248, .62));
-                        opacity: .72;
-                        pointer-events: none;
+                    .bbgl-rank-title.material-silver.is-revealed .bbgl-rank-title-text {
+                        filter:
+                            drop-shadow(1px 0 0 #090b0b)
+                            drop-shadow(-1px 0 0 #090b0b)
+                            drop-shadow(0 1px 0 #090b0b)
+                            drop-shadow(0 -1px 0 #090b0b)
+                            drop-shadow(0 2px 2px rgba(0, 0, 0, .8));
                     }
 
-                    :is(.bbgl-rank-title, .bbgl-title-card-rank-plaque).material-silver.is-revealed .bbgl-rank-notch-line:last-child::before {
-                        background-position: 0 100%;
+                    /* Rank scale labels only: T2 gets the same black letter outline as T3 above.
+                       Its fluorescent glow lives in text-shadow, and a filter outline would trace
+                       that haze instead of the letters, so the outline rides as the top text-shadow
+                       layer through --rank-steel-outline. The steel rule and its ignition keyframes
+                       read it with a transparent fallback, so the card plaque (which shares both)
+                       is unchanged. */
+                    .bbgl-rank-title.material-steel.is-revealed .bbgl-rank-notch-line {
+                        --rank-steel-outline:
+                            1px 0 0 #090b0b,
+                            -1px 0 0 #090b0b,
+                            0 1px 0 #090b0b,
+                            0 -1px 0 #090b0b;
+                    }
+
+                    /* T4 gets a silver outline. Its emerald face is background-clipped text with a
+                       transparent fill, so a text-shadow would show through the letters - it needs
+                       the same filter approach as T3. */
+                    .bbgl-rank-title.material-bright-silver.is-revealed .bbgl-rank-title-text {
+                        filter:
+                            drop-shadow(.25px 0 0 #c9d3d880)
+                            drop-shadow(-.25px 0 0 #c9d3d880)
+                            drop-shadow(0 .25px 0 #c9d3d880)
+                            drop-shadow(0 -.25px 0 #c9d3d880)
+                            drop-shadow(0 2px 2px rgba(0, 0, 0, .8));
+                    }
+
+                    /* T5 gets an outline in its crown plaque deep gold (achGoldCrownHTML), dark
+                       enough to separate from the bright gold letters. On the wrapper, not the
+                       line, so it stacks with the line glow filter instead of replacing it. */
+                    .bbgl-rank-title.material-gold.is-revealed .bbgl-rank-title-text {
+                        filter:
+                            drop-shadow(.5px 0 0 #9d6318b3)
+                            drop-shadow(-.5px 0 0 #9d6318b3)
+                            drop-shadow(0 .5px 0 #9d6318b3)
+                            drop-shadow(0 -.5px 0 #9d6318b3)
+                            drop-shadow(0 2px 2px rgba(0, 0, 0, .8));
                     }
 
                     /* T4 — cut emerald. Hard stops in the stationary ramp carve facets instead of
@@ -9475,24 +9601,12 @@
                             transparent 57%, transparent 100%);
                         background-image:
                             var(--rank-emerald-light),
-                            linear-gradient(112deg,
-                                rgba(7, 139, 74, .76) 0%, rgba(18, 184, 94, .80) 8%,
-                                rgba(72, 232, 128, .90) 13%, rgba(177, 255, 197, .98) 17%,
-                                rgba(74, 231, 128, .84) 21%, rgba(4, 137, 72, .64) 28%,
-                                rgba(24, 184, 96, .72) 33%, rgba(205, 255, 221, .96) 37%,
-                                rgba(224, 255, 234, .88) 38%, rgba(97, 246, 153, .18) 41%,
-                                rgba(97, 246, 153, .18) 45%, rgba(201, 255, 219, .91) 48%,
-                                rgba(50, 221, 117, .84) 53%, rgba(3, 128, 67, .62) 59%,
-                                rgba(35, 202, 106, .78) 64%, rgba(190, 255, 210, .97) 68%,
-                                rgba(219, 255, 231, .90) 69%, rgba(91, 240, 147, .17) 72%,
-                                rgba(91, 240, 147, .17) 76%, rgba(205, 255, 220, .92) 79%,
-                                rgba(72, 231, 129, .87) 84%, rgba(3, 125, 66, .64) 91%,
-                                rgba(23, 185, 96, .76) 96%, rgba(48, 218, 116, .84) 100%);
+                            linear-gradient(135deg, #93dcbc 0%, #1a9d70 22%, #006044 46%, #52b58e 52%, #087451 68%, #002f23 100%);
                         background-size: var(--rank-emerald-start) 240%, 100% 100%;
                         background-position: 50% 50%, 0 0;
                         background-repeat: no-repeat, no-repeat;
                         font-weight: 400;
-                        -webkit-text-stroke: .2px rgba(190, 255, 222, .42);
+                        -webkit-text-stroke: .2px rgba(147, 220, 188, .42);
                         text-shadow: 0 1px 1px rgba(0, 44, 28, .52);
                         filter: none;
                         animation: bbgl-rank-name-emerald 4.6s cubic-bezier(.3, 0, .55, 1) infinite;
@@ -9523,7 +9637,7 @@
                             blur(3.5px)
                             drop-shadow(0 0 3px rgba(41, 255, 137, .76))
                             drop-shadow(0 0 7px rgba(0, 226, 92, .64));
-                        opacity: .84;
+                        opacity: .35;
                         pointer-events: none;
                         animation: bbgl-rank-name-emerald-glow 4.6s cubic-bezier(.3, 0, .55, 1) infinite;
                         animation-delay: var(--bbgl-titles-animation-delay, 0ms);
@@ -9663,12 +9777,15 @@
                         0%, 30%, 33%, 40%, 45%, 64%, 74% {
                             color: #858a8d;
                             font-weight: 400;
-                            text-shadow: 0 1px 1px rgba(0, 0, 0, .68);
+                            text-shadow:
+                                var(--rank-steel-outline, 0 0 0 transparent),
+                                0 1px 1px rgba(0, 0, 0, .68);
                         }
                         30.01%, 38%, 44% {
                             color: #a3adaf;
                             font-weight: 500;
                             text-shadow:
+                                var(--rank-steel-outline, 0 0 0 transparent),
                                 0 1px 1px rgba(0, 0, 0, .68),
                                 0 0 2px rgba(224, 232, 235, .25),
                                 0 0 5px rgba(207, 221, 226, .10);
@@ -9677,6 +9794,7 @@
                             color: #c9ced0;
                             font-weight: 500;
                             text-shadow:
+                                var(--rank-steel-outline, 0 0 0 transparent),
                                 0 1px 1px rgba(0, 0, 0, .68),
                                 0 0 3px rgba(224, 232, 235, .50),
                                 0 0 7px rgba(207, 221, 226, .24);
@@ -9685,6 +9803,7 @@
                             color: #d9dddf;
                             font-weight: 500;
                             text-shadow:
+                                var(--rank-steel-outline, 0 0 0 transparent),
                                 0 1px 1px rgba(0, 0, 0, .68),
                                 0 0 3px rgba(232, 239, 242, .82),
                                 0 0 8px rgba(216, 229, 234, .48),
@@ -9838,19 +9957,6 @@
                        is ADDED to --bbgl-t-rank-tag-pad-x rather than carved out of it, so inner
                        text clearance stays fixed and only the frame widens the plate. The five
                        level bands are even 20-point spans (LEVEL_TITLE_BANDS), capstone at 100. */
-                    /* Hidden, not removed: the plaques below are queued to relocate onto the
-                       identity card rather than disappear, so every rule in this section stays
-                       live and correct — layoutRankShelf() (07-section-vi-ui.js) still measures and
-                       positions them every render — this is just the one switch that keeps them off
-                       the rank scale in the meantime. .bbgl-rank-titles (below) is what actually
-                       renders there now. */
-                    .bbgl-rank-notches {
-                        display: none;
-                        position: absolute;
-                        inset: 0;
-                        pointer-events: none;
-                    }
-
                     .bbgl-rank-notch {
                         --rank-frame-w: 0px;
                         --rank-sil: linear-gradient(#000, #000);
@@ -9867,43 +9973,17 @@
                            against the inner field's edge on the framed tiers. */
                         --rank-pad-block: 1.5px;
                         --rank-pad-inline: 1px;
-                        /* Width of the cradle hung under the riding plaque. Defaults to the readout's
-                           own steady width — .bbgl-rank-knob holds itself at exactly this via
-                           min-width precisely so the digits do not shrink to a dot on "5" or stretch
-                           on "100", which makes it the one figure in the file that already describes
-                           the footprint the cradle has to hug. Tracking it means the cradle follows
-                           the readout across every panel mode with no per-mode value of its own. */
-                        --rank-skirt-w: var(--bbgl-t-display-w);
-                        /* Bottom-corner radius of that cradle. Deliberately larger than the box can
-                           take: a radius that would overflow is scaled down proportionally by the
-                           browser, so this resolves to a full U at every mode's drop and readout
-                           width without being recomputed per mode. Lower it for a squarer tab. */
-                        --rank-cradle-r: 999px;
                         --rank-ink: #c4c6c3;
                         --rank-sweep-a: 0;
                         --rank-sweep-dur: 5s;
                         --rank-drop: drop-shadow(0 1px 1px rgba(0, 0, 0, .75)) drop-shadow(0 2px 3px rgba(0, 0, 0, .4));
                         position: absolute;
                         top: 50%;
-                        /* --rank-shift is written by layoutRankShelf() (07-section-vi-ui.js) to move
-                           a plaque off its milestone to wherever its state wants it — a shelf slot
-                           once docked, the sliding readout while riding, nowhere at all while still
-                           locked. It composes with the centring translate rather than replacing the
-                           left percentage, so the milestone's true position stays on the element and
-                           the shelf pass can keep measuring natural positions independently of its
-                           own previous output. */
-                        transform: translateX(calc(-50% + var(--rank-shift, 0px)));
+                        transform: translateX(-50%);
                         pointer-events: auto;
                         cursor: help;
                         white-space: nowrap;
                         text-align: center;
-                        /* 1/2/3 for plaque / riding plaque / readout, and the ordering is
-                           load-bearing in both directions: the riding plaque must cover the docked
-                           and locked ones it slides past, but must itself stay UNDER the readout so
-                           its skirt wraps behind the digits rather than burying them. .bbgl-rank-
-                           notches is position:absolute with z-index:auto, so it establishes no
-                           stacking context of its own and these compete directly with
-                           .bbgl-rank-knob's inside .bbgl-rank-line. */
                         z-index: 1;
                     }
 
@@ -10208,121 +10288,6 @@
                     }
 
 
-                    /* A plaque at rest SITS ON the bar rather than floating over it: bottom lands on
-                       the groove's own top surface, so the shelf reads as trophies standing on a
-                       rail. --bbgl-t-notch-gap is the per-mode float on top of that, measured from
-                       the bar's surface — compact runs it at 0 (genuinely resting), roomier modes
-                       keep a little air.
-
-                       Every plaque also clears the slider knob: the knob is centred ON the line, so
-                       only its upper half (--bbgl-t-knob-fs / 2) reaches above centre for the
-                       plaques to clear. Without this, compact mode would rest the plaques right on
-                       top of the knob's digits. */
-                    .bbgl-rank-notch.is-above .bbgl-rank-notch-label {
-                        bottom: calc(
-                            var(--bbgl-t-bar-h) / 2 + var(--bbgl-t-notch-gap)
-                            + var(--bbgl-t-knob-fs) / 2);
-                    }
-
-                    /* The riding plaque sits ABOVE everything it passes. It travels the length of the
-                       groove with the level readout, so sooner or later it crosses both a docked
-                       plaque's shelf slot and a locked "?" — and the rank you hold right now is the
-                       one that should stay legible when it does. */
-                    .bbgl-rank-notch.is-riding {
-                        z-index: 2;
-                    }
-
-                    /* ── The cradle ───────────────────────────────────────────────────────
-                       The rank you hold and the level you are at read as one object: the plate keeps
-                       its plain rectangle and full frame, and a separate curved cradle hangs off its
-                       bottom edge to close around the readout's digits.
-
-                       TWO pieces rather than one grown-and-clipped plate, because the frame band is
-                       a rectangle ring and cannot follow a curve — clipping a single plate to a
-                       rounded silhouette cuts straight through that ring. A separate box lets
-                       border-radius draw the cradle's edge for free, and lets the two carry
-                       different treatments: the machined frame belongs to the rectangular plate, the
-                       cradle is plain stock bent around the number.
-
-                       Costs NO vertical space — the plate still rests exactly where a docked plaque
-                       does, so the shelf line is unchanged when this plaque later docks.
-                       --rank-wrap-drop is zeroed (not deleted): .bbgl-rank-line is the assembly's
-                       hard floor, so there's no digit height left for the cradle to wrap below the
-                       plate, but the element and its overlap term stay to fuse the seam at the
-                       plate's own bottom edge (see --rank-cradle-overlap below). */
-                    .bbgl-rank-notch.is-riding {
-                        --rank-wrap-drop: 0px;
-                        /* How far the cradle rides UP into the plate. It paints after the plate, so
-                           this is what erases the plate's bottom frame and bevel across the neck and
-                           fuses the two silhouettes into one outline, instead of leaving them to
-                           meet at a seam with a border still ruled between them. Frame width plus
-                           the bevel's own 1px inner line is exactly the depth to cover — mill runs a
-                           0px frame, so the term collapses to that 1px there. */
-                        --rank-cradle-overlap: calc(var(--rank-frame-w) + 1px);
-                    }
-
-                    /* ── One ramp across both pieces ──────────────────────────────────────
-                       The plate and the cradle are the same piece of metal, so they sample a SINGLE
-                       gradient spanning both rather than each running the tier ramp over its own
-                       box — otherwise the cradle would restart at the ramp's brightest stop right
-                       where the plate had reached its darkest, laying a hard bright seam at the join.
-
-                       The plate states the shared ramp height itself: background-size percentage
-                       resolves against its own padding box, so calc(100% + drop) IS the combined
-                       height. The cradle can't do the same — a percentage there would resolve
-                       against the CRADLE's own height — so it needs the plate's actual height,
-                       which is content-driven and only measurable: layoutRankShelf()
-                       (07-section-vi-ui.js) writes it as --rank-plate-h. The negative offset then
-                       slides the image up so its top lands on the plate's top, putting both pieces
-                       on the same row of the same ramp at the junction.
-
-                       Repeat is left at its default: once measured, the image covers the cradle
-                       exactly, but before then --rank-plate-h falls back to 0 and the image is too
-                       short, so tiling keeps the box fully painted rather than leaving the overlap
-                       strip transparent (which would show the plate's bottom border through it —
-                       the exact seam this whole arrangement exists to hide). */
-                    .bbgl-rank-notch.is-riding .bbgl-rank-notch-face {
-                        background-size: 100% calc(100% + var(--rank-wrap-drop));
-                    }
-
-                    .bbgl-rank-notch-cradle {
-                        display: none;
-                        position: absolute;
-                        left: 50%;
-                        /* .bbgl-rank-notch-label carries a filter, which makes it the containing
-                           block for this — so 100% here is the plate's own bottom edge. */
-                        top: calc(100% - var(--rank-cradle-overlap, 0px));
-                        /* min() so a title narrower than the readout keeps its cradle inside its own
-                           plate rather than flaring out past it and filling in the tier's corner
-                           cuts. */
-                        width: min(100%, var(--rank-skirt-w));
-                        height: calc(var(--rank-wrap-drop, 0px) + var(--rank-cradle-overlap, 0px));
-                        transform: translateX(-50%);
-                        box-sizing: border-box;
-                        border-radius: 0 0 var(--rank-cradle-r) var(--rank-cradle-r);
-                        /* This piece's slice of the shared ramp — see "One ramp across both pieces"
-                           above for why the size and offset are what they are. Both must stay AFTER
-                           the shorthand, which resets them. */
-                        background: var(--rank-face);
-                        background-size: 100% calc(var(--rank-plate-h, 0px) + var(--rank-wrap-drop, 0px));
-                        background-position: 0 calc(var(--rank-cradle-overlap, 0px) - var(--rank-plate-h, 0px));
-                        /* The tier's bevel and nothing else. Inset shadows follow border-radius, so
-                           this alone gives the curve its lit lip — no frame band, no rivets, no
-                           milling. The ornament is the plate's; the cradle stays plain, which is
-                           what keeps the join from reading as two competing borders. */
-                        box-shadow: var(--rank-bevel);
-                        /* Above the plate it overlaps. .bbgl-rank-notch-face carries a mask, so it
-                           is a stacking context and its internal 1/2/3 (frame, lettering, sweep) are
-                           sealed inside it — this 1 is therefore measured against the face as a
-                           whole, not against its parts. */
-                        z-index: 1;
-                        pointer-events: none;
-                    }
-
-                    .bbgl-rank-notch.is-riding .bbgl-rank-notch-cradle {
-                        display: block;
-                    }
-
                     /* Before unlock there is no plaque at all: only a question mark pressed into the
                        panel surface, matching the divot cut into the groove below it. The plate,
                        its frame, field and grain all arrive together with the title when
@@ -10446,6 +10411,8 @@
                     .bbgl-title-card-rank-plaque.finish-mill {
                         container-type: size;
                         --rank-drop: none;
+                        width: 88.32%;
+                        height: 86.4%;
                     }
 
                     .bbgl-title-card-rank-plaque.finish-mill .bbgl-rank-notch-face {
@@ -10508,12 +10475,12 @@
                         min-width: 0;
                         min-height: 0;
                         padding: 3px 5%;
-                        font-size: min(15cqw, 40cqh);
+                        font-size: min(16.5cqw, 44cqh);
                         line-height: 1.08;
                     }
 
                     #bbgl-panel.bbgl-compact .bbgl-title-card-rank-plaque.finish-mill .bbgl-rank-title-text {
-                        font-size: min(13cqw, 34cqh);
+                        font-size: min(14.3cqw, 37.4cqh);
                     }
 
                     #bbgl-panel.bbgl-compact .bbgl-title-card-rank-plaque.finish-mill .bbgl-rank-notch-face {
@@ -10536,6 +10503,8 @@
                     .bbgl-title-card-rank-plaque.finish-machined {
                         container-type: size;
                         --rank-drop: none;
+                        width: 93%;
+                        height: 84.5%;
                     }
 
                     .bbgl-title-card-rank-plaque.finish-machined .bbgl-rank-notch-face {
@@ -10593,7 +10562,7 @@
                             inset 0 0 14px rgba(201, 219, 225, .20);
                         opacity: 1;
                         animation: bbgl-rank-lightbox-on 2.5s step-end 1 both;
-                        animation-delay: var(--bbgl-titles-animation-delay, 0ms);
+                        animation-delay: var(--bbgl-rank-lightbox-delay, 0ms);
                     }
 
                     .bbgl-rank-lightbox-heading {
@@ -10681,12 +10650,12 @@
 
                     .bbgl-rank-bronze-heading {
                         position: absolute;
-                        top: 21%;
+                        top: 13%;
                         left: 50%;
                         transform: translateX(-50%);
                         z-index: 2;
                         font-family: 'Barlow Condensed', 'Arial Narrow', sans-serif;
-                        font-size: min(10cqw, 12cqh);
+                        font-size: min(12cqw, 16cqh);
                         font-weight: 700;
                         line-height: 1;
                         letter-spacing: .16em;
@@ -10697,15 +10666,15 @@
 
                     .bbgl-title-card-rank-plaque.finish-polished .bbgl-rank-title-text {
                         position: absolute;
-                        top: 36%;
-                        left: 16%;
-                        width: 68%;
-                        height: 36%;
+                        top: 33%;
+                        left: 10%;
+                        width: 80%;
+                        height: 50%;
                         min-width: 0;
                         min-height: 0;
                         max-width: 100%;
-                        font-size: min(9cqw, 20cqh);
-                        line-height: 1.18;
+                        font-size: min(10cqw, 20cqh);
+                        line-height: 1.1;
                     }
 
                     .bbgl-title-card[data-rank-finish="silver"] .bbgl-title-card-rank-label {
@@ -10782,10 +10751,44 @@
                         min-width: 0;
                         min-height: 0;
                         max-width: 100%;
-                        font-size: min(9cqw, 23cqh);
-                        line-height: 1.18;
+                        font-size: min(10.5cqw, 26cqh);
+                        line-height: 1.2;
                     }
 
+                    .bbgl-shield-letter-seats {
+                        position: absolute;
+                        inset: 0;
+                        display: flex;
+                        flex-direction: column;
+                        align-items: center;
+                        justify-content: center;
+                        z-index: 0;
+                        pointer-events: none;
+                    }
+
+                    .bbgl-shield-letter-seat {
+                        position: relative;
+                        display: block;
+                        white-space: nowrap;
+                        font-weight: 400;
+                        color: transparent;
+                        -webkit-text-fill-color: transparent;
+                        -webkit-text-stroke: .075em #34454d;
+                        text-shadow: 0 .045em 0 rgba(197, 215, 224, .55);
+                    }
+
+                    .bbgl-shield-letter-seat::after {
+                        content: attr(data-rank-text);
+                        position: absolute;
+                        inset: 0;
+                        color: transparent;
+                        -webkit-text-fill-color: transparent;
+                        -webkit-text-stroke: 0;
+                        text-shadow:
+                            .012em .018em 0 #267858,
+                            .024em .036em 0 #15553d,
+                            .036em .054em 0 #093e2d;
+                    }
                     .bbgl-rank-silver-shield-jewels {
                         position: absolute;
                         inset: 0;
@@ -10828,27 +10831,14 @@
 
                     .bbgl-title-card-rank-plaque.finish-gold .bbgl-rank-title-text {
                         position: absolute;
-                        top: 35%;
-                        left: 18%;
-                        width: 64%;
-                        height: 37%;
+                        top: 34%;
+                        left: 17%;
+                        width: 66%;
+                        height: 40%;
                         min-width: 0;
                         min-height: 0;
                         font-size: min(10cqw, 17cqh);
                         line-height: 1.08;
-                    }
-
-                    .bbgl-title-card-rank-plaque.finish-gold.is-revealed .bbgl-rank-notch-line {
-                        background: none;
-                        color: #69400f;
-                        -webkit-text-fill-color: currentColor;
-                        text-shadow: 0 -0.5px 0 rgba(54, 28, 3, .75), 0 1px 0 rgba(255, 243, 183, .85);
-                        filter: none;
-                        animation: none;
-                    }
-
-                    .bbgl-title-card-rank-plaque.finish-gold.is-revealed .bbgl-rank-notch-line::before {
-                        display: none;
                     }
 
                     .bbgl-rank-crown-heading {
@@ -10947,10 +10937,6 @@
                     #bbgl-panel.bbgl-no-animations .bbgl-marquee-bulb,
                     #bbgl-panel.bbgl-no-animations .bbgl-marquee-beams {
                         animation: none;
-                    }
-
-                    .bbgl-title-card-rank-plaque .bbgl-rank-notch-cradle {
-                        display: none !important;
                     }
 
                     /* ─── Unlock blocks, one per stat ──────────────────────────────────
@@ -11347,7 +11333,9 @@
                         position: relative;
                         isolation: isolate;
                         display: grid;
-                        grid-template-rows: minmax(0, 18fr) minmax(0, 60fr);
+                        grid-template-rows: minmax(0, 1fr);
+                        padding-top: 6px;
+                        box-sizing: border-box;
                         flex: 1 1 0;
                         min-height: 0;
                         overflow: hidden;
@@ -11378,19 +11366,22 @@
 
                     .bbgl-titles-card-area {
                         position: relative;
+                        margin-inline: 1px;
                         min-width: 0;
                         min-height: 0;
                     }
 
                     #bbgl-panel .bbgl-titles-board .bbgl-titles-main {
+                        --bbgl-t-min-card-gap: 6px;
+                        --bbgl-t-center-min: 80px;
                         position: absolute;
                         inset: 0;
                         top: 0;
                         height: 100%;
                         margin: 0;
-                        padding: 0 4px;
-                        grid-template-columns: repeat(3, minmax(0, 1fr));
-                        column-gap: 4px;
+                        padding: 0 calc(var(--bbgl-t-min-card-gap) + 1px);
+                        grid-template-columns: minmax(0, 1fr) minmax(calc(var(--bbgl-t-center-min) * 1.16505), 1fr) minmax(0, 1fr);
+                        column-gap: calc(var(--bbgl-t-min-card-gap) + 3px);
                         grid-template-rows: 100%;
                         transform: none;
                     }
@@ -11398,18 +11389,81 @@
                     #bbgl-panel .bbgl-titles-main .bbgl-titles-center {
                         margin: 0;
                         transform: none;
-                        height: 100%;
-                        width: min(100%, var(--bbgl-title-max-width, 132px));
+                        height: calc(100% - var(--bbgl-title-height-trim, 0px));
+                        align-self: center;
+                        width: max(var(--bbgl-t-center-min), min(calc(100% / 1.16505), var(--bbgl-title-max-width, 132px)));
                     }
 
+                    #bbgl-panel.bbgl-expanded .bbgl-titles-board .bbgl-titles-main {
+                        --bbgl-t-center-min: 88px;
+                        padding-inline: calc(var(--bbgl-t-min-card-gap) + 1px);
+                        column-gap: calc(var(--bbgl-t-min-card-gap) + 3px);
+                    }
+
+                    #bbgl-panel.bbgl-mode-page .bbgl-titles-board .bbgl-titles-main {
+                        --bbgl-t-center-min: 88px;
+                    }
+
+                    #bbgl-panel.bbgl-expanded .bbgl-titles-main .bbgl-titles-center {
+                        width: max(var(--bbgl-t-center-min), min(calc(100% / 1.16505), var(--bbgl-title-max-width, 132px)));
+                        height: calc(100% - var(--bbgl-title-height-trim, 0px));
+                        align-self: center;
+                    }
+
+                    #bbgl-panel.bbgl-expanded .bbgl-titles-page {
+                        margin-inline: 8px;
+                    }
+
+                    /* The two stat cards still hug the top and bottom corners, but not flush: the
+                       column is a five-row grid (edge spacer, card, middle spacer, card, edge spacer)
+                       and the space the cards leave over is shared out by fr. Each edge takes
+                       --bbgl-t-corner-edge of it against the middle's 1, so the cards step in toward
+                       the plaque's vertical centre by the same proportion in every mode, without
+                       changing size (the star size is set from the row height and column width in
+                       layoutTitleBlockFrames(), 07-section-vi-ui.js, not from where the cards sit).
+                       0fr restores the old flush space-between; larger values pull them further in.
+                       The middle keeps the old 3px floor between the cards. fr rows cannot go
+                       negative, so a short panel collapses the spacers rather than overflowing. */
                     #bbgl-panel .bbgl-titles-main .bbgl-titles-corner-col {
+                        --bbgl-t-emblem-scale: 1.12;
+                        --bbgl-t-corner-edge: .25fr;
+                        height: calc(100% - var(--bbgl-title-height-trim, 0px));
+                        align-self: center;
                         margin: 0;
                         padding: 0;
                         transform: none;
                         width: 100%;
-                        align-items: center;
-                        justify-content: space-between;
-                        gap: 3px;
+                        display: grid;
+                        grid-template-rows: var(--bbgl-t-corner-edge) auto minmax(3px, 1fr) auto var(--bbgl-t-corner-edge);
+                        grid-template-columns: minmax(0, 1fr);
+                        justify-items: center;
+                        gap: 0;
+                    }
+
+                    #bbgl-panel .bbgl-titles-main .bbgl-titles-corner-col::before,
+                    #bbgl-panel .bbgl-titles-main .bbgl-titles-corner-col::after {
+                        content: '';
+                    }
+
+                    #bbgl-panel .bbgl-titles-main .bbgl-titles-corner-col::before {
+                        grid-row: 1;
+                    }
+
+                    #bbgl-panel .bbgl-titles-main .bbgl-titles-corner-col > .bbgl-title-block:first-child {
+                        grid-row: 2;
+                    }
+
+                    #bbgl-panel .bbgl-titles-main .bbgl-titles-corner-col > .bbgl-title-block:last-child {
+                        grid-row: 4;
+                    }
+
+                    #bbgl-panel .bbgl-titles-main .bbgl-titles-corner-col::after {
+                        grid-row: 5;
+                    }
+
+                    #bbgl-panel.bbgl-expanded .bbgl-titles-main .bbgl-titles-corner-col {
+                        height: calc(100% - var(--bbgl-title-height-trim, 0px));
+                        align-self: center;
                     }
 
                     #bbgl-panel .bbgl-rank-scale {
@@ -11511,12 +11565,62 @@
 
                     .bbgl-title-block {
                         margin-top: 0;
-                        padding: 0 2px;
-                        gap: 1px;
+                        padding: var(--bbgl-stat-padding-y, 0px) 0;
+                        padding-bottom: calc(var(--bbgl-stat-padding-y, 0px) + 2px);
+                        gap: 0;
+                        isolation: isolate;
+                    }
+
+                    .bbgl-title-block::before {
+                        content: '';
+                        position: absolute;
+                        top: -3px;
+                        bottom: 0;
+                        left: -3px;
+                        right: -3px;
+                        z-index: -1;
+                        pointer-events: none;
+                        border-radius: 4px;
+                        mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100' preserveAspectRatio='none'%3E%3Cpath fill='white' d='M4 16H23C27 16 27 2 34 2H66C73 2 73 16 77 16H96Q100 16 100 22V94Q100 100 96 100H4Q0 100 0 94V22Q0 16 4 16Z'/%3E%3C/svg%3E") center / 100% 100% no-repeat;
+                        background:
+                            url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100' preserveAspectRatio='none'%3E%3Cpath d='M0 22Q0 16 4 16H23C27 16 27 2 34 2H66C73 2 73 16 77 16H96Q100 16 100 22' fill='none' stroke='%23c4cdd1' stroke-opacity='.42' stroke-width='2' vector-effect='non-scaling-stroke'/%3E%3C/svg%3E") center / 100% 100% no-repeat,
+                            radial-gradient(circle at 4px calc(16% + 4px), #d5dde2 0 .7px, #68747d .9px 1.7px, #202930 1.9px 2.5px, transparent 2.8px),
+                            radial-gradient(circle at calc(100% - 4px) calc(16% + 4px), #d5dde2 0 .7px, #68747d .9px 1.7px, #202930 1.9px 2.5px, transparent 2.8px),
+                            radial-gradient(circle at 4px calc(100% - 4px), #a3abb0 0 .7px, #50595f .9px 1.7px, #11171b 1.9px 2.5px, transparent 2.8px),
+                            radial-gradient(circle at calc(100% - 4px) calc(100% - 4px), #a3abb0 0 .7px, #50595f .9px 1.7px, #11171b 1.9px 2.5px, transparent 2.8px),
+                            radial-gradient(ellipse at 50% 20%, color-mix(in srgb, var(--bbgl-t-win-color) 16%, transparent), transparent 75%),
+                            linear-gradient(115deg, #121619 0%, #1c2226 18%, #2b3339 24%, #1c2227 32%, #14181b 49%, #20272b 72%, #2e353b 78%, #151b1f 100%);
+                        box-shadow:
+                            inset 0 1px 0 #c4cdd16b,
+                            inset 1px 0 0 #9aa6ad38,
+                            inset -1px 0 0 #10161980,
+                            inset 0 -1px 0 #c4cdd16b;
                     }
 
                     .bbgl-title-block-frame {
                         display: none;
+                    }
+
+                    .bbgl-plate-neon {
+                        position: absolute;
+                        top: -3px;
+                        left: -3px;
+                        width: calc(100% + 6px);
+                        height: calc(100% + 3px);
+                        overflow: visible;
+                        pointer-events: none;
+                        z-index: 1;
+                        fill: none;
+                        stroke: color-mix(in srgb, var(--bbgl-t-win-color) 42%, #fff);
+                        stroke-width: 1px;
+                        filter:
+                            drop-shadow(0 0 1px var(--bbgl-t-win-color))
+                            drop-shadow(0 0 3px color-mix(in srgb, var(--bbgl-t-win-color) 70%, transparent))
+                            drop-shadow(0 0 6px color-mix(in srgb, var(--bbgl-t-win-color) 30%, transparent));
+                    }
+
+                    .bbgl-plate-neon path {
+                        vector-effect: non-scaling-stroke;
                     }
 
                     .bbgl-title-block::after {
@@ -11524,16 +11628,162 @@
                     }
 
                     .bbgl-title-block-label {
-                        position: static;
-                        transform: none;
-                        padding: 0;
+                        position: relative;
+                        left: auto;
+                        transform: translateY(-1px);
+                        padding: 1px 0 0;
                         border: 0;
                         background: none;
                         box-shadow: none;
-                        color: #d4d8d9;
-                        font-family: 'Barlow Condensed', 'Arial Narrow', sans-serif;
-                        text-shadow: 0 1px 1px #000;
+                        color: color-mix(in srgb, var(--bbgl-t-win-color) 38%, #fff);
+                        font-family: 'Dancing Script', 'Segoe Script', 'Brush Script MT', cursive;
+                        font-size: calc(var(--bbgl-t-fs-block-label) * .8);
+                        text-shadow:
+                            0 0 1px color-mix(in srgb, var(--bbgl-t-win-color) 55%, #fff),
+                            0 0 calc(4px * var(--bbgl-t-win-glow)) color-mix(in srgb, var(--bbgl-t-win-color) 75%, transparent);
                         letter-spacing: 0;
+                    }
+
+                    #bbgl-panel.bbgl-compact .bbgl-title-block-label {
+                        transform: translateY(-1.5px);
+                    }
+
+                    .bbgl-title-block-label::before {
+                        content: none;
+                        position: absolute;
+                        inset: -2px -7px -2px;
+                        z-index: -1;
+                        pointer-events: none;
+                        border-radius: 9px 9px 0 0;
+                        background:
+                            radial-gradient(ellipse at 50% 20%, color-mix(in srgb, var(--bbgl-t-win-color) 16%, transparent), transparent 75%),
+                            repeating-linear-gradient(0deg, #ffffff05 0 1px, #0000000a 1px 2px, transparent 2px 4px),
+                            linear-gradient(115deg, #343b40, #42494e 40%, #30373c);
+                        box-shadow: inset 0 1px 0 #c4cdd16b, inset 1px 0 0 #9aa6ad38, inset -1px 0 0 #10161980;
+                    }
+
+                    .bbgl-title-star-row {
+                        column-gap: calc(var(--bbgl-t-star-cgap) * .65);
+                    }
+
+                    .bbgl-title-stars {
+                        row-gap: calc(2px + var(--bbgl-stat-row-extra, 0px));
+                    }
+
+                    .bbgl-stat-emblem {
+                        color: #434b53;
+                        display: block;
+                        width: 100%;
+                        height: 100%;
+                        overflow: visible;
+                        pointer-events: none;
+                        transform: scale(1.05);
+                        transform-origin: center;
+                    }
+
+                    @container bbgl-panel (min-width:500px) {
+                        #bbgl-panel.bbgl-expanded .bbgl-stat-emblem {
+                            transform: scale(1.03);
+                        }
+                    }
+
+                    @container bbgl-page (min-width:784px) {
+                        #bbgl-panel.bbgl-mode-page .bbgl-stat-emblem {
+                            transform: scale(1.03);
+                        }
+                    }
+
+                    .bbgl-emblem-relief {
+                        fill: #192128;
+                        stroke: none;
+                        transform: translateY(2px);
+                        filter: drop-shadow(0 .4px .3px #080d12b3);
+                    }
+
+                    .bbgl-emblem-body {
+                        stroke: none;
+                        opacity: 1;
+                        filter: drop-shadow(0 -.55px 0 #c0cbd180) drop-shadow(0 .65px 0 #101820);
+                    }
+
+                    .bbgl-emblem-detail {
+                        fill: none;
+                        stroke: #aeb9c3;
+                        stroke-width: 1.5;
+                        stroke-linecap: round;
+                        stroke-linejoin: round;
+                        opacity: .25;
+                    }
+
+                    .bbgl-emblem-gloss {
+                        stroke: none;
+                        opacity: .15;
+                    }
+
+                    .bbgl-title-star.is-unlocked .bbgl-stat-emblem {
+                        color: color-mix(in srgb, var(--bbgl-t-win-color) 65%, #84919d);
+                    }
+
+                    .bbgl-title-star.is-unlocked .bbgl-emblem-gloss {
+                        opacity: .85;
+                    }
+
+                    .bbgl-title-star.is-unlocked .bbgl-emblem-detail {
+                        stroke: #d6dce0;
+                        opacity: .75;
+                        filter: drop-shadow(0 1px 0 #101820);
+                    }
+
+                    .bbgl-emblem-trace {
+                        fill: none;
+                        stroke: color-mix(in srgb, var(--bbgl-t-win-color) 42%, #fff);
+                        stroke-width: 1.8;
+                        stroke-linecap: round;
+                        stroke-linejoin: round;
+                        stroke-dasharray: 100;
+                        stroke-dashoffset: calc(100 * (1 - var(--star-fill, 0)));
+                        transition: stroke-dashoffset .5s ease;
+                        filter:
+                            drop-shadow(0 0 .6px var(--bbgl-t-win-color))
+                            drop-shadow(0 0 1.5px color-mix(in srgb, var(--bbgl-t-win-color) 75%, transparent))
+                            drop-shadow(0 0 3px color-mix(in srgb, var(--bbgl-t-win-color) 35%, transparent));
+                    }
+
+                    .bbgl-title-star.is-unlocked .bbgl-emblem-body {
+                        opacity: 1;
+                    }
+
+                    /* Selected (in the equipped title): lit well past a plain unlocked emblem so
+                       the pick reads at a glance - richer stat colour, strong gloss and detail,
+                       and a glow in the stat colour around the whole emblem. */
+                    .bbgl-title-star:is(.is-primary, .is-secondary, .is-both) .bbgl-stat-emblem {
+                        color: color-mix(in srgb, var(--bbgl-t-win-color) 85%, #fff);
+                        filter:
+                            drop-shadow(0 0 1.5px color-mix(in srgb, var(--bbgl-t-win-color) 90%, #fff))
+                            drop-shadow(0 0 4px color-mix(in srgb, var(--bbgl-t-win-color) 60%, transparent));
+                    }
+
+                    .bbgl-title-star:is(.is-primary, .is-secondary, .is-both) .bbgl-emblem-body {
+                        filter: brightness(1.4) saturate(1.2) drop-shadow(0 -.55px 0 #e6eef2a0) drop-shadow(0 .65px 0 #101820);
+                    }
+
+                    .bbgl-title-star:is(.is-primary, .is-secondary, .is-both) .bbgl-emblem-gloss {
+                        opacity: 1;
+                    }
+
+                    .bbgl-title-star:is(.is-primary, .is-secondary, .is-both) .bbgl-emblem-detail {
+                        stroke: #fff;
+                        opacity: .95;
+                    }
+
+                    #bbgl-panel.bbgl-no-animations .bbgl-emblem-trace {
+                        transition: none;
+                    }
+
+                    .bbgl-title-star {
+                        width: calc(var(--bbgl-t-star) * var(--bbgl-t-emblem-scale, 1.12));
+                        flex-basis: calc(var(--bbgl-t-star) * var(--bbgl-t-emblem-scale, 1.12));
+                        overflow: visible;
                     }
 
                     .bbgl-title-star-base svg path {
@@ -11557,7 +11807,7 @@
                     }
 
                     .bbgl-title-card {
-                        box-shadow: inset 1px 1px 0 #e3ae6c52, inset -1px -1px 0 #000a, inset 0 0 0 3px #1a0d063d, 0 3px 5px #000b;
+                        box-shadow: inset 1px 1px 0 #ba8a6438, inset -1px -1px 0 #000b, inset 0 0 0 3px #10080447, 0 3px 5px #000b;
                     }
 
                     .bbgl-ach-title-row {
@@ -15519,8 +15769,12 @@ function computeAchievements(s) {
 
 function resetTitlesPageAnimationClock(container) {
     runtime._titlesPageAnimationStartedAt = null;
+    runtime._rankLightboxAnimation = null;
     const el = container || document.getElementById('bbgl-achievements-container');
-    if (el) el.style.removeProperty('--bbgl-titles-animation-delay');
+    if (el) {
+        el.style.removeProperty('--bbgl-titles-animation-delay');
+        el.style.removeProperty('--bbgl-rank-lightbox-delay');
+    }
 }
 
 function syncTitlesPageAnimationClock(container) {
@@ -15530,6 +15784,14 @@ function syncTitlesPageAnimationClock(container) {
     }
     const elapsed = Math.max(0, now - runtime._titlesPageAnimationStartedAt);
     container.style.setProperty('--bbgl-titles-animation-delay', `${-elapsed}ms`);
+    const { atrophy, level } = liveRankState();
+    const unlocked = !!levelRankBrackets(atrophy, level)[1]?.unlocked;
+    let lightbox = runtime._rankLightboxAnimation;
+    if (!lightbox || lightbox.atrophy !== atrophy || lightbox.unlocked !== unlocked) {
+        lightbox = runtime._rankLightboxAnimation = { atrophy, unlocked, startedAt: now };
+    }
+    // The one-shot ignition starts at unlock; routine rebuilds retain its elapsed time.
+    container.style.setProperty('--bbgl-rank-lightbox-delay', `${-Math.max(0, now - lightbox.startedAt)}ms`);
 }
 
 function achRefreshPageDom() {
@@ -15819,17 +16081,13 @@ function achRankPlaqueLabelHTML(label) {
         .join('');
 }
 
-// Four nested boxes per plaque — more paint layers than two elements' pseudo-elements can supply:
+// Three nested boxes per plaque — more paint layers than two elements' pseudo-elements can supply:
 //   -label  positioned wrapper; carries the drop-shadow as a FILTER (a box-shadow would be clipped
-//           by the mask that cuts -face's silhouette) and is the containing block -cradle hangs from.
+//           by the mask that cuts -face's silhouette).
 //   -face   the plate: masked silhouette, metal gradient, bevel. ::before is grain/patina, ::after
 //           the travelling specular sweep.
 //   -fx     ornament inside -face's mask: ::before the frame band (rivets/milling), ::after the
 //           recessed inner field the lettering sits on.
-//   -cradle the curved lobe closing around the level readout, shown only while riding the groove —
-//           its own box since border-radius can't follow the rectangular frame ring (see
-//           .bbgl-rank-notch-cradle, 04-section-iii-styles.js). Emitted for every plaque, revealed
-//           by CSS alone off the class list.
 function achGoldCrownHTML() {
     const id = `bbgl-crown-${achGoldCrownHTML.serial = (achGoldCrownHTML.serial || 0) + 1}`;
     return `<svg class="bbgl-rank-gold-crown" viewBox="0 0 200 120" preserveAspectRatio="none" aria-hidden="true">
@@ -15837,22 +16095,28 @@ function achGoldCrownHTML() {
             <linearGradient id="${id}-gold" x1="0" y1="0" x2=".8" y2="1"><stop stop-color="#fff5b5"/><stop offset=".16" stop-color="#e4b64e"/><stop offset=".3" stop-color="#fff0a4"/><stop offset=".43" stop-color="#9d6318"/><stop offset=".53" stop-color="#f8d775"/><stop offset=".64" stop-color="#fff5bb"/><stop offset=".79" stop-color="#b77a22"/><stop offset="1" stop-color="#5f350b"/></linearGradient>
             <linearGradient id="${id}-band" x1="0" y1="0" x2="0" y2="1"><stop stop-color="#fff2aa"/><stop offset=".13" stop-color="#f1ca65"/><stop offset=".22" stop-color="#895015"/><stop offset=".34" stop-color="#dfad43"/><stop offset=".53" stop-color="#ffe498"/><stop offset=".77" stop-color="#d9a13b"/><stop offset=".91" stop-color="#774312"/><stop offset="1" stop-color="#f5cd70"/></linearGradient>
             <radialGradient id="${id}-stud" cx=".3" cy=".25" r=".8"><stop stop-color="#fffbd5"/><stop offset=".3" stop-color="#f9d879"/><stop offset=".65" stop-color="#b67c22"/><stop offset="1" stop-color="#57300a"/></radialGradient>
+            <linearGradient id="${id}-inset" x1="0" y1="0" x2="0" y2="1"><stop stop-color="#0c0805"/><stop offset=".5" stop-color="#21160d"/><stop offset="1" stop-color="#100b07"/></linearGradient>
         </defs>
-        <path d="M6 28 Q24 48 39 37 L47 14 Q65 41 80 28 L100 6 L120 28 Q135 41 153 14 L161 37 Q176 48 194 28 L180 96 Q100 117 20 96Z" fill="#57320d" transform="translate(0 3)"/>
-        <path d="M6 25 Q24 45 39 34 L47 11 Q65 38 80 25 L100 3 L120 25 Q135 38 153 11 L161 34 Q176 45 194 25 L180 93 Q100 114 20 93Z" fill="url(#${id}-gold)" stroke="#fff0a3" stroke-width="1.1" stroke-linejoin="round"/>
-        <path d="M14 37 Q29 49 43 40 L49 23 Q66 45 83 33 L100 14 L117 33 Q134 45 151 23 L157 40 Q171 49 186 37 L175 88 Q100 107 25 88Z" fill="none" stroke="#6d400e" stroke-width="2"/>
-        <path d="M16 38 Q29 50 44 41 L50 25 Q67 46 84 34 L100 17 L116 34 Q133 46 150 25 L156 41 Q171 50 184 38" fill="none" stroke="#fff3b2" stroke-opacity=".85" stroke-width=".8"/>
-        <g fill="none" stroke="#f6d179" stroke-width=".85" stroke-linecap="round">
-            <path d="M24 58 Q17 49 22 46 Q28 43 29 50 M27 64 Q20 70 28 77 M176 58 Q183 49 178 46 Q172 43 171 50 M173 64 Q180 70 172 77"/>
-            <path d="M88 31L100 21L112 31 M93 32L100 27L107 32"/>
+        <path d="M6 23Q25 40 40 29L47 10Q66 34 81 21L100 3L119 21Q134 34 153 10L160 29Q175 40 194 23L186 94Q100 109 14 94Z" fill="#57320d" transform="translate(0 3)"/>
+        <path d="M6 23Q25 40 40 29L47 10Q66 34 81 21L100 3L119 21Q134 34 153 10L160 29Q175 40 194 23L186 94Q100 109 14 94Z" fill="url(#${id}-gold)" stroke="#fff0a3" stroke-width="1.1" stroke-linejoin="round"/>
+        <path d="M13 34Q29 43 44 34L49 21Q66 41 84 29L100 14L116 29Q134 41 151 21L156 34Q171 43 187 34L180 90Q100 104 20 90Z" fill="none" stroke="#754712" stroke-width="1.6"/>
+        <path d="M14 35Q29 44 44 35L49 23Q66 42 85 30L100 16L115 30Q134 42 151 23L156 35Q171 44 186 35" fill="none" stroke="#fff3b2" stroke-width=".7"/>
+        <path d="M36 34Q100 28 164 34Q174 35 176 45L180 80Q180 88 170 90Q100 101 30 90Q20 88 20 80L24 45Q26 35 36 34Z" fill="url(#${id}-band)" stroke="#704010" stroke-width="1"/>
+        <path d="M37 38Q100 32 163 38Q170 39 171 47L175 79Q176 84 167 86Q100 96 33 86Q24 84 25 79L29 47Q30 39 37 38Z" fill="url(#${id}-inset)" stroke="#6a400f" stroke-width="1.4"/>
+        <path d="M37 39Q100 33 163 39Q169 40 170 47M28 82Q100 103 172 82" fill="none" stroke="#f1cc71" stroke-width=".65"/>
+        <path d="M39 41Q100 35 161 41" fill="none" stroke="#050302" stroke-width="1.3"/>
+        <g fill="none" stroke="#fff0ad" stroke-width=".8" stroke-linecap="round">
+            <path d="M16 51C9 57 13 67 18 65C22 63 18 58 16 61M18 69Q11 75 17 83M184 51C191 57 187 67 182 65C178 63 182 58 184 61M182 69Q189 75 183 83"/>
+            <path d="M91 25L100 17L109 25M96 26L100 22L104 26"/>
         </g>
-        <path d="M20 88 Q100 103 180 88 L178 112 Q100 126 22 112Z" fill="#603710"/>
-        <path d="M20 85 Q100 100 180 85 L178 108 Q100 122 22 108Z" fill="url(#${id}-band)" stroke="#eec26a" stroke-width=".9"/>
-        <path d="M23 90 Q100 105 177 90 M24 105 Q100 119 176 105" fill="none" stroke="#fff0a5" stroke-width=".8"/>
-        <path d="M25 94 Q100 108 175 94" fill="none" stroke="#815018" stroke-width=".65" stroke-dasharray="1 2"/>
+        <path d="M14 94Q100 107 186 94L183 113Q100 124 17 113Z" fill="#603710"/>
+        <path d="M14 91Q100 104 186 91L183 110Q100 121 17 110Z" fill="url(#${id}-band)" stroke="#eec26a" stroke-width=".9"/>
+        <path d="M17 95Q100 108 183 95M19 108Q100 119 181 108" fill="none" stroke="#fff0a5" stroke-width=".8"/>
+        <path d="M20 99Q100 111 180 99" fill="none" stroke="#815018" stroke-width=".65" stroke-dasharray="1 2"/>
         <g fill="url(#${id}-stud)" stroke="#f8d77e" stroke-width=".65">
-            <circle cx="6" cy="25" r="3.5"/><circle cx="47" cy="11" r="3.5"/><circle cx="100" cy="4" r="3.5"/><circle cx="153" cy="11" r="3.5"/><circle cx="194" cy="25" r="3.5"/>
-            <ellipse cx="35" cy="100" rx="4" ry="3"/><ellipse cx="165" cy="100" rx="4" ry="3"/>
+            <circle cx="6" cy="23" r="3.5"/><circle cx="47" cy="10" r="3.5"/><circle cx="100" cy="4" r="3.5"/><circle cx="153" cy="10" r="3.5"/><circle cx="194" cy="23" r="3.5"/>
+            <path d="M35 98L39 102L35 106L31 102ZM165 98L169 102L165 106L161 102Z"/>
+            <circle cx="51" cy="104" r="1.4"/><circle cx="149" cy="104" r="1.4"/>
         </g>
     </svg>`;
 }
@@ -15893,36 +16157,41 @@ function achBronzePlaqueHTML() {
             <radialGradient id="${id}-rust"><stop stop-color="#ae502b" stop-opacity=".65"/><stop offset=".45" stop-color="#80371f" stop-opacity=".4"/><stop offset="1" stop-color="#572817" stop-opacity="0"/></radialGradient>
             <radialGradient id="${id}-tarnish"><stop stop-color="#49291b" stop-opacity=".5"/><stop offset="1" stop-color="#683c24" stop-opacity="0"/></radialGradient>
         </defs>
-        <path d="M100 3C83 3 80 14 63 14H29Q26 30 9 33L3 60L9 87Q26 90 29 106H63C80 106 83 117 100 117C117 117 120 106 137 106H171Q174 90 191 87L197 60L191 33Q174 30 171 14H137C120 14 117 3 100 3Z" fill="url(#${id}-rim)" stroke="#624029" stroke-width="1"/>
-        <path d="M100 9C84 9 80 20 63 20H34Q29 34 15 38L9 60L15 82Q29 86 34 100H63C80 100 84 111 100 111C116 111 120 100 137 100H166Q171 86 185 82L191 60L185 38Q171 34 166 20H137C120 20 116 9 100 9Z" fill="url(#${id}-face)" stroke="#4c311f" stroke-width="1.7"/>
-        <g fill="url(#${id}-tarnish)"><ellipse cx="32" cy="43" rx="17" ry="17"/><ellipse cx="164" cy="84" rx="20" ry="14"/><ellipse cx="105" cy="103" rx="23" ry="6"/></g>
-        <g fill="url(#${id}-rust)"><ellipse cx="31" cy="40" rx="14" ry="15"/><ellipse cx="48" cy="25" rx="19" ry="6"/><ellipse cx="165" cy="82" rx="13" ry="13"/><ellipse cx="147" cy="97" rx="24" ry="6"/></g>
-        <g fill="none" stroke="#99411f" stroke-opacity=".5" stroke-width="1.1" stroke-linecap="round"><path d="M24 43Q31 38 35 29M40 24L47 24M153 96L162 95Q165 87 173 82"/><path d="M31 39L34 35M146 97L149 97" stroke="#cd7940" stroke-width=".6"/></g>
-        <g fill="#78321c" opacity=".55"><circle cx="28" cy="36" r=".8"/><circle cx="33" cy="32" r=".55"/><circle cx="30" cy="43" r=".65"/><circle cx="43" cy="25" r=".6"/><circle cx="167" cy="84" r=".9"/><circle cx="163" cy="90" r=".6"/><circle cx="151" cy="96" r=".75"/></g>
-        <path d="M12 59L18 39Q31 35 36 22H63C80 22 85 11 100 11C115 11 120 22 137 22H164Q169 35 182 39M18 82Q31 87 36 98H63C80 98 85 109 100 109C115 109 120 98 137 98H164" fill="none" stroke="#d9ad75" stroke-opacity=".9" stroke-width=".9"/>
-        <path d="M85 19Q100 5 115 19M85 101Q100 115 115 101" fill="none" stroke="#d6a970" stroke-width="1.2"/>
-        <path d="M83 23H39Q34 38 23 41M117 23H161Q166 38 177 41M23 79Q34 82 39 97H83M177 79Q166 82 161 97H117" fill="none" stroke="#704c2e" stroke-width=".8"/>
-        <g fill="none" stroke="#cda16a" stroke-width=".7"><path d="M79 26H41Q36 40 26 43M121 26H159Q164 40 174 43M26 77Q36 80 41 94H79M174 77Q164 80 159 94H121"/></g>
-        <g fill="none" stroke="#7c5735" stroke-width=".75"><path d="M51 88Q65 84 76 92Q66 91 62 87M149 88Q135 84 124 92Q134 91 138 87"/></g>
+        <path d="M100 3C70 3 68 6 60 17Q57 22 48 22H27Q24 33 9 37L3 67L9 98Q22 102 27 117H173Q178 102 191 98L197 67L191 37Q176 33 173 22H152Q143 22 140 17C132 6 130 3 100 3Z" fill="url(#${id}-rim)" stroke="#624029" stroke-width="1"/>
+        <path d="M100 9C73 9 72 11 65 21Q60 28 49 28H32Q27 38 15 42L9 67L15 93Q27 98 32 111H168Q173 98 185 93L191 67L185 42Q173 38 168 28H151Q140 28 135 21C128 11 127 9 100 9Z" fill="url(#${id}-face)" stroke="#4c311f" stroke-width="1.7"/>
+        <path d="M33 36H167Q172 44 183 47L188 68L183 92Q172 96 167 104H33Q28 96 17 92L12 68L17 47Q28 44 33 36Z" fill="#101211" stroke="#4b301d" stroke-width="2"/>
+        <path d="M34 38H166Q171 46 181 49L186 68L181 90Q171 94 166 102H34Q29 94 19 90L14 68L19 49Q29 46 34 38Z" fill="none" stroke="#d0a16a" stroke-opacity=".42" stroke-width=".7"/>
+        <path d="M62 25C72 14 73 12 100 12C127 12 128 14 138 25M34 109H166" fill="none" stroke="#d6a970" stroke-width="1"/>
+        <g fill="url(#${id}-rust)"><ellipse cx="29" cy="39" rx="8" ry="6"/><ellipse cx="171" cy="98" rx="8" ry="6"/></g>
+        <g fill="#392719" stroke="#d2a36d" stroke-width=".6"><circle cx="30" cy="34" r="1.5"/><circle cx="170" cy="34" r="1.5"/><circle cx="30" cy="102" r="1.5"/><circle cx="170" cy="102" r="1.5"/></g>
     </svg>`;
 }
 
 function achSilverShieldJewelsHTML() {
     const id = `bbgl-silver-shield-${achSilverShieldJewelsHTML.serial = (achSilverShieldJewelsHTML.serial || 0) + 1}`;
-    const jewels = [[29, 30, -12], [171, 30, 12]].map(([x, y, angle]) => `<g transform="translate(${x} ${y}) rotate(${angle}) scale(1.05)">
+    const jewels = [[29, 30, -12], [171, 30, 12], [100, 101, 0]].map(([x, y, angle]) => `<g transform="translate(${x} ${y}) rotate(${angle}) scale(1.05)">
         <path d="M-5-10H5L9-5V5L5 10H-5L-9 5V-5Z" fill="url(#${id}-rim)" stroke="#52666a" stroke-width=".7"/>
-        <path d="M-4-8H4L7-4V4L4 8H-4L-7 4V-4Z" fill="#087743"/>
-        <path d="M-4-8H4L3-4H-3L-7-4Z" fill="#b0ffd5"/>
-        <path d="M4-8L7-4V4L3 4V-4Z" fill="#23c87a"/>
-        <path d="M7 4L4 8H-4L-3 4Z" fill="#004d30"/>
-        <path d="M-7-4L-3-4V4L-4 8L-7 4Z" fill="#149657"/>
+        <path d="M-4-8H4L7-4V4L4 8H-4L-7 4V-4Z" fill="#003d29" stroke="#09271f" stroke-width=".6"/>
+        <path d="M-4-8H4L3-4H-3L-7-4Z" fill="#93dcbc"/>
+        <path d="M4-8L7-4V4L3 4V-4Z" fill="#087451"/>
+        <path d="M7 4L4 8H-4L-3 4Z" fill="#002f23"/>
+        <path d="M-7-4L-3-4V4L-4 8L-7 4Z" fill="#1a9d70"/>
         <path d="M-3-4H3V4H-3Z" fill="url(#${id}-gem)"/>
-        <path d="M-4-7H3M-6-3V1" fill="none" stroke="#e1ffed" stroke-width=".8"/>
+                <path d="M-4-8L-3-4L-7-4ZM4-8L3-4L7-4ZM7 4L3 4L4 8ZM-7 4L-3 4L-4 8Z" fill="#52b58e" opacity=".7"/>
+        <path d="M-3-4L1-2L3 4L-1 2Z" fill="#b4edcf" opacity=".22"/>
+        <path d="M3-4L1-2L-3 4L3 1Z" fill="#002e21" opacity=".55"/>
+        <path d="M-2 1L0-1L1 2M-1 3L1 1" fill="none" stroke="#8cc6a7" stroke-opacity=".25" stroke-width=".2"/>
+        <path d="M-4-7H2M-6-3V0" fill="none" stroke="#e0f5e9" stroke-width=".45"/>
+        <path d="M-5-8L-3-7M5 8L3 7" fill="none" stroke="url(#${id}-rim)" stroke-width="1.4" stroke-linecap="round"/>
     </g>`).join('');
     return `<svg class="bbgl-rank-silver-shield-jewels" viewBox="0 0 200 120" preserveAspectRatio="none" aria-hidden="true"><defs>
             <linearGradient id="${id}-rim" x1="0" y1="0" x2=".25" y2="1"><stop stop-color="#fff"/><stop offset=".13" stop-color="#d7e3e9"/><stop offset=".23" stop-color="#536975"/><stop offset=".34" stop-color="#c7d5dd"/><stop offset=".48" stop-color="#fff"/><stop offset=".56" stop-color="#eef7fb"/><stop offset=".65" stop-color="#718995"/><stop offset=".8" stop-color="#dce9ef"/><stop offset=".92" stop-color="#435b68"/><stop offset="1" stop-color="#e6f1f6"/></linearGradient>
-            <linearGradient id="${id}-gem" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#8fffc4"/><stop offset=".4" stop-color="#14b969"/><stop offset="1" stop-color="#00582e"/></linearGradient>
-    </defs>${jewels}</svg>`;
+            <linearGradient id="${id}-gem" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#93dcbc"/><stop offset=".22" stop-color="#1a9d70"/><stop offset=".46" stop-color="#006044"/><stop offset=".52" stop-color="#52b58e"/><stop offset=".68" stop-color="#087451"/><stop offset="1" stop-color="#002f23"/></linearGradient>
+    </defs><g fill="none" stroke="url(#${id}-rim)" stroke-width=".8" opacity=".8">
+        <path d="M22 48C18 60 24 74 37 85C31 76 29 68 34 63C39 57 44 66 39 69C35 71 33 66 36 64M178 48C182 60 176 74 163 85C169 76 171 68 166 63C161 57 156 66 161 69C165 71 167 66 164 64"/>
+        <path d="M65 99Q83 100 100 113Q117 100 135 99M83 103Q100 97 117 103M96 107L100 102L104 107L100 112Z"/>
+        <path d="M72 19Q82 12 88 13M128 19Q118 12 112 13"/>
+        </g>${jewels}</svg>`;
 }
 
 function achRankPlaqueHTML(cls, style, tip, revealed, label, textWrapperClass = '') {
@@ -15941,79 +16210,23 @@ function achRankPlaqueHTML(cls, style, tip, revealed, label, textWrapperClass = 
         : silverShield ? `${achSilverShieldJewelsHTML()}<span class="bbgl-rank-silver-shield-heading">RANK</span>`
         : goldCrown ? `${achGoldCrownHTML()}<span class="bbgl-rank-crown-heading">RANK</span>`
         : pearlMarquee ? `${achPearlMarqueeHTML()}<span class="bbgl-rank-marquee-heading">RANK</span>` : '';
-    const inner = greeting + (textWrapperClass ? `<span class="${textWrapperClass}">${lines}</span>` : lines);
+    const letterSeats = silverShield
+        ? `<span class="bbgl-shield-letter-seats" aria-hidden="true">${lines.replaceAll('bbgl-rank-notch-line', 'bbgl-shield-letter-seat')}</span>`
+        : '';
+    const inner = greeting + (textWrapperClass ? `<span class="${textWrapperClass}">${letterSeats}${lines}</span>` : lines);
     const styleAttr = style ? ` style="${style}"` : '';
-    return `<div class="${cls}"${styleAttr} data-tooltip="${achEsc(tip)}"><span class="bbgl-rank-notch-label"><span class="bbgl-rank-notch-face"><span class="bbgl-rank-notch-fx"></span>${inner}</span><span class="bbgl-rank-notch-cradle"></span></span></div>`;
+    return `<div class="${cls}"${styleAttr} data-tooltip="${achEsc(tip)}"><span class="bbgl-rank-notch-label"><span class="bbgl-rank-notch-face"><span class="bbgl-rank-notch-fx"></span>${inner}</span></span></div>`;
 }
 
-// The rank line as a TROPHY SHELF. Six plaques (five level bands + Fully Bricked capstone), each
-// in exactly one state that decides where it sits:
-//   locked  ("?")  parked at the exact level it unlocks at — nothing is known about it yet.
-//   riding         the rank you hold RIGHT NOW; tracks the sliding level readout along the groove.
-//   docked         earned, then outgrown — retired to its permanent slot, left to right in order.
-//
-// Slot geometry is computed for all SIX plaques from the first render (layoutRankShelf(),
-// 07-section-vi-ui.js), never just however many are docked — a plaque docks once, into the exact
-// position it'll still occupy when the shelf is full, so earning a rank never rearranges anything.
-// Fully Bricked is the terminal sixth slot on this same axis: earning it docks immediately, which
-// completes the shelf. Band data comes from levelRankBrackets() (03-section-ii-utils.js).
-function achTitleNotchesHTML(atrophy, level) {
-    // Fixed physical finish per milestone. Atrophy changes the WORDS on the plaques, never their
-    // material progression. The ladder escalates on two axes at once — the metal itself, and how
-    // ornate the plate is (frame band width, recessed inner field, corner rivets, milled edge).
-    // The first three are all the same aluminium/steel family and separate on WORKMANSHIP alone:
-    // a raw mill blank, then a machined-and-chamfered plate, then a polished one with a sunk field.
-    // Sixth is the capstone's iridescent nacre.
-    const finishes = ['mill', 'machined', 'polished', 'silver', 'gold', 'pearl'];
-    const bricked = isFullyBricked(atrophy, level);
-    const items = levelRankBrackets(atrophy, level).map(b => ({
-        // Centred on the exact level you cross to unlock the title, so a locked plaque marks the
-        // moment it will become true.
-        pos: (b.start / LEVEL_CAP) * 100,
-        label: b.label,
-        unlocked: b.unlocked,
-        tip: b.unlocked
-            ? `${b.label} · Levels ${b.start}-${b.end}`
-            : `Levels ${b.start}-${b.end} — reach level ${b.start} to reveal`
-    }));
-    // The capstone as the seventh entry on the same axis, pinned at the very end (level 100).
-    items.push({
-        pos: 100,
-        label: 'Fully Bricked',
-        unlocked: bricked,
-        isCap: true,
-        tip: bricked ? 'Fully Bricked · Level 100' : 'Fully Bricked · reach Level 100 at the final atrophy tier'
-    });
-
-    // Ranks are cumulative — every band at or below your level reads unlocked — so the rank you
-    // actually hold is just the last unlocked entry.
-    let currentIdx = -1;
-    items.forEach((it, i) => { if (it.unlocked) currentIdx = i; });
-
-    return items.map((it, i) => {
-        // Terminal state has nothing left to earn, so the capstone docks rather than riding and the
-        // shelf completes. Every other held rank rides the slider until the next one supersedes it.
-        const riding = i === currentIdx && !bricked;
-        const docked = it.unlocked && !riding;
-        const cls = [
-            'bbgl-rank-notch',
-            `finish-${finishes[i] || 'machined'}`,
-            it.unlocked ? 'is-revealed' : '',
-            'is-above',
-            riding ? 'is-riding' : '',
-            docked ? 'is-docked' : '',
-            // Whichever plaque names the rank held right now — the riding one normally, the docked
-            // capstone at the cap. Nothing styles this today; it stays because .is-riding alone
-            // cannot express "the rank you currently hold" once the capstone docks and stops riding.
-            i === currentIdx ? 'is-current' : '',
-            it.isCap ? 'is-cap' : '',
-            it.isCap && bricked ? 'is-bricked' : ''
-        ].filter(Boolean).join(' ');
-        return achRankPlaqueHTML(cls, `left:${it.pos.toFixed(4)}%`, it.tip, it.unlocked, it.label);
-    }).join('');
+// Shared rank tooltip for the identity-card plaque, the rank scale labels, the capstone and the
+// level knob. Returns tooltip HTML; callers escape it for the attribute.
+function achRankTipHTML(label, start, end, unlocked) {
+    if (!unlocked) return `<strong><em>Locked</em></strong><i>Reach level ${start} to unlock</i>`;
+    const range = start === end ? `Level ${start}` : `Levels ${start}-${end}`;
+    return `<strong>${achEsc(label)}</strong><i>${range}</i>`;
 }
 
-// Resolves the stationary card plaque without the rank shelf's position/state classes.
+// Resolves the stationary card plaque shown on the identity card.
 function achCurrentRankPlaqueData(atrophy, level) {
     const finishes = ['mill', 'machined', 'polished', 'silver', 'gold', 'pearl'];
     const materials = ['iron', 'steel', 'silver', 'bright-silver', 'gold', 'diamond'];
@@ -16027,8 +16240,8 @@ function achCurrentRankPlaqueData(atrophy, level) {
     const current = brackets[Math.max(0, currentIdx)] || brackets[0];
     const label = isCap ? 'Fully Bricked' : atrophyBandTitle(atrophy, level);
     const tip = isCap
-        ? 'Fully Bricked · Level 100'
-        : (current ? `${label} · Levels ${current.start}-${current.end}` : label);
+        ? achRankTipHTML(label, LEVEL_CAP, LEVEL_CAP, true)
+        : achRankTipHTML(label, current.start, current.end, true);
     const cls = [
         'bbgl-rank-notch',
         'bbgl-title-card-rank-plaque',
@@ -16043,26 +16256,58 @@ function achCurrentRankPlaqueData(atrophy, level) {
         finish: finishes[finishIdx] || 'mill',
         material: materials[finishIdx] || 'iron',
         label,
+        tip,
         html: achRankPlaqueHTML(cls, '', tip, true, label, 'bbgl-rank-title-text')
     };
 }
 
-function achTitleIdentityHTML(currentRank, titleValue) {
+function achTitleIdentityHTML(currentRank, titleValue, labelExtra = '') {
     return `<div class="bbgl-titles-center">` +
         `<div class="bbgl-title-card" data-sign-stage="0" data-rank-finish="${currentRank.finish}" data-rank-material="${currentRank.material}">` +
         `<div class="bbgl-title-card-sign"><div class="bbgl-title-card-sign-face">` +
-        `<span class="bbgl-title-card-title-label">The</span><span class="bbgl-title-card-value">${titleValue}</span>` +
+        `<span class="bbgl-title-card-title-label">The${labelExtra}</span><span class="bbgl-title-card-value">${titleValue}</span>` +
         `</div></div><div class="bbgl-title-card-connector" aria-hidden="true"></div>` +
         `<div class="bbgl-title-card-rank"><span class="bbgl-title-card-rank-label">Rank</span>${currentRank.html}</div>` +
         `</div></div>`;
 }
 
-function achLevelBarTooltipHTML(atrophy, level) {
+function achLevelBarTooltipHTML(atrophy, level, levelPct = 0) {
     const titleHtml = composeStatTitleHTML(getLiveStatTitleSelection());
     const titleValue = titleHtml
         ? `<i class="bbgl-lvl-title bbgl-titles-title">${titleHtml}</i>`
         : `<span class="bbgl-title-card-empty">Unequipped</span>`;
-    return `<div class="bbgl-level-title-tooltip">${achTitleIdentityHTML(achCurrentRankPlaqueData(atrophy, level), titleValue)}</div>`;
+    const pct = Math.max(0, Math.min(100, levelPct));
+    const start = Math.min(LEVEL_CAP - 20, Math.floor(level / 20) * 20);
+    const end = start + 20;
+    const progress = Math.max(0, Math.min(100, ((level + pct / 100 - start) / 20) * 100));
+    const caption = level >= LEVEL_CAP
+        ? (isFullyBricked(atrophy, level) ? 'Maximum rank' : 'Rank cycle complete')
+        : 'Next rank';
+    const progressHTML = `<div class="bbgl-tooltip-rank-progress"><div class="bbgl-tooltip-rank-caption">${caption}</div><div class="bbgl-tooltip-rank-track" role="progressbar" aria-label="${caption}" aria-valuemin="${start}" aria-valuemax="${end}" aria-valuenow="${Math.min(end, level + pct / 100).toFixed(2)}" style="--rank-progress:${progress.toFixed(2)}%"><span></span></div><div class="bbgl-tooltip-rank-endpoints"><span>Lv ${start}</span><span class="bbgl-tooltip-level-readout">Level ${level} &bull; ${pct.toFixed(1)}%</span><span>Lv ${end}</span></div></div>`;
+    // Same corner grouping as the titles page: str+spd left, def+dex right.
+    const eByStat = getLiveStatTitleE();
+    const phases = getLiveStatTitleSelection().phases;
+    const emblem = k => achTooltipStatEmblemHTML(k, phases[k] ?? -1, eByStat[k] || 0);
+    const identity = `<div class="bbgl-tooltip-identity-row">` +
+        `<div class="bbgl-tooltip-emblem-col">${emblem('str')}${emblem('spd')}</div>` +
+        achTitleIdentityHTML(achCurrentRankPlaqueData(atrophy, level), titleValue) +
+        `<div class="bbgl-tooltip-emblem-col">${emblem('def')}${emblem('dex')}</div></div>`;
+    return `<div class="bbgl-level-title-tooltip"><div class="bbgl-titles-name bbgl-tooltip-player-name">${achEsc(achTitlePlayerName())}</div>${identity}${progressHTML}</div>`;
+}
+
+// The level-bar tooltip's per-stat emblem: the in-progress tier (the one right after the highest
+// unlocked), or the top tier once all are unlocked. Fill math matches achTitleStarHTML().
+function achTooltipStatEmblemHTML(stat, unlockedPhase, statE) {
+    const lastPhase = STAT_TITLE_THRESHOLDS.length - 1;
+    const maxed = unlockedPhase >= lastPhase;
+    const phase = maxed ? lastPhase : unlockedPhase + 1;
+    const need = STAT_TITLE_THRESHOLDS[phase] || 0;
+    const prev = phase > 0 ? (STAT_TITLE_THRESHOLDS[phase - 1] || 0) : 0;
+    const pct = maxed ? 100 : Math.max(0, Math.min(100, ((statE - prev) / Math.max(1, need - prev)) * 100));
+    const readout = `T${phase + 1} &bull; ${maxed ? 'MAX' : `${Math.floor(pct)}%`}`;
+    return `<div class="bbgl-tooltip-emblem ach-stat-${stat}${maxed ? ' is-unlocked' : ''}" style="--star-fill:${(pct / 100).toFixed(3)}">` +
+        achStatEmblemHTML(stat, phase, pct, 'tip-') +
+        `<span class="bbgl-tooltip-emblem-pct">${readout}</span></div>`;
 }
 
 // The groove's vertical marks: a short ruler tick at every second level, a tall one under each
@@ -16104,9 +16349,7 @@ function achTitleLabelsHTML(atrophy, level) {
             i === 0 ? 'is-endpoint' : '',
             b.unlocked ? 'is-revealed' : 'is-locked'
         ].filter(Boolean).join(' ');
-        const tip = b.unlocked
-            ? `${b.label} · Levels ${b.start}-${b.end}`
-            : `Levels ${b.start}-${b.end} — reach level ${b.start} to reveal`;
+        const tip = achRankTipHTML(b.label, b.start, b.end, b.unlocked);
         // Same closest-split two-line wrap the plaques used (achRankPlaqueLabelHTML above) — each
         // line lands in its own .bbgl-rank-notch-line block, which is what makes it wrap instead of
         // running the whole title across one line.
@@ -16115,7 +16358,7 @@ function achTitleLabelsHTML(atrophy, level) {
         // so a hardcoded percentage here would be a second, silently divergent source for it.
         return `<div class="bbgl-rank-title-slot"><div class="${cls}" data-tooltip="${achEsc(tip)}"><span class="bbgl-rank-title-text">${inner}</span></div></div>`;
     }).join('');
-    const capTip = bricked ? 'Fully Bricked · Level 100' : 'Fully Bricked · reach Level 100 at the final atrophy tier';
+    const capTip = achRankTipHTML('Fully Bricked', LEVEL_CAP, LEVEL_CAP, bricked);
     // The destination is always named. Its muted/finished state carries the lock information; a
     // lock glyph here would sit on the finish divider and hide what the player is working toward.
     const capInner = achRankPlaqueLabelHTML('Fully Bricked');
@@ -16123,18 +16366,39 @@ function achTitleLabelsHTML(atrophy, level) {
     return bands + cap;
 }
 
-// One star. Locked stars carry a partial fill and an "E so far / E needed" tooltip; only the very
-// next locked phase can show any fill, everything past it reads 0.
+// One star. Only the very next locked phase can show any fill (and E progress in its tooltip);
+// everything past it reads 0 and just "Locked".
 //
-// The tooltip names both words this tier would supply, labelled by the order they're picked in —
-// first click fills the adjective, second the noun — with "Locked" standing in that same slot until
-// the tier is earned. Read straight off STAT_TITLE_WORDS rather than through statTitleWord(), which
-// clamps down to the nearest defined phase: that's right for composing a title but would misreport
-// an undecided tier as owning some earlier tier's words.
+// Unlocked tooltips lead with the tier's two words in reading order (adjective, noun). They're read
+// straight off STAT_TITLE_WORDS rather than through statTitleWord(), which clamps down to the nearest
+// defined phase: right for composing a title, but it would misreport an undecided tier as owning an
+// earlier tier's words. Undecided tiers show a literal "null" placeholder instead.
 //
 // `phase` stays the internal 0-based index everywhere it's used as data; the tooltip's "Tier N" is
-// the only place the player reads it, shifted to 1-10 there — no number is stamped on the star
-// itself, so the row reads as a clean line of stars rather than a numbered ladder.
+// the only place the player reads it, shifted to 1-10 there.
+//
+// `idScope` keeps gradient ids unique per copy: url(#id) resolves to the first match in the document,
+// and a gradient's currentColor stops take the colour of wherever that gradient lives. A second
+// copy sharing the ids (the level-bar tooltip's, which stays in the DOM when hidden) would repaint
+// the page's emblems with its own colours.
+function achStatEmblemHTML(stat, phase, pct, idScope = '') {
+    const shapes = {
+        str: ['M8 16H13V10H21V20H43V10H51V16H56V32H51V38H43V28H21V38H13V32H8Z', 'M16 13V35M48 13V35M24 23H40M24 25H40'],
+        def: ['M32 4Q43 11 53 10L51 26Q48 37 32 44Q16 37 13 26L11 10Q21 11 32 4Z', 'M32 10V37M17 15Q24 15 32 10Q40 15 47 15L45 25Q43 32 32 38Q21 32 19 25Z'],
+        spd: ['M32 4A20 20 0 1 0 32 44A20 20 0 1 0 32 4Z', 'M32 11A13 13 0 1 0 32 37A13 13 0 1 0 32 11ZM32 18A6 6 0 1 0 32 30A6 6 0 1 0 32 18Z'],
+        dex: ['M41 4C48 4 49 12 43 15L42 18L35 25L40 29L47 40L42 43L33 33L28 31L23 37L12 42L9 37L19 31L25 22L32 18L26 16L17 20L14 16L25 10L36 14L37 12C34 8 36 4 41 4Z', 'M37 19L30 25L35 29M27 14L34 17M20 34L25 30']
+    };
+    const [outline, detail] = shapes[stat];
+    const enamel = `bbgl-emblem-enamel-${idScope}${stat}-${phase}`;
+    const gloss = `${enamel}-gloss`;
+    return `<svg class="bbgl-stat-emblem" viewBox="0 0 64 48" aria-hidden="true"><defs><linearGradient id="${enamel}" x1="0" y1="0" x2=".65" y2="1"><stop stop-color="currentColor"/><stop offset=".35" stop-color="currentColor"/><stop offset="1" stop-color="#141a22"/></linearGradient><linearGradient id="${gloss}" x1="0" y1="0" x2=".3" y2="1"><stop stop-color="#fff" stop-opacity=".65"/><stop offset=".38" stop-color="#fff" stop-opacity=".12"/><stop offset=".43" stop-color="#fff" stop-opacity="0"/><stop offset=".85" stop-color="#fff" stop-opacity="0"/><stop offset="1" stop-color="#fff" stop-opacity=".18"/></linearGradient></defs>` +
+        `<path class="bbgl-emblem-relief" d="${outline}"/>` +
+        `<path class="bbgl-emblem-body" d="${outline}" fill="url(#${enamel})"/>` +
+        `<path class="bbgl-emblem-gloss" d="${outline}" fill="url(#${gloss})"/>` +
+        `<path class="bbgl-emblem-detail" d="${detail}"/>` +
+        (pct > 0 ? `<path class="bbgl-emblem-trace" d="${outline}" pathLength="100"/>` : '') + `</svg>`;
+}
+
 function achTitleStarHTML(stat, phase, unlockedPhase, statE, role) {
     const unlocked = phase <= unlockedPhase;
     const need = STAT_TITLE_THRESHOLDS[phase] || 0;
@@ -16146,25 +16410,18 @@ function achTitleStarHTML(stat, phase, unlockedPhase, statE, role) {
     else cls.push('is-locked');
     if (role) cls.push('is-' + role);
     const words = (STAT_TITLE_WORDS[stat] || [])[phase] || null;
-    let body;
+    let tip;
     if (!unlocked) {
-        body = `<i>Locked</i><i>${Formatter.number(Math.min(statE, need))} / ${Formatter.number(need)} E</i>`;
-    } else if (words) {
-        body = `<i>First word: ${words.adj}</i><i>Second word: ${words.noun}</i>`;
+        const inProgress = phase === unlockedPhase + 1;
+        tip = '<strong><em>Locked</em></strong>' +
+            (inProgress ? `<i>${Formatter.number(Math.min(statE, need))} / ${Formatter.number(need)} E</i>` : '');
     } else {
-        body = `<i>Not yet named</i>`;
+        const adj = words ? words.adj : 'null';
+        const noun = words ? words.noun : 'null';
+        tip = `<strong>${adj} • ${noun}</strong><i>${achStatFull(stat)} · Tier ${phase + 1}</i>`;
     }
-    const tip = `${achStatFull(stat)} · Tier ${phase + 1}${body}`;
-    // Two stacked copies of the same crown outline rather than a bordered box: -base is a dim grey
-    // outline, always fully drawn; -fill is the stat-coloured neon trace, stroke-dasharray'd to the
-    // crown's own real path length and revealed counterclockwise from its top spike by --star-fill
-    // (a bare 0-1 fraction — NOT a percentage, since stroke-dashoffset's calc() needs a plain
-    // number; see .bbgl-title-star-fill, 04-section-iii-styles.js). 1 for unlocked stars, so the
-    // trace is fully closed. No square around either one — the crown SHAPE itself is what fills,
-    // which is also what leaves more of each cell's room to the icon.
     return `<div class="${cls.join(' ')}" data-title-stat="${stat}" data-title-phase-idx="${phase}"${unlocked ? '' : ' data-locked="1"'} data-tooltip="${achEsc(tip)}" style="--star-fill:${(pct / 100).toFixed(3)}">` +
-        `<span class="bbgl-title-star-base">${ICONS.TITLE_CROWN}</span>` +
-        `<span class="bbgl-title-star-fill">${ICONS.TITLE_CROWN}</span>` +
+        achStatEmblemHTML(stat, phase, pct) +
         `</div>`;
 }
 
@@ -16172,7 +16429,6 @@ function achBuildPageTitles() {
     const totalExp = getLiveLevelExp();
     const { atrophy, level } = calculateLevelProgress(totalExp);
     const currentRank = achCurrentRankPlaqueData(atrophy, level);
-    const rankName = currentRank.label;
 
     const eByStat = getLiveStatTitleE();
     const sel = getLiveStatTitleSelection();
@@ -16206,8 +16462,9 @@ function achBuildPageTitles() {
         const top = STAT_TITLE_THRESHOLDS.slice(0, 5).map((_, i) => star(i)).join('');
         const bottom = STAT_TITLE_THRESHOLDS.slice(5).map((_, i) => star(i + 5)).join('');
         return `<div class="bbgl-title-block ach-stat-${k}">` +
+            `<svg class="bbgl-plate-neon" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true"><path d="M4 16H23C27 16 27 2 34 2H66C73 2 73 16 77 16H96Q100 16 100 22V94Q100 100 96 100H4Q0 100 0 94V22Q0 16 4 16Z"/></svg>` +
             `<svg class="bbgl-title-block-frame" viewBox="0 0 1 1"><path d=""/></svg>` +
-            `<div class="bbgl-title-block-label" data-tooltip="${achEsc(`${Formatter.number(Math.round(eByStat[k] || 0))} E spent on ${achStatFull(k)}`)}">${achStatFull(k)}</div>` +
+            `<div class="bbgl-title-block-label" data-tooltip="${achEsc(`Spend E training ${achStatFull(k)} to unlock new titles.`)}">${achStatFull(k)}</div>` +
             `<div class="bbgl-title-stars"><div class="bbgl-title-star-row">${top}</div><div class="bbgl-title-star-row">${bottom}</div></div></div>`;
     };
     const leftCol = `<div class="bbgl-titles-corner-col">${titleBlockHTML('str')}${titleBlockHTML('spd')}</div>`;
@@ -16218,50 +16475,35 @@ function achBuildPageTitles() {
 
     // The reset only appears once there's a hand-picked title to reset — it's both the control and
     // the signal that you're off the automatic pair.
-    const resetTip = 'Reset to the automatic title, which follows your two highest stats.';
+    const resetTip = 'Reset to highest earned title.';
     const resetBtn = (!pending && sel.mode === 'custom')
         ? `<button type="button" class="bbgl-title-reset" data-title-reset="1" data-tooltip="${achEsc(resetTip)}" aria-label="Reset title">${ICONS.REFRESH}</button>`
         : '';
 
     const titleValue = titleHtml
-        ? `<i class="bbgl-lvl-title bbgl-titles-title">${titleHtml}</i>${resetBtn}`
+        ? `<i class="bbgl-lvl-title bbgl-titles-title">${titleHtml}</i>`
         : `<span class="bbgl-title-card-empty">Unequipped</span>`;
-    const head = achTitleIdentityHTML(currentRank, titleValue);
+    const head = achTitleIdentityHTML(currentRank, titleValue, titleHtml ? resetBtn : '');
 
     // Engraved rank scale: no shared backing plate. The thin groove is cut directly into the panel;
     // the live level rides the channel as the low-profile slider knob. rankBarProgressCSS()
-    // (03-section-ii-utils.js) supplies its live readout position.
-    //
-    // Two parallel renderings of the same six bands + capstone sit on this axis: .bbgl-rank-notches,
-    // the ornate plaque shelf (achTitleNotchesHTML() above, positioned by layoutRankShelf(),
-    // 07-section-vi-ui.js) — hidden via CSS but left fully wired up — and .bbgl-rank-titles, the
-    // plain-text labels (achTitleLabelsHTML() above) that actually render on the bar.
-    //
-    // is-wrapped says the riding plaque's skirt is drawn down around the readout's digits (see
-    // .bbgl-rank-notch.is-riding, 04-section-iii-styles.js). The readout reads it to drop the dark
-    // pool it normally paints behind itself, which exists only to swallow the 1px groove line — the
-    // skirt already covers the groove there, so leaving the pool on would smear a dark blot across
-    // the plaque's metal field.
+    // (03-section-ii-utils.js) supplies its live readout position. Rank names render as the
+    // plain-text milestone labels below (achTitleLabelsHTML()); the current rank's own plaque lives
+    // on the identity card instead (achTitleIdentityHTML() above).
     const bricked = isFullyBricked(atrophy, level);
     const bar = `<div class="bbgl-rank-track" style="${rankBarProgressCSS(atrophy, level)}">` +
         `<div class="bbgl-rank-scale">` +
-        `<div class="bbgl-rank-line${bricked ? ' is-bricked' : ''}${hasRidingRank(atrophy, level) ? ' is-wrapped' : ''}">` +
-        `<div class="bbgl-rank-notches">${achTitleNotchesHTML(atrophy, level)}</div>` +
+        `<div class="bbgl-rank-line${bricked ? ' is-bricked' : ''}">` +
         achRankTicksHTML() +
         `<div class="bbgl-rank-titles">${achTitleLabelsHTML(atrophy, level)}</div>` +
-        `<div class="bbgl-rank-knob" data-tooltip="${achEsc(`"${rankName}"`)}"><span class="bbgl-rank-knob-lv">${level}</span></div>` +
+        `<div class="bbgl-rank-knob" data-tooltip="${achEsc(currentRank.tip)}"><span class="bbgl-rank-knob-lv">${level}</span></div>` +
         `</div>` +
         `</div>` +
         `</div>`;
 
-    // Everything but the rank track shares the space above the bar: the identity card (the
-    // suspended name plus the neon window under it, see .bbgl-titles-center) sits dead centre in
-    // the grid's middle column, framed by the two stat columns pushed out to the left/right
-    // edges. The bar itself is a fixed-height row pinned to the bottom, so growing/shrinking its
-    // content never eats into that space or vice versa.
+    // Keep the rank track outside the card assembly so its space survives card resizing.
     return `<div class="bbgl-titles-page">` +
-        `<div class="bbgl-titles-board"><div class="bbgl-titles-name-row"><div class="bbgl-titles-name">${achEsc(achTitlePlayerName())}</div></div>` +
-        `<div class="bbgl-titles-card-area"><div class="bbgl-titles-main">${leftCol}${head}${rightCol}</div></div></div>${bar}</div>`;
+        `<div class="bbgl-titles-board"><div class="bbgl-titles-card-area"><div class="bbgl-titles-main">${leftCol}${head}${rightCol}</div></div></div>${bar}</div>`;
 }
 
 function achBuildPage0(d) {
@@ -17850,7 +18092,6 @@ const BestGymController = {
         return true;
     }
 };
-
     /**
      *  [SECTION VI] THE GYM EQUIPMENT (UI Layer)
      *  ========================================================================
@@ -18615,11 +18856,10 @@ const BestGymController = {
         const line = track && track.querySelector('.bbgl-rank-line');
         const knob = line && line.querySelector('.bbgl-rank-knob');
         const knobLv = knob && knob.querySelector('.bbgl-rank-knob-lv');
-        const notches = line && line.querySelector('.bbgl-rank-notches');
         const titles = line && line.querySelector('.bbgl-rank-titles');
         const card = page.querySelector('.bbgl-title-card');
         const cardRank = card && card.querySelector('.bbgl-title-card-rank');
-        if (!track || !line || !knob || !knobLv || !notches || !titles || !card || !cardRank) return false;
+        if (!track || !line || !knob || !knobLv || !titles || !card || !cardRank) return false;
 
         runtime._achLiveRankKey = key;
         const bricked = isFullyBricked(atrophy, level);
@@ -18627,20 +18867,18 @@ const BestGymController = {
 
         // Same shared-clock trick achRefreshPageDom() uses: keeps runtime._titlesPageAnimationStartedAt
         // running and restamps --bbgl-titles-animation-delay to the (more negative) elapsed time BEFORE
-        // the notches/titles below are replaced, so the freshly-created nodes resume the page's existing
+        // the titles below are replaced, so the freshly-created nodes resume the page's existing
         // animation timeline instead of restarting their reveal/shimmer from 0.
         syncTitlesPageAnimationClock(container);
 
         track.style.cssText = rankBarProgressCSS(atrophy, level);
         line.classList.toggle('is-bricked', bricked);
-        line.classList.toggle('is-wrapped', hasRidingRank(atrophy, level));
-        notches.innerHTML = achTitleNotchesHTML(atrophy, level);
         titles.innerHTML = achTitleLabelsHTML(atrophy, level);
         knobLv.textContent = level;
         // setAttribute, not the achEsc()'d HTML-string form achBuildPageTitles() uses — this is
-        // going straight through the DOM API, not through an innerHTML parse, so the raw quotes
-        // belong here unescaped.
-        knob.setAttribute('data-tooltip', `"${currentRank.label}"`);
+        // going straight through the DOM API, not through an innerHTML parse, so no attribute
+        // escaping is needed.
+        knob.setAttribute('data-tooltip', currentRank.tip);
         card.dataset.rankFinish = currentRank.finish;
         card.dataset.rankMaterial = currentRank.material;
         cardRank.innerHTML = `<span class="bbgl-title-card-rank-label">Rank</span>${currentRank.html}`;
@@ -18734,27 +18972,8 @@ const BestGymController = {
             if (icons.length) {
                 const tallest = Math.max(...icons.map(el => el.offsetHeight));
                 const topPad = Math.max(0, (toolbar.offsetHeight - tallest) / 2);
-                // Keep the icons' top clearance; the name row begins at their lower edge.
+                // Keep the toolbar icons' top clearance.
                 titlesContainer.style.setProperty('--bbgl-t-toolbar-bottom', `${toolbar.offsetTop + tallest + topPad}px`);
-            }
-        }
-        const nameRow = document.querySelector('.bbgl-titles-name-row');
-        const name = nameRow && nameRow.querySelector('.bbgl-titles-name');
-        if (name && nameRow.clientHeight > 0) {
-            // Reserve a small share of the row beneath the full text line, including descenders.
-            const expanded = nameRow.closest('#bbgl-panel')?.classList.contains('bbgl-expanded');
-            nameRow.style.paddingBottom = `${nameRow.clientHeight * (expanded ? .075 : .11)}px`;
-            const style = getComputedStyle(nameRow);
-            const width = nameRow.clientWidth - parseFloat(style.paddingLeft) - parseFloat(style.paddingRight);
-            const height = nameRow.clientHeight - parseFloat(style.paddingTop) - parseFloat(style.paddingBottom);
-            name.style.setProperty('--bbgl-name-fit', '100px');
-            const fit = Math.max(1, 100 * Math.min(width / Math.max(1, name.scrollWidth), height / Math.max(1, name.offsetHeight)));
-            name.style.setProperty('--bbgl-name-fit', `${fit}px`);
-            if (document.fonts && document.fonts.status === 'loading' && !nameRow.dataset.fontFitPending) {
-                nameRow.dataset.fontFitPending = '1';
-                document.fonts.ready.then(() => {
-                    if (nameRow.isConnected) layoutTitleBlockFrames();
-                });
             }
         }
         const main = document.querySelector('.bbgl-titles-main');
@@ -18762,16 +18981,44 @@ const BestGymController = {
             const height = main.clientHeight;
             // Tooltip card: (176px outer width - 18px border/padding) * .86 by 132px.
             main.style.setProperty('--bbgl-title-max-width', `${height * (158 * .86 / 132)}px`);
+            const center = main.querySelector('.bbgl-titles-center');
+            let cardHeight = height;
+            if (center) {
+                const widthLoss = Math.max(0, height * .85 - center.clientWidth);
+                const expanded = main.closest('#bbgl-panel')?.classList.contains('bbgl-expanded');
+                const heightTrim = expanded
+                    ? Math.min(42, height * .27, widthLoss * .55)
+                    : Math.min(38, height * .24, widthLoss * .5);
+                main.style.setProperty('--bbgl-title-height-trim', `${heightTrim}px`);
+                main.style.setProperty('--bbgl-stat-padding-y', `${Math.min(3, heightTrim * .1)}px`);
+                main.style.setProperty('--bbgl-stat-row-extra', `${Math.min(3, heightTrim * .1)}px`);
+                cardHeight -= heightTrim;
+            }
             main.querySelectorAll('.bbgl-titles-corner-col').forEach(col => {
                 const label = col.querySelector('.bbgl-title-block-label');
                 const row = col.querySelector('.bbgl-title-star-row');
                 if (!label || !row) return;
                 const gap = parseFloat(getComputedStyle(row).columnGap) || 0;
                 const labelHeight = label.offsetHeight;
-                const vertical = (height - labelHeight * 2 - 7) / 4;
-                const horizontal = (col.clientWidth - gap * 4 - 4) / 5;
+                const expanded = main.closest('#bbgl-panel')?.classList.contains('bbgl-expanded');
+                const paddingY = parseFloat(getComputedStyle(col).getPropertyValue('--bbgl-stat-padding-y')) || 0;
+                const rowExtra = parseFloat(getComputedStyle(col).getPropertyValue('--bbgl-stat-row-extra')) || 0;
+                const vertical = (cardHeight - labelHeight * 2 - 7 - paddingY * 4 - rowExtra * 2) / (expanded ? 3.8 : 4);
+                const emblemScale = parseFloat(getComputedStyle(col).getPropertyValue('--bbgl-t-emblem-scale')) || 1.12;
+                // The grid reserves clearance outside the plate's 3px overhang.
+                const horizontal = (col.clientWidth - gap * 4) / (5 * emblemScale);
                 col.style.setProperty('--bbgl-t-star', `${Math.max(1, Math.min(vertical, horizontal))}px`);
             });
+            // The level-bar tooltip's title text copies the expanded page's size. That text is
+            // min(14cqw, 25cqh) of its size-container sign (.bbgl-title-card-value .bbgl-titles-title,
+            // 04-section-iii-styles.js); the tooltip lives on <body>, outside that container, so the
+            // resolved px goes on the root. Only measured in expanded, so other modes keep the last
+            // expanded value.
+            const sign = main.closest('#bbgl-panel.bbgl-expanded') && main.querySelector('.bbgl-title-card-sign');
+            if (sign && sign.clientWidth > 0 && sign.clientHeight > 0) {
+                const fs = Math.min(sign.clientWidth * .14, sign.clientHeight * .25);
+                document.documentElement.style.setProperty('--bbgl-tip-title-fs', `${fs.toFixed(2)}px`);
+            }
         }
         const blocks = document.querySelectorAll('.bbgl-title-block');
         if (!blocks.length) return true;
@@ -18852,8 +19099,8 @@ const BestGymController = {
     // --bbgl-t-rank-h grows the gap.
     const TITLE_LABEL_BIAS = 0.42;
 
-    // Places the visible rank assembly (groove + readout; plaques are hidden today, see
-    // .bbgl-rank-notches) in the space below the stat cards, in two passes: pass 1 freezes the
+    // Places the visible rank assembly (groove + readout) in the space below the stat cards, in
+    // two passes: pass 1 freezes the
     // label-to-groove spacing at a fixed reference placement, pass 2 treats labels+groove as one
     // rigid block and places that block. Doing it in one pass (just moving the groove) would let
     // the label gap rescale with it. Clamped at both ends so a short space hugs the floor instead
@@ -18887,13 +19134,9 @@ const BestGymController = {
         const availableBottom = page.clientHeight - paddingBottom;
         if (!(availableBottom > availableTop)) return false;
 
-        // offsetParent filters out hidden plaque parts (every cradle but the riding one's, today)
-        // so only the VISIBLE assembly is measured. The cradle is measured separately since it's
-        // absolutely positioned and adds nothing to its label's offsetHeight, despite hanging
-        // lower than anything else in the assembly.
         const assemblyEls = [
             line,
-            ...line.querySelectorAll('.bbgl-rank-notch-label, .bbgl-rank-notch-cradle, .bbgl-rank-knob')
+            ...line.querySelectorAll('.bbgl-rank-knob')
         ].filter(el => el === line || el.offsetParent !== null);
         const assemblyBounds = assemblyEls.map(el => {
             const top = titleLayoutTopWithin(el, page);
@@ -18953,7 +19196,10 @@ const BestGymController = {
         // Compact mode compresses the live marker slightly and spends the room on separation from
         // the cards above; CSS owns the amount, this just keeps the ceiling/floor clamps authoritative.
         const requestedNudge = parseFloat(getComputedStyle(scale).getPropertyValue('--bbgl-t-rank-nudge-y')) || 0;
-        drop += requestedNudge;
+        const expanded = page.closest('#bbgl-panel')?.classList.contains('bbgl-expanded');
+        const main = expanded && page.querySelector('.bbgl-titles-main');
+        const heightTrim = main ? parseFloat(getComputedStyle(main).getPropertyValue('--bbgl-title-height-trim')) || 0 : 0;
+        drop += requestedNudge - Math.min(7, heightTrim * .18);
         drop = Math.max(drop, availableTop - blockTop);
         drop = Math.min(drop, availableBottom - assemblyFloor - blockBottom);
 
@@ -18993,154 +19239,10 @@ const BestGymController = {
     }
 
 
-    // Minimum clear space to leave between two neighbouring plaques, in untransformed layout px.
-    const RANK_NOTCH_MIN_GAP = 3;
-
-    // Hard wall at each end of the rank section, in px inside the panel's own edge — measured from
-    // the panel edge, not the groove's, since the groove is inset so end plaques can overhang it.
-    const RANK_SHELF_WALL = 7;
-
-    // Places every rank plaque on the trophy shelf. Three states (set in achTitleNotchesHTML(),
-    // 06-section-v-logic.js): .is-docked (earned and outgrown, parked in its permanent slot),
-    // .is-riding (the current rank, tracks the live readout), and locked (left where the markup
-    // put it, centred on its unlock level).
-    //
-    // Slots are solved for ALL SIX plaques every time, never just the docked subset — that's the
-    // invariant the design rests on: a plaque docks straight into the position it'll still hold
-    // once the shelf is full, so earning a rank never nudges an already-placed one. Plaque widths
-    // vary too much for an even division, so measured widths are laid end to end and the leftover
-    // space is split into five even gaps (space-between in spirit, done in JS since the shelf must
-    // stay sized for all six while only some are present).
-    //
-    // Always computed from measured widths + each notch's own inline left%, never from a rect that
-    // already carries a previous shift — so the pass is idempotent across repeated runs/resizes.
-    // Uses offsetWidth/clientWidth, not getBoundingClientRect(), for the same CRT-transform reason
-    // as layoutRankBarCenter() above. Writes translateX only, which can't retrigger the
-    // ResizeObserver in observeTitleBlockFrames().
-    function layoutRankShelf() {
-        const line = document.querySelector('.bbgl-titles-page .bbgl-rank-line');
-        if (!line) return false;
-        const allNotches = Array.from(line.querySelectorAll('.bbgl-rank-notch'));
-        if (!allNotches.length) return false;
-        const trackW = line.clientWidth;
-        if (!(trackW > 0)) return false;
-
-        // Guard against a hidden notch: offsetWidth reads 0 for display:none, which would collapse
-        // its slot and slide every later plaque left. Measuring it anyway would mean briefly
-        // un-hiding it (a forced reflow), so instead the shelf solve is skipped entirely and only
-        // the riding plaque is placed — "plaques sit on their milestones" rather than a wrong shelf.
-        const hidden = allNotches.some(n => n.offsetParent === null);
-        const boxes = allNotches.map(notch => {
-            const label = notch.querySelector('.bbgl-rank-notch-label');
-            const w = label ? label.offsetWidth : 0;
-            // Height is read for the riding plaque's cradle alone — see the --rank-plate-h write
-            // below. Taken here rather than in a pass of its own so it lands in this function's
-            // single READ phase, before anything is written.
-            const h = label ? label.offsetHeight : 0;
-            const pct = parseFloat(notch.style.left);
-            if (!label || !Number.isFinite(pct)) return null;
-            return {
-                notch,
-                w,
-                h,
-                natural: trackW * (pct / 100),
-                docked: notch.classList.contains('is-docked'),
-                riding: notch.classList.contains('is-riding')
-            };
-        });
-        if (boxes.some(b => b === null)) return false;
-
-        // Everything here is in the groove's own coordinate space: 0 is its left end, trackW its
-        // right. The groove is inset from the panel by --bbgl-t-rank-edge plus half a title slot on
-        // each side (see .bbgl-rank-line, 04-section-iii-styles.js), and that inset is exactly what
-        // offsetLeft reads, so the panel edges sit at -sidePad and trackW + sidePad, and the walls
-        // are RANK_SHELF_WALL inside those. Read, never assumed, so the derived inset above can
-        // change shape without this needing to know the formula.
-        const sidePad = line.offsetLeft;
-        const wallL = -sidePad + RANK_SHELF_WALL;
-        const wallR = trackW + sidePad - RANK_SHELF_WALL;
-
-        // The shelf centres on the groove itself (NOT the walls it's clamped to), so the first/last
-        // plaque lands flush with the bar's own ends rather than floating into the side padding. The
-        // wall clamp below is purely a last-resort guard for when the ladder is too wide for the groove.
-        const boxL = 0;
-        const boxR = trackW;
-        const avail = boxR - boxL;
-
-        // Locked plaques stay on the milestone the markup put them on; the two solves below
-        // override that for the plaques whose state calls for it.
-        const targets = boxes.map(b => b.natural);
-
-        if (!hidden && avail > 0) {
-            // Solve the full six-slot shelf. Total plaque width laid end to end, then the
-            // remainder split into equal gaps. A gap below RANK_NOTCH_MIN_GAP means the ladder
-            // simply cannot fit in the box — hold the gap at that floor rather than letting the
-            // plaques overlap into an unreadable pile, and accept that the ends may then be pushed
-            // back inside by the wall clamp below.
-            if (boxes.some(b => !(b.w > 0))) return false;
-            const totalW = boxes.reduce((sum, b) => sum + b.w, 0);
-            const even = boxes.length > 1 ? (avail - totalW) / (boxes.length - 1) : 0;
-            const gap = Math.max(RANK_NOTCH_MIN_GAP, even);
-
-            // Centred in the box. When the ladder fits, `gap` IS the even division, so the span
-            // works out to exactly `avail` and the shelf lands flush against both of the box's
-            // edges. When it does not, the span is wider and the overshoot is split evenly off both
-            // ends instead of piling up entirely on the right.
-            const span = totalW + gap * (boxes.length - 1);
-            let cursor = boxL + (avail - span) / 2;
-
-            boxes.forEach((b, i) => {
-                // Every plaque advances the cursor even when not docked, reserving its room so
-                // later slots land correctly once it docks.
-                if (b.docked) targets[i] = cursor + b.w / 2;
-                cursor += b.w + gap;
-            });
-        }
-
-        // The riding plaque tracks the level readout. Same --rank-fill-pct the knob itself reads
-        // (rankBarProgressCSS(), 03-section-ii-utils.js), so the two stay locked together by
-        // construction instead of by two separately-maintained position formulas.
-        const fillPct = parseFloat(getComputedStyle(line).getPropertyValue('--rank-fill-pct'));
-        if (Number.isFinite(fillPct)) {
-            boxes.forEach((b, i) => {
-                if (b.riding) targets[i] = trackW * (fillPct / 100);
-            });
-        }
-
-        // The wall clamp applies to every plaque without exception — the one rule with no states.
-        boxes.forEach((b, i) => {
-            const minCenter = wallL + b.w / 2;
-            const maxCenter = wallR - b.w / 2;
-            // A single plaque wider than the whole usable width has no satisfying position; pin it
-            // to the left wall so it overflows in one predictable direction rather than jittering.
-            const center = maxCenter >= minCenter
-                ? Math.max(minCenter, Math.min(maxCenter, targets[i]))
-                : minCenter;
-            const shift = center - b.natural;
-            if (Math.abs(shift) < 0.01) b.notch.style.removeProperty('--rank-shift');
-            else b.notch.style.setProperty('--rank-shift', `${shift.toFixed(3)}px`);
-
-            // The plate and its cradle share ONE metal ramp spanning both, so the gradient runs
-            // unbroken across the join instead of restarting in the cradle (see
-            // .bbgl-rank-notch-cradle, 04-section-iii-styles.js). The plate can size that ramp
-            // from its own box in pure CSS; the cradle cannot — it has to know how far down the
-            // shared ramp its own slice begins, which is exactly the plate's height. Only the
-            // riding plaque has a cradle, so only it carries the value, and it is cleared off the
-            // rest so a plaque that stops riding cannot leave a stale one behind.
-            if (b.riding && b.h > 0) b.notch.style.setProperty('--rank-plate-h', `${b.h.toFixed(2)}px`);
-            else b.notch.style.removeProperty('--rank-plate-h');
-        });
-        return true;
-    }
-
     function layoutTitlesPageGeometry() {
         const framesReady = layoutTitleBlockFrames();
-        // Before the vertical centring, which measures the assembly's bounding box — the shelf
-        // pass can only move plaques horizontally, but running it first keeps the two passes in a
-        // fixed order rather than an incidental one.
-        const spacingReady = layoutRankShelf();
         const rankReady = layoutRankBarCenter();
-        return framesReady && spacingReady && rankReady;
+        return framesReady && rankReady;
     }
 
     // (Re)establishes the ResizeObserver watching the current title blocks and visible rank parts —
@@ -19294,7 +19396,7 @@ const BestGymController = {
         }
         bar.container.dataset.atrophy = atrophy;
         bar.container.dataset.level = level;
-        bar.container.setAttribute('data-tooltip', achLevelBarTooltipHTML(atrophy, level));
+        bar.container.setAttribute('data-tooltip', achLevelBarTooltipHTML(atrophy, level, pct));
     }
 
     // renderLevelBar() alone always animates the width change via the fill's CSS transition —
@@ -20206,13 +20308,6 @@ const BestGymController = {
         if (!gymRoot) return;
         if (document.getElementById('bbgl-gym-level-container')) return;
 
-        for (const p of gymRoot.querySelectorAll('p')) {
-            if (p.textContent.trim() === 'What would you like to train today?') {
-                (p.parentElement?.parentElement ?? p).remove();
-                break;
-            }
-        }
-
         const container = document.createElement('div');
         container.id = 'bbgl-gym-level-container';
 
@@ -20255,10 +20350,12 @@ const BestGymController = {
             dom.bestGym = existing;
             return;
         }
-        const gymRoot = document.getElementById('gymroot');
-        if (!gymRoot) return;
-        const gymContent = gymRoot.querySelector('[class*="gymContent___"]');
-        if (!gymContent) return;
+        // Lives in the empty top-right of the gym EXP bar's top margin, absolutely positioned
+        // (#bbgl-gym-level-container .bbgl-bestgym, 04-section-iii-styles.js) so the bar's sizing
+        // is untouched. handleDomMutation() injects the bar first; if it isn't there yet, the
+        // next mutation retries.
+        const levelContainer = document.getElementById('bbgl-gym-level-container');
+        if (!levelContainer) return;
         const pill = document.createElement('div');
         pill.id = 'bbgl-bestgym';
         pill.className = 'bbgl-bestgym';
@@ -20266,7 +20363,7 @@ const BestGymController = {
         const cb = pill.querySelector('#bbgl-bestgym-input');
         cb.checked = !!userConfig.bestGym;
         cb.onchange = () => setBestGym(cb.checked);
-        gymContent.insertAdjacentElement('afterend', pill);
+        levelContainer.appendChild(pill);
         dom.bestGym = pill;
     }
 
@@ -24950,6 +25047,10 @@ const BestGymController = {
             _scrubMoveBound = null,
             _toolbarTipTimer = null;
         const _TOOLBAR_TOGGLE_IDS = new Set(['bbgl-ledger-toggle', 'bbgl-graph-toggle', 'bbgl-achievements-toggle', 'bbgl-sticker-toggle']);
+        // Anything that acts on tap keeps its plain-text tooltip for tap-and-hold only (the 400ms
+        // timer in touchstart); a tap tooltip would just pop up over whatever the tap did.
+        const _isTapAction = (target, tipEl) => !!target.closest('button, a[href], input, select, textarea, [role="button"]') ||
+            getComputedStyle(tipEl).cursor === 'pointer';
         const _onScrubMove = (e) => {
             if (!_scrubMode) return;
             if (e.cancelable) e.preventDefault();
@@ -25110,7 +25211,7 @@ const BestGymController = {
                 if (h) {
                     if (TooltipController.currentTarget === t) TooltipController.hide();
                 } else if (txt) {
-                    if (TooltipController.currentTarget === t) TooltipController.hide();
+                    if (TooltipController.currentTarget === t || _isTapAction(e.target, t)) TooltipController.hide();
                     else {
                         TooltipController.currentTarget = t;
                         TooltipController.show('<div style="text-align:center; color:#ddd;">' + txt + '</div>', t.getBoundingClientRect());

@@ -372,6 +372,18 @@
                         margin-top: 8px;
                     }
 
+                    /* Gym page: sits in the empty top-right of the EXP bar top margin (30px, see
+                       #bbgl-gym-level-container). Absolute, so the bar layout and size never move;
+                       top -24px sits the 24px pill just above the bar. The container clip-path only
+                       clips the sides and bottom, so the pill shows above the bar. */
+                    #bbgl-gym-level-container .bbgl-bestgym {
+                        position: absolute;
+                        top: -24px;
+                        right: 0;
+                        z-index: 4;
+                        margin-top: 0;
+                    }
+
                     .bbgl-bestgym-logo {
                         width: 20px;
                         height: 20px;
@@ -1223,7 +1235,7 @@
                         padding: 0;
                         border-radius: 0;
                         filter: none;
-                        max-width: 196px;
+                        max-width: 268px;
                     }
 
                     #bbgl-tooltip:has(.bbgl-level-title-tooltip) #bbgl-tooltip-arrow {
@@ -1231,7 +1243,8 @@
                     }
 
                     .bbgl-level-title-tooltip {
-                        --bbgl-t-fs-name: 14px;
+                        position: relative;
+                        --bbgl-t-fs-name: 15px;
                         --bbgl-t-name-scale: 1.45;
                         --bbgl-t-fs-line: 9px;
                         --bbgl-t-fs-line-label: 6px;
@@ -1242,7 +1255,7 @@
                         --bbgl-t-win-hum: 11.3s;
                         --bbgl-t-wire-h: 8px;
                         --bbgl-t-wire-lift: 4px;
-                        width: 176px;
+                        width: 268px;
                         padding: 37px 8px 8px;
                         border: 1px solid rgba(145, 115, 176, .32);
                         border-radius: 6px;
@@ -1253,21 +1266,127 @@
                         box-sizing: border-box;
                     }
 
+                    .bbgl-tooltip-rank-progress {
+                        margin: 9px 18px 0;
+                        font: 10px/1.3 'Barlow Condensed', sans-serif;
+                        color: #c8c4ce;
+                        text-align: center;
+                    }
+                    .bbgl-tooltip-level-readout { color: #eee9f2; font-size: 12px; }
+                    .bbgl-tooltip-rank-track {
+                        position: relative;
+                        height: 1px;
+                        margin: 7px 0 5px;
+                        background: #8a7b99;
+                    }
+                    .bbgl-tooltip-rank-track::before,
+                    .bbgl-tooltip-rank-track::after {
+                        content: '';
+                        position: absolute;
+                        top: -3px;
+                        width: 1px;
+                        height: 7px;
+                        background: #b7a6ca;
+                    }
+                    .bbgl-tooltip-rank-track::before { left: 0; }
+                    .bbgl-tooltip-rank-track::after { right: 0; }
+                    .bbgl-tooltip-rank-track > span {
+                        position: absolute;
+                        left: var(--rank-progress);
+                        top: 50%;
+                        width: 5px;
+                        height: 5px;
+                        border-radius: 50%;
+                        background: #d5b4f5;
+                        box-shadow: 0 0 0 1px #25202c;
+                        transform: translate(-50%, -50%);
+                    }
+                    /* Lv start | level readout | Lv end on one row under the rank track. Baseline
+                       aligned so the larger readout lines up with the smaller endpoint labels. */
+                    .bbgl-tooltip-rank-endpoints { display: flex; justify-content: space-between; align-items: baseline; }
+
                     .bbgl-level-title-tooltip .bbgl-titles-center {
-                        width: 100%;
+                        flex: 1 1 auto;
+                        width: auto;
+                        min-width: 0;
                         height: 132px;
                         margin: 0;
                         transform: none;
                     }
 
+                    /* In-progress stat emblems flanking the identity card: str+spd left,
+                       def+dex right, same grouping as the titles page. */
+                    .bbgl-tooltip-identity-row {
+                        display: flex;
+                        align-items: center;
+                        gap: 4px;
+                    }
+                    .bbgl-tooltip-emblem-col {
+                        flex: 0 0 40px;
+                        display: flex;
+                        flex-direction: column;
+                        justify-content: space-around;
+                        align-self: stretch;
+                    }
+                    .bbgl-tooltip-emblem {
+                        display: flex;
+                        flex-direction: column;
+                        align-items: center;
+                        gap: 3px;
+                    }
+                    .bbgl-tooltip-emblem .bbgl-stat-emblem {
+                        width: 36px;
+                        height: 27px;
+                        transform: none;
+                    }
+                    .bbgl-tooltip-emblem.ach-stat-str { --bbgl-t-win-color: #3264c6; }
+                    .bbgl-tooltip-emblem.ach-stat-def { --bbgl-t-win-color: #dc3912; }
+                    .bbgl-tooltip-emblem.ach-stat-spd { --bbgl-t-win-color: #ff9900; }
+                    .bbgl-tooltip-emblem.ach-stat-dex { --bbgl-t-win-color: #109618; }
+                    .bbgl-tooltip-emblem.is-unlocked .bbgl-stat-emblem {
+                        color: color-mix(in srgb, var(--bbgl-t-win-color) 65%, #84919d);
+                    }
+                    .bbgl-tooltip-emblem.is-unlocked .bbgl-emblem-gloss { opacity: .85; }
+                    .bbgl-tooltip-emblem.is-unlocked .bbgl-emblem-detail {
+                        stroke: #d6dce0;
+                        opacity: .75;
+                    }
+                    .bbgl-tooltip-emblem-pct {
+                        font: 11.5px/1 'Fjalla One', 'Arial Narrow', sans-serif;
+                        letter-spacing: .02em;
+                        white-space: nowrap;
+                        color: color-mix(in srgb, var(--bbgl-t-win-color) 45%, #eee9f2);
+                    }
+
+                    .bbgl-level-title-tooltip .bbgl-tooltip-player-name {
+                        position: absolute;
+                        top: 5px;
+                        left: 2px;
+                        right: 2px;
+                        width: auto;
+                        max-width: none;
+                        transform: none;
+                        padding-left: .2em;
+                        padding-right: .2em;
+                        text-align: center;
+                    }
+
                     .bbgl-level-title-tooltip .bbgl-title-card {
-                        width: 86%;
+                        width: 135.88px;
+                        max-width: 100%;
                         flex: 1 1 auto;
                         align-self: center;
                     }
 
+                    /* Title text matches the expanded titles page: --bbgl-tip-title-fs is its
+                       measured px, set on the root by layoutTitleBlockFrames() (07-section-vi-ui.js).
+                       Until that page has been laid out, the normal plaque-relative size applies.
+                       line-height restores the plaque value that .bbgl-lvl-title.bbgl-titles-title
+                       (1.55, later in the file) overrides; its extra leading opened a gap under The. */
                     #bbgl-tooltip .bbgl-level-title-tooltip .bbgl-titles-title {
                         font-style: normal;
+                        font-size: var(--bbgl-tip-title-fs, min(14cqw, 25cqh));
+                        line-height: 1.05;
                     }
 
                     /* Title finish progression, Phase 0-9 — dull silver to iridescent diamond.
@@ -6431,7 +6550,6 @@
                            readout's HEIGHT is just its own line box, so there is no -display-h. */
                         --bbgl-t-display-w: clamp(25px, 5cqi, 34px);
                         --bbgl-t-display-fs: clamp(9px, 1.8cqi, 13px);
-                        --bbgl-t-notch-gap: clamp(5px, .9cqb, 8px);
                         /* The anchored gap held at the far left and far right of the rank area. This
                            is now the ONLY number placing the rank axis horizontally: everything
                            inside it — track width, slot width, groove length, end-title clearance —
@@ -6566,7 +6684,6 @@
                             --bbgl-t-rank-tag-cut: 1.1146px;
                             --bbgl-t-display-w: 23.5px;
                             --bbgl-t-display-fs: 8.5px;
-                            --bbgl-t-notch-gap: 4.75px;
 
                             --bbgl-t-star: 15px;
                             --bbgl-t-star-cgap: 1.6875px;
@@ -6635,7 +6752,6 @@
                             --bbgl-t-rank-tag-cut: 1.3456px;
                             --bbgl-t-display-w: 23.5px;
                             --bbgl-t-display-fs: 8.5px;
-                            --bbgl-t-notch-gap: 4.75px;
 
                             --bbgl-t-star: 18.5px;
                             --bbgl-t-star-cgap: 2.0625px;
@@ -6683,7 +6799,6 @@
                             --bbgl-t-rank-tag-cut: 2.7386px;
                             --bbgl-t-display-w: 34px;
                             --bbgl-t-display-fs: 13px;
-                            --bbgl-t-notch-gap: 6px;
 
                             --bbgl-t-star: 28px;
                             --bbgl-t-star-cgap: 3.75px;
@@ -6853,7 +6968,6 @@
                         --bbgl-t-bar-h: 1px;
                         --bbgl-t-display-w: 22px;
                         --bbgl-t-display-fs: 8px;
-                        --bbgl-t-notch-gap: 0px;
                         /* Tighter than the shared value: compact's rank area is the narrowest in the
                            app, so it buys back a little groove length at the ends. */
                         --bbgl-t-rank-edge: 4px;
@@ -6903,7 +7017,7 @@
                     #bbgl-panel.bbgl-expanded .bbgl-titles-corner-col {
                         --bbgl-t-star: clamp(14px, calc(14px + 11px * var(--bbgl-t-cards)), 25px);
                         --bbgl-t-star-cgap: clamp(1.5px, calc(1.5px + 1.5px * var(--bbgl-t-cards)), 3px);
-                        --bbgl-t-fs-block-label: clamp(7.2px, calc(7.2px + 5.8px * var(--bbgl-t-cards)), 13px);
+                        --bbgl-t-fs-block-label: clamp(8.5px, calc(8.5px + 3px * var(--bbgl-t-cards)), 11.5px);
                         --bbgl-t-label-clear: calc(var(--bbgl-t-fs-block-label) * .6 + 2px + 2.5px);
                         --bbgl-t-win-pad: clamp(3.25px, calc(3.25px + 2.75px * var(--bbgl-t-cards)), 6px);
                         --bbgl-t-win-pad-y: clamp(1.8px, calc(1.8px + 1.2px * var(--bbgl-t-cards)), 3px);
@@ -7253,18 +7367,19 @@
                         min-width: 0;
                         min-height: 0;
                         padding: 0 0 4px;
-                        border: 1px solid #21120d;
+                        border: 1px solid #140b07;
                         border-radius: 3px;
                         box-sizing: border-box;
+                        /* Dark walnut: deep cool chocolate base, darker grain streaks, faint light figure. */
                         background:
-                            repeating-linear-gradient(92deg, transparent 0 5px, rgba(16, 6, 2, .18) 6px, transparent 7px 13px),
-                            repeating-linear-gradient(88deg, rgba(211, 151, 88, .045) 0 1px, transparent 1px 3px),
-                            radial-gradient(ellipse 28% 120% at 24% 35%, #56331f00 45%, #22120c55 70%, transparent 78%),
-                            linear-gradient(100deg, #382116, #62412b 38%, #472a1b 72%, #342017);
+                            repeating-linear-gradient(92deg, transparent 0 5px, rgba(8, 4, 2, .28) 6px, transparent 7px 13px),
+                            repeating-linear-gradient(88deg, rgba(176, 128, 92, .04) 0 1px, transparent 1px 3px),
+                            radial-gradient(ellipse 28% 120% at 24% 35%, #3a241800 45%, #140a0666 70%, transparent 78%),
+                            linear-gradient(100deg, #24160f, #3d281d 38%, #2f1e15 72%, #20140d);
                         box-shadow:
-                            inset 1px 1px 0 rgba(227, 174, 108, .32),
-                            inset -1px -1px 0 rgba(0, 0, 0, .65),
-                            inset 0 0 0 3px rgba(26, 13, 6, .24);
+                            inset 1px 1px 0 rgba(186, 138, 100, .22),
+                            inset -1px -1px 0 rgba(0, 0, 0, .7),
+                            inset 0 0 0 3px rgba(16, 8, 4, .28);
                     }
 
                     .bbgl-title-card::before {
@@ -7368,14 +7483,14 @@
                         transform: none;
                         flex: 0 0 auto;
                         font-family: Georgia, 'Times New Roman', serif;
-                        font-size: min(8cqw, 13cqh);
+                        font-size: min(10cqw, 17cqh);
                         font-style: italic;
                         font-weight: 500;
                         line-height: 1;
                         letter-spacing: .02em;
                         text-transform: none;
                         color: #f6dc98;
-                        text-shadow: 0 1px 1px rgba(75, 3, 19, .8);
+                        text-shadow: 0 1px 1px rgba(38, 8, 52, .82);
                     }
 
                     .bbgl-title-card-sign {
@@ -7389,7 +7504,7 @@
                         min-width: 0;
                         min-height: 0;
                         box-sizing: border-box;
-                        filter: drop-shadow(0 3px 2px rgba(35, 3, 9, .5));
+                        filter: drop-shadow(0 3px 2px rgba(0, 0, 0, .65));
                     }
 
                     .bbgl-title-card-sign-face {
@@ -7412,11 +7527,10 @@
                         content: '';
                         position: absolute;
                         inset: 0;
-                        background: url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%204%20240%2096%22%20preserveAspectRatio%3D%22none%22%3E%3Cdefs%3E%3ClinearGradient%20id%3D%22face%22%20x1%3D%220%22%20y1%3D%220%22%20x2%3D%22.3%22%20y2%3D%221%22%3E%3Cstop%20stop-color%3D%22%23ca1235%22%2F%3E%3Cstop%20offset%3D%22.48%22%20stop-color%3D%22%23b7072b%22%2F%3E%3Cstop%20offset%3D%221%22%20stop-color%3D%22%23920723%22%2F%3E%3C%2FlinearGradient%3E%3ClinearGradient%20id%3D%22side%22%3E%3Cstop%20stop-color%3D%22%23ff2947%22%2F%3E%3Cstop%20offset%3D%22.5%22%20stop-color%3D%22%23e91036%22%2F%3E%3Cstop%20offset%3D%221%22%20stop-color%3D%22%23a70727%22%2F%3E%3C%2FlinearGradient%3E%3ClinearGradient%20id%3D%22gold%22%20x2%3D%22.15%22%20y2%3D%221%22%3E%3Cstop%20stop-color%3D%22%23fff0a0%22%2F%3E%3Cstop%20offset%3D%22.35%22%20stop-color%3D%22%23f9cf49%22%2F%3E%3Cstop%20offset%3D%22.75%22%20stop-color%3D%22%23da961d%22%2F%3E%3Cstop%20offset%3D%221%22%20stop-color%3D%22%23ffe477%22%2F%3E%3C%2FlinearGradient%3E%3ClinearGradient%20id%3D%22curl%22%20x2%3D%220%22%20y2%3D%221%22%3E%3Cstop%20stop-color%3D%22%23770d20%22%2F%3E%3Cstop%20offset%3D%22.5%22%20stop-color%3D%22%23c11b30%22%2F%3E%3Cstop%20offset%3D%221%22%20stop-color%3D%22%23640e1e%22%2F%3E%3C%2FlinearGradient%3E%3ClinearGradient%20id%3D%22top-roll%22%20x1%3D%220%22%20y1%3D%220%22%20x2%3D%220%22%20y2%3D%221%22%3E%3Cstop%20stop-color%3D%22%23640b20%22%2F%3E%3Cstop%20offset%3D%22.18%22%20stop-color%3D%22%23ad1832%22%2F%3E%3Cstop%20offset%3D%22.38%22%20stop-color%3D%22%23ef4960%22%2F%3E%3Cstop%20offset%3D%22.53%22%20stop-color%3D%22%23db2b48%22%2F%3E%3Cstop%20offset%3D%22.76%22%20stop-color%3D%22%23ab0d2d%22%2F%3E%3Cstop%20offset%3D%221%22%20stop-color%3D%22%238b0625%22%20stop-opacity%3D%220%22%2F%3E%3C%2FlinearGradient%3E%3C%2Fdefs%3E%3Cpath%20d%3D%22M17%204L8%2073Q18%2063%2038%2072L53%2079Z%22%20fill%3D%22url(%23side)%22%2F%3E%3Cpath%20d%3D%22M223%204L232%2073Q222%2063%20202%2072L187%2079Z%22%20fill%3D%22url(%23side)%22%2F%3E%3Cpath%20d%3D%22M17%2066Q30%2059%2046%2072L53%2079Q32%2090%2017%2079Z%22%20fill%3D%22url(%23curl)%22%2F%3E%3Cpath%20d%3D%22M223%2066Q210%2059%20194%2072L187%2079Q208%2090%20223%2079Z%22%20fill%3D%22url(%23curl)%22%2F%3E%3Cpath%20d%3D%22M17%204H223L205%2079Q166%2096%20120%2098Q74%2096%2035%2079Z%22%20fill%3D%22url(%23face)%22%20stroke%3D%22%238f1129%22%20stroke-width%3D%22.65%22%2F%3E%3Cpath%20d%3D%22M18%205L54%2074L37%2074Z%22%20fill%3D%22%23d6203c%22%20opacity%3D%22.55%22%2F%3E%3Cpath%20d%3D%22M222%205L186%2074L203%2074Z%22%20fill%3D%22%238f0927%22%20opacity%3D%22.42%22%2F%3E%3Cpath%20d%3D%22M36%2078Q75%2093%20120%2094Q165%2093%20204%2078%22%20fill%3D%22none%22%20stroke%3D%22url(%23gold)%22%20stroke-width%3D%221.8%22%2F%3E%3Cpath%20d%3D%22M9%2071Q19%2062%2035%2069Q43%2075%2018%2077Q34%2072%2053%2074M231%2071Q221%2062%20205%2069Q197%2075%20222%2077Q206%2072%20187%2074%22%20fill%3D%22none%22%20stroke%3D%22url(%23gold)%22%20stroke-width%3D%221.4%22%2F%3E%3Cpath%20d%3D%22M19%2080Q31%2085%2049%2078M221%2080Q209%2085%20191%2078%22%20fill%3D%22none%22%20stroke%3D%22%23e1a52c%22%20stroke-width%3D%22.7%22%2F%3E%3Cpath%20d%3D%22M17%204H223L222%2015Q120%2013%2018%2015Z%22%20fill%3D%22url(%23top-roll)%22%2F%3E%3Cpath%20d%3D%22M19%207Q120%206%20221%207%22%20fill%3D%22none%22%20stroke%3D%22%23ff8793%22%20stroke-opacity%3D%22.35%22%20stroke-width%3D%22.6%22%2F%3E%3Cpath%20d%3D%22M17%204L18%2012M223%204L222%2012%22%20fill%3D%22none%22%20stroke%3D%22%23710b22%22%20stroke-opacity%3D%22.6%22%20stroke-width%3D%22.8%22%2F%3E%3C%2Fsvg%3E") center / 100% 100% no-repeat;
+                        background: url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%204%20240%2096%22%20preserveAspectRatio%3D%22none%22%3E%3Cdefs%3E%3ClinearGradient%20id%3D%22face%22%20x2%3D%22.2%22%20y2%3D%221%22%3E%3Cstop%20stop-color%3D%22%23363735%22%2F%3E%3Cstop%20offset%3D%22.45%22%20stop-color%3D%22%23262826%22%2F%3E%3Cstop%20offset%3D%221%22%20stop-color%3D%22%23171917%22%2F%3E%3C%2FlinearGradient%3E%3ClinearGradient%20id%3D%22side%22%3E%3Cstop%20stop-color%3D%22%23101210%22%2F%3E%3Cstop%20offset%3D%22.35%22%20stop-color%3D%22%2330332f%22%2F%3E%3Cstop%20offset%3D%22.7%22%20stop-color%3D%22%23242623%22%2F%3E%3Cstop%20offset%3D%221%22%20stop-color%3D%22%230a0c0a%22%2F%3E%3C%2FlinearGradient%3E%3ClinearGradient%20id%3D%22purple%22%20x1%3D%220%22%20y1%3D%220%22%20x2%3D%22.3%22%20y2%3D%221%22%3E%3Cstop%20stop-color%3D%22%2317101d%22%2F%3E%3Cstop%20offset%3D%22.28%22%20stop-color%3D%22%23684672%22%2F%3E%3Cstop%20offset%3D%22.55%22%20stop-color%3D%22%2370497c%22%2F%3E%3Cstop%20offset%3D%22.8%22%20stop-color%3D%22%2351335e%22%2F%3E%3Cstop%20offset%3D%221%22%20stop-color%3D%22%23271b2d%22%2F%3E%3C%2FlinearGradient%3E%3ClinearGradient%20id%3D%22crease%22%3E%3Cstop%20stop-color%3D%22%23000%22%20stop-opacity%3D%22.8%22%2F%3E%3Cstop%20offset%3D%221%22%20stop-color%3D%22%23000%22%20stop-opacity%3D%220%22%2F%3E%3C%2FlinearGradient%3E%3Cpattern%20id%3D%22weave%22%20width%3D%223%22%20height%3D%223%22%20patternUnits%3D%22userSpaceOnUse%22%3E%3Cpath%20d%3D%22M0%200L3%203M-1%202L1%204%22%20stroke%3D%22%23c7c4b6%22%20stroke-opacity%3D%22.055%22%20stroke-width%3D%22.5%22%2F%3E%3Cpath%20d%3D%22M0%203L3%200%22%20stroke%3D%22%23000%22%20stroke-opacity%3D%22.16%22%20stroke-width%3D%22.5%22%2F%3E%3C%2Fpattern%3E%3C%2Fdefs%3E%3Cpath%20d%3D%22M17%205H223L210%2078Q166%2096%20120%2098Q74%2096%2030%2078Z%22%20fill%3D%22url%28%23face%29%22%20stroke%3D%22%23111310%22%20stroke-width%3D%221%22%2F%3E%3Cpath%20d%3D%22M17%205H223L210%2078Q166%2096%20120%2098Q74%2096%2030%2078Z%22%20fill%3D%22url%28%23weave%29%22%2F%3E%3Cpath%20d%3D%22M18%207C22%2036%2038%2056%2046%2076L35%2080C33%2056%2020%2033%2018%207Z%22%20fill%3D%22url%28%23crease%29%22%2F%3E%3Cpath%20d%3D%22M222%207C218%2036%20202%2056%20194%2076L205%2080C207%2056%20220%2033%20222%207Z%22%20fill%3D%22url%28%23crease%29%22%2F%3E%3Cpath%20d%3D%22M30%2077Q74%2092%20120%2094Q166%2092%20210%2077%22%20fill%3D%22none%22%20stroke%3D%22%23806578%22%20stroke-opacity%3D%22.65%22%20stroke-width%3D%22.65%22%20stroke-dasharray%3D%223%202%22%2F%3E%3Cpath%20d%3D%22M17%205C17%2029%2029%2048%2039%2070C29%2063%2015%2065%206%2074C10%2057%2014%2031%2017%205Z%22%20fill%3D%22url%28%23side%29%22%20stroke%3D%22%23141612%22%20stroke-width%3D%22.6%22%2F%3E%3Cpath%20d%3D%22M223%205C223%2029%20211%2048%20201%2070C211%2063%20225%2065%20234%2074C230%2057%20226%2031%20223%205Z%22%20fill%3D%22url%28%23side%29%22%20stroke%3D%22%23141612%22%20stroke-width%3D%22.6%22%2F%3E%3Cpath%20d%3D%22M17%205C17%2029%2029%2048%2039%2070C29%2063%2015%2065%206%2074C10%2057%2014%2031%2017%205ZM223%205C223%2029%20211%2048%20201%2070C211%2063%20225%2065%20234%2074C230%2057%20226%2031%20223%205Z%22%20fill%3D%22url%28%23weave%29%22%2F%3E%3Cpath%20d%3D%22M6%2074C15%2066%2029%2064%2039%2070C43%2076%2031%2082%2018%2085L17%2078C12%2078%208%2076%206%2074Z%22%20fill%3D%22url%28%23purple%29%22%20stroke%3D%22%23151015%22%20stroke-width%3D%22.7%22%2F%3E%3Cpath%20d%3D%22M234%2074C225%2066%20211%2064%20201%2070C197%2076%20209%2082%20222%2085L223%2078C228%2078%20232%2076%20234%2074Z%22%20fill%3D%22url%28%23purple%29%22%20stroke%3D%22%23151015%22%20stroke-width%3D%22.7%22%2F%3E%3Cpath%20d%3D%22M6%2074C15%2066%2029%2064%2039%2070M234%2074C225%2066%20211%2064%20201%2070%22%20fill%3D%22none%22%20stroke%3D%22%230b0d0a%22%20stroke-width%3D%222%22%2F%3E%3Cpath%20d%3D%22M7%2070C17%2062%2028%2061%2037%2066M233%2070C223%2062%20212%2061%20203%2066%22%20fill%3D%22none%22%20stroke%3D%22%23806578%22%20stroke-width%3D%22.65%22%20stroke-dasharray%3D%223%202%22%20stroke-opacity%3D%22.65%22%2F%3E%3Cpath%20d%3D%22M18%207Q120%208%20222%207%22%20fill%3D%22none%22%20stroke%3D%22%23777669%22%20stroke-opacity%3D%22.25%22%20stroke-width%3D%221%22%2F%3E%3Cpath%20d%3D%22M17%2078C23%2080%2034%2076%2039%2071M223%2078C217%2080%20206%2076%20201%2071%22%20fill%3D%22none%22%20stroke%3D%22%23201524%22%20stroke-width%3D%221.3%22%2F%3E%3Cpath%20d%3D%22M18%2079L19%2083M222%2079L221%2083%22%20fill%3D%22none%22%20stroke%3D%22%239976a1%22%20stroke-opacity%3D%22.3%22%20stroke-width%3D%22.7%22%2F%3E%3C%2Fsvg%3E") center / 100% 100% no-repeat;
                         pointer-events: none;
                         z-index: -1;
                     }
-
                     .bbgl-title-card-value {
                         position: relative;
                         z-index: 1;
@@ -7445,7 +7559,7 @@
                         color: #fff0c7;
                         background: none;
                         -webkit-text-fill-color: currentColor;
-                        text-shadow: 0 1px 1px rgba(75, 3, 19, .9);
+                        text-shadow: 0 1px 1px rgba(38, 8, 52, .9);
                         filter: none;
                         animation: none;
                     }
@@ -7453,7 +7567,7 @@
                     .bbgl-title-card-sign-face .bbgl-title-reset,
                     .bbgl-title-card-sign-face .bbgl-title-card-empty {
                         color: #f6dc98;
-                        text-shadow: 0 1px 1px rgba(75, 3, 19, .8);
+                        text-shadow: 0 1px 1px rgba(38, 8, 52, .82);
                     }
 
                     .bbgl-title-card-empty {
@@ -7489,6 +7603,18 @@
                         width: 100%;
                         height: 100%;
                         display: block;
+                    }
+
+                    /* Hangs off the right edge of the card's The label. Absolutely positioned, so it
+                       never shifts that label or the title under it; the label itself is
+                       pointer-events none, so the button opts back in. */
+                    .bbgl-title-card-title-label .bbgl-title-reset {
+                        position: absolute;
+                        left: 100%;
+                        top: 50%;
+                        margin-left: .35em;
+                        translate: 0 -50%;
+                        pointer-events: auto;
                     }
 
                     body:not(.is-touch-device) .bbgl-title-reset:hover {
@@ -7558,10 +7684,9 @@
                            because BOTH need it now — that child sizes its slots from it, and the
                            groove's own inset above is derived from it. */
                         --bbgl-t-title-count: 6;
-                        /* Knob geometry lives here, not on .bbgl-rank-knob itself, so
-                           .bbgl-rank-notch's .is-above rule (a separate sibling below) can read the
-                           same numbers when it reserves clearance above the knob — one measurement
-                           feeding both the knob's own size and the gap the plaques keep off it. */
+                        /* Knob geometry lives here rather than on .bbgl-rank-knob itself, so any
+                           sibling that needs to reserve clearance around it can read the same
+                           numbers. */
                         --bbgl-t-knob-fs: calc(var(--bbgl-t-display-fs) * .82);
                         --bbgl-t-tick-h: var(--bbgl-t-tick-h-override, calc(var(--bbgl-t-fs-notch, 10px) * .56));
                         --bbgl-t-slider-tick-h: var(--bbgl-t-slider-tick-h-override, calc(var(--bbgl-t-fs-notch, 10px) * .28));
@@ -7619,8 +7744,8 @@
                        tethers behave like ruler marks: they anchor the words without implying that
                        a title unlocks at the edge of a surrounding box. */
                     /* Positioned against .bbgl-rank-LINE, not the scale — this container is a child of
-                       the groove (achBuildPageTitles(), 06-section-v-logic.js), exactly like
-                       .bbgl-rank-notches. So its own box is the 1px groove itself, and every vertical
+                       the groove (achBuildPageTitles(), 06-section-v-logic.js). So its own box is
+                       the 1px groove itself, and every vertical
                        value on the labels below resolves against THAT. A percentage or a height here
                        can only ever describe 1px of groove; only an explicit (negative) offset can
                        reach up into the gap above it.
@@ -7796,63 +7921,47 @@
                         animation: none;
                     }
 
+                    .bbgl-rank-title.material-iron.is-revealed .bbgl-rank-notch-line {
+                        color: #eee9dc;
+                    }
+
                     /* T2 — illuminated typography, still flat rather than materially constructed.
                        The uneven one-shot ignition briefly falls back to its gray unlit face before
                        settling into a modest off-white lamp glow. It never flickers again once lit,
                        keeping T3's brighter aluminum face and reflected streak as a clear promotion. */
                     :is(.bbgl-rank-title, .bbgl-title-card-rank-plaque).material-steel.is-revealed .bbgl-rank-notch-line {
+                        font-family: 'Barlow Condensed', 'Arial Narrow', sans-serif;
                         color: #d9dddf;
                         background: none;
                         -webkit-text-fill-color: currentColor;
                         font-weight: 500;
                         text-shadow:
+                            var(--rank-steel-outline, 0 0 0 transparent),
                             0 1px 1px rgba(0, 0, 0, .68),
                             0 0 3px rgba(232, 239, 242, .82),
                             0 0 8px rgba(216, 229, 234, .48),
                             0 0 14px rgba(201, 219, 225, .20);
                         filter: none;
                         animation: bbgl-rank-name-fluorescent-on 2.5s step-end 1 both;
-                        animation-delay: var(--bbgl-titles-animation-delay, 0ms);
+                        animation-delay: var(--bbgl-rank-lightbox-delay, 0ms);
                     }
 
-                    /* T3 is painted once on the shared two-line wrapper rather than once on every
-                       .bbgl-rank-notch-line. Both rows therefore belong to one aluminum block and
-                       receive one reflection centred across the complete title. */
                     :is(.bbgl-rank-title, .bbgl-title-card-rank-plaque).material-silver.is-revealed .bbgl-rank-title-text {
-                        /* Polished aluminum blocks. The angular Aldrich face and hard underside
-                           step square the lettering off into small metal-cut forms rather than the
-                           softer condensed type used by the surrounding ranks. A narrow value range
-                           keeps the metal one uniform silver color; the single white strip through
-                           its centre is reflected light contained inside the complete title. */
-                        --rank-aluminum-light: linear-gradient(12deg,
-                                transparent 0%, transparent 42%,
-                                rgba(255, 255, 255, .18) 45%,
-                                rgba(255, 255, 255, .76) 48%,
-                                #ffffff 50%,
-                                rgba(255, 255, 255, .72) 52%,
-                                rgba(255, 255, 255, .16) 55%,
-                                transparent 58%, transparent 100%);
-                        background-image:
-                            var(--rank-aluminum-light),
-                            linear-gradient(180deg,
-                                #edf1f2 0%,
-                                #d7dde0 42%,
-                                #f7f9fa 55%,
-                                #cbd3d6 100%);
-                        background-size: 100% 100%, 100% 100%;
-                        background-position: 0 0, 0 0;
-                        background-repeat: no-repeat, no-repeat;
+                        background-image: linear-gradient(141deg,
+                            #d9ad75 0%, #87522e 16%, #bc8b54 30%, #634025 42%,
+                            #a16a3b 49%, #d9ad75 55%, #bb8d58 62%, #80502d 77%,
+                            #ad7b45 90%, #593820 100%);
+                        background-size: 100% 100%;
+                        background-repeat: no-repeat;
                         background-clip: text;
                         -webkit-background-clip: text;
                         color: transparent;
                         -webkit-text-fill-color: transparent;
                         font-family: 'Aldrich', 'Arial Black', sans-serif;
                         font-weight: 400;
-                        letter-spacing: .025em;
-                        -webkit-text-stroke: .1px rgba(236, 242, 244, .30);
-                        text-shadow:
-                            0 1px 0 #737d81,
-                            0 1.5px 0 rgba(33, 40, 44, .78);
+                        letter-spacing: .015em;
+                        -webkit-text-stroke: .1px rgba(217, 173, 117, .3);
+                        text-shadow: 0 1px 0 #624029, 0 1.5px 0 #4c311f;
                         filter: none;
                         animation: none;
                     }
@@ -7868,32 +7977,51 @@
                         filter: none;
                         animation: none;
                     }
-
-                    /* Glow is a blurred, text-clipped copy of the SAME reflection — never a shape
-                       behind the title. Each line box is widened to the shared wrapper width, then
-                       samples its own half of one 200%-tall gradient, preserving the streak's single
-                       continuous angle while allowing light to escape only beside the glyph slices
-                       it actually strikes. */
-                    :is(.bbgl-rank-title, .bbgl-title-card-rank-plaque).material-silver.is-revealed .bbgl-rank-notch-line::before {
-                        content: attr(data-rank-text);
-                        position: absolute;
-                        inset: 0;
-                        z-index: -1;
-                        color: transparent;
-                        -webkit-text-fill-color: transparent;
-                        background-image: var(--rank-aluminum-light);
-                        background-size: 100% 200%;
-                        background-position: 0 0;
-                        background-repeat: no-repeat;
-                        background-clip: text;
-                        -webkit-background-clip: text;
-                        filter: blur(2px) drop-shadow(0 0 1.5px rgba(225, 242, 248, .62));
-                        opacity: .72;
-                        pointer-events: none;
+                    .bbgl-rank-title.material-silver.is-revealed .bbgl-rank-title-text {
+                        filter:
+                            drop-shadow(1px 0 0 #090b0b)
+                            drop-shadow(-1px 0 0 #090b0b)
+                            drop-shadow(0 1px 0 #090b0b)
+                            drop-shadow(0 -1px 0 #090b0b)
+                            drop-shadow(0 2px 2px rgba(0, 0, 0, .8));
                     }
 
-                    :is(.bbgl-rank-title, .bbgl-title-card-rank-plaque).material-silver.is-revealed .bbgl-rank-notch-line:last-child::before {
-                        background-position: 0 100%;
+                    /* Rank scale labels only: T2 gets the same black letter outline as T3 above.
+                       Its fluorescent glow lives in text-shadow, and a filter outline would trace
+                       that haze instead of the letters, so the outline rides as the top text-shadow
+                       layer through --rank-steel-outline. The steel rule and its ignition keyframes
+                       read it with a transparent fallback, so the card plaque (which shares both)
+                       is unchanged. */
+                    .bbgl-rank-title.material-steel.is-revealed .bbgl-rank-notch-line {
+                        --rank-steel-outline:
+                            1px 0 0 #090b0b,
+                            -1px 0 0 #090b0b,
+                            0 1px 0 #090b0b,
+                            0 -1px 0 #090b0b;
+                    }
+
+                    /* T4 gets a silver outline. Its emerald face is background-clipped text with a
+                       transparent fill, so a text-shadow would show through the letters - it needs
+                       the same filter approach as T3. */
+                    .bbgl-rank-title.material-bright-silver.is-revealed .bbgl-rank-title-text {
+                        filter:
+                            drop-shadow(.25px 0 0 #c9d3d880)
+                            drop-shadow(-.25px 0 0 #c9d3d880)
+                            drop-shadow(0 .25px 0 #c9d3d880)
+                            drop-shadow(0 -.25px 0 #c9d3d880)
+                            drop-shadow(0 2px 2px rgba(0, 0, 0, .8));
+                    }
+
+                    /* T5 gets an outline in its crown plaque deep gold (achGoldCrownHTML), dark
+                       enough to separate from the bright gold letters. On the wrapper, not the
+                       line, so it stacks with the line glow filter instead of replacing it. */
+                    .bbgl-rank-title.material-gold.is-revealed .bbgl-rank-title-text {
+                        filter:
+                            drop-shadow(.5px 0 0 #9d6318b3)
+                            drop-shadow(-.5px 0 0 #9d6318b3)
+                            drop-shadow(0 .5px 0 #9d6318b3)
+                            drop-shadow(0 -.5px 0 #9d6318b3)
+                            drop-shadow(0 2px 2px rgba(0, 0, 0, .8));
                     }
 
                     /* T4 — cut emerald. Hard stops in the stationary ramp carve facets instead of
@@ -7928,24 +8056,12 @@
                             transparent 57%, transparent 100%);
                         background-image:
                             var(--rank-emerald-light),
-                            linear-gradient(112deg,
-                                rgba(7, 139, 74, .76) 0%, rgba(18, 184, 94, .80) 8%,
-                                rgba(72, 232, 128, .90) 13%, rgba(177, 255, 197, .98) 17%,
-                                rgba(74, 231, 128, .84) 21%, rgba(4, 137, 72, .64) 28%,
-                                rgba(24, 184, 96, .72) 33%, rgba(205, 255, 221, .96) 37%,
-                                rgba(224, 255, 234, .88) 38%, rgba(97, 246, 153, .18) 41%,
-                                rgba(97, 246, 153, .18) 45%, rgba(201, 255, 219, .91) 48%,
-                                rgba(50, 221, 117, .84) 53%, rgba(3, 128, 67, .62) 59%,
-                                rgba(35, 202, 106, .78) 64%, rgba(190, 255, 210, .97) 68%,
-                                rgba(219, 255, 231, .90) 69%, rgba(91, 240, 147, .17) 72%,
-                                rgba(91, 240, 147, .17) 76%, rgba(205, 255, 220, .92) 79%,
-                                rgba(72, 231, 129, .87) 84%, rgba(3, 125, 66, .64) 91%,
-                                rgba(23, 185, 96, .76) 96%, rgba(48, 218, 116, .84) 100%);
+                            linear-gradient(135deg, #93dcbc 0%, #1a9d70 22%, #006044 46%, #52b58e 52%, #087451 68%, #002f23 100%);
                         background-size: var(--rank-emerald-start) 240%, 100% 100%;
                         background-position: 50% 50%, 0 0;
                         background-repeat: no-repeat, no-repeat;
                         font-weight: 400;
-                        -webkit-text-stroke: .2px rgba(190, 255, 222, .42);
+                        -webkit-text-stroke: .2px rgba(147, 220, 188, .42);
                         text-shadow: 0 1px 1px rgba(0, 44, 28, .52);
                         filter: none;
                         animation: bbgl-rank-name-emerald 4.6s cubic-bezier(.3, 0, .55, 1) infinite;
@@ -7976,7 +8092,7 @@
                             blur(3.5px)
                             drop-shadow(0 0 3px rgba(41, 255, 137, .76))
                             drop-shadow(0 0 7px rgba(0, 226, 92, .64));
-                        opacity: .84;
+                        opacity: .35;
                         pointer-events: none;
                         animation: bbgl-rank-name-emerald-glow 4.6s cubic-bezier(.3, 0, .55, 1) infinite;
                         animation-delay: var(--bbgl-titles-animation-delay, 0ms);
@@ -8116,12 +8232,15 @@
                         0%, 30%, 33%, 40%, 45%, 64%, 74% {
                             color: #858a8d;
                             font-weight: 400;
-                            text-shadow: 0 1px 1px rgba(0, 0, 0, .68);
+                            text-shadow:
+                                var(--rank-steel-outline, 0 0 0 transparent),
+                                0 1px 1px rgba(0, 0, 0, .68);
                         }
                         30.01%, 38%, 44% {
                             color: #a3adaf;
                             font-weight: 500;
                             text-shadow:
+                                var(--rank-steel-outline, 0 0 0 transparent),
                                 0 1px 1px rgba(0, 0, 0, .68),
                                 0 0 2px rgba(224, 232, 235, .25),
                                 0 0 5px rgba(207, 221, 226, .10);
@@ -8130,6 +8249,7 @@
                             color: #c9ced0;
                             font-weight: 500;
                             text-shadow:
+                                var(--rank-steel-outline, 0 0 0 transparent),
                                 0 1px 1px rgba(0, 0, 0, .68),
                                 0 0 3px rgba(224, 232, 235, .50),
                                 0 0 7px rgba(207, 221, 226, .24);
@@ -8138,6 +8258,7 @@
                             color: #d9dddf;
                             font-weight: 500;
                             text-shadow:
+                                var(--rank-steel-outline, 0 0 0 transparent),
                                 0 1px 1px rgba(0, 0, 0, .68),
                                 0 0 3px rgba(232, 239, 242, .82),
                                 0 0 8px rgba(216, 229, 234, .48),
@@ -8291,19 +8412,6 @@
                        is ADDED to --bbgl-t-rank-tag-pad-x rather than carved out of it, so inner
                        text clearance stays fixed and only the frame widens the plate. The five
                        level bands are even 20-point spans (LEVEL_TITLE_BANDS), capstone at 100. */
-                    /* Hidden, not removed: the plaques below are queued to relocate onto the
-                       identity card rather than disappear, so every rule in this section stays
-                       live and correct — layoutRankShelf() (07-section-vi-ui.js) still measures and
-                       positions them every render — this is just the one switch that keeps them off
-                       the rank scale in the meantime. .bbgl-rank-titles (below) is what actually
-                       renders there now. */
-                    .bbgl-rank-notches {
-                        display: none;
-                        position: absolute;
-                        inset: 0;
-                        pointer-events: none;
-                    }
-
                     .bbgl-rank-notch {
                         --rank-frame-w: 0px;
                         --rank-sil: linear-gradient(#000, #000);
@@ -8320,43 +8428,17 @@
                            against the inner field's edge on the framed tiers. */
                         --rank-pad-block: 1.5px;
                         --rank-pad-inline: 1px;
-                        /* Width of the cradle hung under the riding plaque. Defaults to the readout's
-                           own steady width — .bbgl-rank-knob holds itself at exactly this via
-                           min-width precisely so the digits do not shrink to a dot on "5" or stretch
-                           on "100", which makes it the one figure in the file that already describes
-                           the footprint the cradle has to hug. Tracking it means the cradle follows
-                           the readout across every panel mode with no per-mode value of its own. */
-                        --rank-skirt-w: var(--bbgl-t-display-w);
-                        /* Bottom-corner radius of that cradle. Deliberately larger than the box can
-                           take: a radius that would overflow is scaled down proportionally by the
-                           browser, so this resolves to a full U at every mode's drop and readout
-                           width without being recomputed per mode. Lower it for a squarer tab. */
-                        --rank-cradle-r: 999px;
                         --rank-ink: #c4c6c3;
                         --rank-sweep-a: 0;
                         --rank-sweep-dur: 5s;
                         --rank-drop: drop-shadow(0 1px 1px rgba(0, 0, 0, .75)) drop-shadow(0 2px 3px rgba(0, 0, 0, .4));
                         position: absolute;
                         top: 50%;
-                        /* --rank-shift is written by layoutRankShelf() (07-section-vi-ui.js) to move
-                           a plaque off its milestone to wherever its state wants it — a shelf slot
-                           once docked, the sliding readout while riding, nowhere at all while still
-                           locked. It composes with the centring translate rather than replacing the
-                           left percentage, so the milestone's true position stays on the element and
-                           the shelf pass can keep measuring natural positions independently of its
-                           own previous output. */
-                        transform: translateX(calc(-50% + var(--rank-shift, 0px)));
+                        transform: translateX(-50%);
                         pointer-events: auto;
                         cursor: help;
                         white-space: nowrap;
                         text-align: center;
-                        /* 1/2/3 for plaque / riding plaque / readout, and the ordering is
-                           load-bearing in both directions: the riding plaque must cover the docked
-                           and locked ones it slides past, but must itself stay UNDER the readout so
-                           its skirt wraps behind the digits rather than burying them. .bbgl-rank-
-                           notches is position:absolute with z-index:auto, so it establishes no
-                           stacking context of its own and these compete directly with
-                           .bbgl-rank-knob's inside .bbgl-rank-line. */
                         z-index: 1;
                     }
 
@@ -8661,121 +8743,6 @@
                     }
 
 
-                    /* A plaque at rest SITS ON the bar rather than floating over it: bottom lands on
-                       the groove's own top surface, so the shelf reads as trophies standing on a
-                       rail. --bbgl-t-notch-gap is the per-mode float on top of that, measured from
-                       the bar's surface — compact runs it at 0 (genuinely resting), roomier modes
-                       keep a little air.
-
-                       Every plaque also clears the slider knob: the knob is centred ON the line, so
-                       only its upper half (--bbgl-t-knob-fs / 2) reaches above centre for the
-                       plaques to clear. Without this, compact mode would rest the plaques right on
-                       top of the knob's digits. */
-                    .bbgl-rank-notch.is-above .bbgl-rank-notch-label {
-                        bottom: calc(
-                            var(--bbgl-t-bar-h) / 2 + var(--bbgl-t-notch-gap)
-                            + var(--bbgl-t-knob-fs) / 2);
-                    }
-
-                    /* The riding plaque sits ABOVE everything it passes. It travels the length of the
-                       groove with the level readout, so sooner or later it crosses both a docked
-                       plaque's shelf slot and a locked "?" — and the rank you hold right now is the
-                       one that should stay legible when it does. */
-                    .bbgl-rank-notch.is-riding {
-                        z-index: 2;
-                    }
-
-                    /* ── The cradle ───────────────────────────────────────────────────────
-                       The rank you hold and the level you are at read as one object: the plate keeps
-                       its plain rectangle and full frame, and a separate curved cradle hangs off its
-                       bottom edge to close around the readout's digits.
-
-                       TWO pieces rather than one grown-and-clipped plate, because the frame band is
-                       a rectangle ring and cannot follow a curve — clipping a single plate to a
-                       rounded silhouette cuts straight through that ring. A separate box lets
-                       border-radius draw the cradle's edge for free, and lets the two carry
-                       different treatments: the machined frame belongs to the rectangular plate, the
-                       cradle is plain stock bent around the number.
-
-                       Costs NO vertical space — the plate still rests exactly where a docked plaque
-                       does, so the shelf line is unchanged when this plaque later docks.
-                       --rank-wrap-drop is zeroed (not deleted): .bbgl-rank-line is the assembly's
-                       hard floor, so there's no digit height left for the cradle to wrap below the
-                       plate, but the element and its overlap term stay to fuse the seam at the
-                       plate's own bottom edge (see --rank-cradle-overlap below). */
-                    .bbgl-rank-notch.is-riding {
-                        --rank-wrap-drop: 0px;
-                        /* How far the cradle rides UP into the plate. It paints after the plate, so
-                           this is what erases the plate's bottom frame and bevel across the neck and
-                           fuses the two silhouettes into one outline, instead of leaving them to
-                           meet at a seam with a border still ruled between them. Frame width plus
-                           the bevel's own 1px inner line is exactly the depth to cover — mill runs a
-                           0px frame, so the term collapses to that 1px there. */
-                        --rank-cradle-overlap: calc(var(--rank-frame-w) + 1px);
-                    }
-
-                    /* ── One ramp across both pieces ──────────────────────────────────────
-                       The plate and the cradle are the same piece of metal, so they sample a SINGLE
-                       gradient spanning both rather than each running the tier ramp over its own
-                       box — otherwise the cradle would restart at the ramp's brightest stop right
-                       where the plate had reached its darkest, laying a hard bright seam at the join.
-
-                       The plate states the shared ramp height itself: background-size percentage
-                       resolves against its own padding box, so calc(100% + drop) IS the combined
-                       height. The cradle can't do the same — a percentage there would resolve
-                       against the CRADLE's own height — so it needs the plate's actual height,
-                       which is content-driven and only measurable: layoutRankShelf()
-                       (07-section-vi-ui.js) writes it as --rank-plate-h. The negative offset then
-                       slides the image up so its top lands on the plate's top, putting both pieces
-                       on the same row of the same ramp at the junction.
-
-                       Repeat is left at its default: once measured, the image covers the cradle
-                       exactly, but before then --rank-plate-h falls back to 0 and the image is too
-                       short, so tiling keeps the box fully painted rather than leaving the overlap
-                       strip transparent (which would show the plate's bottom border through it —
-                       the exact seam this whole arrangement exists to hide). */
-                    .bbgl-rank-notch.is-riding .bbgl-rank-notch-face {
-                        background-size: 100% calc(100% + var(--rank-wrap-drop));
-                    }
-
-                    .bbgl-rank-notch-cradle {
-                        display: none;
-                        position: absolute;
-                        left: 50%;
-                        /* .bbgl-rank-notch-label carries a filter, which makes it the containing
-                           block for this — so 100% here is the plate's own bottom edge. */
-                        top: calc(100% - var(--rank-cradle-overlap, 0px));
-                        /* min() so a title narrower than the readout keeps its cradle inside its own
-                           plate rather than flaring out past it and filling in the tier's corner
-                           cuts. */
-                        width: min(100%, var(--rank-skirt-w));
-                        height: calc(var(--rank-wrap-drop, 0px) + var(--rank-cradle-overlap, 0px));
-                        transform: translateX(-50%);
-                        box-sizing: border-box;
-                        border-radius: 0 0 var(--rank-cradle-r) var(--rank-cradle-r);
-                        /* This piece's slice of the shared ramp — see "One ramp across both pieces"
-                           above for why the size and offset are what they are. Both must stay AFTER
-                           the shorthand, which resets them. */
-                        background: var(--rank-face);
-                        background-size: 100% calc(var(--rank-plate-h, 0px) + var(--rank-wrap-drop, 0px));
-                        background-position: 0 calc(var(--rank-cradle-overlap, 0px) - var(--rank-plate-h, 0px));
-                        /* The tier's bevel and nothing else. Inset shadows follow border-radius, so
-                           this alone gives the curve its lit lip — no frame band, no rivets, no
-                           milling. The ornament is the plate's; the cradle stays plain, which is
-                           what keeps the join from reading as two competing borders. */
-                        box-shadow: var(--rank-bevel);
-                        /* Above the plate it overlaps. .bbgl-rank-notch-face carries a mask, so it
-                           is a stacking context and its internal 1/2/3 (frame, lettering, sweep) are
-                           sealed inside it — this 1 is therefore measured against the face as a
-                           whole, not against its parts. */
-                        z-index: 1;
-                        pointer-events: none;
-                    }
-
-                    .bbgl-rank-notch.is-riding .bbgl-rank-notch-cradle {
-                        display: block;
-                    }
-
                     /* Before unlock there is no plaque at all: only a question mark pressed into the
                        panel surface, matching the divot cut into the groove below it. The plate,
                        its frame, field and grain all arrive together with the title when
@@ -8899,6 +8866,8 @@
                     .bbgl-title-card-rank-plaque.finish-mill {
                         container-type: size;
                         --rank-drop: none;
+                        width: 88.32%;
+                        height: 86.4%;
                     }
 
                     .bbgl-title-card-rank-plaque.finish-mill .bbgl-rank-notch-face {
@@ -8961,12 +8930,12 @@
                         min-width: 0;
                         min-height: 0;
                         padding: 3px 5%;
-                        font-size: min(15cqw, 40cqh);
+                        font-size: min(16.5cqw, 44cqh);
                         line-height: 1.08;
                     }
 
                     #bbgl-panel.bbgl-compact .bbgl-title-card-rank-plaque.finish-mill .bbgl-rank-title-text {
-                        font-size: min(13cqw, 34cqh);
+                        font-size: min(14.3cqw, 37.4cqh);
                     }
 
                     #bbgl-panel.bbgl-compact .bbgl-title-card-rank-plaque.finish-mill .bbgl-rank-notch-face {
@@ -8989,6 +8958,8 @@
                     .bbgl-title-card-rank-plaque.finish-machined {
                         container-type: size;
                         --rank-drop: none;
+                        width: 93%;
+                        height: 84.5%;
                     }
 
                     .bbgl-title-card-rank-plaque.finish-machined .bbgl-rank-notch-face {
@@ -9046,7 +9017,7 @@
                             inset 0 0 14px rgba(201, 219, 225, .20);
                         opacity: 1;
                         animation: bbgl-rank-lightbox-on 2.5s step-end 1 both;
-                        animation-delay: var(--bbgl-titles-animation-delay, 0ms);
+                        animation-delay: var(--bbgl-rank-lightbox-delay, 0ms);
                     }
 
                     .bbgl-rank-lightbox-heading {
@@ -9134,12 +9105,12 @@
 
                     .bbgl-rank-bronze-heading {
                         position: absolute;
-                        top: 21%;
+                        top: 13%;
                         left: 50%;
                         transform: translateX(-50%);
                         z-index: 2;
                         font-family: 'Barlow Condensed', 'Arial Narrow', sans-serif;
-                        font-size: min(10cqw, 12cqh);
+                        font-size: min(12cqw, 16cqh);
                         font-weight: 700;
                         line-height: 1;
                         letter-spacing: .16em;
@@ -9150,15 +9121,15 @@
 
                     .bbgl-title-card-rank-plaque.finish-polished .bbgl-rank-title-text {
                         position: absolute;
-                        top: 36%;
-                        left: 16%;
-                        width: 68%;
-                        height: 36%;
+                        top: 33%;
+                        left: 10%;
+                        width: 80%;
+                        height: 50%;
                         min-width: 0;
                         min-height: 0;
                         max-width: 100%;
-                        font-size: min(9cqw, 20cqh);
-                        line-height: 1.18;
+                        font-size: min(10cqw, 20cqh);
+                        line-height: 1.1;
                     }
 
                     .bbgl-title-card[data-rank-finish="silver"] .bbgl-title-card-rank-label {
@@ -9235,10 +9206,44 @@
                         min-width: 0;
                         min-height: 0;
                         max-width: 100%;
-                        font-size: min(9cqw, 23cqh);
-                        line-height: 1.18;
+                        font-size: min(10.5cqw, 26cqh);
+                        line-height: 1.2;
                     }
 
+                    .bbgl-shield-letter-seats {
+                        position: absolute;
+                        inset: 0;
+                        display: flex;
+                        flex-direction: column;
+                        align-items: center;
+                        justify-content: center;
+                        z-index: 0;
+                        pointer-events: none;
+                    }
+
+                    .bbgl-shield-letter-seat {
+                        position: relative;
+                        display: block;
+                        white-space: nowrap;
+                        font-weight: 400;
+                        color: transparent;
+                        -webkit-text-fill-color: transparent;
+                        -webkit-text-stroke: .075em #34454d;
+                        text-shadow: 0 .045em 0 rgba(197, 215, 224, .55);
+                    }
+
+                    .bbgl-shield-letter-seat::after {
+                        content: attr(data-rank-text);
+                        position: absolute;
+                        inset: 0;
+                        color: transparent;
+                        -webkit-text-fill-color: transparent;
+                        -webkit-text-stroke: 0;
+                        text-shadow:
+                            .012em .018em 0 #267858,
+                            .024em .036em 0 #15553d,
+                            .036em .054em 0 #093e2d;
+                    }
                     .bbgl-rank-silver-shield-jewels {
                         position: absolute;
                         inset: 0;
@@ -9281,27 +9286,14 @@
 
                     .bbgl-title-card-rank-plaque.finish-gold .bbgl-rank-title-text {
                         position: absolute;
-                        top: 35%;
-                        left: 18%;
-                        width: 64%;
-                        height: 37%;
+                        top: 34%;
+                        left: 17%;
+                        width: 66%;
+                        height: 40%;
                         min-width: 0;
                         min-height: 0;
                         font-size: min(10cqw, 17cqh);
                         line-height: 1.08;
-                    }
-
-                    .bbgl-title-card-rank-plaque.finish-gold.is-revealed .bbgl-rank-notch-line {
-                        background: none;
-                        color: #69400f;
-                        -webkit-text-fill-color: currentColor;
-                        text-shadow: 0 -0.5px 0 rgba(54, 28, 3, .75), 0 1px 0 rgba(255, 243, 183, .85);
-                        filter: none;
-                        animation: none;
-                    }
-
-                    .bbgl-title-card-rank-plaque.finish-gold.is-revealed .bbgl-rank-notch-line::before {
-                        display: none;
                     }
 
                     .bbgl-rank-crown-heading {
@@ -9400,10 +9392,6 @@
                     #bbgl-panel.bbgl-no-animations .bbgl-marquee-bulb,
                     #bbgl-panel.bbgl-no-animations .bbgl-marquee-beams {
                         animation: none;
-                    }
-
-                    .bbgl-title-card-rank-plaque .bbgl-rank-notch-cradle {
-                        display: none !important;
                     }
 
                     /* ─── Unlock blocks, one per stat ──────────────────────────────────
@@ -9800,7 +9788,9 @@
                         position: relative;
                         isolation: isolate;
                         display: grid;
-                        grid-template-rows: minmax(0, 18fr) minmax(0, 60fr);
+                        grid-template-rows: minmax(0, 1fr);
+                        padding-top: 6px;
+                        box-sizing: border-box;
                         flex: 1 1 0;
                         min-height: 0;
                         overflow: hidden;
@@ -9831,19 +9821,22 @@
 
                     .bbgl-titles-card-area {
                         position: relative;
+                        margin-inline: 1px;
                         min-width: 0;
                         min-height: 0;
                     }
 
                     #bbgl-panel .bbgl-titles-board .bbgl-titles-main {
+                        --bbgl-t-min-card-gap: 6px;
+                        --bbgl-t-center-min: 80px;
                         position: absolute;
                         inset: 0;
                         top: 0;
                         height: 100%;
                         margin: 0;
-                        padding: 0 4px;
-                        grid-template-columns: repeat(3, minmax(0, 1fr));
-                        column-gap: 4px;
+                        padding: 0 calc(var(--bbgl-t-min-card-gap) + 1px);
+                        grid-template-columns: minmax(0, 1fr) minmax(calc(var(--bbgl-t-center-min) * 1.16505), 1fr) minmax(0, 1fr);
+                        column-gap: calc(var(--bbgl-t-min-card-gap) + 3px);
                         grid-template-rows: 100%;
                         transform: none;
                     }
@@ -9851,18 +9844,81 @@
                     #bbgl-panel .bbgl-titles-main .bbgl-titles-center {
                         margin: 0;
                         transform: none;
-                        height: 100%;
-                        width: min(100%, var(--bbgl-title-max-width, 132px));
+                        height: calc(100% - var(--bbgl-title-height-trim, 0px));
+                        align-self: center;
+                        width: max(var(--bbgl-t-center-min), min(calc(100% / 1.16505), var(--bbgl-title-max-width, 132px)));
                     }
 
+                    #bbgl-panel.bbgl-expanded .bbgl-titles-board .bbgl-titles-main {
+                        --bbgl-t-center-min: 88px;
+                        padding-inline: calc(var(--bbgl-t-min-card-gap) + 1px);
+                        column-gap: calc(var(--bbgl-t-min-card-gap) + 3px);
+                    }
+
+                    #bbgl-panel.bbgl-mode-page .bbgl-titles-board .bbgl-titles-main {
+                        --bbgl-t-center-min: 88px;
+                    }
+
+                    #bbgl-panel.bbgl-expanded .bbgl-titles-main .bbgl-titles-center {
+                        width: max(var(--bbgl-t-center-min), min(calc(100% / 1.16505), var(--bbgl-title-max-width, 132px)));
+                        height: calc(100% - var(--bbgl-title-height-trim, 0px));
+                        align-self: center;
+                    }
+
+                    #bbgl-panel.bbgl-expanded .bbgl-titles-page {
+                        margin-inline: 8px;
+                    }
+
+                    /* The two stat cards still hug the top and bottom corners, but not flush: the
+                       column is a five-row grid (edge spacer, card, middle spacer, card, edge spacer)
+                       and the space the cards leave over is shared out by fr. Each edge takes
+                       --bbgl-t-corner-edge of it against the middle's 1, so the cards step in toward
+                       the plaque's vertical centre by the same proportion in every mode, without
+                       changing size (the star size is set from the row height and column width in
+                       layoutTitleBlockFrames(), 07-section-vi-ui.js, not from where the cards sit).
+                       0fr restores the old flush space-between; larger values pull them further in.
+                       The middle keeps the old 3px floor between the cards. fr rows cannot go
+                       negative, so a short panel collapses the spacers rather than overflowing. */
                     #bbgl-panel .bbgl-titles-main .bbgl-titles-corner-col {
+                        --bbgl-t-emblem-scale: 1.12;
+                        --bbgl-t-corner-edge: .25fr;
+                        height: calc(100% - var(--bbgl-title-height-trim, 0px));
+                        align-self: center;
                         margin: 0;
                         padding: 0;
                         transform: none;
                         width: 100%;
-                        align-items: center;
-                        justify-content: space-between;
-                        gap: 3px;
+                        display: grid;
+                        grid-template-rows: var(--bbgl-t-corner-edge) auto minmax(3px, 1fr) auto var(--bbgl-t-corner-edge);
+                        grid-template-columns: minmax(0, 1fr);
+                        justify-items: center;
+                        gap: 0;
+                    }
+
+                    #bbgl-panel .bbgl-titles-main .bbgl-titles-corner-col::before,
+                    #bbgl-panel .bbgl-titles-main .bbgl-titles-corner-col::after {
+                        content: '';
+                    }
+
+                    #bbgl-panel .bbgl-titles-main .bbgl-titles-corner-col::before {
+                        grid-row: 1;
+                    }
+
+                    #bbgl-panel .bbgl-titles-main .bbgl-titles-corner-col > .bbgl-title-block:first-child {
+                        grid-row: 2;
+                    }
+
+                    #bbgl-panel .bbgl-titles-main .bbgl-titles-corner-col > .bbgl-title-block:last-child {
+                        grid-row: 4;
+                    }
+
+                    #bbgl-panel .bbgl-titles-main .bbgl-titles-corner-col::after {
+                        grid-row: 5;
+                    }
+
+                    #bbgl-panel.bbgl-expanded .bbgl-titles-main .bbgl-titles-corner-col {
+                        height: calc(100% - var(--bbgl-title-height-trim, 0px));
+                        align-self: center;
                     }
 
                     #bbgl-panel .bbgl-rank-scale {
@@ -9964,12 +10020,62 @@
 
                     .bbgl-title-block {
                         margin-top: 0;
-                        padding: 0 2px;
-                        gap: 1px;
+                        padding: var(--bbgl-stat-padding-y, 0px) 0;
+                        padding-bottom: calc(var(--bbgl-stat-padding-y, 0px) + 2px);
+                        gap: 0;
+                        isolation: isolate;
+                    }
+
+                    .bbgl-title-block::before {
+                        content: '';
+                        position: absolute;
+                        top: -3px;
+                        bottom: 0;
+                        left: -3px;
+                        right: -3px;
+                        z-index: -1;
+                        pointer-events: none;
+                        border-radius: 4px;
+                        mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100' preserveAspectRatio='none'%3E%3Cpath fill='white' d='M4 16H23C27 16 27 2 34 2H66C73 2 73 16 77 16H96Q100 16 100 22V94Q100 100 96 100H4Q0 100 0 94V22Q0 16 4 16Z'/%3E%3C/svg%3E") center / 100% 100% no-repeat;
+                        background:
+                            url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100' preserveAspectRatio='none'%3E%3Cpath d='M0 22Q0 16 4 16H23C27 16 27 2 34 2H66C73 2 73 16 77 16H96Q100 16 100 22' fill='none' stroke='%23c4cdd1' stroke-opacity='.42' stroke-width='2' vector-effect='non-scaling-stroke'/%3E%3C/svg%3E") center / 100% 100% no-repeat,
+                            radial-gradient(circle at 4px calc(16% + 4px), #d5dde2 0 .7px, #68747d .9px 1.7px, #202930 1.9px 2.5px, transparent 2.8px),
+                            radial-gradient(circle at calc(100% - 4px) calc(16% + 4px), #d5dde2 0 .7px, #68747d .9px 1.7px, #202930 1.9px 2.5px, transparent 2.8px),
+                            radial-gradient(circle at 4px calc(100% - 4px), #a3abb0 0 .7px, #50595f .9px 1.7px, #11171b 1.9px 2.5px, transparent 2.8px),
+                            radial-gradient(circle at calc(100% - 4px) calc(100% - 4px), #a3abb0 0 .7px, #50595f .9px 1.7px, #11171b 1.9px 2.5px, transparent 2.8px),
+                            radial-gradient(ellipse at 50% 20%, color-mix(in srgb, var(--bbgl-t-win-color) 16%, transparent), transparent 75%),
+                            linear-gradient(115deg, #121619 0%, #1c2226 18%, #2b3339 24%, #1c2227 32%, #14181b 49%, #20272b 72%, #2e353b 78%, #151b1f 100%);
+                        box-shadow:
+                            inset 0 1px 0 #c4cdd16b,
+                            inset 1px 0 0 #9aa6ad38,
+                            inset -1px 0 0 #10161980,
+                            inset 0 -1px 0 #c4cdd16b;
                     }
 
                     .bbgl-title-block-frame {
                         display: none;
+                    }
+
+                    .bbgl-plate-neon {
+                        position: absolute;
+                        top: -3px;
+                        left: -3px;
+                        width: calc(100% + 6px);
+                        height: calc(100% + 3px);
+                        overflow: visible;
+                        pointer-events: none;
+                        z-index: 1;
+                        fill: none;
+                        stroke: color-mix(in srgb, var(--bbgl-t-win-color) 42%, #fff);
+                        stroke-width: 1px;
+                        filter:
+                            drop-shadow(0 0 1px var(--bbgl-t-win-color))
+                            drop-shadow(0 0 3px color-mix(in srgb, var(--bbgl-t-win-color) 70%, transparent))
+                            drop-shadow(0 0 6px color-mix(in srgb, var(--bbgl-t-win-color) 30%, transparent));
+                    }
+
+                    .bbgl-plate-neon path {
+                        vector-effect: non-scaling-stroke;
                     }
 
                     .bbgl-title-block::after {
@@ -9977,16 +10083,162 @@
                     }
 
                     .bbgl-title-block-label {
-                        position: static;
-                        transform: none;
-                        padding: 0;
+                        position: relative;
+                        left: auto;
+                        transform: translateY(-1px);
+                        padding: 1px 0 0;
                         border: 0;
                         background: none;
                         box-shadow: none;
-                        color: #d4d8d9;
-                        font-family: 'Barlow Condensed', 'Arial Narrow', sans-serif;
-                        text-shadow: 0 1px 1px #000;
+                        color: color-mix(in srgb, var(--bbgl-t-win-color) 38%, #fff);
+                        font-family: 'Dancing Script', 'Segoe Script', 'Brush Script MT', cursive;
+                        font-size: calc(var(--bbgl-t-fs-block-label) * .8);
+                        text-shadow:
+                            0 0 1px color-mix(in srgb, var(--bbgl-t-win-color) 55%, #fff),
+                            0 0 calc(4px * var(--bbgl-t-win-glow)) color-mix(in srgb, var(--bbgl-t-win-color) 75%, transparent);
                         letter-spacing: 0;
+                    }
+
+                    #bbgl-panel.bbgl-compact .bbgl-title-block-label {
+                        transform: translateY(-1.5px);
+                    }
+
+                    .bbgl-title-block-label::before {
+                        content: none;
+                        position: absolute;
+                        inset: -2px -7px -2px;
+                        z-index: -1;
+                        pointer-events: none;
+                        border-radius: 9px 9px 0 0;
+                        background:
+                            radial-gradient(ellipse at 50% 20%, color-mix(in srgb, var(--bbgl-t-win-color) 16%, transparent), transparent 75%),
+                            repeating-linear-gradient(0deg, #ffffff05 0 1px, #0000000a 1px 2px, transparent 2px 4px),
+                            linear-gradient(115deg, #343b40, #42494e 40%, #30373c);
+                        box-shadow: inset 0 1px 0 #c4cdd16b, inset 1px 0 0 #9aa6ad38, inset -1px 0 0 #10161980;
+                    }
+
+                    .bbgl-title-star-row {
+                        column-gap: calc(var(--bbgl-t-star-cgap) * .65);
+                    }
+
+                    .bbgl-title-stars {
+                        row-gap: calc(2px + var(--bbgl-stat-row-extra, 0px));
+                    }
+
+                    .bbgl-stat-emblem {
+                        color: #434b53;
+                        display: block;
+                        width: 100%;
+                        height: 100%;
+                        overflow: visible;
+                        pointer-events: none;
+                        transform: scale(1.05);
+                        transform-origin: center;
+                    }
+
+                    @container bbgl-panel (min-width:500px) {
+                        #bbgl-panel.bbgl-expanded .bbgl-stat-emblem {
+                            transform: scale(1.03);
+                        }
+                    }
+
+                    @container bbgl-page (min-width:784px) {
+                        #bbgl-panel.bbgl-mode-page .bbgl-stat-emblem {
+                            transform: scale(1.03);
+                        }
+                    }
+
+                    .bbgl-emblem-relief {
+                        fill: #192128;
+                        stroke: none;
+                        transform: translateY(2px);
+                        filter: drop-shadow(0 .4px .3px #080d12b3);
+                    }
+
+                    .bbgl-emblem-body {
+                        stroke: none;
+                        opacity: 1;
+                        filter: drop-shadow(0 -.55px 0 #c0cbd180) drop-shadow(0 .65px 0 #101820);
+                    }
+
+                    .bbgl-emblem-detail {
+                        fill: none;
+                        stroke: #aeb9c3;
+                        stroke-width: 1.5;
+                        stroke-linecap: round;
+                        stroke-linejoin: round;
+                        opacity: .25;
+                    }
+
+                    .bbgl-emblem-gloss {
+                        stroke: none;
+                        opacity: .15;
+                    }
+
+                    .bbgl-title-star.is-unlocked .bbgl-stat-emblem {
+                        color: color-mix(in srgb, var(--bbgl-t-win-color) 65%, #84919d);
+                    }
+
+                    .bbgl-title-star.is-unlocked .bbgl-emblem-gloss {
+                        opacity: .85;
+                    }
+
+                    .bbgl-title-star.is-unlocked .bbgl-emblem-detail {
+                        stroke: #d6dce0;
+                        opacity: .75;
+                        filter: drop-shadow(0 1px 0 #101820);
+                    }
+
+                    .bbgl-emblem-trace {
+                        fill: none;
+                        stroke: color-mix(in srgb, var(--bbgl-t-win-color) 42%, #fff);
+                        stroke-width: 1.8;
+                        stroke-linecap: round;
+                        stroke-linejoin: round;
+                        stroke-dasharray: 100;
+                        stroke-dashoffset: calc(100 * (1 - var(--star-fill, 0)));
+                        transition: stroke-dashoffset .5s ease;
+                        filter:
+                            drop-shadow(0 0 .6px var(--bbgl-t-win-color))
+                            drop-shadow(0 0 1.5px color-mix(in srgb, var(--bbgl-t-win-color) 75%, transparent))
+                            drop-shadow(0 0 3px color-mix(in srgb, var(--bbgl-t-win-color) 35%, transparent));
+                    }
+
+                    .bbgl-title-star.is-unlocked .bbgl-emblem-body {
+                        opacity: 1;
+                    }
+
+                    /* Selected (in the equipped title): lit well past a plain unlocked emblem so
+                       the pick reads at a glance - richer stat colour, strong gloss and detail,
+                       and a glow in the stat colour around the whole emblem. */
+                    .bbgl-title-star:is(.is-primary, .is-secondary, .is-both) .bbgl-stat-emblem {
+                        color: color-mix(in srgb, var(--bbgl-t-win-color) 85%, #fff);
+                        filter:
+                            drop-shadow(0 0 1.5px color-mix(in srgb, var(--bbgl-t-win-color) 90%, #fff))
+                            drop-shadow(0 0 4px color-mix(in srgb, var(--bbgl-t-win-color) 60%, transparent));
+                    }
+
+                    .bbgl-title-star:is(.is-primary, .is-secondary, .is-both) .bbgl-emblem-body {
+                        filter: brightness(1.4) saturate(1.2) drop-shadow(0 -.55px 0 #e6eef2a0) drop-shadow(0 .65px 0 #101820);
+                    }
+
+                    .bbgl-title-star:is(.is-primary, .is-secondary, .is-both) .bbgl-emblem-gloss {
+                        opacity: 1;
+                    }
+
+                    .bbgl-title-star:is(.is-primary, .is-secondary, .is-both) .bbgl-emblem-detail {
+                        stroke: #fff;
+                        opacity: .95;
+                    }
+
+                    #bbgl-panel.bbgl-no-animations .bbgl-emblem-trace {
+                        transition: none;
+                    }
+
+                    .bbgl-title-star {
+                        width: calc(var(--bbgl-t-star) * var(--bbgl-t-emblem-scale, 1.12));
+                        flex-basis: calc(var(--bbgl-t-star) * var(--bbgl-t-emblem-scale, 1.12));
+                        overflow: visible;
                     }
 
                     .bbgl-title-star-base svg path {
@@ -10010,7 +10262,7 @@
                     }
 
                     .bbgl-title-card {
-                        box-shadow: inset 1px 1px 0 #e3ae6c52, inset -1px -1px 0 #000a, inset 0 0 0 3px #1a0d063d, 0 3px 5px #000b;
+                        box-shadow: inset 1px 1px 0 #ba8a6438, inset -1px -1px 0 #000b, inset 0 0 0 3px #10080447, 0 3px 5px #000b;
                     }
 
                     .bbgl-ach-title-row {

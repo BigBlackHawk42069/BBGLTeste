@@ -648,20 +648,6 @@
         return out;
     }
 
-    // Whether any plaque is in the riding state right now — i.e. the player holds a rank that is
-    // not the terminal capstone. achTitleNotchesHTML() (06-section-v-logic.js) decides WHICH plaque
-    // rides; this answers only whether one does at all, which is what the rank line needs in order
-    // to know that the readout's digits are sitting inside a plaque skirt rather than on the bare
-    // groove. Derived from the same levelRankBrackets() the plaque states come from, so the two
-    // cannot drift into disagreeing about it.
-    //
-    // Not simply `level >= 0`: atrophy 1/2 start below zero, and until the player climbs to level 0
-    // no band is unlocked at all, so nothing rides and the readout is genuinely bare.
-    function hasRidingRank(atrophy, level) {
-        if (isFullyBricked(atrophy, level)) return false;
-        return levelRankBrackets(atrophy, level).some(b => b.unlocked);
-    }
-
     // The engraved rank track has no fill or colour progression: the sliding digital readout is the
     // sole position indicator. This emits only that position as a custom property.
     function rankBarProgressCSS(_atrophy, level) {
@@ -684,11 +670,6 @@
     // Ten tiers, indexed 0-9 internally but displayed as 1-10 everywhere the player sees them
     // (achTitleStarHTML(), 06-section-v-logic.js) — the free tier reads as "1" rather than "0".
     const STAT_TITLE_THRESHOLDS = [0, 10000, 22500, 37500, 55000, 75000, 105000, 140000, 185000, 240000];
-
-    // While the player has never made a manual pick, the displayed pair auto-follows their top two
-    // stats. Phase bumps apply the moment they unlock, but WHICH stats hold the two slots may only
-    // change this often.
-    const STAT_TITLE_AUTO_PAIR_COOLDOWN_MS = 72 * 3600 * 1000;
 
     // One evolving noun+adjective ladder per stat, indexed by phase (0-9). Undecided phases are
     // `null` — statTitleWord() clamps down to the highest defined phase at or below the one asked
@@ -836,24 +817,62 @@
         };
     }
 
-    function persistAutoTitlePair(pair, now) {
-        if (runtime.demoMode) return;
-        userConfig.titleAutoPair = { primary: pair[0], secondary: pair[1] };
-        userConfig.titleAutoPairChangedAt = now;
-        saveConfig();
+    // Earned mode's pair: the two stats that most recently unlocked a new tier (titleAutoRecent,
+    // oldest first). Install seeds it with the top two battle stats, the lower one oldest so the
+    // first unlock replaces it. Word order is fixed at each change — the higher battle stat supplies
+    // the noun (second word) — and nothing moves between unlocks, so the title never changes mid-tier.
+    //
+    // titleAutoPhases is the per-stat phase high-water mark unlocks are detected against. It never
+    // drops, so a transiently low E read while data loads can't register as a fresh unlock later.
+    function resolveAutoTitlePair(phases, breakdown) {
+        const valid = s => !!STAT_TITLE_WORDS[s];
+        const byStat = (a, b) => ((breakdown[a] || 0) >= (breakdown[b] || 0)
+            ? { primary: a, secondary: b }
+            : { primary: b, secondary: a });
+        const stored = userConfig.titleAutoPair;
+        const storedPair = stored && valid(stored.primary) && valid(stored.secondary) ? stored : null;
+        // Before battle stats load, rankTopTwoStats() is just STAT_KEYS order — never seed from it.
+        const hasStats = STAT_KEYS.some(k => (breakdown[k] || 0) > 0);
+        if (!hasStats || runtime.demoMode) {
+            if (storedPair) return storedPair;
+            const top = rankTopTwoStats(breakdown);
+            return byStat(top[0], top[1]);
+        }
+        let recent = Array.isArray(userConfig.titleAutoRecent)
+            ? [...new Set(userConfig.titleAutoRecent.filter(valid))].slice(-2)
+            : [];
+        if (recent.length < 2) {
+            if (storedPair) recent = [storedPair.secondary, storedPair.primary];
+            else {
+                const top = rankTopTwoStats(breakdown);
+                recent = [top[1], top[0]];
+            }
+        }
+        const seen = userConfig.titleAutoPhases;
+        const unlocked = seen ? STAT_KEYS.filter(k => (phases[k] || 0) > (seen[k] || 0)) : [];
+        unlocked.forEach(k => { recent = recent.filter(s => s !== k).concat(k).slice(-2); });
+        const pairChanged = unlocked.length > 0 || !storedPair ||
+            !recent.includes(storedPair.primary) || !recent.includes(storedPair.secondary);
+        const pair = pairChanged ? byStat(recent[0], recent[1]) : storedPair;
+        const nextSeen = {};
+        STAT_KEYS.forEach(k => { nextSeen[k] = Math.max(phases[k] || 0, (seen && seen[k]) || 0); });
+        const before = JSON.stringify([userConfig.titleAutoRecent, userConfig.titleAutoPhases, userConfig.titleAutoPair]);
+        userConfig.titleAutoRecent = recent;
+        userConfig.titleAutoPhases = nextSeen;
+        userConfig.titleAutoPair = { primary: pair.primary, secondary: pair.secondary };
+        if (JSON.stringify([recent, nextSeen, userConfig.titleAutoPair]) !== before) saveConfig();
+        return userConfig.titleAutoPair;
     }
 
     // The selection actually displayed, given per-stat E and the current stat breakdown.
     //
-    // Custom mode: the saved manual pick, clamped to what's unlocked. Earned mode: the top two
-    // stats, each at its own highest unlocked phase — so a phase bump shows up the instant it
-    // unlocks — except that WHICH stats hold the two slots may only change once per
-    // STAT_TITLE_AUTO_PAIR_COOLDOWN_MS.
-    //
-    // The two are stored separately (titleCustom vs titleAutoPair) precisely so the reset arrow is
-    // non-destructive: going back to Earned never overwrites the custom pick waiting behind it.
+    // Custom mode: the saved manual pick, clamped to what's unlocked. Earned mode: the pair from
+    // resolveAutoTitlePair(), each stat at its highest unlocked phase. The auto pair is tracked even
+    // while a custom pick is showing, so unlocks earned meanwhile are there when the reset arrow
+    // goes back to it — and the custom pick is stored separately, so resetting never destroys it.
     function resolveStatTitleSelection(eByStat, breakdown) {
         const phases = statTitlePhases(eByStat);
+        const auto = resolveAutoTitlePair(phases, breakdown || {});
         const custom = userConfig.titleCustom;
         const hasCustom = !!(custom && custom.primary && custom.secondary);
         if (userConfig.titleMode === 'custom' && hasCustom) {
@@ -861,29 +880,9 @@
             const secondary = clampTitleSlot(custom.secondary, phases);
             if (primary && secondary) return { primary, secondary, phases, mode: 'custom' };
         }
-        let pair = rankTopTwoStats(breakdown || {});
-        const auto = userConfig.titleAutoPair;
-        const prev = (auto && STAT_TITLE_WORDS[auto.primary] && STAT_TITLE_WORDS[auto.secondary])
-            ? [auto.primary, auto.secondary]
-            : null;
-        // Before any battle stats have loaded, rankTopTwoStats() falls back to STAT_KEYS order.
-        // Seeding (and stamping the 72h cooldown) off that would lock str/def in for three days on
-        // every fresh install, so hold whatever is stored and don't persist until stats are real.
-        const hasStats = STAT_KEYS.some(k => (breakdown && breakdown[k]) > 0);
-        if (!hasStats) {
-            if (prev) pair = prev;
-        } else {
-            const now = Date.now();
-            if (!prev) {
-                persistAutoTitlePair(pair, now);
-            } else if (prev[0] !== pair[0] || prev[1] !== pair[1]) {
-                if (now - (userConfig.titleAutoPairChangedAt || 0) < STAT_TITLE_AUTO_PAIR_COOLDOWN_MS) pair = prev;
-                else persistAutoTitlePair(pair, now);
-            }
-        }
         return {
-            primary: { stat: pair[0], phase: phases[pair[0]] },
-            secondary: { stat: pair[1], phase: phases[pair[1]] },
+            primary: { stat: auto.primary, phase: phases[auto.primary] },
+            secondary: { stat: auto.secondary, phase: phases[auto.secondary] },
             phases,
             mode: 'earned'
         };
@@ -904,12 +903,9 @@
         return next;
     }
 
-    // Drives the titles page's reset arrow — picking a star sets 'custom' on its own. Zeroing the
-    // cooldown stamp on the way back to Earned lets it snap straight to the real top two instead of
-    // sitting on a stale pair for 72h.
+    // Drives the titles page's reset arrow — picking a star sets 'custom' on its own.
     function setStatTitleMode(mode) {
         userConfig.titleMode = mode === 'custom' ? 'custom' : 'earned';
-        if (userConfig.titleMode === 'earned') userConfig.titleAutoPairChangedAt = 0;
         saveConfig();
     }
 
