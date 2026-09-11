@@ -1107,6 +1107,26 @@
         const localY = lineCenter - scaleTop + drop;
         scale.style.setProperty('--bbgl-t-rank-line-y', `${localY.toFixed(3)}px`);
 
+        // Snap the groove to whole device pixels. localY is fractional, and the line then shifts
+        // by its own -50% (half of a 1px bar) and --bbgl-rank-visual-drop, so its 1px edge usually
+        // straddled two pixel rows and painted as a soft line twice as thick. Read where it really
+        // landed on screen and nudge by the remainder, converted back to layout px in case an
+        // ancestor is scaled. Sub-pixel only; the titles ride the line, so they keep their spacing.
+        // Scale is read off the WIDTH: the groove can be thinner than 1px (compact), and
+        // offsetHeight rounds that up to 1, which would skew a height-based ratio. The computed
+        // width, not offsetWidth, for the same reason: offsetWidth rounds to whole px.
+        const dpr = window.devicePixelRatio || 1;
+        // One whole device pixel in CSS px (never less than one). At a fractional scale such as
+        // Windows' 125%/130% a 1px CSS line is 1.25-1.3 device px, which pixel snapping rounds to 1
+        // or 2 depending on where each line lands — so identical ticks came out at two different
+        // thicknesses. The groove reads this for its thickness (see .bbgl-rank-line).
+        scale.style.setProperty('--bbgl-t-hair', `${(Math.max(1, Math.round(dpr)) / dpr).toFixed(4)}px`);
+        const lineRect = line.getBoundingClientRect();
+        const lineCssW = parseFloat(getComputedStyle(line).width);
+        const lineScale = lineCssW > 0 ? lineRect.width / lineCssW : 1;
+        const snapOff = (Math.round(lineRect.top * dpr) / dpr - lineRect.top) / (lineScale || 1);
+        if (Math.abs(snapOff) > .001) scale.style.setProperty('--bbgl-t-rank-line-y', `${(localY + snapOff).toFixed(3)}px`);
+
         // labelGap above the groove, frozen in pass 1 — expressed relative to the groove itself so
         // every later shift carries the labels along unchanged. Measured from .bbgl-rank-LINE's own
         // top edge (NOT the scale): .bbgl-rank-titles is inset:0 of the line, so that 1px box is its

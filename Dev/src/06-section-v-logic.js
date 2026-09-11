@@ -2319,6 +2319,22 @@ function achLevelBarTooltipHTML(atrophy, level) {
     return `<div class="bbgl-level-title-tooltip">${achTitleIdentityHTML(achCurrentRankPlaqueData(atrophy, level), titleValue)}</div>`;
 }
 
+// The groove's vertical marks: a short ruler tick at every second level, a tall one under each
+// milestone title (0, 20, 40, 60, 80, 100), and the live (purple) tick at --rank-fill-pct, last so it
+// covers a milestone at an exact unlock level. Every second level in every mode. Plain elements placed
+// by percentage and styled entirely in CSS (see .bbgl-rank-tick, 04-section-iii-styles.js) — no
+// layout pass. At a fractional display scale (Windows 125%/130%) a 1px tick rounds to 1 or 2 device
+// pixels depending on where it lands, so they can differ slightly in thickness; accepted for now.
+// Static markup, so a level change never rebuilds it.
+function achRankTicksHTML() {
+    let html = '';
+    for (let i = 0; i <= LEVEL_CAP; i += 2) {
+        const cls = i % 20 === 0 ? ' is-milestone' : '';
+        html += `<i class="bbgl-rank-tick${cls}" style="left:${i * 100 / LEVEL_CAP}%"></i>`;
+    }
+    return `<div class="bbgl-rank-ticks">${html}<i class="bbgl-rank-tick is-live"></i></div>`;
+}
+
 // Plain-text milestone scale. Every title sits at the exact level that unlocks it rather than in a
 // visual range beginning at some other coordinate: 0, 20, 40, 60, 80, then Fully Bricked at 100.
 // The symmetric endpoint titles deliberately overhang the groove by half their rendered widths.
@@ -2485,6 +2501,7 @@ function achBuildPageTitles() {
         `<div class="bbgl-rank-scale">` +
         `<div class="bbgl-rank-line${bricked ? ' is-bricked' : ''}${hasRidingRank(atrophy, level) ? ' is-wrapped' : ''}">` +
         `<div class="bbgl-rank-notches">${achTitleNotchesHTML(atrophy, level)}</div>` +
+        achRankTicksHTML() +
         `<div class="bbgl-rank-titles">${achTitleLabelsHTML(atrophy, level)}</div>` +
         `<div class="bbgl-rank-knob" data-tooltip="${achEsc(`"${rankName}"`)}"><span class="bbgl-rank-knob-lv">${level}</span></div>` +
         `</div>` +

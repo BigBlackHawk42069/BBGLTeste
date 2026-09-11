@@ -6857,6 +6857,9 @@
                         /* Tighter than the shared value: compact's rank area is the narrowest in the
                            app, so it buys back a little groove length at the ends. */
                         --bbgl-t-rank-edge: 4px;
+                        /* Thinner than the 1px tick width: at compact's scale a full 1px groove
+                           reads heavier than the ticks hanging off it. */
+                        --bbgl-t-groove-h: .75px;
                         /* Compact-only compression buys back the pixels used by the coordinated
                            downward nudge in layoutRankBarCenter(). */
                         --bbgl-t-tick-h-override: 3px;
@@ -7568,16 +7571,26 @@
                         --bbgl-t-slider-tick-grow: var(--bbgl-t-slider-tick-grow-override, 1px);
                         position: absolute;
                         isolation: isolate;
-                        left: calc(var(--bbgl-t-rank-edge) * (var(--bbgl-t-title-count) - 1) / var(--bbgl-t-title-count)
-                                 + 100% / (2 * var(--bbgl-t-title-count)));
-                        right: calc(var(--bbgl-t-rank-edge) * (var(--bbgl-t-title-count) - 1) / var(--bbgl-t-title-count)
-                                  + 100% / (2 * var(--bbgl-t-title-count)));
+                        /* Lengthens the groove past the derived inset above by this factor, taken
+                           evenly off both ends (inset' = inset * f - 100% * (f - 1) / 2, which keeps
+                           the groove centred). Everything horizontal rides the groove's own width —
+                           title slots, ruler ticks, the knob — so they spread with it. 1 restores the
+                           edge-anchored length exactly. */
+                        --bbgl-t-rank-stretch: 1.06;
+                        left: calc((var(--bbgl-t-rank-edge) * (var(--bbgl-t-title-count) - 1) / var(--bbgl-t-title-count)
+                                 + 100% / (2 * var(--bbgl-t-title-count))) * var(--bbgl-t-rank-stretch)
+                                 - 100% * (var(--bbgl-t-rank-stretch) - 1) / 2);
+                        right: calc((var(--bbgl-t-rank-edge) * (var(--bbgl-t-title-count) - 1) / var(--bbgl-t-title-count)
+                                  + 100% / (2 * var(--bbgl-t-title-count))) * var(--bbgl-t-rank-stretch)
+                                  - 100% * (var(--bbgl-t-rank-stretch) - 1) / 2);
                         /* The rank scale is the bottom region left after .bbgl-titles-main takes the
                            stat cards' share. Keep the complete groove/plaque/readout assembly centred
                            in that remaining region instead of assigning a separate per-mode offset. */
                         top: var(--bbgl-t-rank-line-y, 50%);
                         bottom: auto;
-                        height: var(--bbgl-t-bar-h);
+                        /* Groove thickness, split from --bbgl-t-bar-h (which stays the tick width)
+                           so a mode can thin the horizontal line without touching the verticals. */
+                        height: var(--bbgl-t-groove-h, var(--bbgl-t-hair, var(--bbgl-t-bar-h)));
                         min-height: 0;
                         transform: translateY(-50%);
                         border: 0;
@@ -9867,28 +9880,64 @@
                     }
 
                     .bbgl-rank-line {
-                        background: #000;
+                        background: var(--bbgl-t-tick-color);
                         box-shadow: none;
                         border-radius: 0;
                         --bbgl-rank-visual-drop: calc(var(--bbgl-t-fs-notch, 10px) * .6);
                         translate: 0 var(--bbgl-rank-visual-drop);
                     }
 
-                    .bbgl-rank-line::before {
-                        content: '';
+                    /* Rank ticks: a short ruler tick every second level, a tall one under each
+                       milestone title, and the live (purple) tick, as plain elements placed by
+                       percentage (achRankTicksHTML(), 06-section-v-logic.js).
+                       Pure CSS, no layout pass. Each rises from the groove's bottom edge, centred on
+                       its level. --bbgl-t-tick-color is softer than black and shared with the groove,
+                       so every line stays one style; solid rather than translucent, so a tick does not
+                       darken where it overlaps the groove. */
+                    .bbgl-rank-ticks {
                         position: absolute;
-                        inset: auto .5px 0 -.5px;
-                        height: calc(var(--bbgl-t-tick-h) * .45);
-                        background: linear-gradient(90deg, #000 0 1px, transparent 1px);
-                        background-size: 2% 100%;
-                        background-repeat: repeat-x;
+                        inset: 0;
                         pointer-events: none;
                     }
 
+                    /* --bbgl-t-tick-draw scales how tall the ruler ticks are DRAWN, and
+                       --bbgl-t-tick-draw-tall the milestone and live ticks, without touching
+                       --bbgl-t-tick-h, which the title text is placed from, so the ticks grow up
+                       toward the titles while the titles stay put. */
+                    .bbgl-rank-line {
+                        --bbgl-t-tick-draw: 2.5;
+                        --bbgl-t-tick-draw-tall: 1.6;
+                        --bbgl-t-tick-color: #131313;
+                        /* Tick width. At a fractional display scale a 1px tick lands as 1 or 2 device
+                           px depending on where it falls; wider values hide that rounding better. */
+                        --bbgl-t-tick-w: 1px;
+                    }
+
+                    .bbgl-rank-tick {
+                        position: absolute;
+                        bottom: 0;
+                        width: var(--bbgl-t-tick-w);
+                        height: calc(var(--bbgl-t-tick-h) * .45 * var(--bbgl-t-tick-draw));
+                        margin-left: calc(var(--bbgl-t-tick-w) / -2);
+                        background: var(--bbgl-t-tick-color);
+                    }
+
+                    .bbgl-rank-tick:is(.is-milestone, .is-live) {
+                        height: calc(var(--bbgl-t-tick-h) * var(--bbgl-t-tick-draw-tall));
+                    }
+
+                    /* The live tick: a milestone tick in purple, placed at --rank-fill-pct. Last in
+                       the markup and lifted, so it covers a milestone at an exact unlock level. */
+                    .bbgl-rank-tick.is-live {
+                        left: var(--rank-fill-pct, 0%);
+                        background: #bb85e5;
+                        z-index: 1;
+                    }
+
+                    /* The milestone ticks are drawn by .bbgl-rank-ticks now, so the title's own
+                       pseudo-element tick is retired rather than drawn twice. */
                     .bbgl-rank-title.is-milestone::after {
-                        background: #000;
-                        box-shadow: none;
-                        border-radius: 0;
+                        content: none;
                     }
 
                     .bbgl-rank-knob {
@@ -9897,14 +9946,7 @@
                     }
 
                     .bbgl-rank-knob::before {
-                        top: auto;
-                        bottom: 100%;
-                        left: calc(50% - 1px);
-                        width: 2px;
-                        height: var(--bbgl-t-tick-h);
-                        background: #bb85e5;
-                        box-shadow: none;
-                        border-radius: 0;
+                        content: none;
                     }
 
                     .bbgl-rank-knob-lv {
