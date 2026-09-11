@@ -1904,6 +1904,14 @@
             // No auto-heal — the init section stays masked until the user actually agrees.
             try {
                 await DBManager.initDB();
+                const _rewardGateSeen = localStorage.getItem(KEYS.REWARD_GATE_VER);
+                if (_seenVer && REWARD_GATE_BELOW_VERSION !== '0.0.0' &&
+                    compareVersions(_seenVer, REWARD_GATE_BELOW_VERSION) < 0 &&
+                    _rewardGateSeen !== REWARD_GATE_BELOW_VERSION) {
+                    if (await DBManager.resetRewardStartDate()) {
+                        localStorage.setItem(KEYS.REWARD_GATE_VER, REWARD_GATE_BELOW_VERSION);
+                    }
+                }
                 // Fast boot: load pre-built day objects directly (no series flatten, no
                 // _rebuildFromSeries, no session serialization) so every page navigation stays
                 // light regardless of how large the backfilled history is.

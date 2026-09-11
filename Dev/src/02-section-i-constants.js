@@ -43,6 +43,7 @@
         SB_NOTIF: 'bbgl_sb_notif_seen',
         DEV_MODE: 'bbgl_dev_mode',
         CHANGELOG_VER: 'bbgl_changelog_seen_ver',
+        REWARD_GATE_VER: 'bbgl_reward_gate_ver',
         CHANGELOG_NOTIF: 'bbgl_changelog_notif',
         WARS_SYNC: 'bbgl_wars_last_sync_v1',
         WARS_DATA: 'bbgl_wars_data_v1',
@@ -53,6 +54,9 @@
     // Left at '0.0.0' this never fires. To force a clean install for everyone still on an
     // older version, bump this to a version below the new SCRIPT_VERSION you're about to ship.
     const WIPE_BELOW_VERSION = '0.9.90';
+    // Reward reset lever: users below this version get a new reward start timestamp on next boot,
+    // while their history and settings stay intact. Leave at '0.0.0' when no reset is needed.
+    const REWARD_GATE_BELOW_VERSION = '0.9.92';
     // Rewrites a raw.githubusercontent.com URL to the jsDelivr CDN equivalent — raw.github
     // sets weak cache headers and throttles hotlinking, jsDelivr is a real edge CDN and free
     // for public repos.

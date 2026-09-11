@@ -671,49 +671,55 @@
     // (achTitleStarHTML(), 06-section-v-logic.js) — the free tier reads as "1" rather than "0".
     const STAT_TITLE_THRESHOLDS = [0, 10000, 22500, 37500, 55000, 75000, 105000, 140000, 185000, 240000];
 
-    // One evolving noun+adjective ladder per stat, indexed by phase (0-9). Undecided phases are
-    // `null` — statTitleWord() clamps down to the highest defined phase at or below the one asked
-    // for rather than ever rendering a null/undefined word, so the ladder can ship half-written.
+    // One evolving noun+adjective ladder per stat, indexed by phase (0-9).
     const STAT_TITLE_WORDS = {
         str: [
-            { noun: 'Noodle', adj: 'Limp' },
-            { noun: 'Fist', adj: 'Fisting' },
-            { noun: 'Pounder', adj: 'Pounding' },
-            { noun: 'Grinder', adj: 'Grinding' },
-            { noun: 'Banger', adj: 'Banging' },
-            { noun: 'Ripper', adj: 'Ripping' },
-            { noun: 'Goon', adj: 'Goonish' },
-            null, null, null
+            { noun: 'Weenie', adj: 'Limp' },
+            { noun: 'Noodle', adj: 'Flimsy' },
+            { noun: 'Grower', adj: 'Growing' },
+            { noun: 'Grip', adj: 'Gripping' },
+            { noun: 'Thrust', adj: 'Thrusting' },
+            { noun: 'Muscle', adj: 'Manhandling' },
+            { noun: 'Fist', adj: 'Hammering' },
+            { noun: 'Hunk', adj: 'Dominating' },
+            { noun: 'Beast', adj: 'Unrelenting' },
+            { noun: 'Stallion', adj: 'Bulging' }
         ],
         def: [
-            { noun: 'Softie', adj: 'Soft' },
-            { noun: 'Blister', adj: 'Blistered' },
-            { noun: 'Flesh', adj: 'Fleshy' },
-            { noun: 'Callous', adj: 'Calloused' },
-            { noun: 'Leather', adj: 'Leathery' },
+            { noun: 'Flesh', adj: 'Blistered' },
+            { noun: 'Softie', adj: 'Tender' },
+            { noun: 'Rubber', adj: 'Thickening' },
             { noun: 'Firmness', adj: 'Firm' },
+            { noun: 'Callous', adj: 'Calloused' },
+            { noun: 'Sheath', adj: 'Leathery' },
+            { noun: 'Bone', adj: 'Hardened' },
             { noun: 'Slab', adj: 'Rock-Hard' },
-            // Boulder/Impenetrable pending — parked, not yet assigned a phase.
-            null, null, null
+            { noun: 'Barricade', adj: 'Impenetrable' },
+            { noun: 'Fortress', adj: 'Unbreachable' }
         ],
         spd: [
-            { noun: 'Blindman', adj: 'Blind' },
-            { noun: 'Peeper', adj: 'Peeping' },
-            { noun: 'Lurker', adj: 'Lurking' },
-            { noun: 'Prowler', adj: 'Prowling' },
-            { noun: 'Predator', adj: 'Predatory' },
-            { noun: 'Longshot', adj: 'Longshot' },
-            null, null, null, null
+            { noun: 'Delay', adj: 'Stagnant' },
+            { noun: 'Sloth', adj: 'Sluggish' },
+            { noun: 'Dawdler', adj: 'Meandering' },
+            { noun: 'Rhythm', adj: 'Steady' },
+            { noun: 'Quickie', adj: 'Quickening' },
+            { noun: 'Spurt', adj: 'Frisky' },
+            { noun: 'Twitch', adj: 'Frantic' },
+            { noun: 'Burst', adj: 'Rapid' },
+            { noun: 'Piston', adj: 'Frenzied' },
+            { noun: 'Jackrabbit', adj: 'Ballistic' }
         ],
         dex: [
-            { noun: 'Noise', adj: 'Noisy' },
-            { noun: 'Silence', adj: 'Silent' },
+            { noun: 'Ruckus', adj: 'Clattering' },
+            { noun: 'Noise', adj: 'Scuffling' },
+            { noun: 'Whisper', adj: 'Cautious' },
+            { noun: 'Ambiguity', adj: 'Quiet' },
             { noun: 'Creeper', adj: 'Creeping' },
-            { noun: 'Squirmer', adj: 'Squirming' },
-            { noun: 'Glaze', adj: 'Slippery' },
-            { noun: 'Rascal', adj: 'Rascally' },
-            { noun: 'Ambiguity', adj: 'Ambiguous' },
-            null, null, null
+            { noun: 'Lurker', adj: 'Prowling' },
+            { noun: 'Stalker', adj: 'Elusive' },
+            { noun: 'Shadow', adj: 'Covert' },
+            { noun: 'Specter', adj: 'Ghostly' },
+            { noun: 'Infiltrator', adj: 'Unseen' }
         ]
     };
 
@@ -734,14 +740,11 @@
         return out;
     }
 
-    // Word lookup that never returns a null entry: clamps down to the highest DEFINED phase at or
-    // below the requested one, and reports which phase actually supplied the word so the caller
-    // can colour it by what it really is rather than what was asked for.
+    // Clamps a stored phase to its stat's complete title ladder.
     function statTitleWord(stat, phase) {
         const ladder = STAT_TITLE_WORDS[stat];
         if (!ladder) return null;
-        let p = Math.max(0, Math.min(phase | 0, ladder.length - 1));
-        while (p > 0 && !ladder[p]) p--;
+        const p = Math.max(0, Math.min(phase | 0, ladder.length - 1));
         return ladder[p] ? { noun: ladder[p].noun, adj: ladder[p].adj, phase: p } : null;
     }
 
@@ -784,7 +787,8 @@
     // One finished word. Shared by the composed title and the titles page's mid-pick preview so both
     // pick up the identical per-word finish rules.
     function statTitleWordHTML(text, phase) {
-        return `<span class="bbgl-title-word" data-title-phase="${phase}">${text}</span>`;
+        const lengthClass = text.length >= 12 ? ' is-very-long' : (text.length >= 10 ? ' is-long' : '');
+        return `<span class="bbgl-title-word${lengthClass}" data-title-phase="${phase}">${text}</span>`;
     }
 
     // Each word carries its OWN data-title-phase, so a dull Phase 1 adjective can sit next to an

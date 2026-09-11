@@ -7519,7 +7519,7 @@
                         height: 100%;
                         min-width: 0;
                         min-height: 0;
-                        padding: 10cqh 14% 17cqh;
+                        padding: 10cqh 19% 17cqh;
                         box-sizing: border-box;
                     }
 
@@ -7551,8 +7551,17 @@
                         max-width: 100%;
                         font-size: min(14cqw, 25cqh);
                         line-height: 1.05;
-                        overflow-wrap: anywhere;
+                        overflow-wrap: normal;
+                        word-break: keep-all;
                         white-space: normal;
+                    }
+
+                    .bbgl-title-card-value .bbgl-titles-title:has(.bbgl-title-word.is-long) {
+                        font-size: min(11cqw, 22cqh);
+                    }
+
+                    .bbgl-title-card-value .bbgl-titles-title:has(.bbgl-title-word.is-very-long) {
+                        font-size: min(9.5cqw, 20cqh);
                     }
 
                     .bbgl-title-card-sign-face .bbgl-title-word {
@@ -7612,8 +7621,8 @@
                         position: absolute;
                         left: 100%;
                         top: 50%;
-                        margin-left: .35em;
-                        translate: 0 -50%;
+                        margin-left: .2em;
+                        translate: 0 calc(-50% + .5px);
                         pointer-events: auto;
                     }
 

@@ -1,7 +1,7 @@
 ﻿// ==UserScript==
 // @name         Big Black Gym Log Teste
 // @namespace    http://tampermonkey.net/
-// @version      0.9.91
+// @version      0.9.92
 // @description  A high-fidelity, gamified stat tracker built to integrate seamlessly with Torn's native UI.
 // @author       BigBlackHawk [3550896]
 // @match        https://www.torn.com/*
@@ -29,7 +29,7 @@
      *  so that you don't have to.
      */
 
-    const SCRIPT_VERSION = '0.9.91';
+    const SCRIPT_VERSION = '0.9.92';
     const Log = {
         _bootShown: false,
         _badge: ['%c BBGL %c', 'background:#6a1b9a;color:#fff;font-weight:700;border-radius:3px 0 0 3px;padding:2px 6px;', 'color:#999;'],
@@ -110,6 +110,7 @@
         SB_NOTIF: 'bbgl_sb_notif_seen',
         DEV_MODE: 'bbgl_dev_mode',
         CHANGELOG_VER: 'bbgl_changelog_seen_ver',
+        REWARD_GATE_VER: 'bbgl_reward_gate_ver',
         CHANGELOG_NOTIF: 'bbgl_changelog_notif',
         WARS_SYNC: 'bbgl_wars_last_sync_v1',
         WARS_DATA: 'bbgl_wars_data_v1',
@@ -120,6 +121,9 @@
     // Left at '0.0.0' this never fires. To force a clean install for everyone still on an
     // older version, bump this to a version below the new SCRIPT_VERSION you're about to ship.
     const WIPE_BELOW_VERSION = '0.9.90';
+    // Reward reset lever: users below this version get a new reward start timestamp on next boot,
+    // while their history and settings stay intact. Leave at '0.0.0' when no reset is needed.
+    const REWARD_GATE_BELOW_VERSION = '0.9.92';
     // Rewrites a raw.githubusercontent.com URL to the jsDelivr CDN equivalent — raw.github
     // sets weak cache headers and throttles hotlinking, jsDelivr is a real edge CDN and free
     // for public repos.
@@ -1248,49 +1252,55 @@
     // (achTitleStarHTML(), 06-section-v-logic.js) — the free tier reads as "1" rather than "0".
     const STAT_TITLE_THRESHOLDS = [0, 10000, 22500, 37500, 55000, 75000, 105000, 140000, 185000, 240000];
 
-    // One evolving noun+adjective ladder per stat, indexed by phase (0-9). Undecided phases are
-    // `null` — statTitleWord() clamps down to the highest defined phase at or below the one asked
-    // for rather than ever rendering a null/undefined word, so the ladder can ship half-written.
+    // One evolving noun+adjective ladder per stat, indexed by phase (0-9).
     const STAT_TITLE_WORDS = {
         str: [
-            { noun: 'Noodle', adj: 'Limp' },
-            { noun: 'Fist', adj: 'Fisting' },
-            { noun: 'Pounder', adj: 'Pounding' },
-            { noun: 'Grinder', adj: 'Grinding' },
-            { noun: 'Banger', adj: 'Banging' },
-            { noun: 'Ripper', adj: 'Ripping' },
-            { noun: 'Goon', adj: 'Goonish' },
-            null, null, null
+            { noun: 'Weenie', adj: 'Limp' },
+            { noun: 'Noodle', adj: 'Flimsy' },
+            { noun: 'Grower', adj: 'Growing' },
+            { noun: 'Grip', adj: 'Gripping' },
+            { noun: 'Thrust', adj: 'Thrusting' },
+            { noun: 'Muscle', adj: 'Manhandling' },
+            { noun: 'Fist', adj: 'Hammering' },
+            { noun: 'Hunk', adj: 'Dominating' },
+            { noun: 'Beast', adj: 'Unrelenting' },
+            { noun: 'Stallion', adj: 'Bulging' }
         ],
         def: [
-            { noun: 'Softie', adj: 'Soft' },
-            { noun: 'Blister', adj: 'Blistered' },
-            { noun: 'Flesh', adj: 'Fleshy' },
-            { noun: 'Callous', adj: 'Calloused' },
-            { noun: 'Leather', adj: 'Leathery' },
+            { noun: 'Flesh', adj: 'Blistered' },
+            { noun: 'Softie', adj: 'Tender' },
+            { noun: 'Rubber', adj: 'Thickening' },
             { noun: 'Firmness', adj: 'Firm' },
+            { noun: 'Callous', adj: 'Calloused' },
+            { noun: 'Sheath', adj: 'Leathery' },
+            { noun: 'Bone', adj: 'Hardened' },
             { noun: 'Slab', adj: 'Rock-Hard' },
-            // Boulder/Impenetrable pending — parked, not yet assigned a phase.
-            null, null, null
+            { noun: 'Barricade', adj: 'Impenetrable' },
+            { noun: 'Fortress', adj: 'Unbreachable' }
         ],
         spd: [
-            { noun: 'Blindman', adj: 'Blind' },
-            { noun: 'Peeper', adj: 'Peeping' },
-            { noun: 'Lurker', adj: 'Lurking' },
-            { noun: 'Prowler', adj: 'Prowling' },
-            { noun: 'Predator', adj: 'Predatory' },
-            { noun: 'Longshot', adj: 'Longshot' },
-            null, null, null, null
+            { noun: 'Delay', adj: 'Stagnant' },
+            { noun: 'Sloth', adj: 'Sluggish' },
+            { noun: 'Dawdler', adj: 'Meandering' },
+            { noun: 'Rhythm', adj: 'Steady' },
+            { noun: 'Quickie', adj: 'Quickening' },
+            { noun: 'Spurt', adj: 'Frisky' },
+            { noun: 'Twitch', adj: 'Frantic' },
+            { noun: 'Burst', adj: 'Rapid' },
+            { noun: 'Piston', adj: 'Frenzied' },
+            { noun: 'Jackrabbit', adj: 'Ballistic' }
         ],
         dex: [
-            { noun: 'Noise', adj: 'Noisy' },
-            { noun: 'Silence', adj: 'Silent' },
+            { noun: 'Ruckus', adj: 'Clattering' },
+            { noun: 'Noise', adj: 'Scuffling' },
+            { noun: 'Whisper', adj: 'Cautious' },
+            { noun: 'Ambiguity', adj: 'Quiet' },
             { noun: 'Creeper', adj: 'Creeping' },
-            { noun: 'Squirmer', adj: 'Squirming' },
-            { noun: 'Glaze', adj: 'Slippery' },
-            { noun: 'Rascal', adj: 'Rascally' },
-            { noun: 'Ambiguity', adj: 'Ambiguous' },
-            null, null, null
+            { noun: 'Lurker', adj: 'Prowling' },
+            { noun: 'Stalker', adj: 'Elusive' },
+            { noun: 'Shadow', adj: 'Covert' },
+            { noun: 'Specter', adj: 'Ghostly' },
+            { noun: 'Infiltrator', adj: 'Unseen' }
         ]
     };
 
@@ -1311,14 +1321,11 @@
         return out;
     }
 
-    // Word lookup that never returns a null entry: clamps down to the highest DEFINED phase at or
-    // below the requested one, and reports which phase actually supplied the word so the caller
-    // can colour it by what it really is rather than what was asked for.
+    // Clamps a stored phase to its stat's complete title ladder.
     function statTitleWord(stat, phase) {
         const ladder = STAT_TITLE_WORDS[stat];
         if (!ladder) return null;
-        let p = Math.max(0, Math.min(phase | 0, ladder.length - 1));
-        while (p > 0 && !ladder[p]) p--;
+        const p = Math.max(0, Math.min(phase | 0, ladder.length - 1));
         return ladder[p] ? { noun: ladder[p].noun, adj: ladder[p].adj, phase: p } : null;
     }
 
@@ -1361,7 +1368,8 @@
     // One finished word. Shared by the composed title and the titles page's mid-pick preview so both
     // pick up the identical per-word finish rules.
     function statTitleWordHTML(text, phase) {
-        return `<span class="bbgl-title-word" data-title-phase="${phase}">${text}</span>`;
+        const lengthClass = text.length >= 12 ? ' is-very-long' : (text.length >= 10 ? ' is-long' : '');
+        return `<span class="bbgl-title-word${lengthClass}" data-title-phase="${phase}">${text}</span>`;
     }
 
     // Each word carries its OWN data-title-phase, so a dull Phase 1 adjective can sit next to an
@@ -9064,7 +9072,7 @@
                         height: 100%;
                         min-width: 0;
                         min-height: 0;
-                        padding: 10cqh 14% 17cqh;
+                        padding: 10cqh 19% 17cqh;
                         box-sizing: border-box;
                     }
 
@@ -9096,8 +9104,17 @@
                         max-width: 100%;
                         font-size: min(14cqw, 25cqh);
                         line-height: 1.05;
-                        overflow-wrap: anywhere;
+                        overflow-wrap: normal;
+                        word-break: keep-all;
                         white-space: normal;
+                    }
+
+                    .bbgl-title-card-value .bbgl-titles-title:has(.bbgl-title-word.is-long) {
+                        font-size: min(11cqw, 22cqh);
+                    }
+
+                    .bbgl-title-card-value .bbgl-titles-title:has(.bbgl-title-word.is-very-long) {
+                        font-size: min(9.5cqw, 20cqh);
                     }
 
                     .bbgl-title-card-sign-face .bbgl-title-word {
@@ -9157,8 +9174,8 @@
                         position: absolute;
                         left: 100%;
                         top: 50%;
-                        margin-left: .35em;
-                        translate: 0 -50%;
+                        margin-left: .2em;
+                        translate: 0 calc(-50% + .5px);
                         pointer-events: auto;
                     }
 
@@ -12939,6 +12956,22 @@
             });
         },
 
+        // Moves the reward cutoff forward without changing stored training history.
+        async resetRewardStartDate() {
+            const db = await this._ensureDb();
+            if (!db) return false;
+            const meta = (await this._readMeta()) || {};
+            meta.rewardStartDate = Math.floor(Date.now() / 1000);
+            await new Promise((resolve, reject) => {
+                const tx = db.transaction(this._META_STORE, 'readwrite');
+                tx.objectStore(this._META_STORE).put(meta, this._META_KEY);
+                tx.oncomplete = resolve;
+                tx.onerror = () => reject(tx.error);
+            });
+            _syncChannel.postMessage({ type: 'update', from: _TAB_ID });
+            return true;
+        },
+
         _readAllDays() {
             return new Promise((resolve, reject) => {
                 const out = [];
@@ -16369,11 +16402,6 @@ function achTitleLabelsHTML(atrophy, level) {
 // One star. Only the very next locked phase can show any fill (and E progress in its tooltip);
 // everything past it reads 0 and just "Locked".
 //
-// Unlocked tooltips lead with the tier's two words in reading order (adjective, noun). They're read
-// straight off STAT_TITLE_WORDS rather than through statTitleWord(), which clamps down to the nearest
-// defined phase: right for composing a title, but it would misreport an undecided tier as owning an
-// earlier tier's words. Undecided tiers show a literal "null" placeholder instead.
-//
 // `phase` stays the internal 0-based index everywhere it's used as data; the tooltip's "Tier N" is
 // the only place the player reads it, shifted to 1-10 there.
 //
@@ -16409,16 +16437,14 @@ function achTitleStarHTML(stat, phase, unlockedPhase, statE, role) {
     if (unlocked) cls.push('is-unlocked');
     else cls.push('is-locked');
     if (role) cls.push('is-' + role);
-    const words = (STAT_TITLE_WORDS[stat] || [])[phase] || null;
+    const words = STAT_TITLE_WORDS[stat][phase];
     let tip;
     if (!unlocked) {
         const inProgress = phase === unlockedPhase + 1;
         tip = '<strong><em>Locked</em></strong>' +
             (inProgress ? `<i>${Formatter.number(Math.min(statE, need))} / ${Formatter.number(need)} E</i>` : '');
     } else {
-        const adj = words ? words.adj : 'null';
-        const noun = words ? words.noun : 'null';
-        tip = `<strong>${adj} • ${noun}</strong><i>${achStatFull(stat)} · Tier ${phase + 1}</i>`;
+        tip = `<strong>${words.adj} • ${words.noun}</strong><i>${achStatFull(stat)} · Tier ${phase + 1}</i>`;
     }
     return `<div class="${cls.join(' ')}" data-title-stat="${stat}" data-title-phase-idx="${phase}"${unlocked ? '' : ' data-locked="1"'} data-tooltip="${achEsc(tip)}" style="--star-fill:${(pct / 100).toFixed(3)}">` +
         achStatEmblemHTML(stat, phase, pct) +
@@ -17764,6 +17790,7 @@ function importData(f, onDone, opts = {}) {
         let ok = false;
         try {
             const j = JSON.parse(e.target.result);
+            const importedVer = (j && j.meta && j.meta.version) ? String(j.meta.version) : '';
             const val = validateImportSchema(j);
             if (!val.ok) {
                 if (!silent) bbglError(`Import Failed: ${val.msg}`);
@@ -17772,6 +17799,11 @@ function importData(f, onDone, opts = {}) {
             }
             if (j.storage) {
                 j.storage = sanitizeStorageRecord(j.storage);
+                if (REWARD_GATE_BELOW_VERSION !== '0.0.0' &&
+                    (!importedVer || compareVersions(importedVer, REWARD_GATE_BELOW_VERSION) < 0)) {
+                    j.storage.meta.rewardStartDate = Math.floor(Date.now() / 1000);
+                    localStorage.setItem(KEYS.REWARD_GATE_VER, REWARD_GATE_BELOW_VERSION);
+                }
                 if (j.storage.series && j.storage.series.length && j.storage.series[0] && j.storage.series[0].day) {
                     // Reverse map: exported item lines are labeled ({"Xanax Taken": <ts>} with an
                     // optional "e" for energy). Convert them back to canonical item entries.
@@ -17847,7 +17879,6 @@ function importData(f, onDone, opts = {}) {
                     saveConfig();
                 }
                 try {
-                    const importedVer = (j && j.meta && j.meta.version) ? String(j.meta.version) : '';
                     const curSeen = localStorage.getItem(KEYS.CHANGELOG_VER);
                     if (!curSeen) {
                         if (importedVer) localStorage.setItem(KEYS.CHANGELOG_VER, importedVer);
@@ -24952,6 +24983,14 @@ const BestGymController = {
             // No auto-heal — the init section stays masked until the user actually agrees.
             try {
                 await DBManager.initDB();
+                const _rewardGateSeen = localStorage.getItem(KEYS.REWARD_GATE_VER);
+                if (_seenVer && REWARD_GATE_BELOW_VERSION !== '0.0.0' &&
+                    compareVersions(_seenVer, REWARD_GATE_BELOW_VERSION) < 0 &&
+                    _rewardGateSeen !== REWARD_GATE_BELOW_VERSION) {
+                    if (await DBManager.resetRewardStartDate()) {
+                        localStorage.setItem(KEYS.REWARD_GATE_VER, REWARD_GATE_BELOW_VERSION);
+                    }
+                }
                 // Fast boot: load pre-built day objects directly (no series flatten, no
                 // _rebuildFromSeries, no session serialization) so every page navigation stays
                 // light regardless of how large the backfilled history is.

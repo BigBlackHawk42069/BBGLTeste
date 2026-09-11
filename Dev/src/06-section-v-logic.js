@@ -2373,11 +2373,6 @@ function achTitleLabelsHTML(atrophy, level) {
 // One star. Only the very next locked phase can show any fill (and E progress in its tooltip);
 // everything past it reads 0 and just "Locked".
 //
-// Unlocked tooltips lead with the tier's two words in reading order (adjective, noun). They're read
-// straight off STAT_TITLE_WORDS rather than through statTitleWord(), which clamps down to the nearest
-// defined phase: right for composing a title, but it would misreport an undecided tier as owning an
-// earlier tier's words. Undecided tiers show a literal "null" placeholder instead.
-//
 // `phase` stays the internal 0-based index everywhere it's used as data; the tooltip's "Tier N" is
 // the only place the player reads it, shifted to 1-10 there.
 //
@@ -2413,16 +2408,14 @@ function achTitleStarHTML(stat, phase, unlockedPhase, statE, role) {
     if (unlocked) cls.push('is-unlocked');
     else cls.push('is-locked');
     if (role) cls.push('is-' + role);
-    const words = (STAT_TITLE_WORDS[stat] || [])[phase] || null;
+    const words = STAT_TITLE_WORDS[stat][phase];
     let tip;
     if (!unlocked) {
         const inProgress = phase === unlockedPhase + 1;
         tip = '<strong><em>Locked</em></strong>' +
             (inProgress ? `<i>${Formatter.number(Math.min(statE, need))} / ${Formatter.number(need)} E</i>` : '');
     } else {
-        const adj = words ? words.adj : 'null';
-        const noun = words ? words.noun : 'null';
-        tip = `<strong>${adj} • ${noun}</strong><i>${achStatFull(stat)} · Tier ${phase + 1}</i>`;
+        tip = `<strong>${words.adj} • ${words.noun}</strong><i>${achStatFull(stat)} · Tier ${phase + 1}</i>`;
     }
     return `<div class="${cls.join(' ')}" data-title-stat="${stat}" data-title-phase-idx="${phase}"${unlocked ? '' : ' data-locked="1"'} data-tooltip="${achEsc(tip)}" style="--star-fill:${(pct / 100).toFixed(3)}">` +
         achStatEmblemHTML(stat, phase, pct) +
@@ -3768,6 +3761,7 @@ function importData(f, onDone, opts = {}) {
         let ok = false;
         try {
             const j = JSON.parse(e.target.result);
+            const importedVer = (j && j.meta && j.meta.version) ? String(j.meta.version) : '';
             const val = validateImportSchema(j);
             if (!val.ok) {
                 if (!silent) bbglError(`Import Failed: ${val.msg}`);
@@ -3776,6 +3770,11 @@ function importData(f, onDone, opts = {}) {
             }
             if (j.storage) {
                 j.storage = sanitizeStorageRecord(j.storage);
+                if (REWARD_GATE_BELOW_VERSION !== '0.0.0' &&
+                    (!importedVer || compareVersions(importedVer, REWARD_GATE_BELOW_VERSION) < 0)) {
+                    j.storage.meta.rewardStartDate = Math.floor(Date.now() / 1000);
+                    localStorage.setItem(KEYS.REWARD_GATE_VER, REWARD_GATE_BELOW_VERSION);
+                }
                 if (j.storage.series && j.storage.series.length && j.storage.series[0] && j.storage.series[0].day) {
                     // Reverse map: exported item lines are labeled ({"Xanax Taken": <ts>} with an
                     // optional "e" for energy). Convert them back to canonical item entries.
@@ -3851,7 +3850,6 @@ function importData(f, onDone, opts = {}) {
                     saveConfig();
                 }
                 try {
-                    const importedVer = (j && j.meta && j.meta.version) ? String(j.meta.version) : '';
                     const curSeen = localStorage.getItem(KEYS.CHANGELOG_VER);
                     if (!curSeen) {
                         if (importedVer) localStorage.setItem(KEYS.CHANGELOG_VER, importedVer);

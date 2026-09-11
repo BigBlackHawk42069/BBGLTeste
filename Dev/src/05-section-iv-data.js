@@ -67,6 +67,22 @@
             });
         },
 
+        // Moves the reward cutoff forward without changing stored training history.
+        async resetRewardStartDate() {
+            const db = await this._ensureDb();
+            if (!db) return false;
+            const meta = (await this._readMeta()) || {};
+            meta.rewardStartDate = Math.floor(Date.now() / 1000);
+            await new Promise((resolve, reject) => {
+                const tx = db.transaction(this._META_STORE, 'readwrite');
+                tx.objectStore(this._META_STORE).put(meta, this._META_KEY);
+                tx.oncomplete = resolve;
+                tx.onerror = () => reject(tx.error);
+            });
+            _syncChannel.postMessage({ type: 'update', from: _TAB_ID });
+            return true;
+        },
+
         _readAllDays() {
             return new Promise((resolve, reject) => {
                 const out = [];
