@@ -2303,9 +2303,6 @@ function achCurrentRankPlaqueData(atrophy, level) {
 
 function achTitleIdentityHTML(currentRank, titleValue) {
     return `<div class="bbgl-titles-center">` +
-        `<div class="bbgl-titles-sign"><div class="bbgl-titles-sign-inner">` +
-        `<div class="bbgl-titles-name">${achEsc(achTitlePlayerName())}</div><div class="bbgl-titles-wires"></div>` +
-        `</div></div>` +
         `<div class="bbgl-title-card" data-sign-stage="0" data-rank-finish="${currentRank.finish}" data-rank-material="${currentRank.material}">` +
         `<div class="bbgl-title-card-sign"><div class="bbgl-title-card-sign-face">` +
         `<span class="bbgl-title-card-title-label">The</span><span class="bbgl-title-card-value">${titleValue}</span>` +
@@ -2500,7 +2497,8 @@ function achBuildPageTitles() {
     // edges. The bar itself is a fixed-height row pinned to the bottom, so growing/shrinking its
     // content never eats into that space or vice versa.
     return `<div class="bbgl-titles-page">` +
-        `<div class="bbgl-titles-main">${leftCol}${head}${rightCol}</div>${bar}</div>`;
+        `<div class="bbgl-titles-board"><div class="bbgl-titles-name-row"><div class="bbgl-titles-name">${achEsc(achTitlePlayerName())}</div></div>` +
+        `<div class="bbgl-titles-card-area"><div class="bbgl-titles-main">${leftCol}${head}${rightCol}</div></div></div>${bar}</div>`;
 }
 
 function achBuildPage0(d) {

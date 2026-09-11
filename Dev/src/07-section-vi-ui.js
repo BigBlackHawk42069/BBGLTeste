@@ -873,6 +873,53 @@
     // a transform doesn't change the element's own box size. offset*/client* ignore transforms and
     // report the real layout size throughout.
     function layoutTitleBlockFrames() {
+        const titlesContainer = document.querySelector('#bbgl-achievements-container.bbgl-ach-titles-page');
+        const toolbar = document.getElementById('bbgl-toolbar');
+        if (titlesContainer && toolbar) {
+            const icons = Array.from(toolbar.querySelectorAll('#bbgl-toolbar-icons > div'))
+                .filter(el => el.offsetHeight > 0);
+            if (icons.length) {
+                const tallest = Math.max(...icons.map(el => el.offsetHeight));
+                const topPad = Math.max(0, (toolbar.offsetHeight - tallest) / 2);
+                // Keep the icons' top clearance; the name row begins at their lower edge.
+                titlesContainer.style.setProperty('--bbgl-t-toolbar-bottom', `${toolbar.offsetTop + tallest + topPad}px`);
+            }
+        }
+        const nameRow = document.querySelector('.bbgl-titles-name-row');
+        const name = nameRow && nameRow.querySelector('.bbgl-titles-name');
+        if (name && nameRow.clientHeight > 0) {
+            // Reserve a small share of the row beneath the full text line, including descenders.
+            const expanded = nameRow.closest('#bbgl-panel')?.classList.contains('bbgl-expanded');
+            nameRow.style.paddingBottom = `${nameRow.clientHeight * (expanded ? .075 : .11)}px`;
+            const style = getComputedStyle(nameRow);
+            const width = nameRow.clientWidth - parseFloat(style.paddingLeft) - parseFloat(style.paddingRight);
+            const height = nameRow.clientHeight - parseFloat(style.paddingTop) - parseFloat(style.paddingBottom);
+            name.style.setProperty('--bbgl-name-fit', '100px');
+            const fit = Math.max(1, 100 * Math.min(width / Math.max(1, name.scrollWidth), height / Math.max(1, name.offsetHeight)));
+            name.style.setProperty('--bbgl-name-fit', `${fit}px`);
+            if (document.fonts && document.fonts.status === 'loading' && !nameRow.dataset.fontFitPending) {
+                nameRow.dataset.fontFitPending = '1';
+                document.fonts.ready.then(() => {
+                    if (nameRow.isConnected) layoutTitleBlockFrames();
+                });
+            }
+        }
+        const main = document.querySelector('.bbgl-titles-main');
+        if (main) {
+            const height = main.clientHeight;
+            // Tooltip card: (176px outer width - 18px border/padding) * .86 by 132px.
+            main.style.setProperty('--bbgl-title-max-width', `${height * (158 * .86 / 132)}px`);
+            main.querySelectorAll('.bbgl-titles-corner-col').forEach(col => {
+                const label = col.querySelector('.bbgl-title-block-label');
+                const row = col.querySelector('.bbgl-title-star-row');
+                if (!label || !row) return;
+                const gap = parseFloat(getComputedStyle(row).columnGap) || 0;
+                const labelHeight = label.offsetHeight;
+                const vertical = (height - labelHeight * 2 - 7) / 4;
+                const horizontal = (col.clientWidth - gap * 4 - 4) / 5;
+                col.style.setProperty('--bbgl-t-star', `${Math.max(1, Math.min(vertical, horizontal))}px`);
+            });
+        }
         const blocks = document.querySelectorAll('.bbgl-title-block');
         if (!blocks.length) return true;
         const measurements = [];
@@ -983,7 +1030,7 @@
         const paddingBottom = parseFloat(getComputedStyle(page).paddingBottom) || 0;
         // Card growth may occupy the gap without moving the rank cluster's reference bounds.
         const cardOverhang = parseFloat(getComputedStyle(page).getPropertyValue('--bbgl-t-rank-card-overhang')) || 0;
-        const availableTop = Math.max(...cardBottoms) - cardOverhang;
+        const availableTop = scaleTop;
         const availableBottom = page.clientHeight - paddingBottom;
         if (!(availableBottom > availableTop)) return false;
 

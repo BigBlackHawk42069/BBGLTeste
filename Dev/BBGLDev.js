@@ -9275,6 +9275,12 @@
                         left: 0;
                     }
 
+                    .bbgl-rank-title.is-milestone .bbgl-rank-title-text {
+                        top: auto;
+                        bottom: calc(var(--bbgl-t-tick-h) + .2em + var(--bbgl-rank-visual-drop, 0px));
+                        transform: translateX(-50%);
+                    }
+
                     .bbgl-rank-title.is-capstone.is-locked {
                         display: block;
                         color: rgba(150, 158, 158, .42);
@@ -11300,6 +11306,218 @@
                         fill: color-mix(in srgb, #c084fc 55%, transparent);
                     }
 
+                    .bbgl-titles-main {
+                        isolation: isolate;
+                    }
+
+                    #bbgl-panel .bbgl-titles-page {
+                        display: grid;
+                        grid-template-rows: minmax(0, 78fr) minmax(34px, 22fr);
+                        margin: 0 8px;
+                        height: 100%;
+                        padding: 0 0 2px;
+                        z-index: 0;
+                        gap: 3px;
+                    }
+
+                    #bbgl-panel #bbgl-achievements-container.bbgl-ach-titles-page {
+                        position: absolute;
+                        top: var(--bbgl-t-toolbar-bottom, var(--bbgl-toolbar-h));
+                        bottom: 2px;
+                        left: 0;
+                        right: 0;
+                        height: auto;
+                        padding-top: 0;
+                    }
+
+                    .bbgl-titles-board {
+                        position: relative;
+                        isolation: isolate;
+                        display: grid;
+                        grid-template-rows: minmax(0, 18fr) minmax(0, 60fr);
+                        flex: 1 1 0;
+                        min-height: 0;
+                        overflow: hidden;
+                    }
+
+                    .bbgl-titles-name-row {
+                        --bbgl-t-win-color: #a855f7;
+                        --bbgl-t-win-glow: 1.3;
+                        display: flex;
+                        align-items: center;
+                        justify-content: center;
+                        min-width: 0;
+                        min-height: 0;
+                        padding: 0 8px;
+                        box-sizing: border-box;
+                    }
+
+                    .bbgl-titles-name-row .bbgl-titles-name {
+                        flex: 0 0 auto;
+                        max-width: none;
+                        font-size: var(--bbgl-name-fit, 18px);
+                        line-height: 1.4;
+                        padding-bottom: 0;
+                        transform: none;
+                        overflow: visible;
+                        text-overflow: clip;
+                    }
+
+                    .bbgl-titles-card-area {
+                        position: relative;
+                        min-width: 0;
+                        min-height: 0;
+                    }
+
+                    #bbgl-panel .bbgl-titles-board .bbgl-titles-main {
+                        position: absolute;
+                        inset: 0;
+                        top: 0;
+                        height: 100%;
+                        margin: 0;
+                        padding: 0 4px;
+                        grid-template-columns: repeat(3, minmax(0, 1fr));
+                        column-gap: 4px;
+                        grid-template-rows: 100%;
+                        transform: none;
+                    }
+
+                    #bbgl-panel .bbgl-titles-main .bbgl-titles-center {
+                        margin: 0;
+                        transform: none;
+                        height: 100%;
+                        width: min(100%, var(--bbgl-title-max-width, 132px));
+                    }
+
+                    #bbgl-panel .bbgl-titles-main .bbgl-titles-corner-col {
+                        margin: 0;
+                        padding: 0;
+                        transform: none;
+                        width: 100%;
+                        align-items: center;
+                        justify-content: space-between;
+                        gap: 3px;
+                    }
+
+                    #bbgl-panel .bbgl-rank-scale {
+                        height: 100%;
+                        min-height: 0;
+                    }
+
+                    #bbgl-panel .bbgl-rank-track {
+                        min-height: 0;
+                        align-items: stretch;
+                    }
+
+                    #bbgl-panel.bbgl-expanded .bbgl-titles-main {
+                        grid-template-rows: 94%;
+                    }
+
+                    .bbgl-rank-line {
+                        background: #000;
+                        box-shadow: none;
+                        border-radius: 0;
+                        --bbgl-rank-visual-drop: calc(var(--bbgl-t-fs-notch, 10px) * .6);
+                        translate: 0 var(--bbgl-rank-visual-drop);
+                    }
+
+                    .bbgl-rank-line::before {
+                        content: '';
+                        position: absolute;
+                        inset: auto .5px 0 -.5px;
+                        height: calc(var(--bbgl-t-tick-h) * .45);
+                        background: linear-gradient(90deg, #000 0 1px, transparent 1px);
+                        background-size: 2% 100%;
+                        background-repeat: repeat-x;
+                        pointer-events: none;
+                    }
+
+                    .bbgl-rank-title.is-milestone::after {
+                        background: #000;
+                        box-shadow: none;
+                        border-radius: 0;
+                    }
+
+                    .bbgl-rank-knob {
+                        top: 100%;
+                        padding: 2px 1px 0;
+                    }
+
+                    .bbgl-rank-knob::before {
+                        top: auto;
+                        bottom: 100%;
+                        left: calc(50% - 1px);
+                        width: 2px;
+                        height: var(--bbgl-t-tick-h);
+                        background: #bb85e5;
+                        box-shadow: none;
+                        border-radius: 0;
+                    }
+
+                    .bbgl-rank-knob-lv {
+                        transform: none;
+                    }
+
+                    #bbgl-panel .bbgl-titles-corner-col {
+                        align-self: stretch;
+                        justify-content: center;
+                        margin-top: var(--bbgl-t-stack-frame-offset);
+                        gap: 2px;
+                        padding-block: 3px;
+                        box-sizing: border-box;
+                    }
+
+                    .bbgl-title-block {
+                        margin-top: 0;
+                        padding: 0 2px;
+                        gap: 1px;
+                    }
+
+                    .bbgl-title-block-frame {
+                        display: none;
+                    }
+
+                    .bbgl-title-block::after {
+                        content: none;
+                    }
+
+                    .bbgl-title-block-label {
+                        position: static;
+                        transform: none;
+                        padding: 0;
+                        border: 0;
+                        background: none;
+                        box-shadow: none;
+                        color: #d4d8d9;
+                        font-family: 'Barlow Condensed', 'Arial Narrow', sans-serif;
+                        text-shadow: 0 1px 1px #000;
+                        letter-spacing: 0;
+                    }
+
+                    .bbgl-title-star-base svg path {
+                        fill: #302b24;
+                        stroke: #8c8069;
+                        filter: drop-shadow(0 1px 0 #d1b98066) drop-shadow(0 2px 1px #000b);
+                    }
+
+                    .bbgl-title-star-fill svg path {
+                        stroke: color-mix(in srgb, var(--bbgl-t-win-color) 65%, #eee0bb);
+                        filter: drop-shadow(0 1px 0 #0009);
+                    }
+
+                    .bbgl-title-star.is-unlocked .bbgl-title-star-base svg path {
+                        fill: color-mix(in srgb, var(--bbgl-t-win-color) 70%, #25211b);
+                        stroke: #c7b48b;
+                    }
+
+                    body:not(.is-touch-device) .bbgl-title-star.is-unlocked:hover .bbgl-title-star-fill svg path {
+                        filter: drop-shadow(0 -1px 0 #fff7) drop-shadow(0 2px 1px #000b);
+                    }
+
+                    .bbgl-title-card {
+                        box-shadow: inset 1px 1px 0 #e3ae6c52, inset -1px -1px 0 #000a, inset 0 0 0 3px #1a0d063d, 0 3px 5px #000b;
+                    }
+
                     .bbgl-ach-title-row {
                         position: relative;
                         width: 100%;
@@ -12360,7 +12578,6 @@
         dom.contentWrapper = root.querySelector('#bbgl-content-wrapper');
         if (!dom.gymTab) dom.gymTab = document.getElementById('bbgl-gym-tab');
     }
-
     /**
      *  [SECTION IV] THE CHECK-IN COUNTER (Data Storage & Network)
      *  ========================================================================
@@ -15790,9 +16007,6 @@ function achCurrentRankPlaqueData(atrophy, level) {
 
 function achTitleIdentityHTML(currentRank, titleValue) {
     return `<div class="bbgl-titles-center">` +
-        `<div class="bbgl-titles-sign"><div class="bbgl-titles-sign-inner">` +
-        `<div class="bbgl-titles-name">${achEsc(achTitlePlayerName())}</div><div class="bbgl-titles-wires"></div>` +
-        `</div></div>` +
         `<div class="bbgl-title-card" data-sign-stage="0" data-rank-finish="${currentRank.finish}" data-rank-material="${currentRank.material}">` +
         `<div class="bbgl-title-card-sign"><div class="bbgl-title-card-sign-face">` +
         `<span class="bbgl-title-card-title-label">The</span><span class="bbgl-title-card-value">${titleValue}</span>` +
@@ -15987,7 +16201,8 @@ function achBuildPageTitles() {
     // edges. The bar itself is a fixed-height row pinned to the bottom, so growing/shrinking its
     // content never eats into that space or vice versa.
     return `<div class="bbgl-titles-page">` +
-        `<div class="bbgl-titles-main">${leftCol}${head}${rightCol}</div>${bar}</div>`;
+        `<div class="bbgl-titles-board"><div class="bbgl-titles-name-row"><div class="bbgl-titles-name">${achEsc(achTitlePlayerName())}</div></div>` +
+        `<div class="bbgl-titles-card-area"><div class="bbgl-titles-main">${leftCol}${head}${rightCol}</div></div></div>${bar}</div>`;
 }
 
 function achBuildPage0(d) {
@@ -18452,6 +18667,53 @@ const BestGymController = {
     // a transform doesn't change the element's own box size. offset*/client* ignore transforms and
     // report the real layout size throughout.
     function layoutTitleBlockFrames() {
+        const titlesContainer = document.querySelector('#bbgl-achievements-container.bbgl-ach-titles-page');
+        const toolbar = document.getElementById('bbgl-toolbar');
+        if (titlesContainer && toolbar) {
+            const icons = Array.from(toolbar.querySelectorAll('#bbgl-toolbar-icons > div'))
+                .filter(el => el.offsetHeight > 0);
+            if (icons.length) {
+                const tallest = Math.max(...icons.map(el => el.offsetHeight));
+                const topPad = Math.max(0, (toolbar.offsetHeight - tallest) / 2);
+                // Keep the icons' top clearance; the name row begins at their lower edge.
+                titlesContainer.style.setProperty('--bbgl-t-toolbar-bottom', `${toolbar.offsetTop + tallest + topPad}px`);
+            }
+        }
+        const nameRow = document.querySelector('.bbgl-titles-name-row');
+        const name = nameRow && nameRow.querySelector('.bbgl-titles-name');
+        if (name && nameRow.clientHeight > 0) {
+            // Reserve a small share of the row beneath the full text line, including descenders.
+            const expanded = nameRow.closest('#bbgl-panel')?.classList.contains('bbgl-expanded');
+            nameRow.style.paddingBottom = `${nameRow.clientHeight * (expanded ? .075 : .11)}px`;
+            const style = getComputedStyle(nameRow);
+            const width = nameRow.clientWidth - parseFloat(style.paddingLeft) - parseFloat(style.paddingRight);
+            const height = nameRow.clientHeight - parseFloat(style.paddingTop) - parseFloat(style.paddingBottom);
+            name.style.setProperty('--bbgl-name-fit', '100px');
+            const fit = Math.max(1, 100 * Math.min(width / Math.max(1, name.scrollWidth), height / Math.max(1, name.offsetHeight)));
+            name.style.setProperty('--bbgl-name-fit', `${fit}px`);
+            if (document.fonts && document.fonts.status === 'loading' && !nameRow.dataset.fontFitPending) {
+                nameRow.dataset.fontFitPending = '1';
+                document.fonts.ready.then(() => {
+                    if (nameRow.isConnected) layoutTitleBlockFrames();
+                });
+            }
+        }
+        const main = document.querySelector('.bbgl-titles-main');
+        if (main) {
+            const height = main.clientHeight;
+            // Tooltip card: (176px outer width - 18px border/padding) * .86 by 132px.
+            main.style.setProperty('--bbgl-title-max-width', `${height * (158 * .86 / 132)}px`);
+            main.querySelectorAll('.bbgl-titles-corner-col').forEach(col => {
+                const label = col.querySelector('.bbgl-title-block-label');
+                const row = col.querySelector('.bbgl-title-star-row');
+                if (!label || !row) return;
+                const gap = parseFloat(getComputedStyle(row).columnGap) || 0;
+                const labelHeight = label.offsetHeight;
+                const vertical = (height - labelHeight * 2 - 7) / 4;
+                const horizontal = (col.clientWidth - gap * 4 - 4) / 5;
+                col.style.setProperty('--bbgl-t-star', `${Math.max(1, Math.min(vertical, horizontal))}px`);
+            });
+        }
         const blocks = document.querySelectorAll('.bbgl-title-block');
         if (!blocks.length) return true;
         const measurements = [];
@@ -18562,7 +18824,7 @@ const BestGymController = {
         const paddingBottom = parseFloat(getComputedStyle(page).paddingBottom) || 0;
         // Card growth may occupy the gap without moving the rank cluster's reference bounds.
         const cardOverhang = parseFloat(getComputedStyle(page).getPropertyValue('--bbgl-t-rank-card-overhang')) || 0;
-        const availableTop = Math.max(...cardBottoms) - cardOverhang;
+        const availableTop = scaleTop;
         const availableBottom = page.clientHeight - paddingBottom;
         if (!(availableBottom > availableTop)) return false;
 
